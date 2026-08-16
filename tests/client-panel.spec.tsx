@@ -50,6 +50,8 @@ function renderPanel(
     <Panel
       state={state}
       reducedMotion={false}
+      soundOn={false}
+      onToggleSound={() => undefined}
       avatarPulse={false}
       justCondensed={false}
       voteFeedback={voteFeedback}
@@ -110,7 +112,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const incense = findByAttr(tree, 'data-liangbiao-personal', 'incense')[0]
     const next = findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0]
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
-    expect(incense && textContent([incense])).toContain('5 炷')
+    expect(incense && textContent([incense])).toContain('7 炷')
     const nextVisible = visibleNextIncenseText(next)
     expect(nextVisible).toContain('3K')
     expect(nextVisible).not.toContain('3,000')
@@ -225,7 +227,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(styleOf(findByAttr(tree, 'data-liangbiao-ring-footer')[0]).top).toBe('100%')
       expect(styleOf(findByAttr(tree, 'data-liangbiao-ring-footer')[0]).marginTop).toBe('8px')
       expect(styleOf(findByAttr(tree, 'data-liangbiao-avatar')[0]).width).toBe(AVATAR_SLOT)
-      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('344px')
+      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('260px')
       expect(social.map((node) => styleOf(node).flex)).toEqual(['1 1 0', '1 1 0'])
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
@@ -234,7 +236,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
 
   it('compacts flank counts so thousands stay short (and keeps exact values in the tooltip / SR)', () => {
     const demo = renderPanel(demoState())
-    expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'incense'))).toBe('5')
+    expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'incense'))).toBe('7')
     expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'next-incense'))).toBe('3K')
     expect(findByAttr(demo, 'data-liangbiao-compact', 'next-incense')[0]?.props.title).toBe('3,000 当量')
     expect(textContent(demo)).toContain('距下一炷还差 3,000 当量')
@@ -305,6 +307,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       <Panel
         state={state}
         reducedMotion={false}
+        soundOn={false}
+        onToggleSound={() => undefined}
         avatarPulse={false}
         justCondensed={false}
         voteFeedback=""
@@ -324,6 +328,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       <Panel
         state={state}
         reducedMotion
+        soundOn={false}
+        onToggleSound={() => undefined}
         avatarPulse={false}
         justCondensed={false}
         voteFeedback=""

@@ -64,18 +64,18 @@ DeepSeek Harness 是夯还是拉
 ### Region 2 — Central core
 
 ```text
-我的香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 当量
+今日香火 7 炷     [梁子 + 个人梁气环]     下一炷 3,000 当量
                   梁位 83.021952% → 梁圣
 ```
 
 Rules:
 
-- left overlay: personal `remaining_incense` (`N 炷`)
+- left overlay: personal `earned_incense_today` (`今日香火` = 今天总共生成的香火)
 - center (in-flow, geometrically centered in the panel): concrete Liangzi
   avatar, the 梁气 ring, and the incense-mark overlay. These three MUST share
   the panel's horizontal centerline. Personal flanks are absolutely positioned
   and MUST NOT participate in in-flow width (`space-between` / unequal flex
-  columns are forbidden here — 「我的香火」 being wider than 「下一炷」 must
+  columns are forbidden here — 「今日香火」 being wider than 「下一炷」 must
   never shove 梁子 sideways).
 - remaining incense on the ring is pictorial place-value on **separate orbits**
   (炷=stick ones, 月=moon tens, 日=sun hundreds, each 0–9). Glyphs sit on
@@ -263,12 +263,14 @@ This means a full incense stick was just earned and accumulation for the next on
 
 Do not add a separate personal-growth row.
 
-The two LiangQi numbers flank the central 梁子 (Region 2): `remaining_incense`
-on the left, `tokens_to_next_incense` on the right. The ring itself carries fill
-and intensity; its footer slot is reserved for the global 梁位 value.
+The two LiangQi numbers flank the central 梁子 (Region 2): `earned_incense_today`
+(今日香火, today's total generated) on the left, `tokens_to_next_incense` on
+the right. The ring's incense glyphs show `remaining_incense` (what is left to
+spend). The ring fill is next-incense progress; its footer slot is reserved for
+the global 梁位 value.
 
 ```text
-我的香火 5 炷   [环 + 梁子]   下一炷 3,000 当量
+今日香火 7 炷   [环 + 梁子]   下一炷 3,000 当量
 ```
 
 The ring/avatar/incense glyphs stay on the panel centerline; the two numbers are

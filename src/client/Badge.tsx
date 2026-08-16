@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
 import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { isSoundEnabled, playIncenseEarn, playVoteDown, playVoteUp, setSoundEnabled } from './sound.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
@@ -175,6 +176,14 @@ export function LiangbiaoBadge(): ReactElement {
   const reducedMotion = useReducedMotion()
   // Smoothed + rate-extrapolated ring fill for the 油门 feel (presentation only).
   const throttle = useThrottleFill(state.personal, reducedMotion)
+  const [soundOn, setSoundOn] = useState(() => isSoundEnabled())
+  const onToggleSound = useCallback(() => {
+    setSoundOn((value) => {
+      const next = !value
+      setSoundEnabled(next)
+      return next
+    })
+  }, [])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -278,6 +287,7 @@ export function LiangbiaoBadge(): ReactElement {
     prevEarned.current = state.personal.earnedIncenseToday
     if (!grew) return undefined
     setJustCondensed(true)
+    playIncenseEarn()
     const timer = window.setTimeout(() => setJustCondensed(false), 1400)
     return () => window.clearTimeout(timer)
   }, [state.personal.earnedIncenseToday])
@@ -324,6 +334,8 @@ export function LiangbiaoBadge(): ReactElement {
     store.vote(voteType).then(
       (result) => {
         if (result.status === 'accepted') {
+          if (voteType === 'up') playVoteUp()
+          else playVoteDown()
           setVoteFeedback(`已上香：${voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME}（剩余 ${result.remainingIncense} 炷）`)
         } else if (result.reason === 'insufficient_incense') {
           // The panel painted optimistic local incense the backend has not
@@ -398,6 +410,8 @@ export function LiangbiaoBadge(): ReactElement {
           state={state}
           reducedMotion={reducedMotion}
           throttle={throttle}
+          soundOn={soundOn}
+          onToggleSound={onToggleSound}
           avatarPulse={avatarPulse}
           justCondensed={justCondensed}
           voteFeedback={voteFeedback}

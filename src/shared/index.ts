@@ -47,7 +47,7 @@ export const LIANG_POSITION_LABEL = '梁位'
  * Region 4 uses that for the GLOBAL accepted-vote count, and two different
  * numbers under one label is the fastest way to misread the panel.
  */
-export const MY_INCENSE_LABEL = '我的香火'
+export const MY_INCENSE_LABEL = '今日香火'
 
 /** Caption of the personal "tokens to the next incense stick" flank. */
 export const NEXT_INCENSE_LABEL = '下一炷'
