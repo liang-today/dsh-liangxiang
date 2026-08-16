@@ -77,6 +77,9 @@ Rules:
   columns are forbidden here — 「我的香火」 being wider than 「下一炷」 must
   never shove 梁子 sideways).
 - right overlay: personal `tokens_to_next_incense`
+- visible flank counts use `formatCompactCount` (`0–999` exact, then rounded
+  `K`/`M`/`B`) so `46,935 Token` cannot overflow the overlay. Hover title and
+  the screen-reader summary keep the exact integer.
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
   6 decimals (`LIANG_POSITION_DECIMALS`)
 - `down_ratio` gets **no** second big number: it is `1 − 梁位` and appears only in

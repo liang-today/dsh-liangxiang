@@ -10,7 +10,7 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, ReactElement } from 'react'
-import { LIANG_POSITION_DECIMALS, formatRatioPercents, type VoteType } from '../domain/index.ts'
+import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, type VoteType } from '../domain/index.ts'
 import {
   ACCOUNTING_UNAVAILABLE_HINT,
   AUTHORITY_MODE_NOTES,
@@ -92,10 +92,9 @@ const statValueStyle: CSSProperties = {
 }
 
 /**
- * Every number in the panel is monospaced-by-digit and lives in a
- * FIXED-WIDTH box. Layout must not depend on how large a value happens to be:
- * `5 炷` -> `12 炷` or `3,000` -> `46,935` used to re-centre the whole row and
- * visibly nudge the central 梁子 sideways.
+ * Flank numbers use compact K/M/B so `5 炷` and `50K Token` stay the same
+ * visual width. The ring is already overlay-centered; this stops the *text*
+ * of the two wings from looking ragged when one side hits thousands.
  */
 const numericStyle: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
@@ -252,10 +251,14 @@ export function Panel(props: PanelProps): ReactElement {
   // Percentages come from the snapshot's own raw counts, so they can never
   // contradict the Liangzi state rendered beside them (AGENTS.md §12).
   const percents = formatRatioPercents(snapshot.upVotes, snapshot.downVotes, LIANG_POSITION_DECIMALS)
+  const remainingExact = personal.remainingIncense.toLocaleString('zh-CN')
+  const toNextExact = personal.tokensToNextIncense.toLocaleString('zh-CN')
+  const remainingCompact = formatCompactCount(personal.remainingIncense)
+  const toNextCompact = formatCompactCount(personal.tokensToNextIncense)
   const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}`
     + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
     + `${LIANG_POSITION_LABEL} ${percents.up}（即${VOTE_UP_NAME} ${percents.up}，${VOTE_DOWN_NAME} ${percents.down}）。`
-    + `我的剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} Token。`
+    + `我的剩余香火 ${remainingExact} 炷，距下一炷还差 ${toNextExact} Token。`
     + `${AUTHORITY_MODE_NOTES[state.authorityMode]}。`
 
   return (
@@ -359,15 +362,22 @@ export function Panel(props: PanelProps): ReactElement {
         </div>
         <div style={{ ...flankStyle, left: '0px' }} data-liangbiao-personal="incense">
           <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
-          <span style={{ ...numericStyle, fontSize: '18px', fontWeight: 700, color: color.warn }}>
-            {personal.remainingIncense}
+          <span
+            title={`${remainingExact} 炷`}
+            style={{ ...numericStyle, fontSize: '16px', fontWeight: 700, color: color.warn, lineHeight: '22px' }}
+          >
+            <span data-liangbiao-compact="incense">{remainingCompact}</span>
             <span style={{ fontSize: '12px', fontWeight: 600 }}> 炷</span>
           </span>
         </div>
         <div style={{ ...flankStyle, right: '0px' }} data-liangbiao-personal="next-incense">
           <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
-          <span style={{ ...numericStyle, fontSize: '15px', fontWeight: 700, color: color.textPrimary }}>
-            {personal.tokensToNextIncense.toLocaleString('zh-CN')}
+          <span
+            title={`${toNextExact} Token`}
+            data-liangbiao-compact="next-incense"
+            style={{ ...numericStyle, fontSize: '16px', fontWeight: 700, color: color.textPrimary, lineHeight: '22px' }}
+          >
+            {toNextCompact}
           </span>
           <span style={{ fontSize: '11px', color: color.textTertiary }}>Token</span>
         </div>

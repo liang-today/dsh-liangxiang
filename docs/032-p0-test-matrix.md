@@ -65,7 +65,7 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 ## Region 2 新布局与自由放置
 
-左翼 `5 炷`、右翼 `3,000 Token`、环底 `梁位 83.0219%`、旧的 `data-liangbiao-ratio` 上下比例块已不存在、一票后梁位打印值变化;徽章图标是六态头像（30px、无标签、`aria-hidden`）、`aria-label` 含状态名、cursor `grab`/`touch-action: none`；坐标夹回可视区、窗口缩小后仍在画内、`localStorage` 往返与损坏值回退、面板在左边缘翻转到右侧、贴近上下边缘改锚点。→ `client-panel.spec.tsx`、`badge.spec.tsx`
+左翼 `5 炷`、右翼可见 `3K Token`（精确值 3,000 在 tooltip / SR）、环底 `梁位 83.021952%`、旧的 `data-liangbiao-ratio` 上下比例块已不存在、一票后梁位打印值变化;高库存 `1,234 炷` / `50,000 Token` 可见为 `1.2K` / `50K`。徽章图标是六态头像（30px、无标签、`aria-hidden`）、`aria-label` 含状态名、cursor `grab`/`touch-action: none`；坐标夹回可视区、窗口缩小后仍在画内、`localStorage` 往返与损坏值回退、面板在左边缘翻转到右侧、贴近上下边缘改锚点。→ `client-panel.spec.tsx`、`badge.spec.tsx`、`domain-compact-count.spec.ts`
 
 ## 近实时快照
 

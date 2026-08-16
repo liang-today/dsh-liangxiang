@@ -1,6 +1,6 @@
 # 103 — Test Matrix（RC）
 
-`pnpm test`：**20 个文件 / 257 项，全绿**。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
+`pnpm test`：**22 个文件 / 271 项，全绿**。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
 
 ## 覆盖分布
 
@@ -9,8 +9,9 @@
 | `domain-liangzi.spec.ts` | 39 | 五态阈值、区间、梁位小数与截断、显示不越阈值 |
 | `backend-service.spec.ts` | 36 | claim 折算/ratchet、扣香事务、幂等、香客、日切、快照发布与保留 |
 | `domain-token.spec.ts` | 20 | Effective Token 口径与边界、非法输入 |
+| `domain-compact-count.spec.ts` | 5 | 两翼计数 0–999 原样、K/M/B 四舍五入、长度上限 |
 | `domain-vote.spec.ts` | 20 | 仅 up/down、requestId 格式、结果判别 |
-| `client-panel.spec.tsx` | 19 | 四区结构、新 Region 2、布局稳定、动效、可访问性文案 |
+| `client-panel.spec.tsx` | 20 | 四区结构、新 Region 2、两翼 K/M 缩写、布局稳定、动效、可访问性文案 |
 | `host-service.spec.ts` | 19 | 本地权威服务（LOCAL_FAKE_DEV）事务矩阵 |
 | `backend-http.spec.ts` | 17 | `/v1` 路由、边界校验、并发、限流、413、限流表清扫 |
 | `wire.spec.ts` | 16 | Host↔Client 帧校验、拒收非法帧 |
