@@ -2,6 +2,13 @@
 
 ## 0.1.0 — 未发布
 
+### DSH Authority Spike + 真实 Token + 本地完整闭环（Prompt 2）
+
+- Authority Spike（docs/040–044）：DSH 无 authenticated user、无服务器可验证 Token 权威;anonymous-user-id 仅假名标识。**Decision Gate A = A3**，生产可信投票标记 BLOCKED（P0 open risk），本地闭环以 `LOCAL_FAKE_DEV` 模式诚实标注。
+- 真实 Token 接入：`tokenUsage` 投影观测（启动补扫 + 变更流），每会话高水位差分账本（replay/restart/重放/替换回落均不双计;新会话 `firstLiveSeq===0` 全额计入，resume/fork 基线化），按可配置 business timezone 入账当日，storage domain `liangbiao` v1 持久化（缺席时内存降级）。
+- 本地投票闭环：`FakeAuthoritativeLiangService`（同步事务防并发双花、requestId 幂等、首票香客、快照 cadence 发布——比例与梁子状态同 sequence）、`/liangbiao/api` HTTP+SSE 通道（边界校验、body 上限、心跳、卸载清理）、client live store（帧校验、旧帧拒收、同 id 有界重试、离线保留最近状态）。
+- 新增 45 项测试（水位账本、服务事务矩阵、wire 边界、live store），总计 170 项全绿。
+
 ### R2 语义对齐 + 正确 UI + 领域模型（Prompt 1）
 
 - 业务语义纠偏至 R2 冻结模型：全网夯率驱动中央梁子（待开梁 + 梁工/梁总/梁神/梁圣/梁祖），个人梁气 = 剩余香火 + 下一炷 Token 进度;废弃 梁签/cacheRead×0.1/目标模型口径/per-request cap（见 `docs/SEMANTIC_CORRECTION_R2.md`）。

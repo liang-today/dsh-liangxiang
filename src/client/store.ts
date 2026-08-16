@@ -1,11 +1,9 @@
 /**
- * Client view store: one external snapshot store consumed through
- * `useSyncExternalStore`. This milestone ships the MOCK implementation —
- * domain rules are real, data is seeded. The live host-backed store replaces
- * the seed in the real-token milestone without changing the interface.
+ * Client view store vocabulary + the MOCK implementation (tests/demos).
  *
- * All business transitions delegate to `domain/`; the store never hand-rolls
- * ratios, thresholds, or incense math.
+ * The live host-backed store lives in `live-store.ts` and shares the same
+ * `LiangbiaoStore` interface. All business transitions delegate to
+ * `domain/`; the store never hand-rolls ratios, thresholds, or incense math.
  */
 import {
   applyAcceptedVote,
@@ -20,9 +18,18 @@ import {
   type VoteResult,
   type VoteType,
 } from '../domain/index.ts'
+import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
+import type { LiangbiaoWireState } from '../shared/wire.ts'
+
+export type ConnectionState = 'connecting' | 'live' | 'offline'
 
 /** Everything the panel renders, in one immutable snapshot. */
 export interface LiangbiaoViewState {
+  connection: ConnectionState
+  /** False when the host reports the DSH accounting seams are absent. */
+  accountingAvailable: boolean
+  /** True under the LOCAL_FAKE_DEV authority mode (honest labelling). */
+  localMode: boolean
   activeCase: DailyLiangCase
   /** Global snapshot: ratios + Liangzi state always share one sequence. */
   snapshot: PublicLiangSnapshot
@@ -33,8 +40,60 @@ export interface LiangbiaoViewState {
 export interface LiangbiaoStore {
   getSnapshot(): LiangbiaoViewState
   subscribe(listener: () => void): () => void
-  /** Submit one vote intent; returns the (mock-)authoritative result. */
-  vote(voteType: VoteType): VoteResult
+  /** Submit one vote intent; resolves with the authoritative-side result. */
+  vote(voteType: VoteType): Promise<VoteResult>
+}
+
+/** Derive the render state from one validated wire frame (raw counts in, domain invariants out). */
+export function wireToViewState(wire: LiangbiaoWireState, connection: ConnectionState): LiangbiaoViewState {
+  return {
+    connection,
+    accountingAvailable: wire.accounting.available,
+    localMode: wire.authorityMode === 'LOCAL_FAKE_DEV',
+    activeCase: wire.activeCase,
+    snapshot: buildPublicSnapshot({
+      caseId: wire.global.caseId,
+      aggregate: {
+        upVotes: wire.global.upVotes,
+        downVotes: wire.global.downVotes,
+        uniqueVoters: wire.global.uniqueVoters,
+      },
+      capturedAt: wire.global.capturedAt,
+      sequence: wire.global.sequence,
+    }),
+    personal: derivePersonalLiangQiState({
+      effectiveTokensToday: wire.personal.effectiveTokensToday,
+      usedIncenseToday: wire.personal.usedIncenseToday,
+      tokenPerIncense: wire.personal.tokenPerIncense,
+    }),
+  }
+}
+
+/**
+ * Placeholder state rendered before the first frame / while offline. The
+ * date is cosmetic only (placeholder copy), never an eligibility input.
+ */
+export function createOfflineViewState(connection: ConnectionState): LiangbiaoViewState {
+  return {
+    connection,
+    accountingAvailable: false,
+    localMode: true,
+    activeCase: {
+      id: 'offline',
+      businessDate: new Date().toISOString().slice(0, 10),
+      title: '梁案尚未同步',
+      status: 'active',
+      createdAt: 0,
+      tokenPerIncense: 50_000,
+    },
+    snapshot: buildPublicSnapshot({
+      caseId: 'offline',
+      aggregate: { upVotes: 0, downVotes: 0, uniqueVoters: 0 },
+      capturedAt: 0,
+      sequence: 0,
+    }),
+    personal: derivePersonalLiangQiState({ effectiveTokensToday: 0, usedIncenseToday: 0 }),
+  }
 }
 
 /** Seed knobs for the mock store (defaults follow the frozen demo numbers). */
@@ -50,7 +109,7 @@ export interface MockStoreSeed {
 
 /** Frozen demo scenario: 83% 夯 (梁圣), personal 5 炷 with 94% ring fill. */
 const DEFAULT_SEED: Required<MockStoreSeed> = {
-  caseTitle: 'DeepSeek Harness 是夯还是拉',
+  caseTitle: DEFAULT_CASE_TITLE,
   upVotes: 10_665,
   downVotes: 2_181,
   uniqueVoters: 2_841,
@@ -96,19 +155,19 @@ export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbia
   // The seeded `usedIncenseToday` counts as prior participation.
   let hasAcceptedVote = resolved.usedIncenseToday > 0
   let sequence = 1
-  let state: LiangbiaoViewState = {
+  const buildState = (): LiangbiaoViewState => ({
+    connection: 'live',
+    accountingAvailable: true,
+    localMode: true,
     activeCase,
     snapshot: buildPublicSnapshot({ caseId: activeCase.id, aggregate, capturedAt: Date.now(), sequence }),
     personal,
-  }
+  })
+  let state = buildState()
 
   const listeners = new Set<() => void>()
   const publish = (): void => {
-    state = {
-      activeCase,
-      snapshot: buildPublicSnapshot({ caseId: activeCase.id, aggregate, capturedAt: Date.now(), sequence }),
-      personal,
-    }
+    state = buildState()
     for (const listener of listeners) listener()
   }
 
@@ -118,15 +177,15 @@ export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbia
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    vote(voteType): VoteResult {
+    vote(voteType): Promise<VoteResult> {
       const requestId = nextMockRequestId()
       if (!canSpendIncense(personal)) {
-        return {
+        return Promise.resolve({
           status: 'rejected',
           requestId,
           reason: 'insufficient_incense',
           message: 'no remaining incense',
-        }
+        })
       }
       // Order matters for the frozen semantics: the spend touches only
       // used/remaining; the global aggregate (and thus the Liangzi state)
@@ -136,13 +195,13 @@ export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbia
       hasAcceptedVote = true
       sequence += 1
       publish()
-      return {
+      return Promise.resolve({
         status: 'accepted',
         requestId,
         voteType,
         usedIncenseToday: personal.usedIncenseToday,
         remainingIncense: personal.remainingIncense,
-      }
+      })
     },
     addEffectiveTokens(count) {
       personal = derivePersonalLiangQiState({

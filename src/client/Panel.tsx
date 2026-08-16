@@ -12,9 +12,11 @@
 import type { CSSProperties, KeyboardEvent, ReactElement } from 'react'
 import type { VoteType } from '../domain/index.ts'
 import {
+  ACCOUNTING_UNAVAILABLE_HINT,
   INCENSE_STAT_LABEL,
   LIANGZI_STATE_LABELS,
   NO_INCENSE_REASON,
+  OFFLINE_REASON,
   PANEL_TITLE,
   VOTER_STAT_LABEL,
   VOTE_DOWN_LABEL,
@@ -128,7 +130,21 @@ const visuallyHidden: CSSProperties = {
 export function Panel(props: PanelProps): ReactElement {
   const { state, reducedMotion, avatarPulse, justCondensed, voteFeedback, onVote, onClose } = props
   const { snapshot, personal, activeCase } = state
+  const offline = state.connection !== 'live'
   const outOfIncense = personal.remainingIncense <= 0
+  const votingDisabled = outOfIncense || offline
+  const disabledReason = offline
+    ? OFFLINE_REASON
+    : outOfIncense
+      ? NO_INCENSE_REASON
+      : ''
+  const statusLine = offline
+    ? OFFLINE_REASON
+    : !state.accountingAvailable
+      ? ACCOUNTING_UNAVAILABLE_HINT
+      : outOfIncense
+        ? NO_INCENSE_REASON
+        : voteFeedback
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
@@ -160,6 +176,24 @@ export function Panel(props: PanelProps): ReactElement {
         <div>
           <h2 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: color.textTertiary, letterSpacing: '1px' }}>
             {PANEL_TITLE}
+            {state.localMode && (
+              <span
+                data-liangbiao-authority=""
+                title="本地演示模式：香火与投票均在本机，不代表可信全网结果"
+                style={{
+                  marginLeft: '8px',
+                  padding: '1px 6px',
+                  borderRadius: '999px',
+                  border: `1px solid ${color.border}`,
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  letterSpacing: '0.5px',
+                  color: color.textTertiary,
+                }}
+              >
+                本地演示
+              </span>
+            )}
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: 600, color: color.textPrimary }}>
             {activeCase.title}
@@ -206,9 +240,9 @@ export function Panel(props: PanelProps): ReactElement {
         <button
           type="button"
           data-liangbiao-vote="up"
-          disabled={outOfIncense}
-          aria-disabled={outOfIncense}
-          title={outOfIncense ? NO_INCENSE_REASON : `${VOTE_UP_NAME}一炷香`}
+          disabled={votingDisabled}
+          aria-disabled={votingDisabled}
+          title={votingDisabled ? disabledReason : `${VOTE_UP_NAME}一炷香`}
           onClick={() => onVote('up')}
           style={{ ...voteButtonBase, background: color.buttonPrimaryFill, borderColor: color.buttonPrimaryFill, color: color.buttonPrimaryText }}
         >
@@ -217,9 +251,9 @@ export function Panel(props: PanelProps): ReactElement {
         <button
           type="button"
           data-liangbiao-vote="down"
-          disabled={outOfIncense}
-          aria-disabled={outOfIncense}
-          title={outOfIncense ? NO_INCENSE_REASON : `${VOTE_DOWN_NAME}一炷香`}
+          disabled={votingDisabled}
+          aria-disabled={votingDisabled}
+          title={votingDisabled ? disabledReason : `${VOTE_DOWN_NAME}一炷香`}
           onClick={() => onVote('down')}
           style={{ ...voteButtonBase, background: color.bgSubtle, color: color.textPrimary }}
         >
@@ -229,9 +263,9 @@ export function Panel(props: PanelProps): ReactElement {
       <p
         role="status"
         data-liangbiao-vote-feedback=""
-        style={{ margin: '6px 0 0', minHeight: '16px', fontSize: '12px', color: outOfIncense ? color.warn : color.textTertiary, textAlign: 'center' }}
+        style={{ margin: '6px 0 0', minHeight: '16px', fontSize: '12px', color: outOfIncense || offline ? color.warn : color.textTertiary, textAlign: 'center' }}
       >
-        {outOfIncense ? NO_INCENSE_REASON : voteFeedback}
+        {statusLine}
       </p>
 
       {/* Region 4 — social stats */}

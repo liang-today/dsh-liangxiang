@@ -20,6 +20,9 @@ export const HOVER_TEXT = '今日梁位'
 /** Frozen product copy (AGENTS.md §1): the expanded panel title. */
 export const PANEL_TITLE = '今日梁案'
 
+/** V0.1 default daily case title (the mock/local case). */
+export const DEFAULT_CASE_TITLE = 'DeepSeek Harness 是夯还是拉'
+
 /** Vote button labels (Region 3) — exactly two, never a third. */
 export const VOTE_UP_LABEL = '夯！'
 export const VOTE_DOWN_LABEL = '拉！'
@@ -34,6 +37,12 @@ export const VOTER_STAT_LABEL = '香客'
 
 /** Disabled-vote reason surfaced when the personal incense pool is empty. */
 export const NO_INCENSE_REASON = '香火不足：再积累 Token 获得下一炷香后即可投票'
+
+/** Status line while the host channel is unreachable (UI keeps rendering). */
+export const OFFLINE_REASON = '未连接本地服务：显示最近状态，重新打开面板可重试'
+
+/** Status line when the DSH accounting seams are absent in this assembly. */
+export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合缺少 token 投影能力'
 
 /** Display names of the central Liangzi states (WAITING is the zero-vote placeholder, not a tier). */
 export const LIANGZI_STATE_LABELS: Readonly<Record<LiangziState, string>> = {

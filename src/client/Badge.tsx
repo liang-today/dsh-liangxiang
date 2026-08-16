@@ -11,8 +11,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, ReactElement, RefObject } from 'react'
 import type { VoteType } from '../domain/index.ts'
 import { HOVER_TEXT, PRODUCT_NAME, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { createLiveLiangbiaoStore } from './live-store.ts'
 import { Panel } from './Panel.tsx'
-import { createMockLiangbiaoStore, type LiangbiaoStore } from './store.ts'
 import { color } from './theme.ts'
 
 /**
@@ -73,14 +73,6 @@ export function BadgeButton({ open, onToggle, onEscape, buttonRef }: BadgeButton
   )
 }
 
-/** Module-level store: one per client bundle instance (host-backed later). */
-let sharedStore: LiangbiaoStore | null = null
-
-function getSharedStore(): LiangbiaoStore {
-  sharedStore ??= createMockLiangbiaoStore()
-  return sharedStore
-}
-
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
 function useReducedMotion(): boolean {
@@ -96,12 +88,22 @@ function useReducedMotion(): boolean {
 }
 
 export function LiangbiaoBadge(): ReactElement {
-  const store = getSharedStore()
+  // One live connection per mounted badge; disposed on unmount (plugin
+  // unload / HMR), so streams and timers never multiply.
+  const [store] = useState(() => createLiveLiangbiaoStore())
+  useEffect(() => {
+    store.start()
+    return () => store.dispose()
+  }, [store])
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   // Dev/QA affordance: `#liangbiao-open` boots with the panel expanded
   // (screenshots, smoke checks). Normal sessions start collapsed.
   const [open, setOpen] = useState<boolean>(() =>
     typeof location !== 'undefined' && location.hash.includes('liangbiao-open'))
+  // Reopening the panel while offline is the bounded reconnect trigger.
+  useEffect(() => {
+    if (open) store.refresh()
+  }, [open, store])
   const reducedMotion = useReducedMotion()
 
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -165,11 +167,20 @@ export function LiangbiaoBadge(): ReactElement {
   }, [open])
 
   const onVote = (voteType: VoteType): void => {
-    const result = store.vote(voteType)
-    if (result.status === 'accepted') {
-      setVoteFeedback(`已上香：${voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME}（剩余 ${result.remainingIncense} 炷）`)
-    }
-    // Rejections leave the standing disabled reason visible; no extra copy.
+    store.vote(voteType).then(
+      (result) => {
+        if (result.status === 'accepted') {
+          setVoteFeedback(`已上香：${voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME}（剩余 ${result.remainingIncense} 炷）`)
+        } else if (result.reason !== 'insufficient_incense') {
+          setVoteFeedback(`投票被拒绝：${result.reason}`)
+        }
+        // insufficient_incense keeps the standing disabled reason visible.
+      },
+      (error: unknown) => {
+        console.warn(`[dsh-liangbiao] vote failed: ${error instanceof Error ? error.message : String(error)}`)
+        setVoteFeedback('投票失败，请稍后重试')
+      },
+    )
   }
 
   return (
