@@ -90,9 +90,10 @@ Rules:
 - right overlay: personal `tokens_to_next_incense` in **Pro 当量** (not raw
   Flash Token). Hover/focus on 下一炷 shows the model-weight table
   (Pro ×1 / Flash ×0.5 / 其它 ×1).
-- visible flank counts use `formatCompactCount` (`0–999` exact, then rounded
-  `K`/`M`/`B`) so `46,935 当量` cannot overflow the overlay. Hover title and
-  the screen-reader summary keep the exact integer.
+- visible flank counts use `formatCompactCount` (`0–999` exact, then one-decimal
+  `K`/`M`/`B`) so `46,935 当量` stays short (`46.9K`) without freezing the
+  typical 下一炷 band as a stuck `33K`. Hover title and the screen-reader
+  summary keep the exact integer.
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
   6 decimals (`LIANG_POSITION_DECIMALS`)
 - `down_ratio` gets **no** second big number: it is `1 − 梁位` and appears only in

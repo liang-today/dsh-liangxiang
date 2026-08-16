@@ -512,6 +512,7 @@ export function Panel(props: PanelProps): ReactElement {
           <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
           <span
             data-liangbiao-compact="next-incense"
+            title={`${toNextExact} ${NEXT_INCENSE_UNIT}`}
             style={{ ...numericStyle, fontSize: '13px', fontWeight: 700, color: color.textPrimary, lineHeight: '18px' }}
           >
             {toNextCompact}

@@ -204,7 +204,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const demo = renderPanel(demoState())
     expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'incense'))).toBe('5')
     expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'next-incense'))).toBe('3K')
-    expect(findByAttr(demo, 'data-liangbiao-compact', 'next-incense')[0]?.props.title).toBeUndefined()
+    expect(findByAttr(demo, 'data-liangbiao-compact', 'next-incense')[0]?.props.title).toBe('3,000 当量')
     expect(textContent(demo)).toContain('距下一炷还差 3,000 当量')
     expect(textContent(demo)).toContain('攒香按 Pro 当量')
     expect(textContent(demo)).toContain('V4-Flash')
@@ -228,6 +228,43 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const tinyNext = createMockLiangbiaoStore({ effectiveTokensToday: 49_991, usedIncenseToday: 0 })
     expect(tinyNext.getSnapshot().personal.tokensToNextIncense).toBe(9)
     expect(textContent(findByAttr(renderPanel(tinyNext.getSnapshot()), 'data-liangbiao-compact', 'next-incense'))).toBe('9')
+  })
+
+  it('moves the visible 下一炷 count when usage grows (compact must not swallow the delta)', () => {
+    const nextFlank = (state: LiangbiaoViewState) => {
+      const tree = renderPanel(state)
+      return {
+        compact: textContent(findByAttr(tree, 'data-liangbiao-compact', 'next-incense')),
+        label: String(findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0]?.props['aria-label'] ?? ''),
+        title: String(findByAttr(tree, 'data-liangbiao-compact', 'next-incense')[0]?.props.title ?? ''),
+      }
+    }
+
+    // Under 1K: exact digits, so a 200-当量 delta cannot hide.
+    const small = createMockLiangbiaoStore({ effectiveTokensToday: 49_200, usedIncenseToday: 0 })
+    expect(small.getSnapshot().personal.tokensToNextIncense).toBe(800)
+    const beforeSmall = nextFlank(small.getSnapshot())
+    expect(beforeSmall.compact).toBe('800')
+    small.addEffectiveTokens(200)
+    expect(small.getSnapshot().personal.tokensToNextIncense).toBe(600)
+    const afterSmall = nextFlank(small.getSnapshot())
+    expect(afterSmall.compact).toBe('600')
+    expect(afterSmall.label).not.toBe(beforeSmall.label)
+    expect(afterSmall.title).toBe('600 当量')
+
+    // Typical 30K band: one-decimal K must tick (integer K froze 33,xxx as 33K).
+    const mid = createMockLiangbiaoStore({ effectiveTokensToday: 16_600, usedIncenseToday: 0 })
+    expect(mid.getSnapshot().personal.tokensToNextIncense).toBe(33_400)
+    const beforeMid = nextFlank(mid.getSnapshot())
+    expect(beforeMid.compact).toBe('33.4K')
+    expect(beforeMid.title).toBe('33,400 当量')
+    mid.addEffectiveTokens(300)
+    expect(mid.getSnapshot().personal.tokensToNextIncense).toBe(33_100)
+    const afterMid = nextFlank(mid.getSnapshot())
+    expect(afterMid.compact).toBe('33.1K')
+    expect(afterMid.compact).not.toBe(beforeMid.compact)
+    expect(afterMid.label).toContain('33,100')
+    expect(afterMid.label).not.toBe(beforeMid.label)
   })
 
   it('pops the 梁位 value when it moves, and never under reduced motion', () => {

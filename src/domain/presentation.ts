@@ -138,8 +138,13 @@ export function formatLiangPosition(
  * Compact count for the Region 2 flanks (remaining incense / tokens-to-next).
  *
  * Everyday stocks stay exact (`0`–`999`). From 1,000 up, fold into K/M/B with
- * ROUNDING so both wings stay a few characters wide even if someone later
+ * one-decimal ROUNDING so both wings stay short even if someone later
  * lowers `token_per_incense` and incense grows faster than the 50K default.
+ *
+ * Keep one decimal for the whole K/M/B band. Integer K from 10K froze the
+ * typical 下一炷 range (`33,421` and `32,880` both read `33K`) while the
+ * ring fill still moved — the product loop is that every bit of accumulation
+ * must visibly tick the right flank.
  *
  * This is presentation only. 梁位 still truncates — these are counts, not a
  * threshold-crossing public ratio. Screen-reader copy should keep the exact
@@ -150,7 +155,8 @@ export function formatLiangPosition(
  *   1,000    -> 1K
  *   1,499    -> 1.5K
  *   3,000    -> 3K
- *   46,935   -> 47K
+ *   33,421   -> 33.4K
+ *   46,935   -> 46.9K
  *   50,000   -> 50K
  *   1,500,000 -> 1.5M
  */
@@ -169,15 +175,9 @@ function formatScaled(
   nextUnit: number,
   nextSuffix: string,
 ): string {
-  const oneDecimalUntil = unit * 10
-  if (n < oneDecimalUntil) {
-    const rounded = Math.round((n / unit) * 10) / 10
-    if (rounded >= 10) return `10${suffix}`
-    return `${trimDecimal(rounded)}${suffix}`
-  }
-  const rounded = Math.round(n / unit)
+  const rounded = Math.round((n / unit) * 10) / 10
   if (nextSuffix !== '' && rounded * unit >= nextUnit) return `1${nextSuffix}`
-  return `${rounded}${suffix}`
+  return `${trimDecimal(rounded)}${suffix}`
 }
 
 function trimDecimal(n: number): string {

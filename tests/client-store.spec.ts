@@ -94,7 +94,11 @@ describe('zero-vote seed', () => {
 describe('token growth (凝香)', () => {
   it('+3,000 tokens on a 94% ring: earned +1, remaining +1, fill wraps to 0', () => {
     const store = createMockLiangbiaoStore()
-    store.addEffectiveTokens(3_000)
+    const before = store.getSnapshot().personal.tokensToNextIncense
+    expect(before).toBe(3_000)
+    store.addEffectiveTokens(1_000)
+    expect(store.getSnapshot().personal.tokensToNextIncense).toBe(2_000)
+    store.addEffectiveTokens(2_000)
     const { personal, snapshot } = store.getSnapshot()
     expect(personal.earnedIncenseToday).toBe(8)
     expect(personal.remainingIncense).toBe(6)
