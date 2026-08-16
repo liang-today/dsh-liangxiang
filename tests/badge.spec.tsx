@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { BadgeButton } from '../src/client/Badge.tsx'
 import {
+  BADGE_ICON_SIZE,
   BADGE_MARGIN,
   BADGE_SIZE,
   PANEL_WIDTH,
@@ -21,7 +22,7 @@ import { LIANGZI_STATES } from '../src/domain/index.ts'
 import { HOVER_TEXT, LIANGZI_STATE_LABELS } from '../src/shared/index.ts'
 import { findAll, findByAttr, renderDeep, styleOf } from './helpers/render.ts'
 
-function renderButton(open: boolean, liangziState: 'waiting' | 'liang_sheng' = 'liang_sheng') {
+function renderButton(open: boolean, liangziState: 'waiting' | 'liang_shen' | 'liang_sheng' = 'liang_sheng') {
   const tree = renderDeep(
     <BadgeButton
       open={open}
@@ -87,13 +88,51 @@ describe('LiangbiaoBadge entry', () => {
       )
       const avatars = findByAttr(tree, 'data-liangbiao-avatar', state)
       expect(avatars).toHaveLength(1)
+      expect(avatars[0]?.props['data-liangbiao-avatar-chrome']).toBe('none')
       // The mini avatar carries no state label (no room) and is decorative.
       const portrait = findAll(tree, (node) => node.type === 'img')[0]
-      expect(portrait?.props.width).toBe(30)
+      expect(portrait?.props.width).toBe(BADGE_ICON_SIZE)
+      expect(portrait?.props.width).toBe(40)
       expect(portrait?.props.src).toEqual(expect.stringMatching(/^data:image\/jpeg;base64,/))
     }
     const { button } = renderButton(false)
     expect(button.props['data-liangbiao-badge-state']).toBe('liang_sheng')
+  })
+
+  it('has no filled plate: only the figure bobs, chrome stays gone', () => {
+    const { button, tree } = renderButton(false, 'liang_shen')
+    const style = styleOf(button)
+    expect(style.background).toBe('transparent')
+    expect(style.overflow).toBe('visible')
+    expect(style.boxShadow).toBe('none')
+    expect(style.borderRadius).toBe(0)
+    expect(style.width).toBe(`${BADGE_SIZE}px`)
+    expect(style.height).toBe(`${BADGE_SIZE}px`)
+    expect(style.animation).toBeUndefined()
+
+    const figure = findByAttr(tree, 'data-liangbiao-avatar-figure')[0]
+    if (figure === undefined) throw new Error('avatar figure missing')
+    expect(styleOf(figure).animation).toContain('liangbiao-avatar-figure-float')
+    expect(styleOf(figure).transform).toBe('translateZ(0)')
+    expect(styleOf(findAll(tree, (node) => node.type === 'img')[0]).animation).toBeUndefined()
+    expect(styleOf(findAll(tree, (node) => node.type === 'img')[0]).borderRadius).toBe(0)
+  })
+
+  it('does not levitate 待开梁 / 梁工 / 梁总', () => {
+    for (const state of ['waiting', 'liang_gong', 'liang_zong'] as const) {
+      const tree = renderDeep(
+        <BadgeButton
+          open={false}
+          liangziState={state}
+          onToggle={() => undefined}
+          onEscape={() => undefined}
+          buttonRef={null}
+        />,
+      )
+      const figure = findByAttr(tree, 'data-liangbiao-avatar-figure')[0]
+      if (figure === undefined) throw new Error('avatar figure missing')
+      expect(styleOf(figure).animation).toBeUndefined()
+    }
   })
 
   it('opts back into pointer events and advertises itself as grabbable', () => {

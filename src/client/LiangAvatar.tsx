@@ -28,7 +28,37 @@ export interface LiangAvatarProps {
   size?: number
   /** Hide the Chinese state label (the docked badge has no room for it). */
   hideLabel?: boolean
+  /**
+   * `plate` (default, panel): circular-crop the portrait in-place.
+   * `none` (docked entry): no filled disc — only the figure bitmap, so a
+   * parent chrome layer cannot peek through while the figure bobs.
+   */
+  chrome?: 'plate' | 'none'
+  /**
+   * When set, overrides the default 梁神/梁圣/梁祖 levitation. The motion
+   * always lands on the figure, never on a wrapping plate.
+   */
+  levitate?: boolean
 }
+
+/** GPU-composited bob: integer-pixel ends, no filter, figure layer only. */
+const AVATAR_MOTION_CSS = `
+@keyframes liangbiao-avatar-pulse {
+  0% { transform: scale3d(1, 1, 1); }
+  40% { transform: scale3d(1.12, 1.12, 1); }
+  100% { transform: scale3d(1, 1, 1); }
+}
+@keyframes liangbiao-avatar-figure-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -4px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-liangbiao-avatar-figure],
+  [data-liangbiao-avatar] {
+    animation: none !important;
+  }
+}
+`
 
 const LABEL_COLOR: Record<LiangziState, string> = {
   waiting: '#8a93a2',
@@ -45,40 +75,66 @@ export function LiangAvatar({
   reducedMotion,
   size = 92,
   hideLabel = false,
+  chrome = 'plate',
+  levitate,
 }: LiangAvatarProps): ReactElement {
   const waiting = state === 'waiting'
   const rangeText = liangziRatioRangeText(state)
   const stateText = `${LIANGZI_STATE_LABELS[state]}（${rangeText}）`
-  const floating = (state === 'liang_shen' || state === 'liang_sheng' || state === 'liang_zu') && !reducedMotion
+  const floating = (levitate ?? (state === 'liang_shen' || state === 'liang_sheng' || state === 'liang_zu'))
+    && !reducedMotion
 
   const wrapStyle: CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     gap: '2px',
+    overflow: 'visible',
+    background: 'transparent',
     animation: pulse && !reducedMotion ? 'liangbiao-avatar-pulse 0.9s ease-out 1' : undefined,
+  }
+
+  // Float the figure group only. Never translate a cropped plate / clip box,
+  // or a subpixel bob leaves a dark gap where the chrome stayed put.
+  const figureStyle: CSSProperties = {
+    display: 'block',
+    lineHeight: 0,
+    overflow: 'visible',
+    background: 'transparent',
+    transform: 'translateZ(0)',
+    backfaceVisibility: 'hidden',
+    animation: floating ? 'liangbiao-avatar-figure-float 3.2s ease-in-out infinite' : undefined,
+    willChange: floating ? 'transform' : undefined,
   }
 
   const portraitStyle: CSSProperties = {
     width: size,
     height: size,
     objectFit: 'cover',
-    borderRadius: '50%',
+    objectPosition: 'center',
+    borderRadius: chrome === 'plate' ? '50%' : 0,
     display: 'block',
+    background: 'transparent',
     opacity: waiting ? 0.88 : 1,
-    animation: floating ? 'liangbiao-avatar-float 3.2s ease-in-out infinite' : undefined,
+    // Keep the bitmap on its own compositor layer; do not filter/blur it.
+    transform: 'translateZ(0)',
+    backfaceVisibility: 'hidden',
+    imageRendering: 'auto',
   }
 
   return (
-    <div style={wrapStyle} data-liangbiao-avatar={state}>
-      <img
-        src={LIANGZI_ART[state]}
-        alt={`梁子当前状态：${stateText}`}
-        width={size}
-        height={size}
-        draggable={false}
-        style={portraitStyle}
-      />
+    <div style={wrapStyle} data-liangbiao-avatar={state} data-liangbiao-avatar-chrome={chrome}>
+      <style>{AVATAR_MOTION_CSS}</style>
+      <span data-liangbiao-avatar-figure="" style={figureStyle}>
+        <img
+          src={LIANGZI_ART[state]}
+          alt={`梁子当前状态：${stateText}`}
+          width={size}
+          height={size}
+          draggable={false}
+          style={portraitStyle}
+        />
+      </span>
       {!hideLabel && (
         <span
           title={`${LIANGZI_STATE_LABELS[state]}：${rangeText}`}

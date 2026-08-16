@@ -11,7 +11,10 @@
  *    authority for votes or balances (AGENTS.md §15).
  */
 
-export const BADGE_SIZE = 32
+/** Docked entry hit area. Was 32px; scaled by 4/3 so high-DPI can actually see it. */
+export const BADGE_SIZE = 40
+/** Portrait inside the entry. Was 30px; same 4/3 step as `BADGE_SIZE`. */
+export const BADGE_ICON_SIZE = 40
 export const BADGE_MARGIN = 12
 export const PANEL_WIDTH = 252
 export const PANEL_GAP = 10
