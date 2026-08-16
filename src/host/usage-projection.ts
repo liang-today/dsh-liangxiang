@@ -12,7 +12,7 @@ import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
 import { computeEffectiveTokens } from '../domain/index.ts'
 import type { BusinessDateProvider, Clock } from '../shared/business-date.ts'
 import {
-  addDailyUsage,
+  creditObservedUsage,
   EMPTY_DAILY_USAGE,
   foldUsageObservation,
   type DailyUsageRecord,
@@ -59,9 +59,16 @@ export class UsageProjection {
 
   /**
    * Fold one cumulative observation.
+   * @param modelId - DSH route id for this delta (`deepseek-v4-pro` / `deepseek-v4-flash`);
+   *   missing/unknown earns at Pro rate.
    * @returns true when today's total actually grew (worth re-claiming).
    */
-  observe(sessionId: string, value: unknown, origin: UsageObservationOrigin): boolean {
+  observe(
+    sessionId: string,
+    value: unknown,
+    origin: UsageObservationOrigin,
+    modelId?: string | null,
+  ): boolean {
     if (!isDshTokenUsageBuckets(value)) {
       this.warn(`[dsh-liangbiao] ignoring malformed tokenUsage projection for session ${sessionId}`)
       return false
@@ -82,10 +89,11 @@ export class UsageProjection {
     if (fold.deltaInput === 0 && fold.deltaOutput === 0) return false
     const now = this.clock.now()
     const businessDate = this.dates.businessDateOf(now)
-    const updated = addDailyUsage(
+    const updated = creditObservedUsage(
       this.daily.get(businessDate) ?? EMPTY_DAILY_USAGE,
       fold.deltaInput,
       fold.deltaOutput,
+      modelId,
       now,
     )
     this.daily.set(businessDate, updated)

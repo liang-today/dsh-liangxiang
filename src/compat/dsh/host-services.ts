@@ -9,7 +9,8 @@
  *
  * - sessionProjections: packages/session/session-projection/src/index.ts
  *   (`onChanged` L230-238, `snapshot` L248-255, listener shape L81-86)
- * - sessions: packages/core/session/src/index.ts (`list()` L1050-1065)
+ * - sessions: packages/core/session/src/index.ts (`list()` L1050-1065,
+ *   `requestHeader()` L670-680, `requestContext()` L691-698)
  * - webServer: packages/host/webserver/src/index.ts (`register` L94-101,
  *   `WebRoute` L28-34)
  * - storageDomain: packages/storage/storage-domain/src/index.ts (`open`),
@@ -25,9 +26,27 @@ import type { DshHostContext } from './host-context.ts'
  * ledger uses it to decide between crediting-from-zero (fresh) and
  * baselining (borrowed history must never earn retroactive incense).
  */
+/** Structural cut of EpochHeader.config — route ids, not display names. */
+export interface DshSessionRouteConfig {
+  readonly provider: string
+  readonly model: string
+}
+
+export interface DshEpochHeader {
+  readonly config: DshSessionRouteConfig
+}
+
+export interface DshRequestContext {
+  readonly provider: string
+  readonly model: string
+}
+
 export interface DshSessionRef {
   readonly id: string
   readonly firstLiveSeq: number
+  /** Present on the live DSH session; optional on test stubs. */
+  requestHeader?(): DshEpochHeader | undefined
+  requestContext?(): DshRequestContext | undefined
 }
 
 export type DshProjectionChangeListener = (

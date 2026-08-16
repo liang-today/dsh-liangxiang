@@ -159,8 +159,13 @@ export class BackendLiangService implements LiangHostService {
     this.bump()
   }
 
-  observeUsage(sessionId: string, value: unknown, origin: UsageObservationOrigin): void {
-    if (!this.usage.observe(sessionId, value, origin)) return
+  observeUsage(
+    sessionId: string,
+    value: unknown,
+    origin: UsageObservationOrigin,
+    modelId?: string | null,
+  ): void {
+    if (!this.usage.observe(sessionId, value, origin, modelId)) return
     this.bump()
     this.scheduleClaim()
   }

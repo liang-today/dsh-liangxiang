@@ -23,8 +23,13 @@ export interface LiangHostService {
   subscribe: (listener: () => void) => () => void
   getWireState: () => LiangbiaoWireState
   vote: (intent: WireVoteRequest) => VoteOutcome | Promise<VoteOutcome>
-  /** Feed one cumulative DSH `tokenUsage` projection value. */
-  observeUsage: (sessionId: string, value: unknown, origin: UsageObservationOrigin) => void
+  /** Feed one cumulative DSH `tokenUsage` projection value (optional route model id). */
+  observeUsage: (
+    sessionId: string,
+    value: unknown,
+    origin: UsageObservationOrigin,
+    modelId?: string | null,
+  ) => void
   setAccountingAvailable: (available: boolean) => void
   /** Bounded startup fallback when no storage domain attaches. */
   markReadyMemoryOnly: (reason: string) => void

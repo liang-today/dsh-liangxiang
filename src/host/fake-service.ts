@@ -38,7 +38,7 @@ import type { LiangbiaoWireState, WireGlobalCounts, WireVoteRequest } from '../s
 import { WIRE_SCHEMA_VERSION } from '../shared/wire.ts'
 import { createBusinessDateProvider, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import {
-  addDailyUsage,
+  creditObservedUsage,
   EMPTY_DAILY_USAGE,
   foldUsageObservation,
   type DailyUsageRecord,
@@ -97,7 +97,11 @@ export class FakeAuthoritativeLiangService {
   private persistence: LiangPersistencePort | null = null
   private ready = false
   /** Latest cumulative projection (+origin) per session seen before readiness. */
-  private readonly pendingObservations = new Map<string, { value: unknown, origin: UsageObservationOrigin }>()
+  private readonly pendingObservations = new Map<string, {
+    value: unknown
+    origin: UsageObservationOrigin
+    modelId: string | null | undefined
+  }>()
 
   private watermarks = new Map<string, SessionUsageWatermark>()
   private dailyUsage = new Map<string, DailyUsageRecord>()
@@ -160,7 +164,9 @@ export class FakeAuthoritativeLiangService {
     this.ready = true
     const pending = [...this.pendingObservations.entries()]
     this.pendingObservations.clear()
-    for (const [sessionId, entry] of pending) this.observeUsage(sessionId, entry.value, entry.origin)
+    for (const [sessionId, entry] of pending) {
+      this.observeUsage(sessionId, entry.value, entry.origin, entry.modelId)
+    }
     this.bump()
   }
 
@@ -174,9 +180,14 @@ export class FakeAuthoritativeLiangService {
    * Feed one cumulative `tokenUsage` projection value for one session.
    * Invalid payloads are skipped loudly (incompatible DSH change).
    */
-  observeUsage(sessionId: string, value: unknown, origin: UsageObservationOrigin): void {
+  observeUsage(
+    sessionId: string,
+    value: unknown,
+    origin: UsageObservationOrigin,
+    modelId?: string | null,
+  ): void {
     if (!this.ready) {
-      this.pendingObservations.set(sessionId, { value, origin })
+      this.pendingObservations.set(sessionId, { value, origin, modelId })
       return
     }
     if (!isDshTokenUsageBuckets(value)) {
@@ -202,7 +213,7 @@ export class FakeAuthoritativeLiangService {
     if (fold.deltaInput === 0 && fold.deltaOutput === 0) return
     const now = this.clock.now()
     const day = this.dailyUsage.get(this.currentDate) ?? EMPTY_DAILY_USAGE
-    const updated = addDailyUsage(day, fold.deltaInput, fold.deltaOutput, now)
+    const updated = creditObservedUsage(day, fold.deltaInput, fold.deltaOutput, modelId, now)
     this.dailyUsage.set(this.currentDate, updated)
     this.persistence?.putDailyUsage(this.currentDate, updated)
     this.bump()

@@ -14,6 +14,14 @@ export {
   type TokenUsageInput,
 } from './tokens.ts'
 export {
+  INCENSE_WEIGHT_POLICY_VERSION,
+  INCENSE_WEIGHT_SCALE,
+  canonicalModelId,
+  incenseWeightBpsForModel,
+  scaleTokensByWeightBps,
+  splitScaledTokens,
+} from './incense-weight.ts'
+export {
   canSpendIncense,
   derivePersonalLiangQiState,
   spendOneIncense,

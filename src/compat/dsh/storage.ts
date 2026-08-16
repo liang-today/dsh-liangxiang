@@ -64,6 +64,7 @@ const dailyUsageSchema: DshValueSchema = {
     return {
       inputTokens: requireCountField(record, 'inputTokens'),
       outputTokens: requireCountField(record, 'outputTokens'),
+      weightCarry: record.weightCarry === undefined ? 0 : requireCountField(record, 'weightCarry'),
       observedAt: requireCountField(record, 'observedAt'),
     }
   },
