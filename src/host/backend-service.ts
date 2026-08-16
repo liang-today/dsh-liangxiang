@@ -5,8 +5,10 @@
  * Division of labour:
  *  - the BACKEND owns identity-scoped spend state, idempotency, the aggregate,
  *    the business date and the published snapshot sequence;
- *  - the HOST owns local token observation (a claim, never a proof), the
- *    pseudonymous installation id it minted itself, and the browser channel;
+ *  - the HOST owns local token observation (a claim, never a proof) and
+ *    paints personal LiangQi from that observation immediately; the backend
+ *    claim is a background ratchet for spend authority. The host also holds
+ *    the installation identity and the browser channel;
  *  - the BROWSER owns nothing but presentation — the wire frame it receives is
  *    the same shape as in local mode, with `authorityMode` telling it which
  *    trust model produced the numbers.
@@ -237,7 +239,11 @@ export class BackendLiangService implements LiangHostService {
         sequence: snapshot.sequence,
       },
       personal: {
-        effectiveTokensToday: personal.claimed_effective_tokens,
+        // LiangQi is personal and local: Token observation must move 香火 /
+        // 梁气 immediately. The backend claim is a background ratchet for
+        // spend authority, not the display clock. used incense stays the
+        // server ledger so a vote cannot be invented here.
+        effectiveTokensToday: displayedEffectiveTokens(personal, this.usage.effectiveTokensFor(this.businessDate)),
         usedIncenseToday: personal.used_incense,
         tokenPerIncense: personal.token_per_incense,
       },
@@ -378,6 +384,13 @@ export class BackendLiangService implements LiangHostService {
       }
     }
   }
+}
+
+function displayedEffectiveTokens(personal: V1PersonalState, locallyObserved: number): number {
+  // Cover already-spent incense so a brief local/date mismatch cannot emit
+  // a wire frame with used > earned.
+  const spentFloor = personal.used_incense * personal.token_per_incense
+  return Math.max(personal.claimed_effective_tokens, locallyObserved, spentFloor)
 }
 
 function toDomainCase(row: V1Case): DailyLiangCase {
