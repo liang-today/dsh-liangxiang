@@ -143,6 +143,20 @@ describe('online bootstrap', () => {
     expect(view.personal.tokensToNextIncense).toBe(50_000)
   })
 
+  it('lowers tokensToNextIncense as live usage arrives, without waiting for the claim', async () => {
+    const s = await startStack({}, { claimDebounceMs: 60_000 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(10_000, 0, 0, 6_600), { kind: 'live', firstLiveSeq: 0 })
+    const before = wireToViewState(frame(s), 'live').personal
+    expect(before.effectiveTokensToday).toBe(16_600)
+    expect(before.tokensToNextIncense).toBe(33_400)
+    s.host.observeUsage(SESSION, usage(10_000, 0, 0, 6_900), { kind: 'live', firstLiveSeq: 0 })
+    const after = wireToViewState(frame(s), 'live').personal
+    expect(after.effectiveTokensToday).toBe(16_900)
+    expect(after.tokensToNextIncense).toBe(33_100)
+    expect(after.liangQiFill).toBeGreaterThan(before.liangQiFill)
+  })
+
   it('上达天听 drops inflated local observation so the panel follows the server ledger', async () => {
     const s = await startStack({ LIANGBIAO_MAX_TOKENS_PER_MINUTE: '50000' }, { claimDebounceMs: 60_000 })
     s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })

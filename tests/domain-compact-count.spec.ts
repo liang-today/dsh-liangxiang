@@ -21,7 +21,7 @@ describe('formatCompactCount', () => {
     expect(formatCompactCount(999)).toBe('999')
   })
 
-  it('folds thousands into K with rounding (1 decimal below 10K, integer from 10K)', () => {
+  it('folds thousands into K with one decimal for the whole K band', () => {
     expect(formatCompactCount(1_000)).toBe('1K')
     expect(formatCompactCount(1_049)).toBe('1K')
     expect(formatCompactCount(1_050)).toBe('1.1K')
@@ -31,25 +31,34 @@ describe('formatCompactCount', () => {
     expect(formatCompactCount(9_949)).toBe('9.9K')
     expect(formatCompactCount(9_950)).toBe('10K')
     expect(formatCompactCount(10_000)).toBe('10K')
-    expect(formatCompactCount(46_935)).toBe('47K')
+    expect(formatCompactCount(33_421)).toBe('33.4K')
+    expect(formatCompactCount(33_100)).toBe('33.1K')
+    expect(formatCompactCount(46_935)).toBe('46.9K')
     expect(formatCompactCount(50_000)).toBe('50K')
-    expect(formatCompactCount(999_499)).toBe('999K')
-    expect(formatCompactCount(999_500)).toBe('1M')
+    expect(formatCompactCount(999_949)).toBe('999.9K')
+    expect(formatCompactCount(999_950)).toBe('1M')
+  })
+
+  it('does not freeze the typical 下一炷 band as a single integer K', () => {
+    // Old integer-K from 10K: 33,421 and 32,880 both rendered "33K".
+    expect(formatCompactCount(33_421)).not.toBe(formatCompactCount(32_880))
+    expect(formatCompactCount(33_421)).toBe('33.4K')
+    expect(formatCompactCount(32_880)).toBe('32.9K')
   })
 
   it('folds millions and billions the same way (defensive: incense can theoretically explode)', () => {
     expect(formatCompactCount(1_000_000)).toBe('1M')
     expect(formatCompactCount(1_499_999)).toBe('1.5M')
-    expect(formatCompactCount(12_400_000)).toBe('12M')
+    expect(formatCompactCount(12_400_000)).toBe('12.4M')
     expect(formatCompactCount(1_000_000_000)).toBe('1B')
   })
 
   it('keeps every compact form short enough for the 48px flanks', () => {
     const samples = [
-      0, 9, 10, 999, 1_000, 1_499, 9_950, 46_935, 50_000, 999_500, 1_500_000, 12_000_000, 1_000_000_000,
+      0, 9, 10, 999, 1_000, 1_499, 9_950, 33_421, 46_935, 50_000, 999_950, 1_500_000, 12_000_000, 1_000_000_000,
     ]
     for (const n of samples) {
-      expect(formatCompactCount(n).length).toBeLessThanOrEqual(4)
+      expect(formatCompactCount(n).length).toBeLessThanOrEqual(6)
     }
   })
 
