@@ -26,6 +26,7 @@ const EVENTS_PATH = '/liangbiao/api/events'
 const VOTE_PATH = '/liangbiao/api/vote'
 const REFRESH_PATH = '/liangbiao/api/refresh'
 const RECONCILE_PATH = '/liangbiao/api/reconcile'
+const DEV_CREDIT_PATH = '/liangbiao/api/dev/credit'
 const FETCH_TIMEOUT_MS = 6_000
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
@@ -79,6 +80,8 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
   refresh(options?: { force?: boolean }): void
   /** Drop local Token observation and re-read the server incense ledger. */
   reconcile(): Promise<void>
+  /** LOCAL_FAKE_DEV: fold simulated tokens into today's incense without a model. */
+  creditDev(intent?: { sticks?: number, effectiveTokens?: number }): Promise<void>
   /** Abort in-flight work and close the stream. */
   dispose(): void
 }
@@ -231,6 +234,18 @@ export function createLiveLiangbiaoStore(
         })
         .finally(() => {
           reconcileInFlight = false
+        })
+    },
+    creditDev: (intent = { sticks: 1 }) => {
+      if (disposed || starting) return Promise.resolve()
+      const body = JSON.stringify(intent)
+      return transport.fetchJson(DEV_CREDIT_PATH, { method: 'POST', body })
+        .then((raw) => {
+          if (!disposed) applyWire(raw)
+        })
+        .catch((error: unknown) => {
+          console.warn(`[dsh-liangbiao] dev credit failed: ${error instanceof Error ? error.message : String(error)}`)
+          throw error
         })
     },
     dispose: () => {

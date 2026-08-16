@@ -47,6 +47,12 @@ export interface LiangHostService {
    * Local fake: date rotate only — this process IS the ledger.
    */
   reconcileNow?: () => void | Promise<void>
+  /**
+   * LOCAL_FAKE_DEV only: fold Pro-equivalent tokens into today's ledger
+   * without a DSH session. Online hosts must omit this so a curl cannot
+   * mint a claim against the shared backend.
+   */
+  creditSimulatedUsage?: (deltaEffectiveTokens: number) => void
   /** Release timers, in-flight requests and subscriptions. */
   dispose?: () => void
 }

@@ -2,6 +2,10 @@
 
 ## 0.1.0 — 未发布
 
+### 本地演示入账
+
+- `LOCAL_FAKE_DEV` 可 `POST /liangbiao/api/dev/credit` 或点面板「演示 +1 炷」灌香火，不走模型。`pnpm run dev:credit -- 9`。在线模式 404，避免假 claim。
+
 ### 下一炷可见数字
 
 - `formatCompactCount` 在整个 K/M/B 档保留一位小数（`33,421`→`33.4K`，不再从 10K 起收成整数 `33K`）。环 fill 本来就会动；右翼数字必须跟着攒香走。精确值仍在 `title` / `aria-label`。

@@ -37,6 +37,8 @@ import {
   RECONCILE_CONFIRM_PROMPT,
   RECONCILE_HINT,
   RECONCILE_LABEL,
+  DEV_CREDIT_HINT,
+  DEV_CREDIT_LABEL,
   liangziRatioRangeText,
 } from '../shared/index.ts'
 import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
@@ -65,6 +67,8 @@ export interface PanelProps {
   onReconcileConfirm: () => void
   onReconcileCancel: () => void
   reconcilePending: boolean
+  /** LOCAL_FAKE_DEV only: simulate +1 炷 without a model. */
+  onDevCredit?: () => void
 }
 
 const panelStyle: CSSProperties = {
@@ -347,7 +351,7 @@ export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, avatarPulse, justCondensed, voteFeedback,
     onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
-    reconcilePending,
+    reconcilePending, onDevCredit,
   } = props
   const placement = props.placement ?? { side: 'left', vertical: 'center' }
   const positionPulse = props.positionPulse ?? false
@@ -568,6 +572,28 @@ export function Panel(props: PanelProps): ReactElement {
       >
         {statusLine}
       </p>
+      {onDevCredit !== undefined && state.authorityMode === 'LOCAL_FAKE_DEV' && (
+        <p style={{ margin: '2px 0 0', textAlign: 'center' }}>
+          <button
+            type="button"
+            data-liangbiao-dev-credit=""
+            title={DEV_CREDIT_HINT}
+            onClick={onDevCredit}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: color.textTertiary,
+              fontFamily: font.family,
+              fontSize: '11px',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              textUnderlineOffset: '2px',
+            }}
+          >
+            {DEV_CREDIT_LABEL}
+          </button>
+        </p>
+      )}
 
       {/* Region 4 — 三界香火 / 五行香客 / 上达天听 share one row. */}
       <footer

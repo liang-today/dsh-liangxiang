@@ -6,6 +6,7 @@
  *   POST /liangbiao/api/vote       minimal vote intent -> result + fresh state
  *   POST /liangbiao/api/refresh    force host re-read (hover / panel open)
  *   POST /liangbiao/api/reconcile  drop local Token observation, re-read incense
+ *   POST /liangbiao/api/dev/credit LOCAL_FAKE_DEV only: simulate Token credit
  *
  * The handler validates every request body at the boundary, bounds body
  * size, and owns SSE connection cleanup (`closeAllConnections` runs on
@@ -13,6 +14,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { parseWireVoteRequest } from '../shared/wire.ts'
+import { parseDevCreditBody, resolveDevCreditTokens } from './dev-credit.ts'
 import type { LiangHostService } from './service.ts'
 
 const MAX_VOTE_BODY_BYTES = 4096
@@ -143,6 +145,36 @@ export function createLiangbiaoApi(
     }
   }
 
+  const handleDevCredit = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const state = service.getWireState()
+    const credit = service.creditSimulatedUsage
+    if (state.authorityMode !== 'LOCAL_FAKE_DEV' || credit === undefined) {
+      writeJson(res, 404, { error: 'dev credit is only available in LOCAL_FAKE_DEV' })
+      return
+    }
+    let intent
+    try {
+      const body = await readBoundedBody(req)
+      intent = parseDevCreditBody(JSON.parse(body) as unknown)
+    } catch (error) {
+      if (error instanceof OversizedBodyError) {
+        res.setHeader('connection', 'close')
+        writeJson(res, 413, { error: `vote body exceeds ${MAX_VOTE_BODY_BYTES} bytes` })
+        return
+      }
+      const message = error instanceof Error ? error.message : String(error)
+      writeJson(res, 400, { error: `invalid dev credit: ${message}` })
+      return
+    }
+    try {
+      credit(resolveDevCreditTokens(intent, state.personal.tokenPerIncense))
+      writeJson(res, 200, service.getWireState())
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      writeJson(res, 400, { error: `dev credit failed: ${message}` })
+    }
+  }
+
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     /* node:http always sets url on server requests */
     const pathname = new URL(req.url ?? '/', 'http://liangbiao.local').pathname
@@ -156,6 +188,7 @@ export function createLiangbiaoApi(
       '/liangbiao/api/vote': 'POST',
       '/liangbiao/api/refresh': 'POST',
       '/liangbiao/api/reconcile': 'POST',
+      '/liangbiao/api/dev/credit': 'POST',
     }
     const expected = methods[pathname]
     if (expected === undefined) {
@@ -182,6 +215,10 @@ export function createLiangbiaoApi(
     if (pathname === '/liangbiao/api/reconcile') {
       await service.reconcileNow?.()
       writeJson(res, 200, service.getWireState())
+      return
+    }
+    if (pathname === '/liangbiao/api/dev/credit') {
+      await handleDevCredit(req, res)
       return
     }
     await handleVote(req, res)

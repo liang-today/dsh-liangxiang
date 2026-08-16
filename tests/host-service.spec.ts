@@ -366,4 +366,13 @@ describe('hydration guards', () => {
     await service.attachPersistence(memoryPort(memoryState()))
     expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
   })
+
+  it('credits simulated tokens without a DSH session', () => {
+    const { service } = readyService()
+    service.creditSimulatedUsage(50_000)
+    expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
+    service.creditSimulatedUsage(50_000)
+    expect(service.getWireState().personal.effectiveTokensToday).toBe(100_000)
+    expect(service.getWireState().personal.usedIncenseToday).toBe(0)
+  })
 })
