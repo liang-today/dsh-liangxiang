@@ -44,7 +44,7 @@ import {
 import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
-import { LiangAvatar, LIANGZI_LABEL_COLOR } from './LiangAvatar.tsx'
+import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangQiRing, AVATAR_SLOT, RING_SIZE } from './LiangQiRing.tsx'
 import type { LiangbiaoViewState } from './store.ts'
 import { color, font } from './theme.ts'
@@ -127,6 +127,25 @@ const statValueStyle: CSSProperties = {
 const numericStyle: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
   fontFeatureSettings: '"tnum"',
+}
+
+/** One voice for `梁位 83.021952% → 梁圣` — same size/weight, quiet glue vs facts. */
+const positionLineStyle: CSSProperties = {
+  fontFamily: font.family,
+  fontSize: '13px',
+  fontWeight: 600,
+  lineHeight: '18px',
+  letterSpacing: '0.15px',
+}
+
+const positionGlueStyle: CSSProperties = {
+  ...positionLineStyle,
+  color: color.textSecondary,
+}
+
+const positionFactStyle: CSSProperties = {
+  ...positionLineStyle,
+  color: color.textPrimary,
 }
 
 /**
@@ -469,28 +488,26 @@ export function Panel(props: PanelProps): ReactElement {
                 title={`${VOTE_UP_NAME} ${percents.up} / ${VOTE_DOWN_NAME} ${percents.down} → ${LIANGZI_STATE_LABELS[snapshot.liangziState]}`}
                 style={{
                   display: 'inline-flex',
-                  alignItems: 'baseline',
+                  alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '5px',
+                  gap: '6px',
                   boxSizing: 'border-box',
-                  padding: '2px 8px',
+                  padding: '3px 10px',
                   borderRadius: '999px',
                   border: `1px solid ${color.border}`,
                   background: color.bgLayer,
-                  lineHeight: '16px',
                   whiteSpace: 'nowrap',
+                  ...positionLineStyle,
                 }}
               >
-                <span style={{ fontSize: '10px', color: color.textTertiary, letterSpacing: '0.5px' }}>
+                <span data-liangbiao-liang-position-label="" style={positionGlueStyle}>
                   {LIANG_POSITION_LABEL}
                 </span>
                 <strong
                   data-liangbiao-liang-position-value=""
                   style={{
+                    ...positionFactStyle,
                     ...numericStyle,
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: color.up,
                     animation: positionPulse && !reducedMotion
                       ? 'liangbiao-position-pop 0.5s ease-out 1'
                       : undefined,
@@ -498,18 +515,11 @@ export function Panel(props: PanelProps): ReactElement {
                 >
                   {percents.up}
                 </strong>
-                <span aria-hidden="true" style={{ fontSize: '11px', color: color.textTertiary }}>→</span>
+                <span aria-hidden="true" data-liangbiao-liang-position-arrow="" style={positionGlueStyle}>→</span>
                 <span
                   data-liangbiao-liangzi-title=""
                   title={`${LIANGZI_STATE_LABELS[snapshot.liangziState]}：${liangziRatioRangeText(snapshot.liangziState)}`}
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    letterSpacing: '0.4px',
-                    color: snapshot.liangziState === 'waiting'
-                      ? color.textTertiary
-                      : LIANGZI_LABEL_COLOR[snapshot.liangziState],
-                  }}
+                  style={positionFactStyle}
                 >
                   {LIANGZI_STATE_LABELS[snapshot.liangziState]}
                 </span>
