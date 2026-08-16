@@ -2,6 +2,12 @@
 
 ## 0.1.0 — 未发布
 
+### 测试环境修复 + 安全审计
+
+- **修复 dev profile 的工具调用崩溃**：`dsh plugin add @deepseek-ai/dsh-web-app` 把 in-box 闭包装进 `<profile>/node_modules`，遮蔽了 launcher 的 `profiles/node_modules`，导致 `@deepseek-ai/dsh-tools` 在一个进程里有两个模块实例——两个 `TOOL_RUNTIME_SCHEDULER` symbol，于是 `dsh-agent-loop` 每次工具调用都拿到 `undefined`（`Cannot read properties of undefined (reading 'prepare')`），并把会话留下无结果的 `tool_calls`（后续报 "must be followed by tool messages"）。`dev-install.sh` / `smoke-clean-profile.sh` 现在只保留 bundle 行、移除该依赖，并用新增的 `scripts/assert-profile-modules.mjs` 断言单实例。
+- **超限请求体改为 413**：`/v1/*` 与 `/liangbiao/api/vote` 不再 destroy socket（被掐断的连接与网络故障不可区分，会诱发错误重试），改为结构化 413 + `connection: close`。
+- 60 项即席并发/安全审计全过：200 并发抢 1 炷只成功 1 次、200 并发抢 50 炷恰好 50 次、50 并发同 request_id 只扣 1 炷、claim 与扣香并发下 `used<=earned`、并发读快照全部自洽；身份头（缺失/超长/穿越/注入/unicode）全部 401、投票体自报权威字段全部 400、SQL 注入按字面量处理且五张表完好、异日与更小 claim 被忽略、被拒的 request_id 不被污染。
+
 ### Backend + Online Integration（Phase 3，localhost / DEV_STAGING_ONLY）
 
 - **Authority 模式锁定**：Decision Gate A3 ⇒ `AUTHORITY_MODE=DEV_STAGING_ONLY`。后端对 `VERIFIED_PRODUCTION` 拒绝启动，wire 的 `AuthorityMode` 联合类型不含该值，个人状态恒带 `claim_source: host_observed_unverified` + `claim_verified: false`（见 `docs/075`）。

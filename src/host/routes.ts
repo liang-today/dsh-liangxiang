@@ -10,7 +10,7 @@
  * plugin dispose so unload leaves no open responses or timers).
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { WireError, parseWireVoteRequest } from '../shared/wire.ts'
+import { parseWireVoteRequest } from '../shared/wire.ts'
 import type { LiangHostService } from './service.ts'
 
 const MAX_VOTE_BODY_BYTES = 4096
@@ -37,6 +37,9 @@ function writeJson(res: ServerResponse, status: number, payload: unknown): void 
   res.end(body)
 }
 
+/** Distinguishes "caller sent too much" from a validation failure. */
+class OversizedBodyError extends Error {}
+
 function readBoundedBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = ''
@@ -49,8 +52,11 @@ function readBoundedBody(req: IncomingMessage): Promise<string> {
     req.on('data', (chunk: Buffer | string) => {
       body += typeof chunk === 'string' ? chunk : chunk.toString('utf8')
       if (body.length > MAX_VOTE_BODY_BYTES) {
-        fail(new WireError('vote', 'request body too large'))
-        req.destroy()
+        // Stop reading without destroying the socket: a killed connection is
+        // indistinguishable from a network fault, and the caller must be able
+        // to tell "rejected" from "outcome unknown" before retrying a vote.
+        req.pause()
+        fail(new OversizedBodyError('request body too large'))
       }
     })
     req.on('end', () => {
@@ -111,6 +117,11 @@ export function createLiangbiaoApi(
       const body = await readBoundedBody(req)
       intent = parseWireVoteRequest(JSON.parse(body) as unknown)
     } catch (error) {
+      if (error instanceof OversizedBodyError) {
+        res.setHeader('connection', 'close')
+        writeJson(res, 413, { error: `vote body exceeds ${MAX_VOTE_BODY_BYTES} bytes` })
+        return
+      }
       const message = error instanceof Error ? error.message : String(error)
       writeJson(res, 400, { error: `invalid vote request: ${message}` })
       return

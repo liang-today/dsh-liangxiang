@@ -57,6 +57,9 @@ function writeError(res: ServerResponse, status: number, code: V1ErrorCode, mess
   writeJson(res, status, body)
 }
 
+/** Distinguishes "caller sent too much" from a validation failure. */
+class OversizedBodyError extends Error {}
+
 function readBoundedBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = ''
@@ -69,8 +72,11 @@ function readBoundedBody(req: IncomingMessage): Promise<string> {
     req.on('data', (chunk: Buffer | string) => {
       body += typeof chunk === 'string' ? chunk : chunk.toString('utf8')
       if (body.length > MAX_BODY_BYTES) {
-        fail(new WireError('body', 'request body too large'))
-        req.destroy()
+        // Stop reading but do NOT destroy the socket: a truncated connection
+        // reads as a network fault, and a client that cannot tell "rejected"
+        // from "unknown" may retry a vote it should not. Answer 413 instead.
+        req.pause()
+        fail(new OversizedBodyError('request body too large'))
       }
     })
     req.on('end', () => {
@@ -172,6 +178,11 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       const raw = await readBoundedBody(req)
       body = raw === '' ? {} : (JSON.parse(raw) as unknown)
     } catch (error) {
+      if (error instanceof OversizedBodyError) {
+        res.setHeader('connection', 'close')
+        writeError(res, 413, 'invalid_request', `request body exceeds ${MAX_BODY_BYTES} bytes`)
+        return
+      }
       const message = error instanceof Error ? error.message : String(error)
       writeError(res, 400, 'invalid_request', `invalid request body: ${message}`)
       return

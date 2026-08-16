@@ -6,7 +6,8 @@
 ## 通用
 
 - 错误体：`{ "error": { "code", "message", "field?" } }`，`code ∈ invalid_request | missing_installation | unknown_route | method_not_allowed | stale_case | case_not_active | idempotency_conflict | insufficient_incense | not_ready | internal_error`。
-- 请求体上限 4KB；请求日志只含 method/path/status/installation 前 8 字符，绝不含 prompt/回复/路径/密钥。
+- 请求体上限 4KB，超限回 **413**（`invalid_request`）并带 `connection: close`——刻意不掐 socket：被掐断的连接与网络故障无法区分，会让投票方在「已拒绝」和「结果未知」之间猜，从而错误重试。
+- 请求日志只含 method/path/status/installation 前 8 字符，绝不含 prompt/回复/路径/密钥。
 - 时间戳统一 epoch ms；业务日 `YYYY-MM-DD`。
 
 ## GET /v1/health

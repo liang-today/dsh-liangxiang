@@ -37,6 +37,11 @@ echo "== 2/5 fresh profile install =="
 rm -rf "${DSH_HOME:?}/profiles/$SMOKE_PROFILE"
 dsh_cli plugin --profile "$SMOKE_PROFILE" add "$WEB_APP_SPEC"
 dsh_cli plugin --profile "$SMOKE_PROFILE" add "./$TARBALL"
+# In-box bundles must come from the installation, never from a profile-local
+# copy — see the comment in dev-install.sh (duplicate module instances break
+# the tool scheduler's symbol seam).
+pnpm --dir "$DSH_HOME/profiles/$SMOKE_PROFILE" remove "${WEB_APP_SPEC%@*}" >/dev/null
+node "$REPO_ROOT/scripts/assert-profile-modules.mjs" "$DSH_HOME/profiles/$SMOKE_PROFILE"
 
 echo "== 3/5 dump-config layer =="
 dsh_cli --profile "$SMOKE_PROFILE" --dump-config | grep -n "dsh-liangbiao"
