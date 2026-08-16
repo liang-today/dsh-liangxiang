@@ -147,11 +147,12 @@ describe('online voting', () => {
     return s
   }
 
-  it('spends one incense per vote and leaves the published ratio to the cadence', async () => {
+  it('spends one incense and shows the new 梁位 on the same click', async () => {
     const s = await stackWithIncense(3, 47_000)
     const caseId = frame(s).activeCase.id
     const before = wireToViewState(frame(s), 'live')
     expect(before.personal.remainingIncense).toBe(3)
+    expect(before.snapshot.liangziState).toBe('waiting')
 
     const outcome = await s.host.vote({ caseId, voteType: 'up', requestId: 'req-e2e-000001' })
     expect(outcome.result.status).toBe('accepted')
@@ -159,18 +160,11 @@ describe('online voting', () => {
     expect(after.personal.remainingIncense).toBe(2)
     // Ring fill (token progress) is untouched by spending.
     expect(after.personal.tokenRemainder).toBe(before.personal.tokenRemainder)
-    // The public snapshot has not been re-published, so the UI still shows 待开梁.
-    expect(after.snapshot.sequence).toBe(before.snapshot.sequence)
-    expect(after.snapshot.liangziState).toBe('waiting')
-
-    s.clock.advance(300_000)
-    await s.host.refreshSnapshot()
-    const published = wireToViewState(frame(s), 'live')
-    expect(published.snapshot.sequence).toBe(before.snapshot.sequence + 1)
-    expect(published.snapshot.upVotes).toBe(1)
-    expect(published.snapshot.uniqueVoters).toBe(1)
-    expect(published.snapshot.liangziState).toBe('liang_zu')
-    expect(published.personal.remainingIncense).toBe(2)
+    // No extra round trip and no cadence wait: the vote's own snapshot is here.
+    expect(after.snapshot.sequence).toBe(before.snapshot.sequence + 1)
+    expect(after.snapshot.upVotes).toBe(1)
+    expect(after.snapshot.uniqueVoters).toBe(1)
+    expect(after.snapshot.liangziState).toBe('liang_zu')
   })
 
   it('is idempotent across a retry of the same request id', async () => {

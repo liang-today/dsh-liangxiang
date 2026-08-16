@@ -158,8 +158,14 @@ export interface V1VoteResponse {
   schema_version: typeof BACKEND_SCHEMA_VERSION
   result: V1VoteResult
   authoritative_personal_state: V1PersonalState
-  /** Version metadata only: the public ratio moves at the snapshot cadence. */
   snapshot_version: { sequence: number, captured_at: number }
+  /**
+   * The snapshot published by (or current as of) this vote. An accepted vote
+   * publishes inside its own transaction, so this row already contains it —
+   * that is what lets the panel move 梁位 on the click without a second round
+   * trip, while still rendering ONE self-consistent snapshot version.
+   */
+  global_snapshot: V1Snapshot
 }
 
 /**
@@ -526,14 +532,20 @@ export function parseV1VoteResponse(raw: unknown): V1VoteResponse {
       throw new WireError('voteResponse.result', 'accepted counters disagree with the personal state in the same response')
     }
   }
+  const snapshot = parseV1Snapshot(record.global_snapshot, 'voteResponse.global_snapshot')
+  const sequence = requireCount(version.sequence, 'voteResponse.snapshot_version.sequence')
+  if (snapshot.sequence !== sequence) {
+    throw new WireError('voteResponse.snapshot_version', 'sequence disagrees with the snapshot in the same response')
+  }
   return {
     schema_version: BACKEND_SCHEMA_VERSION,
     result,
     authoritative_personal_state: personal,
     snapshot_version: {
-      sequence: requireCount(version.sequence, 'voteResponse.snapshot_version.sequence'),
+      sequence,
       captured_at: requireFinite(version.captured_at, 'voteResponse.snapshot_version.captured_at'),
     },
+    global_snapshot: snapshot,
   }
 }
 

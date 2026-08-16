@@ -181,14 +181,13 @@ export class BackendLiangService implements LiangHostService {
       request_id: intent.requestId,
     })
     this.personal = response.authoritative_personal_state
-    this.bump()
-    if (response.result.status === 'accepted') {
-      // Pull the published snapshot right away instead of waiting for the next
-      // cadence tick: at a ~1s cadence this is what makes a voter see their own
-      // vote move the public 梁位. It is still the BACKEND's published snapshot —
-      // the host never computes a ratio of its own.
-      void this.refreshSnapshot()
+    // The response carries the snapshot the accepted vote published, so 梁位
+    // moves on the click. It is still the BACKEND's published row — the host
+    // never computes a ratio of its own — and adopting it needs no round trip.
+    if (response.global_snapshot.case_id === this.activeCase?.id) {
+      this.snapshot = response.global_snapshot
     }
+    this.bump()
     if (
       response.result.status === 'rejected'
       && (response.result.reason === 'stale_case' || response.result.reason === 'case_not_active')

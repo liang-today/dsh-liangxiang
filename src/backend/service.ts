@@ -214,16 +214,26 @@ export class LiangbiaoBackendService {
 
   /**
    * The vote transaction: identity + case validation, idempotency, atomic
-   * spend, vote record, aggregate update — all inside one `BEGIN IMMEDIATE`.
+   * spend, vote record, aggregate update AND the new published snapshot — all
+   * inside one `BEGIN IMMEDIATE`.
    *
-   * The published global snapshot deliberately does NOT move here; the personal
-   * balance is immediate, the public ratio waits for the cadence (AGENTS.md §12).
+   * Publishing here (rather than only on the cadence) is what makes a vote feel
+   * like a vote: the response already carries the snapshot that contains it, so
+   * the voter sees 梁位 move on the click instead of up to a cadence later. The
+   * snapshot is still a single self-consistent row, so ratios and Liangzi state
+   * can never come from different versions.
    */
   vote(installationId: string, intent: V1VoteRequest, now = this.clock.now()): V1VoteResponse {
     const activeCase = this.ensureActiveCase(now)
     let result: V1VoteResult
     try {
-      result = this.store.transaction(() => this.voteInTransaction(installationId, intent, activeCase, now))
+      result = this.store.transaction(() => {
+        const outcome = this.voteInTransaction(installationId, intent, activeCase, now)
+        if (outcome.status === 'accepted' && !outcome.replayed) {
+          this.publishInTransaction(activeCase, now)
+        }
+        return outcome
+      })
     } catch (error) {
       if (error instanceof DuplicateRequestSignal) {
         // The concurrent winner already committed; report its outcome verbatim.
@@ -239,6 +249,7 @@ export class LiangbiaoBackendService {
       result,
       authoritative_personal_state: this.personalState(installationId, caseRow, now),
       snapshot_version: { sequence: snapshot.sequence, captured_at: snapshot.captured_at },
+      global_snapshot: snapshot,
     }
   }
 
@@ -427,6 +438,25 @@ export class LiangbiaoBackendService {
       || latest.unique_voters !== stats.unique_voters
     if (!moved) return false
     return now - latest.captured_at >= this.config.snapshotRefreshSeconds * 1000
+  }
+
+  /** Append the current aggregate as a new snapshot; caller owns the transaction. */
+  private publishInTransaction(caseRow: CaseRow, now: number): SnapshotRow {
+    const stats = this.statsOf(caseRow)
+    const latest = this.store.latestSnapshot(caseRow.id)
+    const row: SnapshotRow = {
+      case_id: caseRow.id,
+      sequence: (latest?.sequence ?? 0) + 1,
+      business_date: caseRow.business_date,
+      up_votes: stats.up_votes,
+      down_votes: stats.down_votes,
+      unique_voters: stats.unique_voters,
+      policy_version: LIANGZI_POLICY_VERSION,
+      captured_at: now,
+    }
+    this.store.insertSnapshot(row)
+    this.store.pruneSnapshots(caseRow.id, SNAPSHOT_HISTORY_LIMIT)
+    return row
   }
 
   private publish(

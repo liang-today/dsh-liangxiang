@@ -225,6 +225,20 @@ export function LiangbiaoBadge(): ReactElement {
     return () => window.clearTimeout(timer)
   }, [state.snapshot.liangziState])
 
+  // One short pop when the published 梁位 moves. Driven by the raw counts, so it
+  // fires exactly when the rendered value can differ — including a vote from
+  // someone else, which is half the fun of a shared number.
+  const [positionPulse, setPositionPulse] = useState(false)
+  const prevCounts = useRef(`${state.snapshot.upVotes}/${state.snapshot.downVotes}`)
+  useEffect(() => {
+    const counts = `${state.snapshot.upVotes}/${state.snapshot.downVotes}`
+    if (prevCounts.current === counts) return undefined
+    prevCounts.current = counts
+    setPositionPulse(true)
+    const timer = window.setTimeout(() => setPositionPulse(false), 520)
+    return () => window.clearTimeout(timer)
+  }, [state.snapshot.upVotes, state.snapshot.downVotes])
+
   // One short 凝香 feedback when a new incense stick is earned.
   const [justCondensed, setJustCondensed] = useState(false)
   const prevEarned = useRef(state.personal.earnedIncenseToday)
@@ -324,6 +338,7 @@ export function LiangbiaoBadge(): ReactElement {
           avatarPulse={avatarPulse}
           justCondensed={justCondensed}
           voteFeedback={voteFeedback}
+          positionPulse={positionPulse}
           placement={panelPlacementFor(position, viewport)}
           onVote={onVote}
           onClose={() => setOpen(false)}

@@ -87,29 +87,39 @@ describe('state bands and their displayed percentages', () => {
     expect(formatLiangPosition(0, 0)).toBe('--')
   })
 
-  it('shows 梁位 with four decimals so one vote is visible', () => {
-    // 10,665/12,846 = 83.021952…%
-    expect(formatLiangPosition(10_665, 2_181)).toBe('83.0219%')
+  it('shows 梁位 with six decimals so one vote stays visible as the case grows', () => {
+    expect(formatLiangPosition(10_665, 2_181)).toBe('83.021952%')
     // One more 夯 vote must change the printed value.
-    expect(formatLiangPosition(10_666, 2_181)).toBe('83.0232%')
-    expect(formatLiangPosition(1, 1)).toBe('50.0000%')
-    expect(formatLiangPosition(1, 0)).toBe('100.0000%')
-    expect(formatLiangPosition(0, 7)).toBe('0.0000%')
+    expect(formatLiangPosition(10_666, 2_181)).toBe('83.023273%')
+    expect(formatLiangPosition(1, 1)).toBe('50.000000%')
+    expect(formatLiangPosition(1, 0)).toBe('100.000000%')
+    expect(formatLiangPosition(0, 7)).toBe('0.000000%')
   })
 
-  it('truncates 梁位 at four decimals too (never crosses a threshold)', () => {
-    // 449/501 = 89.62075…% stays 梁圣 and must not print 89.6208 rounded up
-    // past a boundary; at the 90% boundary the printed value must not reach it.
-    expect(formatLiangPosition(449, 52)).toBe('89.6207%')
+  it('still moves at the 6th decimal on a large case (why 6 and not 4)', () => {
+    // With a million votes the 4th decimal would be frozen; the 6th is not.
+    const before = formatLiangPosition(700_000, 300_000)
+    const after = formatLiangPosition(700_001, 300_000)
+    expect(before).toBe('70.000000%')
+    expect(after).toBe('70.000029%')
+    // Four decimals would have printed 70.0000% both times.
+    expect(formatLiangPosition(700_000, 300_000, 4)).toBe(formatLiangPosition(700_001, 300_000, 4))
+  })
+
+  it('truncates 梁位 at six decimals too (never crosses a threshold)', () => {
+    // 449/501 = 89.620758…% stays 梁圣 and must not print a rounded value that
+    // reads as having crossed 90%.
+    expect(formatLiangPosition(449, 52)).toBe('89.620758%')
     expect(deriveLiangziState(449, 52)).toBe('liang_sheng')
     const nearly = formatLiangPosition(899_999, 100_001)
+    expect(nearly).toBe('89.999900%')
     expect(Number(nearly.replace('%', ''))).toBeLessThan(90)
     expect(deriveLiangziState(899_999, 100_001)).toBe('liang_sheng')
   })
 
   it('keeps the decimal pair summing to exactly 100%', () => {
     for (const [up, down] of [[1, 2], [449, 52], [10_665, 2_181], [7, 0]] as const) {
-      const percents = formatRatioPercents(up, down, 4)
+      const percents = formatRatioPercents(up, down, 6)
       const sum = Number(percents.up.replace('%', '')) + Number(percents.down.replace('%', ''))
       expect(sum).toBeCloseTo(100, 10)
     }

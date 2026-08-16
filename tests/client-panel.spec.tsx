@@ -79,7 +79,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(next && textContent([next])).toContain('Token')
     // 10,665/12,846 = 83.0219…%, truncated to four decimals.
     expect(position && textContent([position])).toContain('梁位')
-    expect(position && textContent([position])).toContain('83.0219%')
+    expect(position && textContent([position])).toContain('83.021952%')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
     expect(textContent(tree)).toContain('梁圣')
   })
@@ -87,7 +87,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
   it('keeps 拉 as the complement in the tooltip instead of a second big number', () => {
     const tree = renderPanel(demoState())
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
-    expect(position?.props.title).toBe('夯 83.0219% / 拉 16.9781%')
+    expect(position?.props.title).toBe('夯 83.021952% / 拉 16.978048%')
   })
 
   it('pins the 梁位 value to the ring footer (one value, not a ratio pair)', () => {
@@ -96,7 +96,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(ring).toBeDefined()
     const footer = ring === undefined ? [] : findByAttr([ring], 'data-liangbiao-ring-footer')
     expect(footer).toHaveLength(1)
-    expect(footer[0] && textContent([footer[0]])).toContain('83.0219%')
+    expect(footer[0] && textContent([footer[0]])).toContain('83.021952%')
     // The old up/down pair must not come back.
     expect(findByAttr(tree, 'data-liangbiao-ratio')).toHaveLength(0)
   })
@@ -106,7 +106,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const store = createMockLiangbiaoStore({ upVotes: 449, downVotes: 52, uniqueVoters: 40 })
     const tree = renderPanel(store.getSnapshot())
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
-    expect(position && textContent([position])).toContain('89.6207%')
+    expect(position && textContent([position])).toContain('89.620758%')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
   })
 
@@ -117,6 +117,64 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const after = findByAttr(renderPanel(store.getSnapshot()), 'data-liangbiao-liang-position')[0]
     // The whole point of the decimals: one vote is visible.
     expect(before && textContent([before])).not.toBe(after && textContent([after]))
+  })
+
+  it('keeps the layout fixed as the numbers change (the 梁子 must not shift)', () => {
+    const small = createMockLiangbiaoStore({ effectiveTokensToday: 397_000, usedIncenseToday: 2 })
+    const large = createMockLiangbiaoStore({
+      upVotes: 1_000_000,
+      downVotes: 999,
+      uniqueVoters: 900_000,
+      effectiveTokensToday: 9_999_000,
+      usedIncenseToday: 0,
+    })
+    for (const state of [small.getSnapshot(), large.getSnapshot()]) {
+      const tree = renderPanel(state)
+      const incense = styleOf(findByAttr(tree, 'data-liangbiao-personal', 'incense')[0])
+      const next = styleOf(findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0])
+      const pill = styleOf(findByAttr(tree, 'data-liangbiao-liang-position')[0])
+      const social = findByAttr(tree, 'data-liangbiao-stat')
+      // Fixed boxes, not min-widths: a wider value must not re-centre the row.
+      expect(incense.width).toBe('74px')
+      expect(next.width).toBe('74px')
+      expect(pill.width).toBe('176px')
+      expect(social.map((node) => styleOf(node).width)).toEqual(['132px', '132px'])
+    }
+    // Digits are tabular, so even same-length values cannot jitter.
+    const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
+    expect(value.fontVariantNumeric).toBe('tabular-nums')
+  })
+
+  it('pops the 梁位 value when it moves, and never under reduced motion', () => {
+    const state = demoState()
+    const pulsing = renderDeep(
+      <Panel
+        state={state}
+        reducedMotion={false}
+        avatarPulse={false}
+        justCondensed={false}
+        voteFeedback=""
+        positionPulse
+        onVote={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+    const pulsingValue = styleOf(findByAttr(pulsing, 'data-liangbiao-liang-position-value')[0])
+    expect(String(pulsingValue.animation)).toContain('liangbiao-position-pop')
+
+    const reduced = renderDeep(
+      <Panel
+        state={state}
+        reducedMotion
+        avatarPulse={false}
+        justCondensed={false}
+        voteFeedback=""
+        positionPulse
+        onVote={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+    expect(styleOf(findByAttr(reduced, 'data-liangbiao-liang-position-value')[0]).animation).toBeUndefined()
   })
 
   it('spells out the exact 夯率 band of the current state in the tooltip', () => {
@@ -182,7 +240,7 @@ describe('region 4: social stats', () => {
 })
 
 describe('avatar states are visually distinct', () => {
-  it('every Liangzi state renders a different SVG composition', () => {
+  it('every Liangzi state renders a different artwork composition', () => {
     const serialized = LIANGZI_STATES.map((state) =>
       JSON.stringify(renderDeep(<LiangAvatar state={state} pulse={false} reducedMotion={true} />)))
     expect(new Set(serialized).size).toBe(LIANGZI_STATES.length)
