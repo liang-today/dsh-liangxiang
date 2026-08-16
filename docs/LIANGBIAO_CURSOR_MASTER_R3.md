@@ -2,7 +2,9 @@
 
 > 将本文件放入梁标仓库：`docs/LIANGBIAO_CURSOR_MASTER_R3.md`。
 > 本文件前半部分是产品/技术事实源，后半部分是 4 个最终执行 Phase。
-> Cursor 必须以本文件为最高优先级梁标产品语义；`../deepseek-harness` 仅作为只读 API/运行时事实源。
+> **活契约是仓库根目录 `AGENTS.md`。** 本文 PART A 已按 2026-08-16 的实现回写；若再冲突，以 `AGENTS.md` 为准。
+> `../deepseek-harness` 仅作为只读 API/运行时事实源。
+> Git：每次改完必须 commit + push。仍禁止 npm publish / GitHub Release / 公网部署 / 改真实 DSH profile / 改 DSH 核心。
 
 ---
 
@@ -13,7 +15,7 @@
 > 产品版本：**V0.1**  
 > Prompt Pack Revision：**R2**  
 > 日期：2026-08-16  
-> 重要原则：本文档覆盖此前所有与梁标业务语义冲突的 Prompt、设计、测试不变量和数据模型。若旧内容与本文冲突，以本文为准。
+> 重要原则：本文档覆盖此前所有与梁标业务语义冲突的 Prompt、设计、测试不变量和数据模型。若旧内容与 `AGENTS.md` 冲突，以 `AGENTS.md` 为准。
 
 ---
 
@@ -83,29 +85,33 @@ DeepSeek Harness 是夯还是拉
 ### Region 2 — 中央核心区
 
 ```text
-夯 83%        [梁子：梁圣 + 个人梁气环]        拉 17%
+我的香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 Token
+                       梁位 83.021952%
 ```
 
 规则：
 
-- 左侧只展示全局 `up_ratio`
-- 中央必须是具象化“梁子”角色位
-- 右侧只展示全局 `down_ratio`
+- 左 overlay：个人 `remaining_incense`（`N 炷`）
+- 中央（唯一占文档流宽度的列，必须落在面板水平中线）：具象梁子、梁气环、环上香火点。个人两翼绝对定位，禁止 flex `space-between` 把梁子挤偏
+- 右 overlay：个人 `tokens_to_next_incense`
+- 环下**恰好一个**全局数字：梁位 = `up_ratio`，6 位小数截断（`LIANG_POSITION_DECIMALS`）
+- `down_ratio` 不占第二个大数字，只出现在 tooltip / 屏幕阅读器摘要
 - 中央梁子不是 Gauge、Donut、Meter 或纯文字卡片
 - 中央梁子的形态由**全网夯比例**唯一决定
 - 梁子外围的“梁气”只属于**当前用户个人**
-- 梁子五态与梁气必须视觉叠加、数据解耦
+- 梁位与梁子五态必须来自**同一份 Global Snapshot**
 
 ### Region 3 — 两个投票按钮
 
 ```text
-[ 夯！ ]        [ 拉！ ]
+[ 夯：升梁！ ]        [ 拉：降梁！ ]
 ```
 
-只有两个按钮。
+只有两个按钮，等宽标齐。
 
+- 主文案就是 `夯：升梁！` / `拉：降梁！`；投票类型仍只有 `up` / `down`，升梁/降梁不是第三选项
 - 是否还能投，只看个人 `remaining_incense > 0`
-- 不再单独占一整行重复显示“可用香火：N 炷”，个人可用香火直接整合进梁气视觉
+- 不再单独占一整行重复显示“可用香火：N 炷”，个人可用香火在 Region 2 左翼
 - `remaining_incense = 0` 时两个按钮进入解释性 disabled 状态
 
 ### Region 4 — 社会化数据
@@ -259,19 +265,13 @@ liang_qi_fill = 0
 
 表示刚获得完整香火后，开始积累下一炷。
 
-### “再 3,000 Token 得 1 炷”必须整合进梁气环
+### “再 3,000 Token 得 1 炷”必须整合进梁气，而不是单独成长层
 
-不要额外再做一整行个人成长文案。
-
-推荐视觉语义：
+不要额外再做一整行个人成长文案。数字放在环的左右两翼 overlay，环本身只承载 fill / intensity / 香火点，且环必须居中：
 
 ```text
-梁气环内部或沿环：
-5 炷
-再 3,000 Token
+我的香火 5 炷   [环 + 梁子]   下一炷 3,000 Token
 ```
-
-或者等价的紧凑表达。
 
 要求：
 
@@ -528,10 +528,11 @@ up_ratio ~= 83%
 显示：
 
 ```text
-夯 83%
+梁位 83.021952%
 梁圣
-拉 17%
 ```
+
+拉是梁位的补数，不占第二个大数字。
 
 当全网投票把夯率推过 90% 后：
 
@@ -1091,6 +1092,8 @@ Hover 和 keyboard focus tooltip 必须精确为：
 
 `今日梁位`
 
+入口图标就是当前梁子五态（或待开梁占位），不是「梁」字。入口可拖到画面任意位置（纯外观偏好，存 `localStorage`，绝非权威）。
+
 点击打开紧凑面板。
 Escape / click outside 关闭。
 入口继续使用已经验证的 DSH UI Slot，不得 DOM monkey patch。
@@ -1111,13 +1114,14 @@ mock 梁案：
 
 必须实现：
 
-`夯 83%    [中央梁子：梁圣 + 个人梁气环]    拉 17%`
+`我的香火 5 炷    [中央梁子 + 个人梁气环]    下一炷 3,000 Token`
+`                      梁位 83.021952%`
 
 要求：
 
-- 左侧是全局夯比例
+- 环/头像/香火点落在面板水平中线；左右数字 overlay，不得把梁子挤偏
 - 中央梁子视觉权重最大
-- 右侧是全局拉比例
+- 环下只有一个全局数字：梁位（6 位小数截断）
 - 中央不是 Gauge / Donut / Meter
 - 中央必须有 `LiangAvatar` abstraction
 - 本阶段可用原创 SVG/CSS placeholder，不使用第三方未授权人物素材
@@ -1172,26 +1176,24 @@ mock personal state 采用：
 
 - `remainingIncense = 5` 决定梁气旺盛程度
 - `liangQiFill = 94%` 决定环从空到满的 fill
-- “5 炷”和“再 3,000 Token”必须直接整合进梁气环，不额外做一整行个人成长文案
+- “5 炷”和“再 3,000 Token”作为环左右两翼 overlay，不额外做一整行个人成长文案
 - 不显示“距梁圣还差几炷”
 - 不存在个人梁哥/梁祖成长
 
 建议紧凑视觉：
 
-梁气环中心/环边：
-- `5 炷`
-- `再 3,000 Token`
-
-这两个信息属于同一组件。
+- 左翼：`我的香火` / `5 炷`
+- 右翼：`下一炷` / `3,000 Token`
+- 环底：`梁位 83.021952%`
 
 ### Region 3 — 投票按钮
 
-只有两个：
+只有两个，等宽标齐：
 
-左：`夯！`
-右：`拉！`
+左：`夯：升梁！`
+右：`拉：降梁！`
 
-可以根据整体 tone 后续决定是否使用“升梁/降梁”附属小字，但 V0.1 主文案优先保持极简。
+投票类型仍只有 `up` / `down`。
 
 点击 mock vote 后：
 
@@ -2381,17 +2383,15 @@ public snapshot：
 
 ## Snapshot behavior
 
-保留低频平滑更新：
-
 - raw aggregate 每票事务更新
-- public snapshot 可默认 5min cadence，测试用 fake clock 加速
-- accepted vote 后 personal remaining 立即更新
-- UI 不需要即时伪造新的全网比例
-- 中央 LiangziState 与左右 ratio 必须来自同一 snapshot，不能一个新一个旧
+- 被接受的投票在**同一事务内发布快照**，响应带回新快照，投票者点击当下就能看到梁位变化
+- 公开 cadence 默认 **1s**（不是 5min / 300s）
+- 中央 LiangziState 与梁位必须来自同一 snapshot，不能一个新一个旧
 
 区分：
 - personal spend response：立即
-- global social snapshot + LiangziState：低频
+- 投票者自己的全局梁位：随 vote 响应立即
+- 其他观察者：下一个 1s cadence
 
 ## UI test cases
 
@@ -2758,14 +2758,10 @@ public snapshot 可低频生成：
 
 ## Snapshot cadence
 
-继续保持低频全局视觉刷新：
-- transaction 更新 raw aggregate
-- public snapshot 每几分钟生成
-- plugin poll snapshot
-- 不需要 websocket per-vote broadcast
-
-personal spend response 立即返回。
-global ratio/LiangziState 允许等下一 snapshot。
+- transaction 更新 raw aggregate，并在同一事务内发布 snapshot
+- 公开 cadence 默认 1s；不需要 websocket per-vote broadcast
+- 投票者经 vote 响应立即拿到同一版本的梁位 + 梁子状态
+- 其他观察者等下一个 cadence
 
 ## Token policy
 
@@ -3116,12 +3112,12 @@ remaining=1
 ## Snapshot polling
 
 - 默认来自 backend config
-- 约 5min 量级
+- 默认 **1s**
 - jitter
 - bounded retry
 - AbortController
 - plugin dispose cleanup
-- manual open 可 stale-while-revalidate
+- 投票者经 vote 响应立即拿到新快照；其他观察者等下一个 cadence
 - 不做 per-vote WebSocket
 
 新 snapshot 到来时：
@@ -3469,12 +3465,14 @@ Acceptance Criteria:
 ```text
 准备 `dsh-liangbiao` V0.1 Release Candidate。
 
-禁止自动：
+禁止自动（除非用户当场明确下令）：
 - npm publish
-- Git push
 - GitHub Release
-- production deploy
+- production / 公网 deploy
 - 修改用户真实 profile
+- 修改 `../deepseek-harness`
+
+站立指令：每次完成的改动必须 `git commit` 并立刻 `git push`。原始「禁止 git push」已作废。
 
 ## README 核心描述
 
@@ -4034,9 +4032,10 @@ liangzi_state=WAITING
 ```
 
 UI：
-- 左右 `--`
+- 梁位药丸显示 `--`
 - 中央待开梁
 - 不伪造 50/50
+- 左右两翼仍是个人香火 / 下一炷，不是夯/拉比例
 
 ## 23.14 Day Rollover
 
@@ -4252,7 +4251,7 @@ Prompt 01B R2 已完成，下面是 Cursor 的执行结果。
 
 - 已有几炷香 -> 决定梁气“旺盛程度”
 - 距下一炷 Token 进度 -> 决定梁气环从空到满的 fill
-- “再 3,000 Token 得 1 炷”必须直接整合进梁气环/中心微文案，禁止单独再制造一层个人成长区
+- “再 3,000 Token 得 1 炷”作为环右翼 overlay，禁止单独再制造一层个人成长区；环/头像必须居中
 - 投票消耗香火后 `remaining_incense` 会下降，因此梁气旺盛程度可以下降
 - 投票不会回退已经产生的 Token remainder/progress
 - Token 满 50K 时获得新香，库存 +1，并重新开始下一炷进度
@@ -4333,7 +4332,8 @@ mock case：
 
 布局语义：
 
-`夯 83%    [梁子 + 个人梁气环]    拉 17%`
+`我的香火 5 炷    [梁子 + 个人梁气环]    下一炷 3,000 Token`
+`                      梁位 83.021952%`
 
 要求：
 
@@ -4361,24 +4361,19 @@ mock case：
 - token remainder = 47,000 / 50,000
 - tokens_to_next = 3,000
 
-不要在头像下面再单独放：
-`再 3,000 Token 得 1 炷`
+不要在头像下面再单独放一整行个人成长文案。左右两翼 overlay：
 
-而要把它整合到梁气环的视觉/中心微文案中，例如环内轻量表达：
+`我的香火 5 炷` …… `下一炷 3,000 Token`
 
-`5 炷 · +3000`
-
-或等价更克制设计。
-
-完整含义必须可访问：
+环必须居中。完整含义必须可访问：
 - 当前剩余 5 炷
 - 再 3000 Token 获得 1 炷
 
 ### Region 3 — 两个按钮
 
-只有：
+只有，等宽标齐：
 
-`[ 夯！ ]    [ 拉！ ]`
+`[ 夯：升梁！ ]    [ 拉：降梁！ ]`
 
 mock vote accepted：
 
@@ -5469,16 +5464,17 @@ commit，例如：
 ```text
 你现在负责「梁标 V0.1」最后阶段：Release Hardening + RC。
 
-本阶段不新增产品功能，不重新讨论产品设计。
-直接审计、修复、验证、打本地 RC。
+「本阶段不新增产品功能」只约束当时那一次 RC 审计，不约束后续对话里的 UI/文案修正。
 
-禁止自动：
+禁止自动（除非用户当场明确下令）：
 
 - npm publish
-- git push
 - GitHub Release
-- production deploy
+- production / 公网 deploy
 - 修改用户真实 DSH profile
+- 修改 `../deepseek-harness`
+
+站立指令：每次完成的改动必须 `git commit` 并立刻 `git push`。原始「禁止 git push」已作废。
 
 ## 先读取
 

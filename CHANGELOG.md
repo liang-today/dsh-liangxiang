@@ -7,7 +7,7 @@
 - **梁子必须正中**：Region 2 不再用 flex `space-between`。环、头像、环上香火点是唯一占文档流宽度的列，水平居中；「我的香火 / 下一炷」绝对定位 overlay，文案长短不能把梁子挤偏。
 - **投票按钮**：`夯：升梁！` / `拉：降梁！`，`1fr / 1fr` 等宽标齐。投票类型仍只有 `up`/`down`。
 - **Git**：`AGENTS.md` §15 覆盖 Prompt 4/11「禁止 git push」——每次改完提交并立即 push。仍禁止 npm publish / GitHub Release / 公网部署 / 改真实 DSH profile。
-- 禁令差异表：`docs/110-prohibition-refresh.md`（等你一键决定是否回写 MASTER / PRODUCT_FREEZE）。
+- 禁令差异表：`docs/110-prohibition-refresh.md`。**已按「全部刷新」回写** `PRODUCT_FREEZE_V0.1.md` 与 `LIANGBIAO_CURSOR_MASTER_R3.md`。
 
 ### v0.1 Release Candidate（本地加固与终审）
 
