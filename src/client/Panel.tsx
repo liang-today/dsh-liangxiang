@@ -158,7 +158,7 @@ const positionFactStyle: CSSProperties = {
  * the 梁子, ring, and incense dots drift sideways.
  */
 const FLANK_WIDTH = 48
-const CORE_PAD_Y = 6
+const CORE_PAD_Y = 18
 
 const coreStyle: CSSProperties = {
   position: 'relative',
@@ -619,7 +619,7 @@ export function Panel(props: PanelProps): ReactElement {
       <p
         role="status"
         data-liangbiao-vote-feedback=""
-        style={{ margin: '4px 0 0', minHeight: '14px', fontSize: '11px', color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary, textAlign: 'center' }}
+        style={{ margin: '4px 0 0', height: '14px', lineHeight: '14px', overflow: 'hidden', whiteSpace: 'nowrap', fontSize: '11px', color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary, textAlign: 'center' }}
       >
         {statusLine}
       </p>

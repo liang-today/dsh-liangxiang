@@ -39,22 +39,20 @@ const RING_STROKE = 5
 export const AVATAR_SLOT = 96
 /** Leave the south arc empty so 炷/月 do not sit on the 梁位 pill. */
 const BOTTOM_GAP = 1.2
-const ONES_ORBIT = RING_RADIUS + 9
-const TENS_ORBIT = RING_RADIUS + 17
-const HUNDREDS_ORBIT = RING_RADIUS + 25
-/** Angular phase per orbit so a 月/日 never lands on a 炷's exact angle. */
-const PHASE_ONE = 0
-const PHASE_TEN = 0.21
-const PHASE_HUNDRED = 0.42
+const ONES_ORBIT = RING_RADIUS + 5
+const TENS_ORBIT = RING_RADIUS + 13
+const HUNDREDS_ORBIT = RING_RADIUS + 21
+/** Warm flame tone for the candle tip. */
+const FLAME = '#f3c152'
 
-function orbitAngle(index: number, count: number, phase: number): number {
+function orbitAngle(index: number, count: number): number {
   const span = 2 * Math.PI - BOTTOM_GAP
   const t = (index + 0.5) / Math.max(count, 1)
-  return Math.PI / 2 + BOTTOM_GAP / 2 + t * span + phase
+  return Math.PI / 2 + BOTTOM_GAP / 2 + t * span
 }
 
-function orbitPoint(index: number, count: number, radius: number, phase: number): { angle: number, cx: number, cy: number } {
-  const angle = orbitAngle(index, count, phase)
+function orbitPoint(index: number, count: number, radius: number): { angle: number, cx: number, cy: number } {
+  const angle = orbitAngle(index, count)
   return {
     angle,
     cx: RING_SIZE / 2 + Math.cos(angle) * radius,
@@ -63,7 +61,7 @@ function orbitPoint(index: number, count: number, radius: number, phase: number)
 }
 
 function StickMark({ index, count, opacity }: { index: number, count: number, opacity: number }): ReactElement {
-  const { angle, cx, cy } = orbitPoint(index, count, ONES_ORBIT, PHASE_ONE)
+  const { angle, cx, cy } = orbitPoint(index, count, ONES_ORBIT)
   const deg = (angle * 180) / Math.PI + 90
   return (
     <g
@@ -72,14 +70,14 @@ function StickMark({ index, count, opacity }: { index: number, count: number, op
       transform={`translate(${cx} ${cy}) rotate(${deg})`}
       opacity={opacity}
     >
-      <ellipse cx="0" cy="-6.4" rx="1.45" ry="2.35" fill={color.warn} />
-      <rect x="-1.2" y="-4.2" width="2.4" height="8.6" rx="1.1" fill={color.warn} />
+      <path d="M 0 -4.4 C -1.2 -3.1 -1.2 -2 0 -1.2 C 1.2 -2 1.2 -3.1 0 -4.4 Z" fill={FLAME} />
+      <rect x="-1.5" y="-1.1" width="3" height="7.4" rx="1.4" fill={color.warn} />
     </g>
   )
 }
 
 function MoonMark({ index, count, opacity }: { index: number, count: number, opacity: number }): ReactElement {
-  const { cx, cy } = orbitPoint(index, count, TENS_ORBIT, PHASE_TEN)
+  const { cx, cy } = orbitPoint(index, count, TENS_ORBIT)
   return (
     <g
       data-liangbiao-incense-mark="ten"
@@ -87,18 +85,17 @@ function MoonMark({ index, count, opacity }: { index: number, count: number, opa
       transform={`translate(${cx} ${cy})`}
       opacity={opacity}
     >
-      {/* Fuller crescent: a disc minus an offset disc (evenodd), not a thin sliver. */}
       <path
         fill={color.warn}
         fillRule="evenodd"
-        d="M 0 -4.5 A 4.5 4.5 0 1 1 0 4.5 A 4.5 4.5 0 1 1 0 -4.5 Z M 1.8 -3.2 A 3.2 3.2 0 1 0 1.8 3.2 A 3.2 3.2 0 1 0 1.8 -3.2 Z"
+        d="M 0 -4.3 A 4.3 4.3 0 1 1 0 4.3 A 4.3 4.3 0 1 1 0 -4.3 Z M 1.9 -3 A 3 3 0 1 0 1.9 3 A 3 3 0 1 0 1.9 -3 Z"
       />
     </g>
   )
 }
 
 function SunMark({ index, count, opacity }: { index: number, count: number, opacity: number }): ReactElement {
-  const { cx, cy } = orbitPoint(index, count, HUNDREDS_ORBIT, PHASE_HUNDRED)
+  const { cx, cy } = orbitPoint(index, count, HUNDREDS_ORBIT)
   return (
     <g
       data-liangbiao-incense-mark="hundred"
@@ -106,19 +103,19 @@ function SunMark({ index, count, opacity }: { index: number, count: number, opac
       transform={`translate(${cx} ${cy})`}
       opacity={opacity}
     >
-      <circle r="2.35" fill={color.warn} />
-      {[0, 45, 90, 135].map((deg) => (
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
         <rect
           key={deg}
           x="-0.55"
-          y="-5.4"
+          y="-5.3"
           width="1.1"
-          height="2.35"
-          rx="0.5"
+          height="2.2"
+          rx="0.55"
           fill={color.warn}
           transform={`rotate(${deg})`}
         />
       ))}
+      <circle r="2.4" fill={color.warn} />
     </g>
   )
 }

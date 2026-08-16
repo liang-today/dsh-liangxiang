@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
-import { HOVER_TEXT, LIANGZI_STATE_LABELS, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
@@ -325,10 +325,15 @@ export function LiangbiaoBadge(): ReactElement {
       (result) => {
         if (result.status === 'accepted') {
           setVoteFeedback(`已上香：${voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME}（剩余 ${result.remainingIncense} 炷）`)
-        } else if (result.reason !== 'insufficient_incense') {
+        } else if (result.reason === 'insufficient_incense') {
+          // The panel painted optimistic local incense the backend has not
+          // authorized. Re-read the authoritative ledger so the count is honest
+          // and the buttons disable, instead of silently doing nothing.
+          setVoteFeedback(NO_INCENSE_REASON)
+          void store.reconcile().catch(() => undefined)
+        } else {
           setVoteFeedback(`投票被拒绝：${result.reason}`)
         }
-        // insufficient_incense keeps the standing disabled reason visible.
       },
       (error: unknown) => {
         console.warn(`[dsh-liangbiao] vote failed: ${error instanceof Error ? error.message : String(error)}`)
