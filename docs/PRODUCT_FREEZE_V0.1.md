@@ -29,11 +29,11 @@
 
 ```text
 total_votes == 0        -> WAITING / 待开梁（占位态，不是第六 Tier）
-up_ratio  < 60%         -> 梁工
-60% <= up_ratio < 70%   -> 梁总
-70% <= up_ratio < 80%   -> 梁神
-80% <= up_ratio < 90%   -> 梁圣
-up_ratio >= 90%         -> 梁祖
+up_ratio  < 20%         -> 梁工
+20% <= up_ratio < 40%   -> 梁总
+40% <= up_ratio < 60%   -> 梁神
+60% <= up_ratio < 80%   -> 梁圣
+up_ratio >= 80%         -> 梁祖
 ```
 
 - 个人 Token / earned / used / remaining / 梁气进度 **不得**直接选择梁子状态。

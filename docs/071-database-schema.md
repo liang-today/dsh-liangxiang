@@ -14,7 +14,7 @@ v1 → v2 只增加 `community_identity`。旧库启动时自动建表，不改�
 | `title` | TEXT | 梁案标题 |
 | `status` | TEXT | `active` / `closed` |
 | `token_per_incense` | INTEGER >0 | 案级 Token 政策快照 |
-| `liangzi_policy_version` | TEXT | 阈值策略版本（`liangzi-v0.1-60-70-80-90`） |
+| `liangzi_policy_version` | TEXT | 阈值策略版本（`liangzi-v0.1-20-40-60-80`） |
 | `created_at` / `opened_at` / `closed_at` | INTEGER | epoch ms |
 
 ```sql

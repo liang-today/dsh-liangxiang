@@ -94,8 +94,8 @@ export const LIANG_POSITION_DECIMALS = 6
  * Format the displayed 夯/拉 percentages from the SAME raw counts the Liangzi
  * state is derived from.
  *
- * The up percent TRUNCATES instead of rounding: rounding could print `90%`
- * while the up ratio is still 89.6% (梁圣), which reads as a broken threshold
+ * The up percent TRUNCATES instead of rounding: rounding could print `80%`
+ * while the up ratio is still 79.6% (梁圣), which reads as a broken threshold
  * even though the snapshot is internally consistent. Truncation keeps the
  * printed number on the same side of every boundary as the state, at any number
  * of decimals. The down percent is the complement, so the pair always sums to
@@ -113,7 +113,7 @@ export function formatRatioPercents(
   assertCount(decimals, 'invalid_vote_count', 'decimals')
   const total = upVotes + downVotes
   if (total === 0) return { up: WAITING_PERCENT_TEXT, down: WAITING_PERCENT_TEXT }
-  // Integer math on scaled basis points: no float drift near 60/70/80/90.
+  // Integer math on scaled basis points: no float drift near 20/40/60/80.
   const scale = 10 ** decimals
   const scaledUp = Math.floor((upVotes * 100 * scale) / total)
   const format = (scaled: number): string =>

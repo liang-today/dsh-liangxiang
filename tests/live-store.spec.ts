@@ -110,7 +110,7 @@ describe('live store', () => {
     await settled()
     const state = store.getSnapshot()
     expect(state.connection).toBe('live')
-    expect(state.snapshot.liangziState).toBe('liang_sheng')
+    expect(state.snapshot.liangziState).toBe('liang_zu')
     expect(state.personal.remainingIncense).toBe(7)
     expect(controls.streamsOpened).toBe(1)
     store.dispose()
@@ -153,19 +153,14 @@ describe('live store', () => {
     store.dispose()
   })
 
-  it('creditDev paints incense on this tab without calling the Host', async () => {
+  it('paints host-observed incense from the wire frame, not a frontend overlay', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
     const store = createLiveLiangbiaoStore(controls.transport)
     store.start()
     await settled()
     const before = store.getSnapshot().personal.remainingIncense
-    const beforeTokens = store.getSnapshot().personal.effectiveTokensToday
     const requestsBefore = controls.requests.length
-    await store.creditDev({ sticks: 9 })
-    expect(store.getSnapshot().personal.remainingIncense).toBe(before)
-    expect(store.getSnapshot().personal.effectiveTokensToday).toBe(beforeTokens + 9 * 50_000)
-    expect(controls.requests.length).toBe(requestsBefore)
     service.observeUsage('s1', {
       uncachedInputTokens: 447_000,
       cacheReadTokens: 0,
@@ -174,10 +169,8 @@ describe('live store', () => {
     }, { kind: 'live', firstLiveSeq: 0 })
     controls.pushFrame(service.getWireState())
     expect(store.getSnapshot().personal.remainingIncense).toBe(before + 1)
-    expect(store.getSnapshot().personal.effectiveTokensToday).toBe(447_000 + 9 * 50_000)
-    await store.reconcile()
-    expect(store.getSnapshot().personal.remainingIncense).toBe(before + 1)
     expect(store.getSnapshot().personal.effectiveTokensToday).toBe(447_000)
+    expect(controls.requests.length).toBe(requestsBefore)
     store.dispose()
   })
 

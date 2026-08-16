@@ -39,7 +39,7 @@ export const BACKEND_API_PREFIX = '/v1'
 export const BACKEND_SCHEMA_VERSION = 1
 
 /** Frozen id of the shipped Liangzi threshold policy (60/70/80/90). */
-export const LIANGZI_POLICY_VERSION = 'liangzi-v0.1-60-70-80-90'
+export const LIANGZI_POLICY_VERSION = 'liangzi-v0.1-20-40-60-80'
 
 /**
  * Authority modes. `VERIFIED_PRODUCTION` requires server-verifiable identity

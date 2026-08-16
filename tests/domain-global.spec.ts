@@ -18,13 +18,13 @@ function snapshotOf(aggregate: GlobalVoteAggregate, sequence = 1) {
 }
 
 describe('buildPublicSnapshot', () => {
-  it('frozen demo: 10,665 up / 2,181 down -> 83% 夯, 梁圣, 香火 12,846', () => {
+  it('frozen demo: 10,665 up / 2,181 down -> 83% 夯, 梁祖, 香火 12,846', () => {
     const snapshot = snapshotOf({ upVotes: 10_665, downVotes: 2_181, uniqueVoters: 2_841 })
     expect(snapshot.totalIncense).toBe(12_846)
     expect(snapshot.upRatio).toBeCloseTo(10_665 / 12_846, 10)
     expect(snapshot.downRatio).toBeCloseTo(2_181 / 12_846, 10)
     expect(Math.round((snapshot.upRatio ?? 0) * 100)).toBe(83)
-    expect(snapshot.liangziState).toBe('liang_sheng')
+    expect(snapshot.liangziState).toBe('liang_zu')
     expect(snapshot.uniqueVoters).toBe(2_841)
   })
 
