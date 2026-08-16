@@ -529,6 +529,17 @@ describe('quiet access log', () => {
     expect(logs.some((line) => line.includes('hello'))).toBe(true)
     expect(logs.filter((line) => line.includes('vote 夯'))).toHaveLength(1)
   })
+
+  it('logs below_watermark instead of silently dropping a smaller claim', async () => {
+    const logs: string[] = []
+    const h = await start({ logs })
+    await grant(h, 150_000)
+    await grant(h, 10_000)
+    const text = logs.join('\n')
+    expect(text).toContain('claim ignored below_watermark')
+    expect(text).toContain('requested=10000')
+    expect(text).toContain('have=150000')
+  })
 })
 
 describe('admin publish', () => {

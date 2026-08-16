@@ -89,7 +89,8 @@ export class BackendLiangService implements LiangHostService {
   /**
    * How much of `locallyObserved` is already represented in `claimed`.
    * After 上达天听 the local daily total resets while claimed stays; new
-   * deltas must be added on top, not max()'d against the server watermark.
+   * deltas must be added on top of the ledger (same number the panel paints
+   * and the same number POST /token-claims must send).
    */
   private displayBaseline = 0
   private bootstrapping: Promise<void> | null = null
@@ -222,8 +223,8 @@ export class BackendLiangService implements LiangHostService {
     const installationId = this.requireIdentity()
     // Flush any unclaimed local usage before the vote: the backend's spend
     // authority is the claim, so a vote must never race ahead of a debounced
-    // claim. Otherwise the panel shows incense the backend has not recorded yet
-    // and the vote comes back `insufficient_incense` (remaining=0) until 上达天听.
+    // claim. The flush reports ledger + local suffix, not a restarted daily
+    // total — 上达天听 must not strand new tokens below the ratchet.
     await this.flushClaim()
     const response = await this.client.vote(installationId, {
       case_id: intent.caseId,
@@ -278,7 +279,7 @@ export class BackendLiangService implements LiangHostService {
         // 梁气 immediately. The backend claim is a background ratchet for
         // spend authority, not the display clock. used incense stays the
         // server ledger so a vote cannot be invented here.
-        effectiveTokensToday: displayedEffectiveTokens(
+        effectiveTokensToday: claimableEffectiveTokens(
           personal,
           this.usage.effectiveTokensFor(this.businessDate),
           this.displayBaseline,
@@ -362,8 +363,8 @@ export class BackendLiangService implements LiangHostService {
   }
 
   /**
-   * Submit the locally observed daily total as a claim. Debounced: token
-   * observations arrive per streamed chunk, the claim is a cheap ratchet.
+   * Submit the claimable Token figure (server ledger + unclaimed local suffix).
+   * Debounced: token observations arrive per streamed chunk.
    */
   private scheduleClaim(): void {
     if (this.disposed || this.installationId === null || this.claimTimer !== null) return
@@ -396,13 +397,20 @@ export class BackendLiangService implements LiangHostService {
     }
     // Claim for the BACKEND's business date: the host must not decide the day.
     const businessDate = this.businessDate === '' ? this.usage.localBusinessDate() : this.businessDate
-    const claimed = this.usage.effectiveTokensFor(businessDate)
-    if (claimed <= this.lastClaimSent) {
-      this.warn(`[${PLUGIN_PACKAGE_NAME}] claim skip: claimed=${claimed} lastClaimSent=${this.lastClaimSent} date=${businessDate}`)
+    const locallyObserved = this.usage.effectiveTokensFor(businessDate)
+    const ledger = this.personal?.claimed_effective_tokens ?? 0
+    const target = claimableEffectiveTokens(this.personal, locallyObserved, this.displayBaseline)
+    // Nothing above the ledger: do not POST a number the ratchet will drop.
+    if (this.personal !== null && target <= ledger) {
+      this.lastClaimSent = Math.max(this.lastClaimSent, target)
       return
     }
-    this.warn(`[${PLUGIN_PACKAGE_NAME}] claim submit: claimed=${claimed} date=${businessDate}`)
-    const run = this.claimOnce(installationId, claimed, businessDate)
+    if (target <= this.lastClaimSent) return
+    this.warn(
+      `[${PLUGIN_PACKAGE_NAME}] claim submit: local=${locallyObserved} ledger=${ledger} `
+      + `target=${target} date=${businessDate}`,
+    )
+    const run = this.claimOnce(installationId, target, businessDate)
     this.claimInFlight = run
     try {
       await run
@@ -413,11 +421,11 @@ export class BackendLiangService implements LiangHostService {
 
   private async claimOnce(
     installationId: string,
-    claimed: number,
+    target: number,
     businessDate: string,
   ): Promise<void> {
     try {
-      const response = await this.client.submitClaim(installationId, claimed, businessDate)
+      const response = await this.client.submitClaim(installationId, target, businessDate)
       this.personal = response.authoritative_personal_state
       this.activeCase = response.active_case
       this.businessDate = response.business_date
@@ -431,12 +439,15 @@ export class BackendLiangService implements LiangHostService {
           `[${PLUGIN_PACKAGE_NAME}] business date changed ${businessDate} -> ${response.business_date}; resetting claim watermark`,
         )
         this.lastClaimSent = -1
-      }
-      if (response.claim_applied === false) {
-        // Server already has more than this local total; do not retry it.
-        if (claimed <= this.personal.claimed_effective_tokens) this.lastClaimSent = claimed
+        this.syncDisplayBaselineFromLedger()
+        this.scheduleClaim()
+      } else if (response.claim_applied === false) {
+        // Stale/small target relative to the ledger; do not retry it.
+        this.lastClaimSent = Math.max(this.lastClaimSent, Math.min(target, this.personal.claimed_effective_tokens))
       } else {
-        this.lastClaimSent = claimed
+        // Remember the number we submitted (even if the absurd guard clamped
+        // the stored value) so a huge self-report is not retried forever.
+        this.lastClaimSent = target
         this.displayBaseline = Math.min(
           this.usage.effectiveTokensFor(businessDate),
           this.personal.claimed_effective_tokens,
@@ -483,11 +494,21 @@ export class BackendLiangService implements LiangHostService {
   }
 }
 
-function displayedEffectiveTokens(
-  personal: V1PersonalState,
+/**
+ * What the panel paints AND what the host claims: the server ledger plus any
+ * local observation not already represented in it.
+ *
+ * After 上达天听 / a fresh Host process, `locallyObserved` restarts at 0 while
+ * `claimed_effective_tokens` does not. Treating the local daily total as the
+ * claim (a smaller absolute watermark) is silently dropped by the ratchet.
+ * The suffix formula is the same number the ring already shows.
+ */
+function claimableEffectiveTokens(
+  personal: V1PersonalState | null,
   locallyObserved: number,
   displayBaseline: number,
 ): number {
+  if (personal === null) return locallyObserved
   // Cover already-spent incense so a brief local/date mismatch cannot emit
   // a wire frame with used > earned.
   const spentFloor = personal.used_incense * personal.token_per_incense

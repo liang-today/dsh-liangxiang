@@ -350,12 +350,25 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         const response = service.applyTokenClaim(installationId, claim)
         writeJson(res, 200, response)
         const earned = response.authoritative_personal_state.earned_incense
+        const have = response.authoritative_personal_state.claimed_effective_tokens
         if (response.claim_applied === true && earned > priorEarned) {
           log(
             `[liangbiao-backend] incense +${earned - priorEarned}炷 ${who(req, installationId)} `
             + `remaining=${response.authoritative_personal_state.remaining_incense} `
-            + `tokens=${response.authoritative_personal_state.claimed_effective_tokens}`,
+            + `tokens=${have}`,
           )
+        } else if (response.claim_applied !== true) {
+          if (claim.claim_business_date !== response.business_date) {
+            log(
+              `[liangbiao-backend] claim ignored wrong_date ${who(req, installationId)} `
+              + `requested_date=${claim.claim_business_date} have_date=${response.business_date}`,
+            )
+          } else {
+            log(
+              `[liangbiao-backend] claim ignored below_watermark ${who(req, installationId)} `
+              + `requested=${claim.claimed_effective_tokens} have=${have}`,
+            )
+          }
         }
       } catch (error) {
         writeValidationError(res, error)

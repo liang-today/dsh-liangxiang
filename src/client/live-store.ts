@@ -80,8 +80,9 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
   /** Drop local Token observation and re-read the server incense ledger. */
   reconcile(): Promise<void>
   /**
-   * Frontend-only UI probe: add incense on this tab's picture.
-   * Does not call the Host or the backend. 上达天听 clears it.
+   * Frontend-only UI probe: move ring fill / 下一炷 on this tab's picture.
+   * Does not call the Host or the backend and does not add spendable incense.
+   * 上达天听 clears it.
    */
   creditDev(intent?: { sticks?: number, effectiveTokens?: number }): Promise<void>
   /** Abort in-flight work and close the stream. */
@@ -107,13 +108,21 @@ export function createLiveLiangbiaoStore(
 
   const withDemoOverlay = (view: LiangbiaoViewState): LiangbiaoViewState => {
     if (demoExtraTokens <= 0) return view
+    const painted = derivePersonalLiangQiState({
+      effectiveTokensToday: view.personal.effectiveTokensToday + demoExtraTokens,
+      usedIncenseToday: view.personal.usedIncenseToday,
+      tokenPerIncense: view.personal.tokenPerIncense,
+    })
+    // Ring fill / 下一炷 may move; spendable remaining stays on the
+    // authoritative ledger so the vote buttons cannot light up on a
+    // frontend-only overlay the backend will reject.
     return {
       ...view,
-      personal: derivePersonalLiangQiState({
-        effectiveTokensToday: view.personal.effectiveTokensToday + demoExtraTokens,
-        usedIncenseToday: view.personal.usedIncenseToday,
-        tokenPerIncense: view.personal.tokenPerIncense,
-      }),
+      personal: {
+        ...painted,
+        remainingIncense: view.personal.remainingIncense,
+        earnedIncenseToday: view.personal.earnedIncenseToday,
+      },
     }
   }
 

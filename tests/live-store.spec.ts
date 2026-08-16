@@ -160,9 +160,11 @@ describe('live store', () => {
     store.start()
     await settled()
     const before = store.getSnapshot().personal.remainingIncense
+    const beforeTokens = store.getSnapshot().personal.effectiveTokensToday
     const requestsBefore = controls.requests.length
     await store.creditDev({ sticks: 9 })
-    expect(store.getSnapshot().personal.remainingIncense).toBe(before + 9)
+    expect(store.getSnapshot().personal.remainingIncense).toBe(before)
+    expect(store.getSnapshot().personal.effectiveTokensToday).toBe(beforeTokens + 9 * 50_000)
     expect(controls.requests.length).toBe(requestsBefore)
     service.observeUsage('s1', {
       uncachedInputTokens: 447_000,
@@ -171,9 +173,11 @@ describe('live store', () => {
       outputTokens: 0,
     }, { kind: 'live', firstLiveSeq: 0 })
     controls.pushFrame(service.getWireState())
-    expect(store.getSnapshot().personal.remainingIncense).toBe(before + 10)
+    expect(store.getSnapshot().personal.remainingIncense).toBe(before + 1)
+    expect(store.getSnapshot().personal.effectiveTokensToday).toBe(447_000 + 9 * 50_000)
     await store.reconcile()
     expect(store.getSnapshot().personal.remainingIncense).toBe(before + 1)
+    expect(store.getSnapshot().personal.effectiveTokensToday).toBe(447_000)
     store.dispose()
   })
 

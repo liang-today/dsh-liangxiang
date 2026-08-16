@@ -198,6 +198,40 @@ describe('online bootstrap', () => {
     expect(view.personal.remainingIncense).toBe(1)
   })
 
+  it('claims the local suffix on top of the server ledger after 上达天听', async () => {
+    const s = await startStack({}, { claimDebounceMs: 0 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => claimedOnBackend(s, 50_000), 'the first stick to be claimed')
+    await s.host.reconcileNow()
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(50_000)
+    // Same session: watermarks keep the original 50k from being dumped again.
+    // New output is a suffix that must raise the ledger, not replace it.
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 50_000), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => claimedOnBackend(s, 100_000), 'the post-reconcile suffix to raise the ledger')
+    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(2)
+  })
+
+  it('can vote with incense earned after 上达天听 reset the local daily total', async () => {
+    const s = await startStack({}, { claimDebounceMs: 0 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => claimedOnBackend(s, 50_000), 'the first stick to be claimed')
+    const caseId = frame(s).activeCase.id
+    const spent = await s.host.vote({ caseId, voteType: 'up', requestId: 'req-e2e-spent01' })
+    expect(spent.result.status).toBe('accepted')
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.remaining_incense).toBe(0)
+    await s.host.reconcileNow()
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 50_000), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(
+      () => s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens === 100_000,
+      'the new stick to land after 上达天听',
+    )
+    const again = await s.host.vote({ caseId, voteType: 'down', requestId: 'req-e2e-spent02' })
+    expect(again.result.status).toBe('accepted')
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.remaining_incense).toBe(0)
+  })
+
   it('turns observed DSH usage into an authoritative claim (input+output, all buckets)', async () => {
     const s = await startStack()
     // 10k uncached + 20k cacheRead + 5k cacheWrite = 35k input; +15k output = 50k.
