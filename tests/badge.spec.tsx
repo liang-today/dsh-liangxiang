@@ -65,8 +65,9 @@ describe('LiangbiaoBadge entry', () => {
       const avatars = findByAttr(tree, 'data-liangbiao-avatar', state)
       expect(avatars).toHaveLength(1)
       // The mini avatar carries no state label (no room) and is decorative.
-      const svg = findAll(tree, (node) => node.type === 'svg')[0]
-      expect(svg?.props.width).toBe(30)
+      const portrait = findAll(tree, (node) => node.type === 'img')[0]
+      expect(portrait?.props.width).toBe(30)
+      expect(portrait?.props.src).toEqual(expect.stringMatching(/^data:image\/jpeg;base64,/))
     }
     const { button } = renderButton(false)
     expect(button.props['data-liangbiao-badge-state']).toBe('liang_sheng')

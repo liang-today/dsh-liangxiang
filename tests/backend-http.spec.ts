@@ -149,6 +149,35 @@ describe('routing and boundary validation', () => {
     expect(response.body).toMatchObject({ error: { field: 'vote.vote_type' } })
   })
 
+  it('does not grow the rate-limit map with every installation id it sees', async () => {
+    const h = await start({ voteRateLimitPerMinute: 5 })
+    const caseId = await activeCaseId(h)
+    // Installation ids are self-minted, so unbounded per-id state would be
+    // attacker-controlled memory growth.
+    for (let i = 0; i < 1_200; i += 1) {
+      await h.post(
+        '/v1/votes',
+        { case_id: caseId, vote_type: 'up', request_id: `req-flood-${String(i).padStart(6, '0')}` },
+        `inst-flood-${String(i).padStart(6, '0')}`,
+      )
+    }
+    // Nothing was spent (no claims), and the server is still responsive.
+    const health = await fetch(`${h.baseUrl}/v1/health`)
+    expect(health.status).toBe(200)
+    // The limiter still works for a real caller after the sweep.
+    await grant(h, 500_000)
+    const statuses: number[] = []
+    for (let i = 0; i < 7; i += 1) {
+      const response = await h.post('/v1/votes', {
+        case_id: caseId,
+        vote_type: 'up',
+        request_id: `req-after-sweep-${i}`,
+      })
+      statuses.push(response.status)
+    }
+    expect(statuses.filter((status) => status === 429).length).toBeGreaterThan(0)
+  })
+
   it('answers an oversized body with 413 instead of killing the connection', async () => {
     const h = await start()
     await grant(h, 100_000)

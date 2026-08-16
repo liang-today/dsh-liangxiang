@@ -35,16 +35,17 @@ export interface DailyLiangCase {
   tokenPerIncense: number
 }
 
-export function assertValidCase(candidate: DailyLiangCase): void {
-  if (typeof candidate.id !== 'string' || candidate.id.length === 0) {
+/** Validate a case (the parameter is named `value`: 梁标 has no Candidate concept). */
+export function assertValidCase(value: DailyLiangCase): void {
+  if (typeof value.id !== 'string' || value.id.length === 0) {
     throw new DomainError('invalid_policy', 'case id must be a non-empty string')
   }
-  assertBusinessDate(candidate.businessDate)
-  if (typeof candidate.title !== 'string' || candidate.title.length === 0) {
+  assertBusinessDate(value.businessDate)
+  if (typeof value.title !== 'string' || value.title.length === 0) {
     throw new DomainError('invalid_policy', 'case title must be a non-empty string')
   }
-  if (candidate.status !== 'scheduled' && candidate.status !== 'active' && candidate.status !== 'closed') {
-    throw new DomainError('invalid_policy', `unknown case status: ${String(candidate.status)}`)
+  if (value.status !== 'scheduled' && value.status !== 'active' && value.status !== 'closed') {
+    throw new DomainError('invalid_policy', `unknown case status: ${String(value.status)}`)
   }
-  assertTokenPerIncense(candidate.tokenPerIncense)
+  assertTokenPerIncense(value.tokenPerIncense)
 }

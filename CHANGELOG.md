@@ -2,6 +2,14 @@
 
 ## 0.1.0 — 未发布
 
+### v0.1 Release Candidate（本地加固与终审）
+
+- **布局稳定性**：两翼与统计项改为固定宽度 + `tabular-nums`，数值变化（`5 炷`→`12 炷`、`3,000`→`46,935`）不再把中央梁子挤偏;梁位药丸固定宽度。
+- **梁位**：小数从 4 位增到 **6 位**（大盘下 4 位会「冻住」）；被接受的投票**在自己的事务里发布快照**并随响应带回，梁位在点击那一下就动（不再等 cadence、不多一次往返）；数值变化时播放一次短促 pop 动效，`prefers-reduced-motion` 下不播。
+- **加固修复**：干净 profile 冒烟脚本在产物变大后必然失败（`curl | head -c` 写错误 + `pipefail`）—— 发布验证路径本身是坏的，已修；后端限流表按可自造的 installation id 无界增长，已改为超阈值清扫并加洪泛回归测试；`assertValidCase` 参数改名以免污染语义扫描。
+- **发布文档集**：新增 `RELEASE_CHECKLIST.md`、`CONTRIBUTING.md`、`SECURITY.md`、`docs/{100-release-readiness,101-threat-model,102-known-limitations,103-test-matrix,SECURITY,PRIVACY,DATA_FLOW,INSTALL,TROUBLESHOOTING,COMPATIBILITY}.md`;README 换成冻结的核心描述与文档导航。
+- **RC**：`dsh-liangbiao-0.1.0.tgz`（sha256 `3123a117…9bdc3`），257 项测试全绿、两个冒烟全通、`pnpm audit --prod` 无漏洞、包内容仅 6 个预期文件。结论：本地/staging **Go**，公网与「可信」表述 **No-Go**（由后端启动门禁强制）。
+
 ### 交互改版：近实时梁位 + 单值小数 + 自由放置徽章
 
 - **近实时**：快照 cadence 默认 300s → **1s**（backend 与 host 下限同步到 1s），投票被接受后 Host 立即再拉一次快照，投票者约 1 秒内看到梁位变化；`public_liang_snapshot` 加入 200 条保留上限（同事务裁剪）。个人余额新增每 5 tick 的 `/v1/me/daily-state` 回读，带外改动（另一标签/另一 Host）也会收敛。

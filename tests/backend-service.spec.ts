@@ -217,23 +217,36 @@ describe('global snapshot', () => {
     expect(f.store.latestSnapshot(caseRow.id)?.sequence).toBe(latest?.sequence)
   })
 
-  it('keeps the published ratio at the cadence while the personal balance moves now', () => {
+  it('publishes inside the vote transaction, even with a slow poll cadence', () => {
+    // A long cadence bounds how often clients RE-READ; it must not delay the
+    // snapshot that contains the voter's own vote.
     const f = boot({ LIANGBIAO_SNAPSHOT_SECONDS: '300' })
     f.grantIncense(INSTALLATION, 2)
     const before = parseV1Snapshot(f.service.snapshotResponse().global_snapshot)
-    vote(f, INSTALLATION, 'up', 'req-cadence-001')
-    const immediately = parseV1Snapshot(f.service.snapshotResponse().global_snapshot)
-    // Raw aggregate moved; the public snapshot has not been re-published yet.
-    expect(f.store.statsFor(f.service.ensureActiveCase().id)?.up_votes).toBe(1)
-    expect(immediately.sequence).toBe(before.sequence)
-    expect(immediately.total_incense).toBe(0)
+    const response = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-cadence-001'))
 
-    f.clock.advance(300_000)
-    const published = parseV1Snapshot(f.service.snapshotResponse().global_snapshot)
-    expect(published.sequence).toBe(before.sequence + 1)
-    expect(published.total_incense).toBe(1)
-    expect(published.up_ratio).toBe(1)
-    expect(published.liangzi_state).toBe('liang_zu')
+    expect(response.global_snapshot.sequence).toBe(before.sequence + 1)
+    expect(response.global_snapshot.total_incense).toBe(1)
+    expect(response.global_snapshot.up_ratio).toBe(1)
+    expect(response.global_snapshot.liangzi_state).toBe('liang_zu')
+    expect(response.snapshot_version.sequence).toBe(response.global_snapshot.sequence)
+
+    // A read right after the vote sees the same published row (no extra wait).
+    const immediately = parseV1Snapshot(f.service.snapshotResponse().global_snapshot)
+    expect(immediately.sequence).toBe(before.sequence + 1)
+    expect(immediately.total_incense).toBe(1)
+  })
+
+  it('does not publish a new sequence for a replayed or rejected vote', () => {
+    const f = boot({ LIANGBIAO_SNAPSHOT_SECONDS: '300' })
+    f.grantIncense(INSTALLATION, 1)
+    const accepted = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-nopub-00001'))
+    const replay = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-nopub-00001'))
+    expect(replay.global_snapshot.sequence).toBe(accepted.global_snapshot.sequence)
+    const rejected = vote(f, INSTALLATION, 'up', 'req-nopub-00002')
+    expect(rejected.result).toMatchObject({ status: 'rejected', reason: 'insufficient_incense' })
+    expect(parseV1Snapshot(f.service.snapshotResponse().global_snapshot).sequence)
+      .toBe(accepted.global_snapshot.sequence)
   })
 
   it.each([

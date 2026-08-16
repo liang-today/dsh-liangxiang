@@ -29,6 +29,8 @@ import type { LiangbiaoBackendService } from './service.ts'
 
 const MAX_BODY_BYTES = 4096
 const RATE_WINDOW_MS = 60_000
+/** Sweep the rate-limit map once it grows past this many installations. */
+const RATE_WINDOW_EVICT_THRESHOLD = 1_000
 
 export interface BackendHttpOptions {
   service: LiangbiaoBackendService
@@ -102,8 +104,21 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
   /** installation -> timestamps of recent vote attempts (bounded window). */
   const voteWindows = new Map<string, number[]>()
 
+  /**
+   * Drop windows that can no longer rate-limit anything. Without this the map
+   * would keep one entry per installation id ever seen — and ids are
+   * self-minted, so that is attacker-controlled unbounded growth.
+   */
+  const evictStaleWindows = (now: number): void => {
+    for (const [installationId, window] of voteWindows) {
+      const newest = window.at(-1)
+      if (newest === undefined || now - newest >= RATE_WINDOW_MS) voteWindows.delete(installationId)
+    }
+  }
+
   const rateLimited = (installationId: string, now: number): boolean => {
     if (voteRateLimitPerMinute <= 0) return false
+    if (voteWindows.size > RATE_WINDOW_EVICT_THRESHOLD) evictStaleWindows(now)
     const window = (voteWindows.get(installationId) ?? []).filter((at) => now - at < RATE_WINDOW_MS)
     if (window.length >= voteRateLimitPerMinute) {
       voteWindows.set(installationId, window)

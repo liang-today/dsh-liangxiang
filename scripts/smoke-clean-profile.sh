@@ -68,7 +68,15 @@ fi
 
 # rolldown may reformat the banner across lines; assert on the first 200
 # bytes containing both the loader call and the bundle id.
-BUNDLE_HEAD="$(curl -sf "$BASE/plugins/dsh-liangbiao/client.js" | head -c 200)"
+#
+# Download to a file first: piping into `head -c` makes curl fail with a write
+# error once the bundle is large enough for head to close the pipe early, and
+# under `pipefail` that aborts the whole smoke run (it did, the moment inlined
+# artwork pushed client.js past a few hundred KB).
+CLIENT_BUNDLE="$(mktemp)"
+curl -sf -o "$CLIENT_BUNDLE" "$BASE/plugins/dsh-liangbiao/client.js"
+BUNDLE_HEAD="$(head -c 200 "$CLIENT_BUNDLE")"
+rm -f "$CLIENT_BUNDLE"
 case "$BUNDLE_HEAD" in
   'window.__ModuleLoader__.load('*'"dsh-liangbiao"'*) echo "client bundle served with loader banner" ;;
   *) echo "ERROR: unexpected client bundle head: $BUNDLE_HEAD" >&2; exit 1 ;;

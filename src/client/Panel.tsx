@@ -44,6 +44,8 @@ export interface PanelProps {
   justCondensed: boolean
   /** Transient feedback line under the buttons (e.g. 已上香), empty = none. */
   voteFeedback: string
+  /** Play one short pop on the 梁位 value (the container detects the change). */
+  positionPulse?: boolean
   /** Where to draw relative to the (freely placeable) badge. */
   placement?: PanelPlacement
   onVote: (voteType: VoteType) => void
@@ -69,7 +71,11 @@ const panelStyle: CSSProperties = {
 const statStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
+  justifyContent: 'center',
   gap: '6px',
+  width: '132px',
+  flex: '0 0 auto',
+  whiteSpace: 'nowrap',
 }
 
 const statIconStyle: CSSProperties = {
@@ -78,18 +84,35 @@ const statIconStyle: CSSProperties = {
 }
 
 const statValueStyle: CSSProperties = {
+  fontVariantNumeric: 'tabular-nums',
+  fontFeatureSettings: '"tnum"',
   fontSize: '17px',
   fontWeight: 700,
   color: color.textPrimary,
 }
 
-/** The personal LiangQi numbers flanking the central 梁子. */
+/**
+ * Every number in the panel is monospaced-by-digit and lives in a
+ * FIXED-WIDTH box. Layout must not depend on how large a value happens to be:
+ * `5 炷` -> `12 炷` or `3,000` -> `46,935` used to re-centre the whole row and
+ * visibly nudge the central 梁子 sideways.
+ */
+const numericStyle: CSSProperties = {
+  fontVariantNumeric: 'tabular-nums',
+  fontFeatureSettings: '"tnum"',
+}
+
+const FLANK_WIDTH = 74
+
 const flankStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   gap: '1px',
-  minWidth: '60px',
+  width: `${FLANK_WIDTH}px`,
+  flex: '0 0 auto',
+  overflow: 'hidden',
+  whiteSpace: 'nowrap',
 }
 
 const flankCaptionStyle: CSSProperties = {
@@ -137,6 +160,11 @@ const PANEL_CSS = `
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
 }
+@keyframes liangbiao-position-pop {
+  0% { transform: translateY(3px); opacity: 0.35; }
+  45% { transform: translateY(0); opacity: 1; filter: brightness(1.5); }
+  100% { transform: translateY(0); opacity: 1; }
+}
 @keyframes liangbiao-condense {
   0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
   30% { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -165,6 +193,7 @@ const visuallyHidden: CSSProperties = {
 export function Panel(props: PanelProps): ReactElement {
   const { state, reducedMotion, avatarPulse, justCondensed, voteFeedback, onVote, onClose } = props
   const placement = props.placement ?? { side: 'left', vertical: 'center' }
+  const positionPulse = props.positionPulse ?? false
   const { snapshot, personal, activeCase } = state
   const offline = state.connection !== 'live'
   const outOfIncense = personal.remainingIncense <= 0
@@ -260,7 +289,7 @@ export function Panel(props: PanelProps): ReactElement {
       >
         <div style={flankStyle} data-liangbiao-personal="incense">
           <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
-          <span style={{ fontSize: '20px', fontWeight: 700, color: color.warn }}>
+          <span style={{ ...numericStyle, fontSize: '20px', fontWeight: 700, color: color.warn }}>
             {personal.remainingIncense}
             <span style={{ fontSize: '13px', fontWeight: 600 }}> 炷</span>
           </span>
@@ -276,8 +305,12 @@ export function Panel(props: PanelProps): ReactElement {
               style={{
                 display: 'inline-flex',
                 alignItems: 'baseline',
+                justifyContent: 'center',
                 gap: '4px',
-                padding: '2px 10px',
+                // Fixed box: the value must not resize the pill as it changes.
+                width: '176px',
+                boxSizing: 'border-box',
+                padding: '2px 8px',
                 borderRadius: '999px',
                 border: `1px solid ${color.border}`,
                 background: color.bgLayer,
@@ -287,7 +320,22 @@ export function Panel(props: PanelProps): ReactElement {
               <span style={{ fontSize: '11px', color: color.textTertiary, letterSpacing: '0.5px' }}>
                 {LIANG_POSITION_LABEL}
               </span>
-              <strong style={{ fontSize: '15px', fontWeight: 700, color: color.up }}>{percents.up}</strong>
+              <strong
+                data-liangbiao-liang-position-value=""
+                style={{
+                  ...numericStyle,
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: color.up,
+                  // One short pop when the value moves: the point of the
+                  // decimals is that a vote is visible, so it should be felt.
+                  animation: positionPulse && !reducedMotion
+                    ? 'liangbiao-position-pop 0.5s ease-out 1'
+                    : undefined,
+                }}
+              >
+                {percents.up}
+              </strong>
             </span>
           )}
         >
@@ -295,7 +343,7 @@ export function Panel(props: PanelProps): ReactElement {
         </LiangQiRing>
         <div style={flankStyle} data-liangbiao-personal="next-incense">
           <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
-          <span style={{ fontSize: '17px', fontWeight: 700, color: color.textPrimary }}>
+          <span style={{ ...numericStyle, fontSize: '17px', fontWeight: 700, color: color.textPrimary }}>
             {personal.tokensToNextIncense.toLocaleString('zh-CN')}
           </span>
           <span style={{ fontSize: '11px', color: color.textTertiary }}>Token</span>
@@ -359,6 +407,7 @@ export function Panel(props: PanelProps): ReactElement {
           {VOTER_STAT_LABEL}
           <strong style={statValueStyle}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
         </span>
+        {/* Both stats sit in fixed-width boxes for the same reason as Region 2. */}
       </footer>
 
       {/* Screen-reader summary of the full state. */}

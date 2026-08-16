@@ -25,11 +25,14 @@ export interface RatioPercentPair {
 export const WAITING_PERCENT_TEXT = '--'
 
 /**
- * Decimals shown on the public 梁位 value. Four is a deliberate product choice:
- * with a busy case the ratio moves in the 4th decimal, so one vote visibly
- * changes the number instead of disappearing into a rounded integer percent.
+ * Decimals shown on the public 梁位 value.
+ *
+ * Six, not two or four: the number has to keep moving as the case grows. At
+ * 10k votes the 4th decimal is the last one that changes, so a busy day would
+ * gradually stop reacting to individual votes — exactly the feeling the single
+ * value was introduced to fix.
  */
-export const LIANG_POSITION_DECIMALS = 4
+export const LIANG_POSITION_DECIMALS = 6
 
 /**
  * Format the displayed 夯/拉 percentages from the SAME raw counts the Liangzi

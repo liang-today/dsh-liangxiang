@@ -1,6 +1,18 @@
 # dsh-liangbiao(梁标)
 
-梁标是一个 DeepSeek Harness(DSH)WebUI 插件:用 DSH 的 Input+Output Token 攒个人香火(默认 50,000 Token = 1 炷),对当天唯一的二元梁案投「夯/拉」;全网夯率决定中央「梁子」的状态(待开梁 / 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖),个人剩余香火与距下一炷的 Token 进度构成「梁气」。悬停文案恒为 `今日梁位`。
+> **用 DSH 攒香火，投下「夯」或「拉」，共同决定今日梁子从梁工一路被夯成梁祖。**
+
+梁标是一个 DeepSeek Harness(DSH)WebUI 插件:
+
+- 用 DSH 的 **Input + Output Token** 攒个人香火,默认 **50,000 Token = 1 炷**;
+- 香火就是你的投票库存,**夯与拉共用同一个库存**,一炷香换一票;
+- 对当天唯一的二元梁案投「夯 / 拉」;
+- **梁气** = 当前剩余香火(旺盛程度)+ 距下一炷的 Token 进度(环形填充);
+- 中央**梁子**只由**全网投票比例**决定:`待开梁`(零票)/ 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖;
+- 面板正中只有一个公开数字 **梁位**(= 全网夯率,6 位小数),每一票都看得见它在动;
+- 底部 **香火** = 全网已接受票数,**香客** = 至少成功投过一票的独立参与者。
+
+悬停文案恒为 `今日梁位`;入口图标就是当前梁子那一态,可以拖到画面任意位置。
 
 产品语义冻结于 [`AGENTS.md`](AGENTS.md) 与 [`docs/PRODUCT_FREEZE_V0.1.md`](docs/PRODUCT_FREEZE_V0.1.md);历史勘察文档中的旧模型(梁签、cache-read 10% 权重等)已废弃,见 [`docs/SEMANTIC_CORRECTION_R2.md`](docs/SEMANTIC_CORRECTION_R2.md)。
 
@@ -21,7 +33,22 @@
 
 未部署公网、未发布 npm。
 
-设计文档见 [`docs/`](docs/):`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵(含实际使用的接口);在线阶段见 `070` 后端架构、`071` DB schema、`072` 投票事务/并发/幂等、`073` 业务日、`074` authority 数据流、`075` authority 决策与阻塞项、`076` `/v1` API。
+## 文档导航
+
+| 想知道 | 看 |
+|---|---|
+| 怎么装、怎么跑 | [`docs/INSTALL.md`](docs/INSTALL.md) |
+| 出问题了 | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) |
+| 数据从哪来、谁说了算 | [`docs/DATA_FLOW.md`](docs/DATA_FLOW.md) |
+| 采集了什么、什么绝不出网 | [`docs/PRIVACY.md`](docs/PRIVACY.md) |
+| 安全控制清单 / 威胁模型 | [`docs/SECURITY.md`](docs/SECURITY.md)、[`docs/101-threat-model.md`](docs/101-threat-model.md) |
+| 信任模型为什么是软信任 | [`docs/075-backend-decision.md`](docs/075-backend-decision.md) |
+| 已知限制 | [`docs/102-known-limitations.md`](docs/102-known-limitations.md) |
+| 测试覆盖 | [`docs/103-test-matrix.md`](docs/103-test-matrix.md) |
+| DSH 版本基线与升级清单 | [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) |
+| RC 结论 | [`docs/100-release-readiness.md`](docs/100-release-readiness.md) |
+
+其余设计文档:`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵、`020` UI、`030–032` 领域模型/不变量/P0 矩阵、`040–044` authority 勘察、`050–062` 本地闭环、`070–076` 在线后端。
 
 ## 结构
 
