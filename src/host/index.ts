@@ -164,8 +164,8 @@ export function apply(ctx: DshHostContext): void {
     if (sessionProjections === undefined || sessions === undefined) return
     scoped.effect(() => {
       service.setAccountingAvailable(true)
-      const disposeFeed = attachUsageObservation(sessionProjections, sessions, (sessionId, value, origin) => {
-        service.observeUsage(sessionId, value, origin)
+      const disposeFeed = attachUsageObservation(sessionProjections, sessions, (sessionId, value, origin, modelId) => {
+        service.observeUsage(sessionId, value, origin, modelId)
       })
       return () => {
         disposeFeed()

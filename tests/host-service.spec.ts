@@ -118,6 +118,46 @@ describe('real token mapping (docs/041 fixture)', () => {
   })
 })
 
+describe('model incense weight (Pro=1, Flash=0.5)', () => {
+  it('100k Flash tokens earn one incense (Pro-equivalent 50k)', () => {
+    const { service } = readyService()
+    service.observeUsage('s1', buckets(100_000, 0, 0, 0), FRESH, 'deepseek-v4-flash')
+    const state = service.getWireState()
+    expect(state.personal.effectiveTokensToday).toBe(50_000)
+    expect(state.personal.usedIncenseToday).toBe(0)
+    expect(
+      service.vote({ caseId: state.activeCase.id, voteType: 'up', requestId: 'req-flash-1' }).result.status,
+    ).toBe('accepted')
+  })
+
+  it('50k Pro tokens still earn one incense', () => {
+    const { service } = readyService()
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
+    const state = service.getWireState()
+    expect(state.personal.effectiveTokensToday).toBe(50_000)
+    expect(
+      service.vote({ caseId: state.activeCase.id, voteType: 'up', requestId: 'req-pro-1' }).result.status,
+    ).toBe('accepted')
+  })
+
+  it('50k Flash tokens do not yet mint a stick', () => {
+    const { service } = readyService()
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-flash')
+    const state = service.getWireState()
+    expect(state.personal.effectiveTokensToday).toBe(25_000)
+    expect(
+      service.vote({ caseId: state.activeCase.id, voteType: 'up', requestId: 'req-flash-half' }).result.status,
+    ).toBe('rejected')
+  })
+
+  it('mixed Pro then Flash adds Pro-equivalent totals', () => {
+    const { service } = readyService()
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
+    service.observeUsage('s2', buckets(100_000, 0, 0, 0), FRESH, 'deepseek-v4-flash')
+    expect(service.getWireState().personal.effectiveTokensToday).toBe(100_000)
+  })
+})
+
 describe('replay / restart / multi-session', () => {
   it('replaying the same cumulative value never double counts', () => {
     const { service } = readyService()

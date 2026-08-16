@@ -11,7 +11,12 @@
  *    never double-count on recovery (direction-safe: never over-counts);
  *  - replay/restart produce identical cumulative values => diff 0.
  */
-import type { TokenUsageInput } from '../domain/index.ts'
+import {
+  incenseWeightBpsForModel,
+  scaleTokensByWeightBps,
+  splitScaledTokens,
+  type TokenUsageInput,
+} from '../domain/index.ts'
 
 /** Persisted per-session watermark: input = sum of the three input buckets. */
 export interface SessionUsageWatermark {
@@ -55,10 +60,15 @@ export function foldUsageObservation(
   }
 }
 
-/** One business date's accumulated observed usage. */
+/** One business date's accumulated observed usage (Pro-equivalent tokens). */
 export interface DailyUsageRecord {
   inputTokens: number
   outputTokens: number
+  /**
+   * Leftover from Flash (and other fractional) weights, in 1/10000 token.
+   * Old persisted rows omit this; treat missing as 0.
+   */
+  weightCarry: number
   /** Epoch ms of the last contribution. */
   observedAt: number
 }
@@ -66,6 +76,7 @@ export interface DailyUsageRecord {
 export const EMPTY_DAILY_USAGE: DailyUsageRecord = {
   inputTokens: 0,
   outputTokens: 0,
+  weightCarry: 0,
   observedAt: 0,
 }
 
@@ -86,6 +97,33 @@ export function addDailyUsage(
   return {
     inputTokens: record.inputTokens + deltaInput,
     outputTokens: record.outputTokens + deltaOutput,
+    weightCarry: record.weightCarry,
+    observedAt,
+  }
+}
+
+/**
+ * Credit one HWM delta after the local model weight (Pro=1, Flash=0.5).
+ * Stored totals are Pro-equivalent; the backend still sees claimed tokens.
+ */
+export function creditObservedUsage(
+  record: DailyUsageRecord,
+  deltaInput: number,
+  deltaOutput: number,
+  modelId: string | null | undefined,
+  observedAt: number,
+): DailyUsageRecord {
+  const raw = deltaInput + deltaOutput
+  const { scaled, carry } = scaleTokensByWeightBps(
+    raw,
+    incenseWeightBpsForModel(modelId),
+    record.weightCarry,
+  )
+  const split = splitScaledTokens(scaled, deltaInput, deltaOutput)
+  return {
+    inputTokens: record.inputTokens + split.input,
+    outputTokens: record.outputTokens + split.output,
+    weightCarry: carry,
     observedAt,
   }
 }

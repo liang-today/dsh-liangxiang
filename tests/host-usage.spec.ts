@@ -48,6 +48,6 @@ describe('addDailyUsage', () => {
     let record = EMPTY_DAILY_USAGE
     record = addDailyUsage(record, 30_000, 10_000, 1_000)
     record = addDailyUsage(record, 5_000, 5_000, 2_000)
-    expect(record).toEqual({ inputTokens: 35_000, outputTokens: 15_000, observedAt: 2_000 })
+    expect(record).toEqual({ inputTokens: 35_000, outputTokens: 15_000, weightCarry: 0, observedAt: 2_000 })
   })
 })

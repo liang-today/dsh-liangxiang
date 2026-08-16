@@ -7,6 +7,7 @@
  * ordering/duplication here is harmless by design.
  */
 import type { DshSessionProjections, DshSessions } from './host-services.ts'
+import { readSessionModelId } from './session-route.ts'
 import { DSH_TOKEN_USAGE_KEY } from './token-usage.ts'
 
 /**
@@ -33,23 +34,28 @@ export type UsageObservationOrigin =
  * sessions from zero while baselining resumed/forked borrowed history.
  * @param projections - the projection registry face.
  * @param sessions - the live-session store face.
- * @param onUsage - sink for `(sessionId, cumulativeProjectionValue, origin)`.
+ * @param onUsage - sink for `(sessionId, cumulativeProjectionValue, origin, modelId)`.
  * @returns the change-feed disposer.
  */
 export function attachUsageObservation(
   projections: DshSessionProjections,
   sessions: DshSessions,
-  onUsage: (sessionId: string, value: unknown, origin: UsageObservationOrigin) => void,
+  onUsage: (
+    sessionId: string,
+    value: unknown,
+    origin: UsageObservationOrigin,
+    modelId: string | null,
+  ) => void,
 ): () => void {
   // Catch-up: sessions whose usage flowed before this plugin loaded.
   for (const session of sessions.list()) {
     const snapshot = projections.snapshot(session)
     const value = snapshot.values[DSH_TOKEN_USAGE_KEY]
-    if (value !== undefined) onUsage(session.id, value, { kind: 'catchup' })
+    if (value !== undefined) onUsage(session.id, value, { kind: 'catchup' }, readSessionModelId(session))
   }
   return projections.onChanged((session, key, value) => {
     if (key === DSH_TOKEN_USAGE_KEY) {
-      onUsage(session.id, value, { kind: 'live', firstLiveSeq: session.firstLiveSeq })
+      onUsage(session.id, value, { kind: 'live', firstLiveSeq: session.firstLiveSeq }, readSessionModelId(session))
     }
   })
 }

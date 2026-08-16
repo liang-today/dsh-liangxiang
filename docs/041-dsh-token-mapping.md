@@ -34,7 +34,9 @@ input     = uncachedInputTokens + cacheReadTokens + cacheWriteTokens   （三桶
 effective = input + outputTokens
 ```
 
-实现：`src/compat/dsh/token-usage.ts` `normalizeDshTokenUsage`。禁止：cacheRead×0.1、丢弃 cacheWrite、reasoning 重复计、Context Occupancy、UI 抓取。V0.1 无目标模型过滤。
+实现：`src/compat/dsh/token-usage.ts` `normalizeDshTokenUsage`。禁止：cacheRead×0.1、丢弃 cacheWrite、reasoning 重复计、Context Occupancy、UI 抓取。
+
+本地攒香速率（不是过滤）：对每次 HWM **增量**按会话当前精确路由 ID 加权（`requestHeader().config.model`，docs/001 Q11）：`deepseek-v4-pro` = 1，`deepseek-v4-flash` = 0.5，缺省/未知 = 1。计入当日账本的是 Pro 当量 Token；1 炷仍是 50,000 当量。服务器仍收 `claimed_effective_tokens`，不收模型名。
 
 ## 消费通道
 

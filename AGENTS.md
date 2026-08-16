@@ -347,6 +347,21 @@ Rules:
 - do not scrape/estimate Token counts from the UI
 - do not mint 梁签
 
+### Local model earning rate
+
+After Effective Token is computed for one usage **delta**, the Host scales it
+by the DSH route model id (exact id, never a display name):
+
+```text
+deepseek-v4-pro    → 1
+deepseek-v4-flash  → 0.5
+missing / unknown  → 1   (the unit is Pro-equivalent)
+```
+
+1 炷 is still `50,000` **Pro-equivalent** tokens. Flash needs ~100k raw
+tokens for one stick. Vote power is unchanged (1 炷 = 1 vote). The daily
+claim sent to the backend is already weighted; do not send model names.
+
 ### Personal accounting
 
 ```text
@@ -943,6 +958,7 @@ Before completing any major Liangbiao change, be able to answer **yes** to all o
 - Are global ratios and Liangzi state from the same snapshot/version?
 - Is Effective Token still Input + Output?
 - Are cache-read and cache-write both counted as Input under the verified current DSH mapping?
+- Is Flash earning incense at half Pro rate locally (Pro-equivalent claim), without sending model names to the server?
 - Is the client prevented from self-authorizing production vote capacity?
 - Are concurrency and idempotency enforced by the authoritative layer?
 - Are obsolete ranking/winner/third-option/personal-avatar concepts absent?
