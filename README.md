@@ -84,6 +84,15 @@ LIANGBIAO_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 4. 改 Client 代码后 `pnpm run build`(或 `pnpm exec tsdown --watch`):web-app 组合默认挂载的 HMR 会 stat-poll 到 `lib/client.js` 变化并热替换,无需重启;改 Host 代码需重启 `dev:web`。
 5. `pnpm run dev:uninstall` — 移除依赖与 bundle 层,并断言 dump-config 中不再出现;重启后徽章与 Host effect 一并消失(注册寿命随插件 fiber)。
 
+### Profile 模块图纪律（踩过的坑）
+
+`dsh plugin add` 既写 `dsh.profile.bundles`，也把包 pnpm-install 进 `<profile>/node_modules`。对 **in-box bundle**（`@deepseek-ai/dsh-web-app`）只需要前者：装进来的那份连同它的闭包（`dsh-tools`、`dsh-session`、`dsh-storage-domain`…）会遮蔽 launcher 维护的 `<DSH_HOME>/profiles/node_modules`，于是同一个包在一个进程里存在**两个模块实例**。DSH 用 `unique symbol` 连接内部接缝（`dsh-tools` 的 `TOOL_RUNTIME_SCHEDULER`，由 `dsh-agent-loop` 读取），两个实例就是两个 symbol：
+
+- 每次工具调用都报 `Cannot read properties of undefined (reading 'prepare')`；
+- 由于 assistant 的 `tool_calls` 已写进会话，之后同一会话还会连带报 `An assistant message with 'tool_calls' must be followed by tool messages`。
+
+所以 `dev:install` / `smoke:clean-profile` 在加完 bundle 行后会把该依赖再移除，并用 `node scripts/assert-profile-modules.mjs <profile-dir>` 断言「每个 in-box 包只有一个实例」。手工装过插件后可以随时单独跑这条断言。
+
 ### 发行验证
 
 `pnpm run smoke:clean-profile` 会:打 tarball → 在全新 profile 安装 web-app + tarball → 断言 dump-config 有 bundle 层 → 启动 WebUI → 断言 `/plugins/dsh-liangbiao/client.js` 以 `window.__ModuleLoader__.load` banner 开头、`__DSH_BOOT__` 启动图包含本插件、Host 生命周期日志出现 → 清理。

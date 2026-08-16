@@ -149,6 +149,28 @@ describe('routing and boundary validation', () => {
     expect(response.body).toMatchObject({ error: { field: 'vote.vote_type' } })
   })
 
+  it('answers an oversized body with 413 instead of killing the connection', async () => {
+    const h = await start()
+    await grant(h, 100_000)
+    const caseId = await activeCaseId(h)
+    // A destroyed socket looks like a network fault, which is exactly the state
+    // a vote client must not be left in — it cannot tell rejected from unknown.
+    const response = await fetch(`${h.baseUrl}/v1/votes`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', [INSTALLATION_HEADER]: INSTALLATION },
+      body: JSON.stringify({
+        case_id: caseId,
+        vote_type: 'up',
+        request_id: 'req-oversized-01',
+        pad: 'x'.repeat(8_000),
+      }),
+    })
+    expect(response.status).toBe(413)
+    expect(await response.json()).toMatchObject({ error: { code: 'invalid_request' } })
+    const state = parseV1Bootstrap((await h.get('/v1/bootstrap')).body).authoritative_personal_state
+    expect(state.used_incense).toBe(0)
+  })
+
   it('rate limits vote requests per installation', async () => {
     const h = await start({ voteRateLimitPerMinute: 2 })
     await grant(h, 500_000)
