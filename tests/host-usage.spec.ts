@@ -3,7 +3,37 @@
  * counting under replay/replacement, daily accumulation.
  */
 import { describe, expect, it } from 'vitest'
+import { UsageProjection, type UsageProjectionSink } from '../src/host/usage-projection.ts'
 import { addDailyUsage, EMPTY_DAILY_USAGE, foldUsageObservation } from '../src/host/usage-ledger.ts'
+import { createBusinessDateProvider } from '../src/shared/business-date.ts'
+
+const NOON_SHANGHAI = Date.UTC(2026, 7, 16, 4, 0, 0)
+const BUSINESS_DATE = '2026-08-16'
+
+function buckets(uncachedInput: number, output: number) {
+  return {
+    uncachedInputTokens: uncachedInput,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    outputTokens: output,
+  }
+}
+
+function memorySink(): UsageProjectionSink {
+  return {
+    putWatermark: () => undefined,
+    putDailyUsage: () => undefined,
+    deleteDailyUsage: () => undefined,
+  }
+}
+
+function projection(now = NOON_SHANGHAI): UsageProjection {
+  return new UsageProjection({
+    dates: createBusinessDateProvider('Asia/Shanghai'),
+    clock: { now: () => now },
+    warn: () => undefined,
+  })
+}
 
 describe('foldUsageObservation', () => {
   it('baselines on first sighting (no retroactive credit)', () => {
@@ -49,5 +79,40 @@ describe('addDailyUsage', () => {
     record = addDailyUsage(record, 30_000, 10_000, 1_000)
     record = addDailyUsage(record, 5_000, 5_000, 2_000)
     expect(record).toEqual({ inputTokens: 35_000, outputTokens: 15_000, weightCarry: 0, observedAt: 2_000 })
+  })
+})
+
+describe('UsageProjection.hydrate merge', () => {
+  it('does not rewind a catch-up baseline when persist hydrates stale watermarks', () => {
+    const usage = projection()
+    usage.observe('s1', buckets(2_000_000, 150_000), { kind: 'catchup' })
+    expect(usage.effectiveTokensFor(BUSINESS_DATE)).toBe(0)
+
+    usage.hydrate(
+      new Map([['s1', { inputHwm: 50_000, outputHwm: 0 }]]),
+      new Map(),
+      memorySink(),
+    )
+    usage.observe('s1', buckets(2_000_000, 150_000), { kind: 'live', firstLiveSeq: 0 })
+    expect(usage.effectiveTokensFor(BUSINESS_DATE)).toBe(0)
+  })
+
+  it('still credits the persist-to-now gap when hydrate wins the race', () => {
+    const usage = projection()
+    usage.hydrate(
+      new Map([['s1', { inputHwm: 100_000, outputHwm: 0 }]]),
+      new Map(),
+      memorySink(),
+    )
+    usage.observe('s1', buckets(150_000, 0), { kind: 'catchup' })
+    expect(usage.effectiveTokensFor(BUSINESS_DATE)).toBe(50_000)
+  })
+
+  it('keeps in-memory watermarks for sessions persist does not know', () => {
+    const usage = projection()
+    usage.observe('live-only', buckets(80_000, 0), { kind: 'catchup' })
+    usage.hydrate(new Map(), new Map(), memorySink())
+    usage.observe('live-only', buckets(80_000, 0), { kind: 'live', firstLiveSeq: 0 })
+    expect(usage.effectiveTokensFor(BUSINESS_DATE)).toBe(0)
   })
 })
