@@ -82,8 +82,7 @@ export class BackendLiangService implements LiangHostService {
   private readonly listeners = new Set<() => void>()
 
   private claimTimer: ReturnType<typeof setTimeout> | null = null
-  private claimInFlight = false
-  private claimAgain = false
+  private claimInFlight: Promise<void> | null = null
   private lastClaimSent = -1
   /**
    * How much of `locallyObserved` is already represented in `claimed`.
@@ -219,6 +218,11 @@ export class BackendLiangService implements LiangHostService {
 
   async vote(intent: WireVoteRequest): Promise<VoteOutcome> {
     const installationId = this.requireIdentity()
+    // Flush any unclaimed local usage before the vote: the backend's spend
+    // authority is the claim, so a vote must never race ahead of a debounced
+    // claim. Otherwise the panel shows incense the backend has not recorded yet
+    // and the vote comes back `insufficient_incense` (remaining=0) until 上达天听.
+    await this.flushClaim()
     const response = await this.client.vote(installationId, {
       case_id: intent.caseId,
       vote_type: intent.voteType,
@@ -366,18 +370,44 @@ export class BackendLiangService implements LiangHostService {
     this.claimTimer.unref?.()
   }
 
+  /**
+   * Submit any unclaimed local usage right now. The vote path calls this so a
+   * vote is evaluated against the newest claim instead of a debounced one.
+   */
+  private async flushClaim(): Promise<void> {
+    if (this.claimTimer !== null) {
+      clearTimeout(this.claimTimer)
+      this.claimTimer = null
+    }
+    await this.submitClaim()
+  }
+
   private async submitClaim(): Promise<void> {
     const installationId = this.installationId
     if (this.disposed || installationId === null) return
-    if (this.claimInFlight) {
-      this.claimAgain = true
-      return
+    // A claim is already running: wait for it, then re-evaluate below so the
+    // newest local total is what actually gets submitted (old claimAgain tail).
+    if (this.claimInFlight !== null) {
+      await this.claimInFlight
     }
     // Claim for the BACKEND's business date: the host must not decide the day.
     const businessDate = this.businessDate === '' ? this.usage.localBusinessDate() : this.businessDate
     const claimed = this.usage.effectiveTokensFor(businessDate)
     if (claimed <= this.lastClaimSent) return
-    this.claimInFlight = true
+    const run = this.claimOnce(installationId, claimed, businessDate)
+    this.claimInFlight = run
+    try {
+      await run
+    } finally {
+      this.claimInFlight = null
+    }
+  }
+
+  private async claimOnce(
+    installationId: string,
+    claimed: number,
+    businessDate: string,
+  ): Promise<void> {
     try {
       const response = await this.client.submitClaim(installationId, claimed, businessDate)
       this.personal = response.authoritative_personal_state
@@ -396,12 +426,6 @@ export class BackendLiangService implements LiangHostService {
       this.bump()
     } catch (error) {
       this.reportFailure('token-claim', error)
-    } finally {
-      this.claimInFlight = false
-      if (this.claimAgain) {
-        this.claimAgain = false
-        this.scheduleClaim()
-      }
     }
   }
 
