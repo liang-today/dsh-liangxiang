@@ -396,7 +396,11 @@ export class BackendLiangService implements LiangHostService {
     // Claim for the BACKEND's business date: the host must not decide the day.
     const businessDate = this.businessDate === '' ? this.usage.localBusinessDate() : this.businessDate
     const claimed = this.usage.effectiveTokensFor(businessDate)
-    if (claimed <= this.lastClaimSent) return
+    if (claimed <= this.lastClaimSent) {
+      this.warn(`[${PLUGIN_PACKAGE_NAME}] claim skip: claimed=${claimed} lastClaimSent=${this.lastClaimSent} date=${businessDate}`)
+      return
+    }
+    this.warn(`[${PLUGIN_PACKAGE_NAME}] claim submit: claimed=${claimed} date=${businessDate}`)
     const run = this.claimOnce(installationId, claimed, businessDate)
     this.claimInFlight = run
     try {

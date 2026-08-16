@@ -339,6 +339,10 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     if (path === `${BACKEND_API_PREFIX}/token-claims`) {
       try {
         const claim = parseV1TokenClaimRequest(body)
+        log(
+          `[liangbiao-backend] claim ${who(req, installationId)} `
+          + `tokens=${claim.claimed_effective_tokens} date=${claim.claim_business_date}`,
+        )
         const prior = store.incenseFor(installationId, service.businessDate())
         const priorEarned = prior === undefined
           ? 0
