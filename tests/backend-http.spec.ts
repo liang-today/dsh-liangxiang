@@ -26,7 +26,7 @@ interface Harness {
 
 let harness: Harness | null = null
 
-async function start(options: { voteRateLimitPerMinute?: number, tokenPerIncense?: number } = {}): Promise<Harness> {
+async function start(options: { voteRateLimitPerMinute?: number, tokenPerIncense?: number, logs?: string[] } = {}): Promise<Harness> {
   const config = resolveBackendConfig(
     {
       LIANGBIAO_BACKEND_DB: ':memory:',
@@ -44,7 +44,7 @@ async function start(options: { voteRateLimitPerMinute?: number, tokenPerIncense
     store,
     voteRateLimitPerMinute: options.voteRateLimitPerMinute ?? 0,
     allowUnsigned: true,
-    log: () => undefined,
+    log: options.logs === undefined ? () => undefined : (message) => options.logs?.push(message),
   })
   await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
   const address = api.server.address()
@@ -503,5 +503,29 @@ describe('community Ed25519 auth', () => {
     await new Promise<void>((resolve) => api.server.close(() => resolve()))
     api.reset()
     store.close()
+  })
+})
+
+describe('quiet access log', () => {
+  it('logs hello, new incense, and votes — not health or snapshot polls', async () => {
+    const logs: string[] = []
+    const h = await start({ logs })
+    await fetch(`${h.baseUrl}/v1/health`)
+    await fetch(`${h.baseUrl}/v1/snapshot`)
+    await h.get('/v1/bootstrap')
+    await grant(h, 150_000)
+    const caseId = await activeCaseId(h)
+    await h.post('/v1/votes', { case_id: caseId, vote_type: 'up', request_id: 'req-log-000001' })
+    await fetch(`${h.baseUrl}/v1/snapshot`)
+
+    const text = logs.join('\n')
+    expect(text).toContain('hello install=install-http')
+    expect(text).toContain('incense +3炷')
+    expect(text).toContain('vote 夯 accepted')
+    expect(text).toContain('梁位=')
+    expect(text).not.toContain('/v1/health')
+    expect(text).not.toContain('/v1/snapshot')
+    expect(logs.some((line) => line.includes('hello'))).toBe(true)
+    expect(logs.filter((line) => line.includes('vote 夯'))).toHaveLength(1)
   })
 })

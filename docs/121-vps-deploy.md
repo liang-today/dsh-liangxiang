@@ -111,7 +111,24 @@ sudo cp /var/lib/liangbiao/data/liangbiao.sqlite /var/backups/liangbiao-$(date +
 sudo systemctl start liangbiao-backend
 ```
 
-## 7. 不要做的事
+## 7. 看日志（不刷屏）
+
+systemd 收 stdout。跟关键交互，不跟 1 秒快照轮询：
+
+```bash
+sudo journalctl -u liangbiao-backend -f
+```
+
+会出现的行：
+
+- `hello install=lk_… ip=…` — 某个 Host 连上（bootstrap）
+- `incense +N炷 … remaining=… tokens=…` — 真的多攒出了香火（普通 Token 申报不打）
+- `vote 夯/拉 accepted … 梁位=… 香火=… 香客=…` — 有人投了
+- `vote … rejected …` / `deny 401 …` — 票被拒或鉴权失败
+
+不会刷：`/v1/health`、`/v1/snapshot`、`/v1/me/daily-state`。身份只打前 12 字符，不打私钥/社区口令。
+
+## 8. 不要做的事
 
 - 不要 `npm publish`
 - 不要声称 verified / 可信全网 / 一人一票
