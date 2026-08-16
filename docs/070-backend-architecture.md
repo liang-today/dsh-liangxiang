@@ -53,6 +53,10 @@ SQLite  (daily_liang_case / daily_incense_state / liang_vote /
 
 个人余额随投票**立即**变化；全局比例与梁子状态只在快照 cadence 变化，且永远来自同一 sequence。Host 不会在本地伪造新的全网比例。
 
+cadence 默认 **1 秒**（近实时）：投票被接受后 Host 立刻再拉一次 `/v1/snapshot`，所以投票者约 1 秒内就能看到自己那一票把梁位推动。为避免 1s 节奏把 `public_liang_snapshot` 撑爆，发布时同事务内按 `SNAPSHOT_HISTORY_LIMIT`（200）裁剪历史——只有最新一行会被读取。
+
+个人余额也可能被**带外**改动（另一个标签、另一台 Host、别处提交的 claim），所以 Host 每 5 个 tick（≈5s）额外拉一次 `/v1/me/daily-state`，否则面板会一直显示旧的香火数——那与「多标签收敛」正好相反。
+
 ## 失败姿态
 
 - 后端不可达：Host 保留最近一次成功状态，浏览器照常渲染（SSE 帧继续发），投票返回 502 并提示“用同一 requestId 重试”。

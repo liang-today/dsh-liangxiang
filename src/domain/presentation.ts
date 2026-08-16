@@ -25,21 +25,52 @@ export interface RatioPercentPair {
 export const WAITING_PERCENT_TEXT = '--'
 
 /**
+ * Decimals shown on the public 梁位 value. Four is a deliberate product choice:
+ * with a busy case the ratio moves in the 4th decimal, so one vote visibly
+ * changes the number instead of disappearing into a rounded integer percent.
+ */
+export const LIANG_POSITION_DECIMALS = 4
+
+/**
  * Format the displayed 夯/拉 percentages from the SAME raw counts the Liangzi
  * state is derived from.
  *
- * The up percent truncates instead of rounding: rounding could print `90%`
+ * The up percent TRUNCATES instead of rounding: rounding could print `90%`
  * while the up ratio is still 89.6% (梁圣), which reads as a broken threshold
  * even though the snapshot is internally consistent. Truncation keeps the
- * printed number on the same side of every whole-percent boundary as the
- * state. The down percent is the complement so the pair always sums to 100%.
+ * printed number on the same side of every boundary as the state, at any number
+ * of decimals. The down percent is the complement, so the pair always sums to
+ * exactly 100%.
+ *
+ * @param decimals - decimal places; 0 for a compact integer percent.
  */
-export function formatRatioPercents(upVotes: number, downVotes: number): RatioPercentPair {
+export function formatRatioPercents(
+  upVotes: number,
+  downVotes: number,
+  decimals = 0,
+): RatioPercentPair {
   assertCount(upVotes, 'invalid_vote_count', 'upVotes')
   assertCount(downVotes, 'invalid_vote_count', 'downVotes')
+  assertCount(decimals, 'invalid_vote_count', 'decimals')
   const total = upVotes + downVotes
   if (total === 0) return { up: WAITING_PERCENT_TEXT, down: WAITING_PERCENT_TEXT }
-  // Integer math: no float drift near the 60/70/80/90 boundaries.
-  const upPercent = Math.floor((upVotes * 100) / total)
-  return { up: `${upPercent}%`, down: `${100 - upPercent}%` }
+  // Integer math on scaled basis points: no float drift near 60/70/80/90.
+  const scale = 10 ** decimals
+  const scaledUp = Math.floor((upVotes * 100 * scale) / total)
+  const format = (scaled: number): string =>
+    `${(scaled / scale).toFixed(decimals)}%`
+  return { up: format(scaledUp), down: format(100 * scale - scaledUp) }
+}
+
+/**
+ * The single public number the panel leads with: 梁位 = global 夯 ratio, shown
+ * with decimals so every accepted vote is visible. `--` until the first vote
+ * (never a fake 50%).
+ */
+export function formatLiangPosition(
+  upVotes: number,
+  downVotes: number,
+  decimals = LIANG_POSITION_DECIMALS,
+): string {
+  return formatRatioPercents(upVotes, downVotes, decimals).up
 }

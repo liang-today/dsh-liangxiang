@@ -33,9 +33,25 @@ export const DEFAULT_CASE_TITLE = 'DeepSeek Harness 是夯还是拉'
 export const VOTE_UP_LABEL = '夯！'
 export const VOTE_DOWN_LABEL = '拉！'
 
-/** Short direction names used next to the global ratios (Region 2). */
+/** Short direction names used in tooltips and the accessible summary. */
 export const VOTE_UP_NAME = '夯'
 export const VOTE_DOWN_NAME = '拉'
+
+/**
+ * The one public number under the central 梁子: 梁位 = global 夯 ratio, shown
+ * with decimals. 拉 is its complement and is never given a second big number.
+ */
+export const LIANG_POSITION_LABEL = '梁位'
+
+/** Caption of the personal "tokens to the next incense stick" flank. */
+export const NEXT_INCENSE_LABEL = '下一炷'
+
+/**
+ * Caption of the personal remaining-incense flank. Deliberately NOT plain
+ * 香火: Region 4 already uses that word for the GLOBAL accepted-vote count, and
+ * two different numbers under one label is the fastest way to misread the panel.
+ */
+export const MY_INCENSE_LABEL = '我的香火'
 
 /** Region 4 stat labels. */
 export const INCENSE_STAT_LABEL = '香火'

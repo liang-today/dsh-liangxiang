@@ -63,7 +63,9 @@ export {
   type DailyLiangCase,
 } from './case.ts'
 export {
+  LIANG_POSITION_DECIMALS,
   WAITING_PERCENT_TEXT,
+  formatLiangPosition,
   formatRatioPercents,
   liangQiIntensity,
   type RatioPercentPair,

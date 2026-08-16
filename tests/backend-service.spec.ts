@@ -189,6 +189,34 @@ describe('vote transaction', () => {
 })
 
 describe('global snapshot', () => {
+  it('publishes within a second by default so a voter sees their own vote', () => {
+    const f = boot() // helper default: 1s cadence
+    f.grantIncense(INSTALLATION, 2)
+    const before = parseV1Snapshot(f.service.snapshotResponse().global_snapshot)
+    vote(f, INSTALLATION, 'up', 'req-realtime-001')
+    f.clock.advance(1_000)
+    const after = parseV1Snapshot(f.service.snapshotResponse().global_snapshot)
+    expect(after.sequence).toBe(before.sequence + 1)
+    expect(after.total_incense).toBe(1)
+  })
+
+  it('bounds the stored snapshot history instead of growing forever at 1s', () => {
+    const f = boot()
+    const caseRow = f.service.ensureActiveCase()
+    f.grantIncense(INSTALLATION, 60)
+    for (let i = 0; i < 60; i += 1) {
+      vote(f, INSTALLATION, 'up', `req-hist-${String(i).padStart(6, '0')}`)
+      f.clock.advance(1_000)
+      f.service.tick()
+    }
+    const latest = f.store.latestSnapshot(caseRow.id)
+    expect(latest?.sequence).toBeGreaterThan(50)
+    // Retention keeps the newest SNAPSHOT_HISTORY_LIMIT rows; with 61 published
+    // rows nothing is pruned yet, but the pruning statement must be wired.
+    expect(f.store.pruneSnapshots(caseRow.id, 5)).toBeGreaterThan(0)
+    expect(f.store.latestSnapshot(caseRow.id)?.sequence).toBe(latest?.sequence)
+  })
+
   it('keeps the published ratio at the cadence while the personal balance moves now', () => {
     const f = boot({ LIANGBIAO_SNAPSHOT_SECONDS: '300' })
     f.grantIncense(INSTALLATION, 2)

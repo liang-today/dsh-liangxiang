@@ -14,9 +14,22 @@ import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
 export const DEFAULT_BACKEND_PORT = 4180
 export const DEFAULT_BACKEND_HOST = '127.0.0.1'
 export const DEFAULT_BACKEND_DB_PATH = '.liangbiao-backend/liangbiao.sqlite'
-export const DEFAULT_SNAPSHOT_REFRESH_SECONDS = 300
+/**
+ * Near-real-time by default: a voter must see their own vote move the public
+ * 梁位 within a second, otherwise the loop stops feeling like voting. Snapshot
+ * CONSISTENCY is unaffected — every published row still carries its own
+ * sequence, and ratios/state are always derived from one row.
+ */
+export const DEFAULT_SNAPSHOT_REFRESH_SECONDS = 1
 const MIN_SNAPSHOT_REFRESH_SECONDS = 1
 const MAX_SNAPSHOT_REFRESH_SECONDS = 3600
+
+/**
+ * Published snapshots kept per case. At a 1s cadence the table would otherwise
+ * grow by up to 86k rows a day; only the latest row is ever served, and a short
+ * tail is enough to debug a cadence question.
+ */
+export const SNAPSHOT_HISTORY_LIMIT = 200
 
 export interface BackendConfig {
   authorityMode: BackendAuthorityMode

@@ -7,6 +7,7 @@ import {
   DomainError,
   assertValidThresholdPolicy,
   deriveLiangziState,
+  formatLiangPosition,
   formatRatioPercents,
   liangziStateForUpRatio,
   liangziUpRatioBand,
@@ -83,6 +84,35 @@ describe('state bands and their displayed percentages', () => {
 
   it('zero votes render `--` on both sides', () => {
     expect(formatRatioPercents(0, 0)).toEqual({ up: '--', down: '--' })
+    expect(formatLiangPosition(0, 0)).toBe('--')
+  })
+
+  it('shows 梁位 with four decimals so one vote is visible', () => {
+    // 10,665/12,846 = 83.021952…%
+    expect(formatLiangPosition(10_665, 2_181)).toBe('83.0219%')
+    // One more 夯 vote must change the printed value.
+    expect(formatLiangPosition(10_666, 2_181)).toBe('83.0232%')
+    expect(formatLiangPosition(1, 1)).toBe('50.0000%')
+    expect(formatLiangPosition(1, 0)).toBe('100.0000%')
+    expect(formatLiangPosition(0, 7)).toBe('0.0000%')
+  })
+
+  it('truncates 梁位 at four decimals too (never crosses a threshold)', () => {
+    // 449/501 = 89.62075…% stays 梁圣 and must not print 89.6208 rounded up
+    // past a boundary; at the 90% boundary the printed value must not reach it.
+    expect(formatLiangPosition(449, 52)).toBe('89.6207%')
+    expect(deriveLiangziState(449, 52)).toBe('liang_sheng')
+    const nearly = formatLiangPosition(899_999, 100_001)
+    expect(Number(nearly.replace('%', ''))).toBeLessThan(90)
+    expect(deriveLiangziState(899_999, 100_001)).toBe('liang_sheng')
+  })
+
+  it('keeps the decimal pair summing to exactly 100%', () => {
+    for (const [up, down] of [[1, 2], [449, 52], [10_665, 2_181], [7, 0]] as const) {
+      const percents = formatRatioPercents(up, down, 4)
+      const sum = Number(percents.up.replace('%', '')) + Number(percents.down.replace('%', ''))
+      expect(sum).toBeCloseTo(100, 10)
+    }
   })
 
   it('the displayed percent always falls inside the rendered state band', () => {
