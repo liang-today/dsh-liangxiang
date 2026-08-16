@@ -94,6 +94,9 @@ export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合�
 export const RECONCILE_LABEL = '上达天听'
 export const RECONCILE_HINT = '和服务器重新对账香火数据'
 export const RECONCILE_DONE = '已上达天听'
+export const RECONCILE_CONFIRM_PROMPT = '向服务器重新对账香火？'
+export const RECONCILE_CONFIRM_OK = '确认'
+export const RECONCILE_CONFIRM_CANCEL = '取消'
 
 /** Display names of the central Liangzi states (WAITING is the zero-vote placeholder, not a tier). */
 export const LIANGZI_STATE_LABELS: Readonly<Record<LiangziState, string>> = {

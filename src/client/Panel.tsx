@@ -29,11 +29,15 @@ import {
   VOTE_DOWN_NAME,
   VOTE_UP_LABEL,
   VOTE_UP_NAME,
+  RECONCILE_CONFIRM_CANCEL,
+  RECONCILE_CONFIRM_OK,
+  RECONCILE_CONFIRM_PROMPT,
   RECONCILE_HINT,
   RECONCILE_LABEL,
   liangziRatioRangeText,
 } from '../shared/index.ts'
 import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
+import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangQiRing, RING_SIZE } from './LiangQiRing.tsx'
 import type { LiangbiaoViewState } from './store.ts'
@@ -52,8 +56,11 @@ export interface PanelProps {
   placement?: PanelPlacement
   onVote: (voteType: VoteType) => void
   onClose: () => void
-  /** Drop local Token observation and re-read the server incense ledger. */
-  onReconcile: () => void
+  /** First click: open the confirm chip. Confirm is the expensive sync. */
+  onReconcileAsk: () => void
+  onReconcileConfirm: () => void
+  onReconcileCancel: () => void
+  reconcilePending: boolean
 }
 
 const panelStyle: CSSProperties = {
@@ -62,7 +69,7 @@ const panelStyle: CSSProperties = {
   maxHeight: 'min(560px, 80vh)',
   overflowY: 'auto',
   boxSizing: 'border-box',
-  padding: '16px',
+  padding: '16px 16px 36px',
   borderRadius: '14px',
   border: `1px solid ${color.border}`,
   background: color.bgLayer,
@@ -199,6 +206,59 @@ const PANEL_CSS = `
   45% { transform: translateY(0); opacity: 1; filter: brightness(1.5); }
   100% { transform: translateY(0); opacity: 1; }
 }
+[data-liangbiao-reconcile] {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: ${color.bgSubtle};
+  padding: 3px 6px;
+  margin: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.4px;
+  color: ${color.textSecondary};
+  box-shadow: inset 0 0 0 1px ${color.border};
+  transform: translateY(0);
+  transition: color 60ms ease, background-color 60ms ease, box-shadow 60ms ease, transform 60ms ease;
+}
+[data-liangbiao-reconcile]:hover:not(:disabled),
+[data-liangbiao-reconcile]:focus-visible {
+  color: ${color.textPrimary};
+  background: ${color.bgLayer};
+  box-shadow: inset 0 0 0 1px ${color.brand}, 0 4px 10px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+[data-liangbiao-reconcile] [data-liangbiao-hint] {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 2;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid ${color.border};
+  background: ${color.bgLayer};
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+  color: ${color.textPrimary};
+  font-size: 11px;
+  letter-spacing: 0;
+  line-height: 1.35;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 40ms ease, transform 40ms ease;
+  transition-delay: 0s;
+}
+[data-liangbiao-reconcile]:hover:not(:disabled) [data-liangbiao-hint],
+[data-liangbiao-reconcile]:focus-visible [data-liangbiao-hint] {
+  opacity: 1;
+  transform: translateY(0);
+}
 @keyframes liangbiao-condense {
   0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
   30% { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -225,7 +285,11 @@ const visuallyHidden: CSSProperties = {
 }
 
 export function Panel(props: PanelProps): ReactElement {
-  const { state, reducedMotion, avatarPulse, justCondensed, voteFeedback, onVote, onClose, onReconcile } = props
+  const {
+    state, reducedMotion, avatarPulse, justCondensed, voteFeedback,
+    onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
+    reconcilePending,
+  } = props
   const placement = props.placement ?? { side: 'left', vertical: 'center' }
   const positionPulse = props.positionPulse ?? false
   const { snapshot, personal, activeCase } = state
@@ -248,7 +312,8 @@ export function Panel(props: PanelProps): ReactElement {
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
       event.stopPropagation()
-      onClose()
+      if (reconcilePending) onReconcileCancel()
+      else onClose()
     }
   }
 
@@ -420,7 +485,7 @@ export function Panel(props: PanelProps): ReactElement {
         {statusLine}
       </p>
 
-      {/* Region 4 — social stats */}
+      {/* Region 4 — social stats. 上达天听 is corner chrome, not a fifth region. */}
       <footer
         data-liangbiao-region="social"
         style={{
@@ -444,30 +509,85 @@ export function Panel(props: PanelProps): ReactElement {
           {VOTER_STAT_LABEL}
           <strong style={statValueStyle}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
         </span>
-        {/* Both stats sit in fixed-width boxes for the same reason as Region 2. */}
       </footer>
-      <p style={{ margin: '8px 0 0', textAlign: 'center' }}>
-        <button
-          type="button"
-          data-liangbiao-reconcile=""
-          title={RECONCILE_HINT}
-          aria-label={`${RECONCILE_LABEL}：${RECONCILE_HINT}`}
-          disabled={offline}
-          onClick={onReconcile}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            padding: '2px 6px',
-            cursor: offline ? 'not-allowed' : 'pointer',
-            fontFamily: font.family,
-            fontSize: '12px',
-            letterSpacing: '1px',
-            color: color.textTertiary,
-          }}
-        >
-          {RECONCILE_LABEL}
-        </button>
-      </p>
+      <div
+        data-liangbiao-reconcile-slot=""
+        style={{ position: 'absolute', right: '12px', bottom: '8px', zIndex: 2 }}
+      >
+          {reconcilePending
+            ? (
+              <div
+                role="alertdialog"
+                aria-label={RECONCILE_CONFIRM_PROMPT}
+                data-liangbiao-reconcile-confirm=""
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '6px',
+                  minWidth: '148px',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  border: `1px solid ${color.border}`,
+                  background: color.bgLayer,
+                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.14)',
+                }}
+              >
+                <span style={{ fontSize: '11px', color: color.textPrimary, lineHeight: 1.4 }}>
+                  {RECONCILE_CONFIRM_PROMPT}
+                </span>
+                <span style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    data-liangbiao-reconcile-cancel=""
+                    onClick={onReconcileCancel}
+                    style={{
+                      border: `1px solid ${color.border}`,
+                      background: color.bgSubtle,
+                      color: color.textPrimary,
+                      borderRadius: '6px',
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      fontFamily: font.family,
+                    }}
+                  >
+                    {RECONCILE_CONFIRM_CANCEL}
+                  </button>
+                  <button
+                    type="button"
+                    data-liangbiao-reconcile-ok=""
+                    onClick={onReconcileConfirm}
+                    style={{
+                      border: 'none',
+                      background: color.buttonPrimaryFill,
+                      color: color.buttonPrimaryText,
+                      borderRadius: '6px',
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      fontFamily: font.family,
+                    }}
+                  >
+                    {RECONCILE_CONFIRM_OK}
+                  </button>
+                </span>
+              </div>
+            )
+            : (
+              <button
+                type="button"
+                data-liangbiao-reconcile=""
+                aria-label={`${RECONCILE_LABEL}：${RECONCILE_HINT}`}
+                disabled={offline}
+                onClick={onReconcileAsk}
+              >
+                <HeavenHearIcon size={14} />
+                {RECONCILE_LABEL}
+                <span data-liangbiao-hint="" aria-hidden="true">{RECONCILE_HINT}</span>
+              </button>
+            )}
+        </div>
 
       {/* Screen-reader summary of the full state. */}
       <p aria-live="polite" style={visuallyHidden}>{summary}</p>
