@@ -6,7 +6,7 @@
  *   POST /liangbiao/api/vote       minimal vote intent -> result + fresh state
  *   POST /liangbiao/api/refresh    force host re-read (hover / panel open)
  *   POST /liangbiao/api/reconcile  drop local Token observation, re-read incense
- *   POST /liangbiao/api/dev/credit simulate Token credit (display-only online)
+ *   POST /liangbiao/api/dev/credit LOCAL_FAKE_DEV only: simulate Token credit
  *
  * The handler validates every request body at the boundary, bounds body
  * size, and owns SSE connection cleanup (`closeAllConnections` runs on

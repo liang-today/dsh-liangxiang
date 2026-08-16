@@ -4,7 +4,11 @@
 
 ### 本地演示入账
 
-- 本地可 `POST /liangbiao/api/dev/credit` 或点面板「演示 +1 炷」灌香火，不走模型。连着 staging 时只改本机画面、不上报 claim。`pnpm run dev:credit -- 9`。上达天听会清掉演示香火。
+- 面板「演示 +1 炷」只改本页画面，不请求 Host/后端。上达天听清掉。`pnpm run dev:credit` 仍仅 LOCAL_FAKE_DEV。
+
+### 在线香火刷新
+
+- 在线 Host 按后端 `business_date` 桶化本机 Token 观测，时区不一致时香火不再读成 0。浏览器在 Host 重启后仍接受新的低 revision 帧。
 
 ### 下一炷可见数字
 

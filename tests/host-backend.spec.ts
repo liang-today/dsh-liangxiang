@@ -39,7 +39,7 @@ function usage(uncachedInput: number, cacheRead: number, cacheWrite: number, out
 
 async function startStack(
   env: Record<string, string | undefined> = {},
-  hostOptions: { claimDebounceMs?: number } = {},
+  hostOptions: { claimDebounceMs?: number, timezone?: string, start?: number } = {},
 ): Promise<Stack> {
   const config = resolveBackendConfig(
     {
@@ -50,7 +50,7 @@ async function startStack(
     },
     () => undefined,
   )
-  const clock = createMutableClock(FIXED_NOW)
+  const clock = createMutableClock(hostOptions.start ?? FIXED_NOW)
   const store = openBackendStore(config.databasePath)
   const backend = new LiangbiaoBackendService({ store, config, clock, warn: () => undefined })
   const api = createBackendHttpApi({
@@ -66,7 +66,7 @@ async function startStack(
 
   const host = new BackendLiangService({
     client: createBackendClient({ baseUrl: `http://127.0.0.1:${address.port}` }),
-    timezone: config.timezone,
+    timezone: hostOptions.timezone ?? config.timezone,
     clock,
     warn: () => undefined,
     claimDebounceMs: hostOptions.claimDebounceMs ?? 0,
@@ -130,16 +130,20 @@ describe('online bootstrap', () => {
     expect(view.personal.remainingIncense).toBe(0)
   })
 
-  it('paints simulated incense on the panel without claiming it to the backend', async () => {
-    const s = await startStack({}, { claimDebounceMs: 0 })
-    s.host.creditSimulatedUsage(9 * 50_000)
-    const view = wireToViewState(frame(s), 'live')
-    expect(view.personal.remainingIncense).toBe(9)
-    expect(view.personal.earnedIncenseToday).toBe(9)
-    await new Promise((resolve) => setTimeout(resolve, 30))
-    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(0)
-    await s.host.reconcileNow()
-    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(0)
+  it('paints and claims usage when the host TZ date disagrees with the backend', async () => {
+    // 22:00 UTC 16 Aug is already 17 Aug in Asia/Shanghai. A UTC-configured
+    // host used to bucket tokens under the 16th while the panel read the 17th.
+    const s = await startStack({}, {
+      claimDebounceMs: 0,
+      timezone: 'UTC',
+      start: Date.UTC(2026, 7, 16, 22, 0, 0),
+    })
+    expect(s.backend.businessDate()).toBe('2026-08-17')
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    expect(frame(s).personal.effectiveTokensToday).toBe(50_000)
+    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(1)
+    await waitFor(() => claimedOnBackend(s, 50_000), 'the claim to land on the backend date')
   })
 
   it('paints local incense immediately, without waiting for the remote claim', async () => {

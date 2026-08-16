@@ -105,9 +105,9 @@ export const RECONCILE_CONFIRM_PROMPT = '向服务器重新对账香火？'
 export const RECONCILE_CONFIRM_OK = '确认'
 export const RECONCILE_CONFIRM_CANCEL = '取消'
 
-/** Pump incense without talking to a model. Staging: display overlay only. */
+/** Frontend-only UI probe: pump incense on this tab's picture. */
 export const DEV_CREDIT_LABEL = '演示 +1 炷'
-export const DEV_CREDIT_HINT = '仅本机画面，不消耗模型 Token，也不报到服务器'
+export const DEV_CREDIT_HINT = '仅本页画面，不请求服务器，也不消耗模型 Token'
 
 /** Display names of the central Liangzi states (WAITING is the zero-vote placeholder, not a tier). */
 export const LIANGZI_STATE_LABELS: Readonly<Record<LiangziState, string>> = {

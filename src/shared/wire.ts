@@ -70,6 +70,11 @@ export interface LiangbiaoWireState {
   schemaVersion: typeof WIRE_SCHEMA_VERSION
   /** Monotonic; stale frames must be dropped by the client. */
   revision: number
+  /**
+   * Host process start identity. Revision is process-local: a new epoch
+   * means the Host restarted and the client must accept a low revision.
+   */
+  hostEpoch: number
   authorityMode: AuthorityMode
   snapshotRefreshSeconds: number
   businessDate: string
@@ -196,6 +201,7 @@ export function parseWireState(raw: unknown): LiangbiaoWireState {
   return {
     schemaVersion: WIRE_SCHEMA_VERSION,
     revision: requireCount(record.revision, 'state.revision'),
+    hostEpoch: requireCount(record.hostEpoch, 'state.hostEpoch'),
     authorityMode,
     snapshotRefreshSeconds: requireCount(record.snapshotRefreshSeconds, 'state.snapshotRefreshSeconds'),
     businessDate: requireString(record.businessDate, 'state.businessDate'),

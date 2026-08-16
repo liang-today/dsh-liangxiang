@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Credit simulated incense on the local fake ledger. Does not call a model.
 #
-# Requires `pnpm run dev:web`. Works in local fake AND online staging:
-# the credit is display-only when a backend is connected (never claimed).
+# LOCAL_FAKE_DEV only (unset LIANGBIAO_BACKEND_URL). Staging UI tests should
+# click 「演示 +1 炷」 on the panel — that path is frontend-only.
 #
 # Usage:
 #   pnpm run dev:credit           # +1 炷
@@ -12,6 +12,11 @@
 
 PORT="${LIANGBIAO_DEV_PORT:-3080}"
 URL="http://127.0.0.1:${PORT}/liangbiao/api/dev/credit"
+
+# pnpm run dev:credit -- 9 forwards a literal "--" as $1.
+if [ "${1:-}" = "--" ]; then
+  shift
+fi
 
 sticks=""
 tokens=""
@@ -44,7 +49,8 @@ except json.JSONDecodeError:
     raise SystemExit(1)
 if "error" in data:
     print("error:", data["error"], file=sys.stderr)
-    print("Restart pnpm run dev:web so the Host picks up /liangbiao/api/dev/credit.", file=sys.stderr)
+    print("Need LOCAL_FAKE_DEV: unset LIANGBIAO_BACKEND_URL, restart pnpm run dev:web.", file=sys.stderr)
+    print("Staging UI tests: click 「演示 +1 炷」 on the panel (frontend-only).", file=sys.stderr)
     raise SystemExit(1)
 personal = data["personal"]
 eff = personal["effectiveTokensToday"]

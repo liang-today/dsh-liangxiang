@@ -138,6 +138,45 @@ describe('live store', () => {
     store.dispose()
   })
 
+  it('accepts a lower revision when the Host process epoch changes', async () => {
+    const service = makeService()
+    const controls = fakeTransport(service)
+    const store = createLiveLiangbiaoStore(controls.transport)
+    store.start()
+    await settled()
+    const restarted = JSON.parse(JSON.stringify(service.getWireState())) as LiangbiaoWireState
+    restarted.hostEpoch = restarted.hostEpoch + 1
+    restarted.revision = 0
+    restarted.personal.effectiveTokensToday = 500_000
+    controls.pushFrame(restarted)
+    expect(store.getSnapshot().personal.earnedIncenseToday).toBe(10)
+    store.dispose()
+  })
+
+  it('creditDev paints incense on this tab without calling the Host', async () => {
+    const service = makeService()
+    const controls = fakeTransport(service)
+    const store = createLiveLiangbiaoStore(controls.transport)
+    store.start()
+    await settled()
+    const before = store.getSnapshot().personal.remainingIncense
+    const requestsBefore = controls.requests.length
+    await store.creditDev({ sticks: 9 })
+    expect(store.getSnapshot().personal.remainingIncense).toBe(before + 9)
+    expect(controls.requests.length).toBe(requestsBefore)
+    service.observeUsage('s1', {
+      uncachedInputTokens: 447_000,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      outputTokens: 0,
+    }, { kind: 'live', firstLiveSeq: 0 })
+    controls.pushFrame(service.getWireState())
+    expect(store.getSnapshot().personal.remainingIncense).toBe(before + 10)
+    await store.reconcile()
+    expect(store.getSnapshot().personal.remainingIncense).toBe(before + 1)
+    store.dispose()
+  })
+
   it('retries a failed vote once with the SAME request id', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
