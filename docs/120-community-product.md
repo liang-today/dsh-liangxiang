@@ -146,8 +146,10 @@ DSH 以后若出现签名用量 / 可验证身份：重跑 Gate A，另开可信
 
 ## 6. 建议的立即顺序
 
-1. 你确认 C1 的两张许可证（非 localhost 后端、GitHub Release）。
-2. 实现 C1，第一波只拉局域网/Tailscale 朋友（Pi）。
-3. 手感过了再 C2，再谈公网 C3。
+C1 身份 / 远端绑定 / 社区口令 / VPS 配方已经落地，见 [`121-vps-deploy.md`](121-vps-deploy.md)。
 
-下一回合如果你说「做 C1」，从社区文案 + 后端可远端连 + 香客安装文档 + Pi 配方开始，Release 等你点头再打。
+1. 你申请 Linux VPS，按 121 装后端 + Caddy。
+2. 多台 DSH Host 指向同一 `LIANGBIAO_BACKEND_URL` + 同一 `LIANGBIAO_COMMUNITY_KEY` 做联调。
+3. 手感过了再 C2（默认 URL、首次说明、运营改案）。GitHub Release 仍等你点头。
+
+公网部署的是**社区软信任**，不是可信全网。`VERIFIED_PRODUCTION` 仍然启动即拒。

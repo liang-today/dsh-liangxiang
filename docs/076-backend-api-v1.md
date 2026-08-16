@@ -5,7 +5,11 @@
 
 ## 通用
 
-- 错误体：`{ "error": { "code", "message", "field?" } }`，`code ∈ invalid_request | missing_installation | unknown_route | method_not_allowed | stale_case | case_not_active | idempotency_conflict | insufficient_incense | not_ready | internal_error`。
+- 错误体：`{ "error": { "code", "message", "field?" } }`，`code ∈ invalid_request | missing_installation | invalid_signature | device_conflict | unknown_route | method_not_allowed | stale_case | case_not_active | idempotency_conflict | insufficient_incense | not_ready | internal_error`。
+- 鉴权（`/health` 与 `/snapshot` 除外）：
+  - 默认要求 Ed25519 签名头：`x-liangbiao-installation`、`x-liangbiao-public-key`、`x-liangbiao-signature`、`x-liangbiao-timestamp`；可选 `x-liangbiao-device`（MAC 集合哈希）。
+  - 若服务器设了 `LIANGBIAO_COMMUNITY_KEY`，还要带 `x-liangbiao-community-key`。
+  - `LIANGBIAO_ALLOW_UNSIGNED=1` 才接受旧的「只有 installation 头」请求，仅供 localhost smoke。
 - 请求体上限 4KB，超限回 **413**（`invalid_request`）并带 `connection: close`——刻意不掐 socket：被掐断的连接与网络故障无法区分，会让投票方在「已拒绝」和「结果未知」之间猜，从而错误重试。
 - 请求日志只含 method/path/status/installation 前 8 字符，绝不含 prompt/回复/路径/密钥。
 - 时间戳统一 epoch ms；业务日 `YYYY-MM-DD`。
@@ -69,6 +73,8 @@
 单调 ratchet：更小的值不生效（`claim_applied: false`）；`claim_business_date` 与服务器业务日不符则忽略。
 名字里的 “claim” 是契约的一部分：这是声明，不是证明。
 
+默认还有一层 **drip**：按身份 `created_at` 与服务器时钟，每分钟最多接受 `LIANGBIAO_MAX_TOKENS_PER_MINUTE`（默认 50,000 = 1 炷）的增长。这防的是瞬间自报天文数字，**不能**证明 DSH 真的跑过。`0` 关闭（单测 / smoke）。
+
 ## POST /v1/votes
 
 ```jsonc
@@ -101,4 +107,6 @@
 ## 限流
 
 `POST /v1/votes` 按 installation 每分钟 `LIANGBIAO_VOTE_RATE_LIMIT` 次（默认 600，0 关闭），超出 429。
-这是防误用/防抖，不是安全边界——A3 下没有身份，限流可以被换 id 绕过。
+这是防误用/防抖，不是安全边界——没有 DSH 身份，限流可以被换密钥对绕过（设备指纹只挡住同一 MAC 集合上的第二次安装）。
+
+香火增长另有 `LIANGBIAO_MAX_TOKENS_PER_MINUTE`（默认 50k/分钟）。详见 [`121`](121-vps-deploy.md)。

@@ -25,6 +25,8 @@ export interface HostRuntimeConfig {
    * in-process LOCAL_FAKE_DEV loop.
    */
   backendUrl: string | null
+  /** Shared community admission key; sent on every authenticated backend call. */
+  communityKey: string | null
 }
 
 function parsePositiveInt(
@@ -93,15 +95,17 @@ export function resolveHostRuntimeConfig(
   warn: (message: string) => void,
 ): HostRuntimeConfig {
   const service = resolveHostConfig(env, warn)
+  const communityRaw = env.LIANGBIAO_COMMUNITY_KEY?.trim()
+  const communityKey = communityRaw === undefined || communityRaw === '' ? null : communityRaw
   const raw = env.LIANGBIAO_BACKEND_URL?.trim()
-  if (raw === undefined || raw === '') return { service, backendUrl: null }
+  if (raw === undefined || raw === '') return { service, backendUrl: null, communityKey }
   try {
-    return { service, backendUrl: normalizeBaseUrl(raw) }
+    return { service, backendUrl: normalizeBaseUrl(raw), communityKey }
   } catch (error) {
     warn(
       `[dsh-liangbiao] ignoring invalid LIANGBIAO_BACKEND_URL=${raw} `
       + `(${error instanceof Error ? error.message : String(error)}); running in local mode`,
     )
-    return { service, backendUrl: null }
+    return { service, backendUrl: null, communityKey }
   }
 }

@@ -28,6 +28,7 @@ import { systemClock } from '../shared/business-date.ts'
 import { HOST_PLUGIN_NAME, PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
 import { createBackendClient } from './backend-client.ts'
 import { BackendLiangService } from './backend-service.ts'
+import { type CommunityKeypair } from './community-keys.ts'
 import { resolveHostRuntimeConfig } from './config.ts'
 import { FakeAuthoritativeLiangService } from './fake-service.ts'
 import { createLiangbiaoApi } from './routes.ts'
@@ -53,13 +54,19 @@ export function apply(ctx: DshHostContext): void {
     }
   }, 'liangbiao: lifecycle marker')
 
-  const { service: serviceConfig, backendUrl } = resolveHostRuntimeConfig(process.env, warn)
+  const { service: serviceConfig, backendUrl, communityKey } = resolveHostRuntimeConfig(process.env, warn)
+  const identityRef: { current: CommunityKeypair | null } = { current: null }
   const online = backendUrl !== null
     ? new BackendLiangService({
-      client: createBackendClient({ baseUrl: backendUrl }),
+      client: createBackendClient({
+        baseUrl: backendUrl,
+        signer: () => identityRef.current,
+        communityKey,
+      }),
       timezone: serviceConfig.timezone,
       clock: systemClock,
       warn,
+      identityRef,
     })
     : null
   const local = online === null
@@ -69,7 +76,7 @@ export function apply(ctx: DshHostContext): void {
 
   console.log(
     `[${PLUGIN_PACKAGE_NAME}] authority mode: ${online === null ? 'LOCAL_FAKE_DEV (in-process)' : `DEV_STAGING_ONLY (${backendUrl as string})`}`
-    + ' — soft trust: pseudonymous installation id, unverifiable Token claims',
+    + ' — community soft trust: Ed25519 installation key, unverifiable Token claims',
   )
 
   ctx.effect(() => () => service.dispose?.(), 'liangbiao: service lifecycle')
@@ -130,7 +137,7 @@ export function apply(ctx: DshHostContext): void {
             // backend's, never this file's.
             const persisted = await opened.port.load()
             online.hydrateUsage(persisted.watermarks, persisted.dailyUsage, opened.port)
-            online.attachIdentity(await opened.identity.resolve())
+            online.attachCommunityIdentity(await opened.identity.resolve())
           } else {
             await local?.attachPersistence(opened.port)
           }

@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v1) for the Liangbiao backend.
+ * SQLite schema (v2) for the Liangbiao backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -25,7 +25,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 
-export const BACKEND_SCHEMA_USER_VERSION = 1
+export const BACKEND_SCHEMA_USER_VERSION = 2
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -97,6 +97,16 @@ CREATE TABLE IF NOT EXISTS public_liang_snapshot (
 );
 `
 
+const DDL_V2 = `
+CREATE TABLE IF NOT EXISTS community_identity (
+  installation_id     TEXT    PRIMARY KEY,
+  public_key          TEXT    NOT NULL UNIQUE,
+  device_fingerprint  TEXT    UNIQUE,
+  created_at          INTEGER NOT NULL,
+  last_seen_at        INTEGER NOT NULL
+);
+`
+
 /** Apply the schema and record its user_version (idempotent). */
 export function migrate(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON')
@@ -108,6 +118,7 @@ export function migrate(db: DatabaseSync): void {
       `liangbiao backend database is at schema version ${current}, newer than this build (${BACKEND_SCHEMA_USER_VERSION})`,
     )
   }
+  if (current < 2) db.exec(DDL_V2)
   if (current !== BACKEND_SCHEMA_USER_VERSION) {
     db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
   }

@@ -20,6 +20,10 @@ import type {
   LiangPersistencePort,
   PersistedVoteRecord,
 } from '../../host/fake-service.ts'
+import {
+  generateCommunityKeypair,
+  type CommunityKeypair,
+} from '../../host/community-keys.ts'
 import type { DailyUsageRecord, SessionUsageWatermark } from '../../host/usage-ledger.ts'
 import type { DshKvTable, DshOpenDomain, DshStorageDomainFacility, DshValueSchema } from './host-services.ts'
 
@@ -101,11 +105,22 @@ const voteSchema: DshValueSchema = {
 }
 
 const identitySchema: DshValueSchema = {
-  parse(raw: unknown): { installationId: string } {
+  parse(raw: unknown): CommunityKeypair | { installationId: string } {
     const record = asStoredRecord(raw)
     const installationId = record.installationId
     if (typeof installationId !== 'string' || !INSTALLATION_ID_PATTERN.test(installationId)) {
       throw new RecordShapeError('installationId must match [A-Za-z0-9._-]{8,64}')
+    }
+    const publicKey = record.publicKey
+    const privateKeyPem = record.privateKeyPem
+    if (typeof publicKey === 'string' && typeof privateKeyPem === 'string') {
+      const fingerprint = record.deviceFingerprint
+      return {
+        installationId,
+        publicKey,
+        privateKeyPem,
+        deviceFingerprint: typeof fingerprint === 'string' ? fingerprint : null,
+      }
     }
     return { installationId }
   },
@@ -128,16 +143,16 @@ const LIANGBIAO_DOMAIN_SPEC = {
 const IDENTITY_KEY = 'installation'
 
 /**
- * The pseudonymous installation identity port.
+ * The community installation identity port.
  *
- * The id is MINTED BY LIANGBIAO (a fresh uuid), never read from DSH's own
- * `.anonymous-user-id`: borrowing DSH's identifier would blur a DSH-internal
- * value into something we send to a server, and it still would not be
- * authentication (docs/002, docs/043).
+ * SSH convention: a fresh Ed25519 keypair is minted on first install. The
+ * private key never leaves this Host. The public key is what the backend
+ * stores. This is NOT DSH authentication and does not verify Token usage
+ * (docs/002, docs/043).
  */
 export interface LiangbiaoIdentityPort {
-  /** The stored id, minting and persisting one on first use. */
-  resolve(): Promise<string>
+  /** The stored keypair, minting and persisting one on first use. */
+  resolve(): Promise<CommunityKeypair>
 }
 
 export interface LiangbiaoPersistenceHandle {
@@ -200,15 +215,17 @@ export async function openLiangbiaoPersistence(
   }
 
   const identity: LiangbiaoIdentityPort = {
-    async resolve(): Promise<string> {
+    async resolve(): Promise<CommunityKeypair> {
       const stored = identityTable.get(IDENTITY_KEY)
       if (stored !== undefined) {
-        return (identitySchema.parse(stored) as { installationId: string }).installationId
+        const parsed = identitySchema.parse(stored) as CommunityKeypair | { installationId: string }
+        if ('privateKeyPem' in parsed && parsed.privateKeyPem.length > 0) {
+          return parsed
+        }
       }
-      const installationId = `inst-${crypto.randomUUID()}`
-      // Await this write: an unpersisted id would silently reset the ledger.
-      await identityTable.put(IDENTITY_KEY, { installationId })
-      return installationId
+      const minted = generateCommunityKeypair()
+      await identityTable.put(IDENTITY_KEY, minted)
+      return minted
     },
   }
 

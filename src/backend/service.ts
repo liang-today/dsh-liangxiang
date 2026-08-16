@@ -44,6 +44,7 @@ import {
 } from '../shared/backend-v1.ts'
 import { createBusinessDateProvider, systemClock, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import { SNAPSHOT_HISTORY_LIMIT, type BackendConfig } from './config.ts'
+import { cappedClaimedTokens } from './token-drip.ts'
 import {
   isUniqueConstraintError,
   type BackendStore,
@@ -167,12 +168,18 @@ export class LiangbiaoBackendService {
     if (claim.claim_business_date === caseRow.business_date) {
       applied = this.store.transaction(() => {
         this.ensureRow(installationId, caseRow, now)
-        return this.store.raiseClaim(
-          installationId,
-          caseRow.business_date,
-          claim.claimed_effective_tokens,
+        const row = this.requireRow(installationId, caseRow.business_date)
+        const identity = this.store.identityByInstallation(installationId)
+        const createdAt = identity?.created_at ?? row.created_at
+        const capped = cappedClaimedTokens({
+          requested: claim.claimed_effective_tokens,
+          current: row.claimed_effective_tokens,
+          identityCreatedAt: createdAt,
           now,
-        )
+          maxTokensPerMinute: this.config.maxTokensPerMinute,
+        })
+        if (capped <= row.claimed_effective_tokens) return false
+        return this.store.raiseClaim(installationId, caseRow.business_date, capped, now)
       })
     } else {
       this.warn(

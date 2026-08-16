@@ -42,6 +42,7 @@ async function startStack(env: Record<string, string | undefined> = {}): Promise
     {
       LIANGBIAO_BACKEND_DB: ':memory:',
       LIANGBIAO_SNAPSHOT_SECONDS: '300',
+      LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
       ...env,
     },
     () => undefined,
@@ -49,7 +50,13 @@ async function startStack(env: Record<string, string | undefined> = {}): Promise
   const clock = createMutableClock(FIXED_NOW)
   const store = openBackendStore(config.databasePath)
   const backend = new LiangbiaoBackendService({ store, config, clock, warn: () => undefined })
-  const api = createBackendHttpApi({ service: backend, voteRateLimitPerMinute: 0, log: () => undefined })
+  const api = createBackendHttpApi({
+    service: backend,
+    store,
+    voteRateLimitPerMinute: 0,
+    allowUnsigned: true,
+    log: () => undefined,
+  })
   await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
   const address = api.server.address()
   if (address === null || typeof address === 'string') throw new Error('backend did not bind a port')

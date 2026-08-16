@@ -44,7 +44,7 @@ export function createBackendFixture(
   start = FIXED_NOW,
 ): BackendFixture {
   const config = resolveBackendConfig(
-    { LIANGBIAO_BACKEND_DB: ':memory:', LIANGBIAO_SNAPSHOT_SECONDS: '1', ...env },
+    { LIANGBIAO_BACKEND_DB: ':memory:', LIANGBIAO_SNAPSHOT_SECONDS: '1', LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0', ...env },
     () => undefined,
   )
   const store = openBackendStore(config.databasePath)

@@ -13,7 +13,12 @@
  */
 import {
   BACKEND_API_PREFIX,
+  COMMUNITY_KEY_HEADER,
+  DEVICE_HEADER,
   INSTALLATION_HEADER,
+  PUBLIC_KEY_HEADER,
+  SIGNATURE_HEADER,
+  TIMESTAMP_HEADER,
   completeV1VoteResponse,
   isMissingVoteSnapshotError,
   parseV1Bootstrap,
@@ -27,6 +32,7 @@ import {
   type V1VoteRequest,
   type V1VoteResponse,
 } from '../shared/backend-v1.ts'
+import { signRequest, type CommunityKeypair } from './community-keys.ts'
 
 const DEFAULT_TIMEOUT_MS = 6_000
 const READ_RETRY_DELAY_MS = 300
@@ -47,6 +53,10 @@ export interface BackendClientOptions {
   baseUrl: string
   timeoutMs?: number
   fetchImpl?: typeof fetch
+  /** Live community keypair; null until the Host has minted/loaded identity. */
+  signer?: () => CommunityKeypair | null
+  /** Shared admission secret when the community backend requires one. */
+  communityKey?: string | null
 }
 
 export interface BackendClient {
@@ -88,11 +98,33 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     inFlight.add(controller)
     const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
+      const rawBody = init.body === undefined ? '' : JSON.stringify(init.body)
       const headers: Record<string, string> = {}
       if (init.installationId !== undefined) headers[INSTALLATION_HEADER] = init.installationId
       if (init.body !== undefined) headers['content-type'] = 'application/json'
+      const identity = options.signer?.() ?? null
+      if (identity !== null && init.installationId !== undefined) {
+        const timestamp = Date.now()
+        headers[PUBLIC_KEY_HEADER] = identity.publicKey
+        headers[TIMESTAMP_HEADER] = String(timestamp)
+        headers[SIGNATURE_HEADER] = signRequest({
+          privateKeyPem: identity.privateKeyPem,
+          method: init.method,
+          path: `${BACKEND_API_PREFIX}${path}`,
+          timestamp,
+          body: rawBody,
+          installationId: init.installationId,
+        })
+        if (identity.deviceFingerprint !== null) {
+          headers[DEVICE_HEADER] = identity.deviceFingerprint
+        }
+      }
+      const communityKey = options.communityKey?.trim()
+      if (communityKey !== undefined && communityKey !== '') {
+        headers[COMMUNITY_KEY_HEADER] = communityKey
+      }
       const request: RequestInit = { method: init.method, headers, signal: controller.signal }
-      if (init.body !== undefined) request.body = JSON.stringify(init.body)
+      if (init.body !== undefined) request.body = rawBody
       const response = await doFetch(`${baseUrl}${BACKEND_API_PREFIX}${path}`, request)
       const accepted = init.acceptStatus?.(response.status) ?? response.ok
       const payload = await response.json().catch(() => undefined)

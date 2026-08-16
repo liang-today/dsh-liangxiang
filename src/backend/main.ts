@@ -8,6 +8,7 @@
  */
 import { resolveBackendConfig, BackendConfigError } from './config.ts'
 import { createBackendHttpApi } from './http.ts'
+import { warnIfClockSkewed } from './ntp.ts'
 import { LiangbiaoBackendService } from './service.ts'
 import { openBackendStore } from './store.ts'
 
@@ -17,7 +18,10 @@ export function startBackend(env: Record<string, string | undefined> = process.e
   const service = new LiangbiaoBackendService({ store, config })
   const api = createBackendHttpApi({
     service,
+    store,
     voteRateLimitPerMinute: config.voteRateLimitPerMinute,
+    allowUnsigned: config.allowUnsigned,
+    communityKey: config.communityKey,
   })
 
   service.ensureActiveCase()
@@ -32,14 +36,19 @@ export function startBackend(env: Record<string, string | undefined> = process.e
 
   api.server.listen(config.port, config.host, () => {
     console.log(
-      `[liangbiao-backend] listening on http://${config.host}:${config.port}${''}`
+      `[liangbiao-backend] listening on http://${config.host}:${config.port}`
       + ` (authority_mode=${config.authorityMode}, tz=${config.timezone},`
-      + ` token_per_incense=${config.tokenPerIncense}, snapshot=${config.snapshotRefreshSeconds}s)`,
+      + ` token_per_incense=${config.tokenPerIncense}, snapshot=${config.snapshotRefreshSeconds}s,`
+      + ` max_tokens_per_minute=${config.maxTokensPerMinute},`
+      + ` unsigned=${config.allowUnsigned ? 'allowed' : 'rejected'},`
+      + ` community_key=${config.communityKey === null ? 'off' : 'on'})`,
     )
     console.log(
-      '[liangbiao-backend] SOFT TRUST: installation ids are pseudonymous and Token figures are'
-      + ' unverifiable host claims — this is not verified usage voting.',
+      '[liangbiao-backend] COMMUNITY SOFT TRUST: Ed25519 installation keys prove the same'
+      + ' Host still holds the private key. Token figures are unverifiable host claims.'
+      + ' This is not verified usage voting.',
     )
+    void warnIfClockSkewed()
   })
 
   let closed = false
