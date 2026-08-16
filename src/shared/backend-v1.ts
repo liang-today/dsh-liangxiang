@@ -515,13 +515,32 @@ function parseVoteResult(raw: unknown, field: string): V1VoteResult {
   throw new WireError(`${field}.status`, `expected accepted/rejected, got ${String(record.status)}`)
 }
 
-/** Validate a vote response (host boundary). */
-export function parseV1VoteResponse(raw: unknown): V1VoteResponse {
+/**
+ * Vote body without requiring `global_snapshot`. Older staging binaries
+ * accepted the vote and omitted the snapshot; the host then 502'd even
+ * though the incense was already spent. The client stitches a snapshot
+ * from GET /v1/snapshot when this envelope has none.
+ */
+export interface V1VoteEnvelope {
+  schema_version: typeof BACKEND_SCHEMA_VERSION
+  result: V1VoteResult
+  authoritative_personal_state: V1PersonalState
+  snapshot_version: { sequence: number, captured_at: number } | null
+  global_snapshot: V1Snapshot | null
+}
+
+/** True when a vote parse failed only because the snapshot fields are absent. */
+export function isMissingVoteSnapshotError(error: unknown): boolean {
+  if (!(error instanceof WireError)) return false
+  return error.field === 'voteResponse.global_snapshot' || error.field === 'voteResponse.snapshot_version'
+}
+
+/** Parse result + personal state; snapshot fields are optional. */
+export function parseV1VoteEnvelope(raw: unknown): V1VoteEnvelope {
   const record = asRecord(raw, 'voteResponse')
   if (record.schema_version !== BACKEND_SCHEMA_VERSION) {
     throw new WireError('voteResponse.schema_version', `unsupported schema version ${String(record.schema_version)}`)
   }
-  const version = asRecord(record.snapshot_version, 'voteResponse.snapshot_version')
   const personal = parseV1PersonalState(
     record.authoritative_personal_state,
     'voteResponse.authoritative_personal_state',
@@ -532,20 +551,56 @@ export function parseV1VoteResponse(raw: unknown): V1VoteResponse {
       throw new WireError('voteResponse.result', 'accepted counters disagree with the personal state in the same response')
     }
   }
-  const snapshot = parseV1Snapshot(record.global_snapshot, 'voteResponse.global_snapshot')
-  const sequence = requireCount(version.sequence, 'voteResponse.snapshot_version.sequence')
-  if (snapshot.sequence !== sequence) {
+  let snapshot: V1Snapshot | null = null
+  if (record.global_snapshot !== undefined && record.global_snapshot !== null) {
+    snapshot = parseV1Snapshot(record.global_snapshot, 'voteResponse.global_snapshot')
+  }
+  let snapshotVersion: V1VoteEnvelope['snapshot_version'] = null
+  if (record.snapshot_version !== undefined && record.snapshot_version !== null) {
+    const version = asRecord(record.snapshot_version, 'voteResponse.snapshot_version')
+    snapshotVersion = {
+      sequence: requireCount(version.sequence, 'voteResponse.snapshot_version.sequence'),
+      captured_at: requireFinite(version.captured_at, 'voteResponse.snapshot_version.captured_at'),
+    }
+  }
+  if (snapshot !== null && snapshotVersion !== null && snapshot.sequence !== snapshotVersion.sequence) {
     throw new WireError('voteResponse.snapshot_version', 'sequence disagrees with the snapshot in the same response')
   }
   return {
     schema_version: BACKEND_SCHEMA_VERSION,
     result,
     authoritative_personal_state: personal,
-    snapshot_version: {
-      sequence,
-      captured_at: requireFinite(version.captured_at, 'voteResponse.snapshot_version.captured_at'),
-    },
+    snapshot_version: snapshotVersion,
     global_snapshot: snapshot,
+  }
+}
+
+/** Attach a published snapshot to a vote envelope (recovery path). */
+export function completeV1VoteResponse(envelope: V1VoteEnvelope, snapshot: V1Snapshot): V1VoteResponse {
+  return {
+    schema_version: envelope.schema_version,
+    result: envelope.result,
+    authoritative_personal_state: envelope.authoritative_personal_state,
+    snapshot_version: { sequence: snapshot.sequence, captured_at: snapshot.captured_at },
+    global_snapshot: snapshot,
+  }
+}
+
+/** Validate a complete vote response (host boundary). */
+export function parseV1VoteResponse(raw: unknown): V1VoteResponse {
+  const envelope = parseV1VoteEnvelope(raw)
+  if (envelope.global_snapshot === null) {
+    throw new WireError('voteResponse.global_snapshot', 'expected an object')
+  }
+  if (envelope.snapshot_version === null) {
+    throw new WireError('voteResponse.snapshot_version', 'expected an object')
+  }
+  return {
+    schema_version: envelope.schema_version,
+    result: envelope.result,
+    authoritative_personal_state: envelope.authoritative_personal_state,
+    snapshot_version: envelope.snapshot_version,
+    global_snapshot: envelope.global_snapshot,
   }
 }
 

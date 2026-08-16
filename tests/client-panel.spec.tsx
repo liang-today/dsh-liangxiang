@@ -81,7 +81,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(next && textContent([next])).toContain('3K')
     expect(next && textContent([next])).not.toContain('3,000')
     expect(next && textContent([next])).toContain('Token')
-    // 10,665/12,846 = 83.0219…%, truncated to four decimals.
+    // 10,665/12,846 = 83.0219…%, truncated to six decimals.
     expect(position && textContent([position])).toContain('梁位')
     expect(position && textContent([position])).toContain('83.021952%')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)

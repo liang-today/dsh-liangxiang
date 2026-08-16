@@ -79,12 +79,14 @@
   "result": { "status": "accepted", "request_id": "…", "vote_type": "up",
               "used_incense": 1, "remaining_incense": 4, "replayed": false },
   "authoritative_personal_state": {…},
-  "snapshot_version": { "sequence": 3, "captured_at": 0 } }
+  "snapshot_version": { "sequence": 3, "captured_at": 0 },
+  "global_snapshot": { "case_id": "case-2026-08-16", "sequence": 3, "up_votes": …, "down_votes": …, "…" } }
 ```
 
 - `request_id` 形如 `[A-Za-z0-9._-]{8,128}`。
 - 拒绝体：`result.status = "rejected"` + `reason` + `message`。
-- **不返回**新的全网比例：公共比例只在快照 cadence 变化。
+- accepted 投票在**自己的事务里发布新快照**并随 `global_snapshot` 返回——投票者点击即看到梁位变化，不多一次往返；被拒票不发布。公共比例仍只在快照 cadence 变化（见 GET /v1/snapshot）。
+- host 端对「缺 `global_snapshot` 的旧后端」有回退：严格解析失败时按 `V1VoteEnvelope` 接受缺省，并回退 `GET /v1/snapshot` 补齐；该回退取的快照可能尚未包含刚投的那一票（旧后端按 cadence 发布），是明确接受的降级。
 - 校验器还会交叉检查 `result` 的计数与同一响应里的 `authoritative_personal_state` 一致。
 
 ## GET /v1/snapshot

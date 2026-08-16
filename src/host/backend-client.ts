@@ -14,9 +14,12 @@
 import {
   BACKEND_API_PREFIX,
   INSTALLATION_HEADER,
+  completeV1VoteResponse,
+  isMissingVoteSnapshotError,
   parseV1Bootstrap,
   parseV1PersonalStateResponse,
   parseV1SnapshotResponse,
+  parseV1VoteEnvelope,
   parseV1VoteResponse,
   type V1Bootstrap,
   type V1PersonalStateResponse,
@@ -157,7 +160,20 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
         // A rejected-but-valid outcome arrives as 409 with a full body.
         acceptStatus: (status) => status === 200 || status === 409,
       })
-      return parseV1VoteResponse(payload)
+      try {
+        return parseV1VoteResponse(payload)
+      } catch (error) {
+        // Older staging binaries spent the incense then omitted
+        // `global_snapshot`. Treat that as an accepted (or rejected) vote and
+        // pull the published snapshot instead of 502'ing the browser.
+        if (!isMissingVoteSnapshotError(error)) throw error
+        const envelope = parseV1VoteEnvelope(payload)
+        if (envelope.global_snapshot !== null) {
+          return completeV1VoteResponse(envelope, envelope.global_snapshot)
+        }
+        const published = parseV1SnapshotResponse(await read('/snapshot'))
+        return completeV1VoteResponse(envelope, published.global_snapshot)
+      }
     },
     dispose() {
       disposed = true
