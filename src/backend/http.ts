@@ -209,6 +209,50 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     })
   }
 
+  /**
+   * Authenticate a re-key intent WITHOUT enforcing the fingerprint binding —
+   * the re-key endpoint's whole job is to (re)bind that fingerprint to the new
+   * key. Still verifies the signature, the timestamp, and that the installation
+   * id derives from the presented public key.
+   */
+  const authenticateRekey = (req: IncomingMessage, method: string, path: string, rawBody: string): {
+    installationId: string
+    publicKey: string
+    deviceFingerprint: string
+  } => {
+    if (communityKey !== null) {
+      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
+        throw new CommunityAuthError(401, 'invalid_signature', 'community key required')
+      }
+    }
+    const publicKey = headerValue(req, PUBLIC_KEY_HEADER)
+    const signature = headerValue(req, SIGNATURE_HEADER)
+    const timestamp = headerValue(req, TIMESTAMP_HEADER)
+    if (publicKey === undefined || signature === undefined || timestamp === undefined) {
+      throw new CommunityAuthError(401, 'invalid_signature', 'signed identity headers required')
+    }
+    const installationId = parseInstallationId(headerValue(req, INSTALLATION_HEADER))
+    const deviceFingerprint = headerValue(req, DEVICE_HEADER) ?? ''
+    if (deviceFingerprint === '') {
+      throw new CommunityAuthError(400, 'invalid_request', 'a device fingerprint header is required to re-key')
+    }
+    authenticateCommunityRequest({
+      store,
+      method,
+      path,
+      body: rawBody,
+      installationId,
+      publicKey,
+      signature,
+      timestamp,
+      deviceFingerprint,
+      now: Date.now(),
+      skipFingerprintEnforcement: true,
+    })
+    return { installationId, publicKey, deviceFingerprint }
+  }
+
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://liangbiao.backend')
     const path = url.pathname
@@ -222,6 +266,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       [`${BACKEND_API_PREFIX}/votes`]: 'POST',
       [`${BACKEND_API_PREFIX}/admin/cases`]: 'POST',
       [`${BACKEND_API_PREFIX}/admin/queue`]: 'GET,POST',
+      [`${BACKEND_API_PREFIX}/identity/rekey`]: 'POST',
+      [`${BACKEND_API_PREFIX}/admin/identity/unbind`]: 'POST',
     }
     const expected = routes[path]
     if (expected === undefined) {
@@ -320,6 +366,50 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
           + `opened=${published.active_case.id} title=${title} ip=${peerAddress(req)}`,
         )
       } catch (error) {
+        writeValidationError(res, error)
+      }
+      return
+    }
+
+    if (path === `${BACKEND_API_PREFIX}/admin/identity/unbind`) {
+      if (communityKey === null) {
+        writeError(res, 401, 'invalid_signature', 'unbinding an identity requires LIANGBIAO_COMMUNITY_KEY')
+        return
+      }
+      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
+        writeError(res, 401, 'invalid_signature', 'community key required')
+        return
+      }
+      try {
+        const body = rawBody === '' ? {} : (JSON.parse(rawBody) as unknown)
+        const record = body as Record<string, unknown>
+        const installationId = parseInstallationId(record.installation_id)
+        const response = service.unbindIdentity(installationId)
+        writeJson(res, 200, response)
+        log(`[liangbiao-backend] unbind ${installShort(installationId)} ip=${peerAddress(req)}`)
+      } catch (error) {
+        writeValidationError(res, error)
+      }
+      return
+    }
+
+    if (path === `${BACKEND_API_PREFIX}/identity/rekey`) {
+      try {
+        const { installationId, publicKey, deviceFingerprint } = authenticateRekey(req, method, path, rawBody)
+        const response = service.rekeyIdentity(installationId, publicKey, deviceFingerprint)
+        writeJson(res, 200, response)
+        if (response.rekeyed) {
+          log(
+            `[liangbiao-backend] rekey ${installShort(response.previous_installation_id ?? '')} `
+            + `-> ${installShort(installationId)} ip=${peerAddress(req)}`,
+          )
+        }
+      } catch (error) {
+        if (error instanceof CommunityAuthError) {
+          writeError(res, error.httpStatus, error.code, error.message)
+          return
+        }
         writeValidationError(res, error)
       }
       return

@@ -40,6 +40,11 @@ export interface CommunityAuthInput {
   deviceFingerprint: string | null
   now: number
   skewMs?: number
+  /**
+   * Skip the fingerprint conflict check AND the auto-upsert. The re-key
+   * endpoint owns the bind/rebind atomically (delete old + insert new).
+   */
+  skipFingerprintEnforcement?: boolean
 }
 
 export function authenticateCommunityRequest(input: CommunityAuthInput): string {
@@ -70,7 +75,7 @@ export function authenticateCommunityRequest(input: CommunityAuthInput): string 
   if (existing !== undefined && existing.public_key !== input.publicKey) {
     throw new CommunityAuthError(401, 'invalid_signature', 'public key does not match registered identity')
   }
-  if (input.deviceFingerprint !== null) {
+  if (input.deviceFingerprint !== null && !input.skipFingerprintEnforcement) {
     const owner = input.store.identityByFingerprint(input.deviceFingerprint)
     if (owner !== undefined && owner.installation_id !== input.installationId) {
       throw new CommunityAuthError(
@@ -79,6 +84,10 @@ export function authenticateCommunityRequest(input: CommunityAuthInput): string 
         'this device fingerprint is already bound to another installation',
       )
     }
+  }
+  if (input.skipFingerprintEnforcement) {
+    // Re-key owns the bind/rebind; no auto-upsert here.
+    return input.installationId
   }
   try {
     input.store.upsertIdentity({

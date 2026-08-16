@@ -79,6 +79,59 @@ describe('authenticateCommunityRequest', () => {
     store.close()
   })
 
+  it('skipFingerprintEnforcement authenticates a re-key without the conflict and without upserting', () => {
+    const store = openBackendStore(':memory:')
+    const first = generateCommunityKeypair('mac-hash-rekey')
+    const now = 1_776_297_600_000
+    const body = ''
+    const firstMessage = communityAuthMessage({
+      method: 'POST',
+      path: '/v1/identity/rekey',
+      timestamp: String(now),
+      bodySha256: sha256Base64Url(body),
+      installationId: first.installationId,
+    })
+    authenticateCommunityRequest({
+      store,
+      method: 'POST',
+      path: '/v1/identity/rekey',
+      body,
+      installationId: first.installationId,
+      publicKey: first.publicKey,
+      signature: signCommunityMessage(first.privateKeyPem, firstMessage),
+      timestamp: String(now),
+      deviceFingerprint: first.deviceFingerprint,
+      now,
+    })
+
+    const second = generateCommunityKeypair('mac-hash-rekey')
+    const secondMessage = communityAuthMessage({
+      method: 'POST',
+      path: '/v1/identity/rekey',
+      timestamp: String(now),
+      bodySha256: sha256Base64Url(body),
+      installationId: second.installationId,
+    })
+    const result = authenticateCommunityRequest({
+      store,
+      method: 'POST',
+      path: '/v1/identity/rekey',
+      body,
+      installationId: second.installationId,
+      publicKey: second.publicKey,
+      signature: signCommunityMessage(second.privateKeyPem, secondMessage),
+      timestamp: String(now),
+      deviceFingerprint: second.deviceFingerprint,
+      now,
+      skipFingerprintEnforcement: true,
+    })
+    expect(result).toBe(second.installationId)
+    // No auto-upsert: the fingerprint still belongs to the first key; the
+    // re-key handler owns the rebind.
+    expect(store.identityByFingerprint('mac-hash-rekey')?.installation_id).toBe(first.installationId)
+    store.close()
+  })
+
   it('rejects a timestamp outside skew', () => {
     const store = openBackendStore(':memory:')
     const keys = generateCommunityKeypair(null)

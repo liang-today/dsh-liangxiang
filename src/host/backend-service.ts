@@ -482,6 +482,25 @@ export class BackendLiangService implements LiangHostService {
   }
 
   private reportFailure(label: string, error: unknown): void {
+    if (error instanceof BackendClientError) {
+      if (error.code === 'device_conflict') {
+        this.warn(
+          `[${PLUGIN_PACKAGE_NAME}] DEVICE CONFLICT: this device fingerprint is already bound to `
+          + `another installation (the key was re-generated, or the DSH profile was copied from `
+          + `another machine). Recover: mint a fresh key (delete the identity in `
+          + `$DSH_HOME/storages/liangbiao.json / pnpm run reset:identity, then restart) and POST `
+          + `/v1/identity/rekey, or ask the operator to POST /v1/admin/identity/unbind.`,
+        )
+        return
+      }
+      if (error.code === 'rekey_cooldown') {
+        this.warn(
+          `[${PLUGIN_PACKAGE_NAME}] REKEY COOLDOWN: ${error.message}. `
+          + `Wait, or ask the operator to POST /v1/admin/identity/unbind to force it.`,
+        )
+        return
+      }
+    }
     const message = error instanceof Error ? error.message : String(error)
     this.warn(`[${PLUGIN_PACKAGE_NAME}] backend ${label} failed: ${message}`)
   }

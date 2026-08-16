@@ -133,6 +133,8 @@ export interface BackendStore {
    * bound to a different installation.
    */
   upsertIdentity: (row: CommunityIdentityRow) => void
+  /** Delete one community_identity row (operator unbind / rekey takeover). */
+  deleteIdentity: (installationId: string) => boolean
   /** Most recently opened case strictly before this business date. */
   latestCaseBefore: (businessDate: string) => CaseRow | undefined
   lifetimeTotals: () => { incense: number, voters: number }
@@ -319,6 +321,9 @@ export function openBackendStore(databasePath: string): BackendStore {
        last_seen_at = excluded.last_seen_at,
        device_fingerprint = COALESCE(community_identity.device_fingerprint, excluded.device_fingerprint)`,
   )
+  const deleteIdentityStmt = db.prepare(
+    'DELETE FROM community_identity WHERE installation_id = ?',
+  )
 
   return {
     transaction<T>(body: () => T): T {
@@ -415,6 +420,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.last_seen_at,
       )
     },
+    deleteIdentity: (installationId) => changed(deleteIdentityStmt.run(installationId)) > 0,
     latestCaseBefore: (businessDate) => selectLatestBefore.get(businessDate) as CaseRow | undefined,
     lifetimeTotals() {
       const incenseRow = selectLifetimeIncense.get() as { incense: number | bigint } | undefined

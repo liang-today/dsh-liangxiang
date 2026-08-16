@@ -39,6 +39,14 @@ export const SNAPSHOT_HISTORY_LIMIT = 200
  */
 export const DEFAULT_ABSURD_CLAIM_TOKENS = 25_000_000
 
+/**
+ * How long a device fingerprint must sit unused before its binding can be
+ * re-keyed to a new installation (the "cost" of recovery). The old identity's
+ * balance/votes are forfeited on re-key. 0 disables the cooldown (re-key
+ * becomes free — only appropriate for tests).
+ */
+export const DEFAULT_REKEY_COOLDOWN_MS = 24 * 60 * 60 * 1000
+
 export interface BackendConfig {
   authorityMode: BackendAuthorityMode
   host: string
@@ -53,6 +61,8 @@ export interface BackendConfig {
   voteRateLimitPerMinute: number
   /** Absurd single-claim ceiling (tokens); 0 disables the guard. */
   absurdClaimTokens: number
+  /** Device-fingerprint re-key cooldown (ms); 0 disables it. */
+  rekeyCooldownMs: number
   /** When true, HTTP accepts the old unsigned installation header (localhost tests). */
   allowUnsigned: boolean
   /** Shared admission secret; null means not required. */
@@ -147,6 +157,13 @@ export function resolveBackendConfig(
       env.LIANGBIAO_ABSURD_CLAIM_TOKENS,
       DEFAULT_ABSURD_CLAIM_TOKENS,
       'LIANGBIAO_ABSURD_CLAIM_TOKENS',
+      warn,
+      { min: 0 },
+    ),
+    rekeyCooldownMs: parseInt_(
+      env.LIANGBIAO_REKEY_COOLDOWN_MS,
+      DEFAULT_REKEY_COOLDOWN_MS,
+      'LIANGBIAO_REKEY_COOLDOWN_MS',
       warn,
       { min: 0 },
     ),
