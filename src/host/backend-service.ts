@@ -417,6 +417,16 @@ export class BackendLiangService implements LiangHostService {
       this.activeCase = response.active_case
       this.businessDate = response.business_date
       this.claimNotice = response.claim_notice ?? null
+      if (response.business_date !== businessDate) {
+        // Rollover: our claim raced a day change (the backend ignored a stale
+        // date). Reset the claim watermark so today's smaller totals are never
+        // skipped by yesterday's larger one — the very bug that made a new day
+        // show local incense while the server stayed at 0.
+        this.warn(
+          `[${PLUGIN_PACKAGE_NAME}] business date changed ${businessDate} -> ${response.business_date}; resetting claim watermark`,
+        )
+        this.lastClaimSent = -1
+      }
       if (response.claim_applied === false) {
         // Server already has more than this local total; do not retry it.
         if (claimed <= this.personal.claimed_effective_tokens) this.lastClaimSent = claimed
