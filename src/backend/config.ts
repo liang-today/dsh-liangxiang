@@ -43,11 +43,6 @@ export interface BackendConfig {
   caseTitle: string
   /** Per-installation vote rate limit (requests per minute); 0 disables it. */
   voteRateLimitPerMinute: number
-  /**
-   * Max claimed-token growth per minute of identity age (default = token_per_incense,
-   * i.e. at most one incense stick per minute). 0 disables the drip.
-   */
-  maxTokensPerMinute: number
   /** When true, HTTP accepts the old unsigned installation header (localhost tests). */
   allowUnsigned: boolean
   /** Shared admission secret; null means not required. */
@@ -135,13 +130,6 @@ export function resolveBackendConfig(
       env.LIANGBIAO_VOTE_RATE_LIMIT,
       600,
       'LIANGBIAO_VOTE_RATE_LIMIT',
-      warn,
-      { min: 0 },
-    ),
-    maxTokensPerMinute: parseInt_(
-      env.LIANGBIAO_MAX_TOKENS_PER_MINUTE,
-      DEFAULT_TOKEN_PER_INCENSE,
-      'LIANGBIAO_MAX_TOKENS_PER_MINUTE',
       warn,
       { min: 0 },
     ),

@@ -39,7 +39,6 @@ export function startBackend(env: Record<string, string | undefined> = process.e
       `[liangbiao-backend] listening on http://${config.host}:${config.port}`
       + ` (authority_mode=${config.authorityMode}, tz=${config.timezone},`
       + ` token_per_incense=${config.tokenPerIncense}, snapshot=${config.snapshotRefreshSeconds}s,`
-      + ` max_tokens_per_minute=${config.maxTokensPerMinute},`
       + ` unsigned=${config.allowUnsigned ? 'allowed' : 'rejected'},`
       + ` community_key=${config.communityKey === null ? 'off' : 'on'})`,
     )

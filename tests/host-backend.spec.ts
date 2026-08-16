@@ -174,7 +174,7 @@ describe('online bootstrap', () => {
   })
 
   it('上达天听 drops inflated local observation so the panel follows the server ledger', async () => {
-    const s = await startStack({ LIANGBIAO_MAX_TOKENS_PER_MINUTE: '50000' }, { claimDebounceMs: 60_000 })
+    const s = await startStack({}, { claimDebounceMs: 60_000 })
     s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     s.host.observeUsage(SESSION, usage(200_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     expect(frame(s).personal.effectiveTokensToday).toBe(200_000)
