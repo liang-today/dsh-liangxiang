@@ -58,6 +58,10 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
           service.refreshNow()
           return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
         }
+        if (path === '/liangbiao/api/reconcile') {
+          service.reconcileNow()
+          return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
+        }
         if (path === '/liangbiao/api/vote') {
           const intent = JSON.parse(init?.body ?? '{}') as { caseId: string, voteType: 'up' | 'down', requestId: string }
           const outcome = service.vote(intent)
@@ -183,6 +187,19 @@ describe('live store', () => {
     expect(controls.requests.some((request) => request.path === '/liangbiao/api/refresh')).toBe(true)
     expect(store.getSnapshot().connection).toBe('live')
     expect(store.getSnapshot().activeCase.id).toBe(before)
+    store.dispose()
+  })
+
+  it('reconcile() POSTs /reconcile to drop local observation and re-read incense', async () => {
+    const service = makeService()
+    const controls = fakeTransport(service)
+    const store = createLiveLiangbiaoStore(controls.transport)
+    store.start()
+    await settled()
+    store.reconcile()
+    await settled()
+    expect(controls.requests.some((request) => request.path === '/liangbiao/api/reconcile')).toBe(true)
+    expect(store.getSnapshot().connection).toBe('live')
     store.dispose()
   })
 

@@ -15,6 +15,8 @@ import {
   LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
   PANEL_TITLE,
+  RECONCILE_HINT,
+  RECONCILE_LABEL,
   VOTE_DOWN_LABEL,
   VOTE_UP_LABEL,
   VOTER_STAT_ICON,
@@ -31,6 +33,7 @@ function renderPanel(state: LiangbiaoViewState, voteFeedback = ''): RenderedNode
       voteFeedback={voteFeedback}
       onVote={() => undefined}
       onClose={() => undefined}
+      onReconcile={() => undefined}
     />,
   )
 }
@@ -197,6 +200,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         positionPulse
         onVote={() => undefined}
         onClose={() => undefined}
+        onReconcile={() => undefined}
       />,
     )
     const pulsingValue = styleOf(findByAttr(pulsing, 'data-liangbiao-liang-position-value')[0])
@@ -212,6 +216,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         positionPulse
         onVote={() => undefined}
         onClose={() => undefined}
+        onReconcile={() => undefined}
       />,
     )
     expect(styleOf(findByAttr(reduced, 'data-liangbiao-liang-position-value')[0]).animation).toBeUndefined()
@@ -284,6 +289,25 @@ describe('region 4: social stats', () => {
     const text = social === undefined ? '' : textContent([social])
     expect(text).toContain(INCENSE_STAT_ICON)
     expect(text).toContain(VOTER_STAT_ICON)
+  })
+})
+
+describe('上达天听', () => {
+  it('is a quiet control under the social stats, not a fifth region or third vote', () => {
+    const tree = renderPanel(demoState())
+    const regions = findByAttr(tree, 'data-liangbiao-region')
+    expect(regions.map((node) => node.props['data-liangbiao-region'])).toEqual([
+      'case',
+      'core',
+      'vote',
+      'social',
+    ])
+    const votes = findByAttr(tree, 'data-liangbiao-vote')
+    expect(votes).toHaveLength(2)
+    const control = findByAttr(tree, 'data-liangbiao-reconcile')[0]
+    expect(control && textContent([control])).toBe(RECONCILE_LABEL)
+    expect(control?.props.title).toBe(RECONCILE_HINT)
+    expect(control?.props['aria-label']).toBe(`${RECONCILE_LABEL}：${RECONCILE_HINT}`)
   })
 })
 

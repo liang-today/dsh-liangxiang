@@ -22,6 +22,7 @@ import {
 export interface UsageProjectionSink {
   putWatermark: (sessionId: string, watermark: SessionUsageWatermark) => void
   putDailyUsage: (businessDate: string, record: DailyUsageRecord) => void
+  deleteDailyUsage: (businessDate: string) => void
 }
 
 export interface UsageProjectionDeps {
@@ -99,6 +100,16 @@ export class UsageProjection {
 
   recordFor(businessDate: string): DailyUsageRecord {
     return this.daily.get(businessDate) ?? EMPTY_DAILY_USAGE
+  }
+
+  /**
+   * Forget today's observed totals. Watermarks stay so still-open sessions
+   * cannot dump their cumulative usage as a new contribution.
+   */
+  discardDailyTotals(): void {
+    const dates = [...this.daily.keys()]
+    this.daily.clear()
+    for (const date of dates) this.sink?.deleteDailyUsage(date)
   }
 
   /** Effective Token = Input + Output for one business date (AGENTS.md §5). */

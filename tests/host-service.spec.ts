@@ -65,6 +65,7 @@ function memoryPort(state: LiangPersistedState): LiangPersistencePort {
     putAggregate: (caseId, agg) => void state.aggregates.set(caseId, agg),
     putVote: (requestId, rec) => void state.votes.set(requestId, rec),
     deleteVote: (requestId) => void state.votes.delete(requestId),
+    deleteDailyUsage: (date) => void state.dailyUsage.delete(date),
   }
 }
 
