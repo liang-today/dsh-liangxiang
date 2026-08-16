@@ -146,6 +146,22 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(position?.props.title).toBe('夯 83.021952% / 拉 16.978048% → 梁圣')
   })
 
+  it('sets 梁位 / value / arrow / 称呼 in one type size and weight', () => {
+    const tree = renderPanel(demoState())
+    const parts = [
+      findByAttr(tree, 'data-liangbiao-liang-position-label')[0],
+      findByAttr(tree, 'data-liangbiao-liang-position-value')[0],
+      findByAttr(tree, 'data-liangbiao-liang-position-arrow')[0],
+      findByAttr(tree, 'data-liangbiao-liangzi-title')[0],
+    ]
+    for (const part of parts) {
+      expect(styleOf(part).fontSize).toBe('13px')
+      expect(styleOf(part).fontWeight).toBe(600)
+      expect(styleOf(part).lineHeight).toBe('18px')
+    }
+    expect(styleOf(findByAttr(tree, 'data-liangbiao-liang-position')[0]).alignItems).toBe('center')
+  })
+
   it('pins the 梁位 value to the ring footer (one value, not a ratio pair)', () => {
     const tree = renderPanel(demoState())
     const ring = findByAttr(tree, 'data-liangbiao-ring')[0]
