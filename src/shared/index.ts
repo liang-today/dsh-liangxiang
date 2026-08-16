@@ -43,15 +43,24 @@ export const VOTE_DOWN_NAME = '拉'
  */
 export const LIANG_POSITION_LABEL = '梁位'
 
-/** Caption of the personal "tokens to the next incense stick" flank. */
-export const NEXT_INCENSE_LABEL = '下一炷'
-
-/**
- * Caption of the personal remaining-incense flank. Deliberately NOT 三界香火:
+/** Caption of the personal remaining-incense flank. Deliberately NOT 三界香火:
  * Region 4 uses that for the GLOBAL accepted-vote count, and two different
  * numbers under one label is the fastest way to misread the panel.
  */
 export const MY_INCENSE_LABEL = '我的香火'
+
+/** Caption of the personal "tokens to the next incense stick" flank. */
+export const NEXT_INCENSE_LABEL = '下一炷'
+
+/** Visible unit under 下一炷: Pro-equivalent tokens, not raw Flash tokens. */
+export const NEXT_INCENSE_UNIT = '当量'
+
+export const NEXT_INCENSE_WEIGHT_TITLE = '攒香按 Pro 当量'
+export const NEXT_INCENSE_WEIGHT_ROWS: ReadonlyArray<{ model: string, weight: string, stick: string }> = [
+  { model: 'V4-Pro', weight: '×1', stick: '5 万当量 = 1 炷' },
+  { model: 'V4-Flash', weight: '×0.5', stick: '约 10 万原始用量 = 1 炷' },
+  { model: '其它', weight: '×1', stick: '同 Pro' },
+]
 
 /** Region 4 stat labels (西游口吻：三界香火 / 取经五众). */
 export const INCENSE_STAT_LABEL = '三界香火'
@@ -77,7 +86,7 @@ export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {
 }
 
 /** Disabled-vote reason surfaced when the personal incense pool is empty. */
-export const NO_INCENSE_REASON = '香火不足：再积累 Token 获得下一炷香后即可投票'
+export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷香后即可投票'
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
 export const OFFLINE_REASON = '未连接本地服务：显示最近状态，重新打开面板可重试'

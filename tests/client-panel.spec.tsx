@@ -24,7 +24,15 @@ import {
   VOTE_UP_LABEL,
   VOTER_STAT_LABEL,
 } from '../src/shared/index.ts'
-import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedNode } from './helpers/render.ts'
+import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedElement, type RenderedNode } from './helpers/render.ts'
+
+/** Visible 下一炷 caption/value, excluding the hover weight table. */
+function visibleNextIncenseText(node: RenderedElement | undefined): string {
+  if (node === undefined) return ''
+  const visible = node.children.filter((child) =>
+    child.kind !== 'element' || !('data-liangbiao-weight-hint' in child.props))
+  return textContent(visible)
+}
 
 function renderPanel(
   state: LiangbiaoViewState,
@@ -96,9 +104,12 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const next = findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0]
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
     expect(incense && textContent([incense])).toContain('5 炷')
-    expect(next && textContent([next])).toContain('3K')
-    expect(next && textContent([next])).not.toContain('3,000')
-    expect(next && textContent([next])).toContain('Token')
+    const nextVisible = visibleNextIncenseText(next)
+    expect(nextVisible).toContain('3K')
+    expect(nextVisible).not.toContain('3,000')
+    expect(nextVisible).toContain('当量')
+    expect(nextVisible).not.toContain('Token')
+    expect(next?.props.tabIndex).toBe(0)
     // 10,665/12,846 = 83.0219…%, truncated to six decimals.
     expect(position && textContent([position])).toContain('梁位')
     expect(position && textContent([position])).toContain('83.021952%')
@@ -168,7 +179,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(incense.width).toBe(next.width)
       expect(incense.height).toBe(`${RING_SIZE}px`)
       expect(next.height).toBe(`${RING_SIZE}px`)
-      expect(pill.width).toBe('176px')
+      expect(pill.width).toBe('132px')
+      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('252px')
       expect(social.map((node) => styleOf(node).flex)).toEqual(['1 1 0', '1 1 0'])
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
@@ -179,10 +191,12 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const demo = renderPanel(demoState())
     expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'incense'))).toBe('5')
     expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'next-incense'))).toBe('3K')
-    expect(findByAttr(demo, 'data-liangbiao-compact', 'next-incense')[0]?.props.title).toBe('3,000 Token')
-    expect(textContent(demo)).toContain('距下一炷还差 3,000 Token')
+    expect(findByAttr(demo, 'data-liangbiao-compact', 'next-incense')[0]?.props.title).toBeUndefined()
+    expect(textContent(demo)).toContain('距下一炷还差 3,000 当量')
+    expect(textContent(demo)).toContain('攒香按 Pro 当量')
+    expect(textContent(demo)).toContain('V4-Flash')
 
-    // 1,234 炷 / 50,000 Token — the previous tests never reached this width.
+    // 1,234 炷 / 50,000 当量 — the previous tests never reached this width.
     const huge = createMockLiangbiaoStore({
       effectiveTokensToday: 1_234 * 50_000,
       usedIncenseToday: 0,
@@ -249,6 +263,55 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(tooltips.length).toBeGreaterThan(0)
   })
 
+  it('draws 9 炷 marks instead of capping at 8', () => {
+    const store = createMockLiangbiaoStore({ effectiveTokensToday: 9 * 50_000, usedIncenseToday: 0 })
+    expect(store.getSnapshot().personal.remainingIncense).toBe(9)
+    const tree = renderPanel(store.getSnapshot())
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'one')).toHaveLength(9)
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'ten')).toHaveLength(0)
+  })
+
+  it('puts tens on a separate orbit so a moon never steals a stick slot', () => {
+    const store = createMockLiangbiaoStore({ effectiveTokensToday: 23 * 50_000, usedIncenseToday: 0 })
+    expect(store.getSnapshot().personal.remainingIncense).toBe(23)
+    const tree = renderPanel(store.getSnapshot())
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'one')).toHaveLength(3)
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'ten')).toHaveLength(2)
+  })
+
+  it('puts hundreds on an inner orbit so 105 is 5 炷 + 1 日', () => {
+    const store = createMockLiangbiaoStore({ effectiveTokensToday: 105 * 50_000, usedIncenseToday: 0 })
+    expect(store.getSnapshot().personal.remainingIncense).toBe(105)
+    const tree = renderPanel(store.getSnapshot())
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'one')).toHaveLength(5)
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'ten')).toHaveLength(0)
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'hundred')).toHaveLength(1)
+  })
+
+  it('drops glyphs at 1000+ and shows a compact chip instead of ten moons', () => {
+    const store = createMockLiangbiaoStore({ effectiveTokensToday: 1_000 * 50_000, usedIncenseToday: 0 })
+    expect(store.getSnapshot().personal.remainingIncense).toBe(1_000)
+    const tree = renderPanel(store.getSnapshot())
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'one')).toHaveLength(0)
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'ten')).toHaveLength(0)
+    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'hundred')).toHaveLength(0)
+    const overflow = findByAttr(tree, 'data-liangbiao-incense-overflow')
+    expect(overflow).toHaveLength(1)
+    expect(overflow[0] && textContent([overflow[0]])).toContain('1K')
+  })
+
+  it('keeps a Pro-equivalent weight table on the next-incense flank', () => {
+    const tree = renderPanel(demoState())
+    const hint = findByAttr(tree, 'data-liangbiao-weight-hint')[0]
+    expect(hint).toBeDefined()
+    const copy = hint === undefined ? '' : textContent([hint])
+    expect(copy).toContain('攒香按 Pro 当量')
+    expect(copy).toContain('V4-Pro')
+    expect(copy).toContain('×1')
+    expect(copy).toContain('V4-Flash')
+    expect(copy).toContain('×0.5')
+  })
+
   it('zero votes: “--” 梁位 and the 待开梁 placeholder', () => {
     const store = createMockLiangbiaoStore({ upVotes: 0, downVotes: 0, uniqueVoters: 0 })
     const tree = renderPanel(store.getSnapshot())
@@ -311,7 +374,7 @@ describe('region 4: social stats', () => {
     expect(findByAttr(tree, 'data-liangbiao-incense-icon')).toHaveLength(1)
     expect(findByAttr(tree, 'data-liangbiao-voter-icon')).toHaveLength(1)
     expect(findByAttr(social === undefined ? [] : [social], 'data-liangbiao-reconcile-slot')).toHaveLength(1)
-    expect(styleOf(findByAttr(tree, 'data-liangbiao-stat-label', 'incense')[0]).fontSize).toBe('11px')
+    expect(styleOf(findByAttr(tree, 'data-liangbiao-stat-label', 'incense')[0]).fontSize).toBe('10px')
     expect(styleOf(findByAttr(tree, 'data-liangbiao-stat', 'incense')[0]).flex).toBe('1 1 0')
   })
 })

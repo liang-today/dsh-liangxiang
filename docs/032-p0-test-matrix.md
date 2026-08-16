@@ -30,7 +30,7 @@
 
 | 用例 | 期望 | 测试 |
 |---|---|---|
-| remaining 5 + remainder 47,000 | fill 94%、toNext 3,000、环内 `5 炷 · 再 3,000 Token` | `domain-incense` + `client-panel.spec.tsx` |
+| remaining 5 + remainder 47,000 | fill 94%、toNext 3,000、右翼可见 `3K 当量`（精确值在 SR） | `domain-incense` + `client-panel.spec.tsx` |
 | 投一票 | remaining 5→4、intensity 下降、remainder/fill/toNext 不变 | `domain-incense` + `client-store` |
 | 再 +3,000 Token | earned+1、remaining+1、fill 94%→0、toNext 50,000、凝香反馈 | `client-store.spec.ts` |
 | intensity | 0 炷→0；单调、有界 ≤1；非业务 Tier | `domain-incense.spec.ts` |
@@ -57,7 +57,7 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 ## UI 结构（Prompt 1 §B 验收）
 
-四区顺序 case/core/vote/social、仅两个投票按钮（夯：升梁！/拉：降梁！，等宽标齐）、dialog 标题今日梁案、梁位与梁圣同快照、环居中且两翼 overlay、零票 `--`+待开梁、remaining 0 双按钮 disabled + 可访问 reason、六态头像两两视觉不同、三界香火 12,846 / 五行香客 2,841（西游 SVG 小标 + 11px 标签）、上达天听与统计同一行、case 区居中且无可见「本地演示」徽标（软信任标注在 `data-liangbiao-authority` + SR 摘要）。→ `client-panel.spec.tsx`、`badge.spec.tsx`
+四区顺序 case/core/vote/social、仅两个投票按钮（夯：升梁！/拉：降梁！，等宽标齐）、dialog 标题今日梁案、梁位与梁圣同快照、环居中且两翼 overlay、零票 `--`+待开梁、remaining 0 双按钮 disabled + 可访问 reason、六态头像两两视觉不同、三界香火 12,846 / 五行香客 2,841（西游 SVG 小标 + 10px 标签）、上达天听与统计同一行、case 区居中且无可见「本地演示」徽标（软信任标注在 `data-liangbiao-authority` + SR 摘要）。→ `client-panel.spec.tsx`、`badge.spec.tsx`
 
 ## 梁位显示：单值、带小数、不越阈值
 
@@ -65,7 +65,7 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 ## Region 2 新布局与自由放置
 
-左翼 `5 炷`、右翼可见 `3K Token`（精确值 3,000 在 tooltip / SR）、环底 `梁位 83.021952%`、旧的 `data-liangbiao-ratio` 上下比例块已不存在、一票后梁位打印值变化;高库存 `1,234 炷` / `50,000 Token` 可见为 `1.2K` / `50K`。徽章图标是六态头像（30px、无标签、`aria-hidden`）、`aria-label` 含状态名、cursor `grab`/`touch-action: none`；坐标夹回可视区、窗口缩小后仍在画内、`localStorage` 往返与损坏值回退、面板在左边缘翻转到右侧、贴近上下边缘改锚点。→ `client-panel.spec.tsx`、`badge.spec.tsx`、`domain-compact-count.spec.ts`
+左翼 `5 炷`、右翼可见 `3K 当量`（精确值 3,000 在 SR；悬停权重表含 Pro ×1 / Flash ×0.5）、环底 `梁位 83.021952%`、旧的 `data-liangbiao-ratio` 上下比例块已不存在、一票后梁位打印值变化;高库存 `1,234 炷` / `50,000 当量` 可见为 `1.2K` / `50K`。9 炷画 9 个个位点；23 炷 = 3 炷 + 2 月分轨；≥1000 用环上 compact chip。徽章图标是六态头像（30px、无标签、`aria-hidden`）、`aria-label` 含状态名、cursor `grab`/`touch-action: none`；坐标夹回可视区、窗口缩小后仍在画内、`localStorage` 往返与损坏值回退、面板在左边缘翻转到右侧、贴近上下边缘改锚点。→ `client-panel.spec.tsx`、`badge.spec.tsx`、`domain-compact-count.spec.ts`
 
 ## 近实时快照
 

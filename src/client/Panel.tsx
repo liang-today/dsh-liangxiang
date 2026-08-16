@@ -20,6 +20,9 @@ import {
   LIANG_POSITION_LABEL,
   MY_INCENSE_LABEL,
   NEXT_INCENSE_LABEL,
+  NEXT_INCENSE_UNIT,
+  NEXT_INCENSE_WEIGHT_ROWS,
+  NEXT_INCENSE_WEIGHT_TITLE,
   NO_INCENSE_REASON,
   OFFLINE_REASON,
   PANEL_TITLE,
@@ -67,11 +70,11 @@ export interface PanelProps {
 const panelStyle: CSSProperties = {
   position: 'absolute',
   width: `${PANEL_WIDTH}px`,
-  maxHeight: 'min(560px, 80vh)',
+  maxHeight: 'min(420px, 80vh)',
   overflowY: 'auto',
   boxSizing: 'border-box',
-  padding: '16px',
-  borderRadius: '14px',
+  padding: '12px',
+  borderRadius: '12px',
   border: `1px solid ${color.border}`,
   background: color.bgLayer,
   color: color.textPrimary,
@@ -98,7 +101,7 @@ const statCopyStyle: CSSProperties = {
 }
 
 const statLabelStyle: CSSProperties = {
-  fontSize: '11px',
+  fontSize: '10px',
   lineHeight: 1.2,
   color: color.textSecondary,
 }
@@ -106,14 +109,14 @@ const statLabelStyle: CSSProperties = {
 const statValueStyle: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
   fontFeatureSettings: '"tnum"',
-  fontSize: '15px',
+  fontSize: '13px',
   fontWeight: 700,
   lineHeight: 1.2,
   color: color.textPrimary,
 }
 
 /**
- * Flank numbers use compact K/M/B so `5 炷` and `50K Token` stay the same
+ * Flank numbers use compact K/M/B so `5 炷` and `50K 当量` stay the same
  * visual width. The ring is already overlay-centered; this stops the *text*
  * of the two wings from looking ragged when one side hits thousands.
  */
@@ -127,8 +130,8 @@ const numericStyle: CSSProperties = {
  * 「我的香火」(wider copy) vs 「下一炷」 pulls `space-between` off-center and
  * the 梁子, ring, and incense dots drift sideways.
  */
-const FLANK_WIDTH = 64
-const CORE_PAD_Y = 8
+const FLANK_WIDTH = 48
+const CORE_PAD_Y = 6
 
 const coreStyle: CSSProperties = {
   position: 'relative',
@@ -150,32 +153,32 @@ const flankStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   gap: '1px',
-  overflow: 'hidden',
+  overflow: 'visible',
   whiteSpace: 'nowrap',
-  pointerEvents: 'none',
+  pointerEvents: 'auto',
 }
 
 const flankCaptionStyle: CSSProperties = {
-  fontSize: '11px',
+  fontSize: '10px',
   color: color.textSecondary,
 }
 
 const voteRowStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
-  gap: '10px',
-  marginTop: '6px',
+  gap: '8px',
+  marginTop: '4px',
 }
 
 const voteButtonBase: CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  padding: '9px 0',
-  borderRadius: '10px',
+  padding: '7px 0',
+  borderRadius: '8px',
   fontFamily: font.family,
-  fontSize: '15px',
+  fontSize: '13px',
   fontWeight: 700,
-  lineHeight: '22px',
+  lineHeight: '18px',
   textAlign: 'center',
   whiteSpace: 'nowrap',
   cursor: 'pointer',
@@ -269,6 +272,51 @@ const PANEL_CSS = `
   opacity: 1;
   transform: translateY(0);
 }
+[data-liangbiao-personal="next-incense"] {
+  cursor: help;
+  outline: none;
+}
+[data-liangbiao-personal="next-incense"] [data-liangbiao-weight-hint] {
+  position: absolute;
+  right: 0;
+  top: calc(100% - 8px);
+  z-index: 3;
+  min-width: 168px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid ${color.border};
+  background: ${color.bgLayer};
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+  color: ${color.textPrimary};
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 40ms ease, transform 40ms ease;
+}
+[data-liangbiao-personal="next-incense"]:hover [data-liangbiao-weight-hint],
+[data-liangbiao-personal="next-incense"]:focus-within [data-liangbiao-weight-hint] {
+  opacity: 1;
+  transform: translateY(0);
+}
+[data-liangbiao-weight-hint] table {
+  border-collapse: collapse;
+  width: 100%;
+}
+[data-liangbiao-weight-hint] th,
+[data-liangbiao-weight-hint] td {
+  padding: 2px 4px;
+  text-align: left;
+  font-weight: 500;
+}
+[data-liangbiao-weight-hint] caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 700;
+  padding-bottom: 4px;
+}
 @keyframes liangbiao-condense {
   0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
   30% { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -337,7 +385,7 @@ export function Panel(props: PanelProps): ReactElement {
   const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}`
     + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
     + `${LIANG_POSITION_LABEL} ${percents.up}（即${VOTE_UP_NAME} ${percents.up}，${VOTE_DOWN_NAME} ${percents.down}）。`
-    + `我的剩余香火 ${remainingExact} 炷，距下一炷还差 ${toNextExact} Token。`
+    + `我的剩余香火 ${remainingExact} 炷，距下一炷还差 ${toNextExact} 当量（Pro 口径）。`
     + `${AUTHORITY_MODE_NOTES[state.authorityMode]}。`
 
   return (
@@ -355,12 +403,12 @@ export function Panel(props: PanelProps): ReactElement {
       {/* Region 1 — 今日梁案 */}
       <header
         data-liangbiao-region="case"
-        style={{ position: 'relative', marginBottom: '10px', padding: '0 22px', textAlign: 'center' }}
+        style={{ position: 'relative', marginBottom: '8px', padding: '0 20px', textAlign: 'center' }}
       >
-        <h2 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: color.textTertiary, letterSpacing: '1px' }}>
+        <h2 style={{ margin: 0, fontSize: '11px', fontWeight: 600, color: color.textTertiary, letterSpacing: '1px' }}>
           {PANEL_TITLE}
         </h2>
-        <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: 600, color: color.textPrimary }}>
+        <p style={{ margin: '3px 0 0', fontSize: '13px', fontWeight: 600, color: color.textPrimary }}>
           {activeCase.title}
         </p>
         <button
@@ -389,7 +437,7 @@ export function Panel(props: PanelProps): ReactElement {
         and are therefore always the panel's horizontal center. Personal
         numbers overlay left/right and cannot shove that column.
 
-          我的香火 N 炷   [梁气环 + 梁子]   下一炷 X Token
+          我的香火 N 炷   [梁气环 + 梁子]   下一炷 X 当量
                           梁位 83.021952%
       */}
       <div data-liangbiao-region="core" style={coreStyle}>
@@ -407,23 +455,23 @@ export function Panel(props: PanelProps): ReactElement {
                   alignItems: 'baseline',
                   justifyContent: 'center',
                   gap: '4px',
-                  width: '176px',
+                  width: '132px',
                   boxSizing: 'border-box',
-                  padding: '2px 8px',
+                  padding: '1px 6px',
                   borderRadius: '999px',
                   border: `1px solid ${color.border}`,
                   background: color.bgLayer,
-                  lineHeight: '18px',
+                  lineHeight: '16px',
                 }}
               >
-                <span style={{ fontSize: '11px', color: color.textTertiary, letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: '10px', color: color.textTertiary, letterSpacing: '0.5px' }}>
                   {LIANG_POSITION_LABEL}
                 </span>
                 <strong
                   data-liangbiao-liang-position-value=""
                   style={{
                     ...numericStyle,
-                    fontSize: '15px',
+                    fontSize: '13px',
                     fontWeight: 700,
                     color: color.up,
                     animation: positionPulse && !reducedMotion
@@ -436,29 +484,47 @@ export function Panel(props: PanelProps): ReactElement {
               </span>
             )}
           >
-            <LiangAvatar state={snapshot.liangziState} pulse={avatarPulse} reducedMotion={reducedMotion} />
+            <LiangAvatar state={snapshot.liangziState} pulse={avatarPulse} reducedMotion={reducedMotion} size={68} />
           </LiangQiRing>
         </div>
         <div style={{ ...flankStyle, left: '0px' }} data-liangbiao-personal="incense">
           <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
           <span
             title={`${remainingExact} 炷`}
-            style={{ ...numericStyle, fontSize: '16px', fontWeight: 700, color: color.warn, lineHeight: '22px' }}
+            style={{ ...numericStyle, fontSize: '13px', fontWeight: 700, color: color.warn, lineHeight: '18px' }}
           >
             <span data-liangbiao-compact="incense">{remainingCompact}</span>
-            <span style={{ fontSize: '12px', fontWeight: 600 }}> 炷</span>
+            <span style={{ fontSize: '10px', fontWeight: 600 }}> 炷</span>
           </span>
         </div>
-        <div style={{ ...flankStyle, right: '0px' }} data-liangbiao-personal="next-incense">
+        <div
+          style={{ ...flankStyle, right: '0px' }}
+          data-liangbiao-personal="next-incense"
+          tabIndex={0}
+          aria-label={`${NEXT_INCENSE_LABEL} ${toNextExact} ${NEXT_INCENSE_UNIT}，悬停查看模型权重`}
+        >
           <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
           <span
-            title={`${toNextExact} Token`}
             data-liangbiao-compact="next-incense"
-            style={{ ...numericStyle, fontSize: '16px', fontWeight: 700, color: color.textPrimary, lineHeight: '22px' }}
+            style={{ ...numericStyle, fontSize: '13px', fontWeight: 700, color: color.textPrimary, lineHeight: '18px' }}
           >
             {toNextCompact}
           </span>
-          <span style={{ fontSize: '11px', color: color.textTertiary }}>Token</span>
+          <span style={{ fontSize: '10px', color: color.textTertiary }}>{NEXT_INCENSE_UNIT}</span>
+          <div data-liangbiao-weight-hint="" role="tooltip">
+            <table>
+              <caption>{NEXT_INCENSE_WEIGHT_TITLE}</caption>
+              <tbody>
+                {NEXT_INCENSE_WEIGHT_ROWS.map((row) => (
+                  <tr key={row.model}>
+                    <th scope="row">{row.model}</th>
+                    <td>{row.weight}</td>
+                    <td>{row.stick}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -490,7 +556,7 @@ export function Panel(props: PanelProps): ReactElement {
       <p
         role="status"
         data-liangbiao-vote-feedback=""
-        style={{ margin: '6px 0 0', minHeight: '16px', fontSize: '12px', color: outOfIncense || offline ? color.warn : color.textTertiary, textAlign: 'center' }}
+        style={{ margin: '4px 0 0', minHeight: '14px', fontSize: '11px', color: outOfIncense || offline ? color.warn : color.textTertiary, textAlign: 'center' }}
       >
         {statusLine}
       </p>
@@ -502,8 +568,8 @@ export function Panel(props: PanelProps): ReactElement {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          marginTop: '10px',
-          paddingTop: '12px',
+          marginTop: '8px',
+          paddingTop: '8px',
           borderTop: `1px solid ${color.border}`,
           color: color.textSecondary,
         }}

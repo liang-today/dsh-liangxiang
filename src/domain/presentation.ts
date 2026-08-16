@@ -16,6 +16,35 @@ export function liangQiIntensity(remainingIncense: number): number {
   return Math.min(1, Math.sqrt(remainingIncense / 12))
 }
 
+/**
+ * Pictorial remaining-incense on the 梁气环, QQ-style place value WITHOUT
+ * letting a "moon" steal a stick slot: each denomination has its own orbit.
+ *
+ *   炷 (ones)     0–9
+ *   月 (tens)     0–9
+ *   日 (hundreds) 0–9
+ *   overflow      remaining when ≥ 1000 (glyphs stop; compact numeral takes over)
+ */
+export interface IncensePlaceValue {
+  ones: number
+  tens: number
+  hundreds: number
+  overflow: number
+}
+
+export function incensePlaceValue(remainingIncense: number): IncensePlaceValue {
+  assertCount(remainingIncense, 'invalid_incense_count', 'remainingIncense')
+  if (remainingIncense >= 1_000) {
+    return { ones: 0, tens: 0, hundreds: 0, overflow: remainingIncense }
+  }
+  return {
+    ones: remainingIncense % 10,
+    tens: Math.floor(remainingIncense / 10) % 10,
+    hundreds: Math.floor(remainingIncense / 100) % 10,
+    overflow: 0,
+  }
+}
+
 /** Percent strings rendered next to the central 梁子 (`--` while WAITING). */
 export interface RatioPercentPair {
   up: string

@@ -76,6 +76,8 @@ export {
   formatCompactCount,
   formatLiangPosition,
   formatRatioPercents,
+  incensePlaceValue,
   liangQiIntensity,
+  type IncensePlaceValue,
   type RatioPercentPair,
 } from './presentation.ts'

@@ -64,7 +64,7 @@ DeepSeek Harness 是夯还是拉
 ### Region 2 — Central core
 
 ```text
-我的香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 Token
+我的香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 当量
                        梁位 83.021952%
 ```
 
@@ -72,14 +72,22 @@ Rules:
 
 - left overlay: personal `remaining_incense` (`N 炷`)
 - center (in-flow, geometrically centered in the panel): concrete Liangzi
-  avatar, the 梁气 ring, and the incense-dot overlay. These three MUST share
+  avatar, the 梁气 ring, and the incense-mark overlay. These three MUST share
   the panel's horizontal centerline. Personal flanks are absolutely positioned
   and MUST NOT participate in in-flow width (`space-between` / unequal flex
   columns are forbidden here — 「我的香火」 being wider than 「下一炷」 must
   never shove 梁子 sideways).
-- right overlay: personal `tokens_to_next_incense`
+- remaining incense on the ring is pictorial place-value on **separate orbits**
+  (炷=个位, 月=十位, 日=百位, each 0–9). A moon never occupies a stick slot.
+  ≥1000 炷 falls back to a compact numeral on the ring. The ring fill is
+  next-incense progress; the 炷/月/日 marks are remaining incense. The two
+  flanks are small captions of those same two facts — they must not compete
+  with the ring as a second copy of the same information.
+- right overlay: personal `tokens_to_next_incense` in **Pro 当量** (not raw
+  Flash Token). Hover/focus on 下一炷 shows the model-weight table
+  (Pro ×1 / Flash ×0.5 / 其它 ×1).
 - visible flank counts use `formatCompactCount` (`0–999` exact, then rounded
-  `K`/`M`/`B`) so `46,935 Token` cannot overflow the overlay. Hover title and
+  `K`/`M`/`B`) so `46,935 当量` cannot overflow the overlay. Hover title and
   the screen-reader summary keep the exact integer.
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
   6 decimals (`LIANG_POSITION_DECIMALS`)
@@ -252,7 +260,7 @@ on the left, `tokens_to_next_incense` on the right. The ring itself carries fill
 and intensity; its footer slot is reserved for the global 梁位 value.
 
 ```text
-我的香火 5 炷   [环 + 梁子]   下一炷 3,000 Token
+我的香火 5 炷   [环 + 梁子]   下一炷 3,000 当量
 ```
 
 The ring/avatar/incense-dots stay on the panel centerline; the two numbers are
@@ -952,7 +960,7 @@ Before completing any major Liangbiao change, be able to answer **yes** to all o
 - Does remaining incense control LiangQi intensity?
 - Does Token remainder control LiangQi ring fill?
 - Can spending incense reduce LiangQi intensity without rewinding Token progress?
-- Are “5 炷 / 再 3,000 Token” shown as LiangQi overlays rather than a separate personal tier section?
+- Are “5 炷 / 再 3,000 当量” shown as LiangQi overlays rather than a separate personal tier section?
 - Does the ring/avatar/incense-dot cluster sit on the panel centerline, unmoved by flank copy width?
 - Are the two vote buttons labelled `夯：升梁！` / `拉：降梁！` and equal-width?
 - Are global ratios and Liangzi state from the same snapshot/version?

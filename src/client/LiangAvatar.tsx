@@ -84,7 +84,7 @@ export function LiangAvatar({
           title={`${LIANGZI_STATE_LABELS[state]}：${rangeText}`}
           style={{
             fontFamily: font.family,
-            fontSize: '13px',
+            fontSize: size < 80 ? '11px' : '13px',
             fontWeight: 600,
             color: waiting ? color.textTertiary : LABEL_COLOR[state],
             letterSpacing: '0.5px',
