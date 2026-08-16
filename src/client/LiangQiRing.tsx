@@ -23,6 +23,8 @@ export interface LiangQiRingProps {
   reducedMotion: boolean
   /** Transient `+1 炷` condensation feedback (container-timed). */
   justCondensed: boolean
+  /** Overrides `personal.liangQiFill` for the throttle (油门) animation only. */
+  fillOverride?: number
   /** Pinned to the ring's bottom edge; the panel passes the 梁位 value. */
   footer?: ReactNode
   /** The LiangAvatar sits in the ring center. */
@@ -119,11 +121,12 @@ export function LiangQiRing({
   personal,
   reducedMotion,
   justCondensed,
+  fillOverride,
   footer,
   children,
 }: LiangQiRingProps): ReactElement {
   const intensity = liangQiIntensity(personal.remainingIncense)
-  const fill = personal.liangQiFill
+  const fill = fillOverride ?? personal.liangQiFill
   const circumference = 2 * Math.PI * RING_RADIUS
   const stroke = ringColorForFill(fill)
   const places = incensePlaceValue(personal.remainingIncense)

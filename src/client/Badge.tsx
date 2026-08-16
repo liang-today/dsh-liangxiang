@@ -28,6 +28,7 @@ import { LiangAvatar } from './LiangAvatar.tsx'
 import { createLiveLiangbiaoStore } from './live-store.ts'
 import { Panel } from './Panel.tsx'
 import { color } from './theme.ts'
+import { useThrottleFill } from './use-throttle-fill.ts'
 
 const buttonStyle: CSSProperties = {
   width: `${BADGE_SIZE}px`,
@@ -172,6 +173,8 @@ export function LiangbiaoBadge(): ReactElement {
     if (open) store.refresh({ force: true })
   }, [open, store])
   const reducedMotion = useReducedMotion()
+  // Smoothed + rate-extrapolated ring fill for the 油门 feel (presentation only).
+  const throttle = useThrottleFill(state.personal, reducedMotion)
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -368,7 +371,7 @@ export function LiangbiaoBadge(): ReactElement {
       <BadgeButton
         open={open}
         liangziState={state.snapshot.liangziState}
-        liangQiFill={state.personal.liangQiFill}
+        liangQiFill={throttle.fill}
         reducedMotion={reducedMotion}
         dragging={dragging}
         onToggle={() => {
@@ -389,6 +392,7 @@ export function LiangbiaoBadge(): ReactElement {
         <Panel
           state={state}
           reducedMotion={reducedMotion}
+          throttle={throttle}
           avatarPulse={avatarPulse}
           justCondensed={justCondensed}
           voteFeedback={voteFeedback}
