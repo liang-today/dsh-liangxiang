@@ -27,6 +27,8 @@ import {
   NO_INCENSE_REASON,
   OFFLINE_REASON,
   PANEL_TITLE,
+  STAT_LIFETIME_LABEL,
+  STAT_TODAY_LABEL,
   VOTER_STAT_HINT,
   VOTER_STAT_LABEL,
   VOTE_DOWN_LABEL,
@@ -38,8 +40,6 @@ import {
   RECONCILE_CONFIRM_PROMPT,
   RECONCILE_HINT,
   RECONCILE_LABEL,
-  DEV_CREDIT_HINT,
-  DEV_CREDIT_LABEL,
   WELCOME_DISMISS,
   WELCOME_LINES,
   WELCOME_TITLE,
@@ -50,6 +50,7 @@ import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangQiRing, AVATAR_SLOT, RING_SIZE } from './LiangQiRing.tsx'
+import { SoundIcon } from './SoundIcon.tsx'
 import type { LiangbiaoViewState } from './store.ts'
 import { color, font } from './theme.ts'
 import type { ThrottledProgress } from './use-throttle-fill.ts'
@@ -80,8 +81,6 @@ export interface PanelProps {
   onReconcileConfirm: () => void
   onReconcileCancel: () => void
   reconcilePending: boolean
-  /** Frontend-only UI probe: +1 炷 on this tab's picture, no Host/backend. */
-  onDevCredit?: () => void
 }
 
 const panelStyle: CSSProperties = {
@@ -101,12 +100,15 @@ const panelStyle: CSSProperties = {
 }
 
 const statStyle: CSSProperties = {
+  position: 'relative',
   display: 'inline-flex',
   alignItems: 'center',
   gap: '5px',
   flex: '1 1 0',
   minWidth: 0,
   whiteSpace: 'nowrap',
+  cursor: 'help',
+  outline: 'none',
 }
 
 const statCopyStyle: CSSProperties = {
@@ -142,7 +144,7 @@ const numericStyle: CSSProperties = {
   fontFeatureSettings: '"tnum"',
 }
 
-/** One voice for `梁位 83.021952% → 梁圣` — same size/weight, quiet glue vs facts. */
+/** One voice for `梁位 83.021952% → 梁祖` — same size/weight, quiet glue vs facts. */
 const positionLineStyle: CSSProperties = {
   fontFamily: font.family,
   fontSize: '13px',
@@ -336,6 +338,57 @@ const PANEL_CSS = `
   opacity: 1;
   transform: translateY(0);
 }
+[data-liangbiao-stat] [data-liangbiao-stat-hint] {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 3;
+  min-width: 128px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid ${color.border};
+  background: ${color.bgLayer};
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+  color: ${color.textPrimary};
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 40ms ease, transform 40ms ease;
+}
+[data-liangbiao-stat]:hover [data-liangbiao-stat-hint],
+[data-liangbiao-stat]:focus-visible [data-liangbiao-stat-hint] {
+  opacity: 1;
+  transform: translateY(0);
+}
+[data-liangbiao-stat-hint] strong {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  margin-bottom: 6px;
+}
+[data-liangbiao-stat-hint] dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 3px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+[data-liangbiao-stat-hint] dt {
+  margin: 0;
+  color: ${color.textTertiary};
+  font-weight: 500;
+}
+[data-liangbiao-stat-hint] dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-weight: 600;
+  color: ${color.textPrimary};
+}
 [data-liangbiao-weight-hint] table {
   border-collapse: collapse;
   width: 100%;
@@ -378,38 +431,24 @@ const visuallyHidden: CSSProperties = {
   border: 0,
 }
 
-function SoundIcon({ level }: { level: number }): ReactElement {
-  // Waves must fit inside the 24×24 viewBox: rightmost point is startX + rx.
-  // The old r=13 third arc ran to x≈34 and was clipped by the 14px box.
+function SocialStatHint(props: {
+  kind: 'incense' | 'voters'
+  label: string
+  today: number
+  lifetime: number
+}): ReactElement {
+  const todayText = props.today.toLocaleString('zh-CN')
+  const lifetimeText = props.lifetime.toLocaleString('zh-CN')
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      overflow="visible"
-      aria-hidden="true"
-    >
-      <path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
-      {level === 0
-        ? (
-          <>
-            <line x1="15" y1="9" x2="21" y2="15" />
-            <line x1="21" y1="9" x2="15" y2="15" />
-          </>
-        )
-        : (
-          <>
-            {level >= 1 && <path d="M14.5 9.5a3.2 3.2 0 0 1 0 5" />}
-            {level >= 2 && <path d="M16.8 7.2a5.6 5.6 0 0 1 0 9.6" />}
-            {level >= 3 && <path d="M18.2 5.2a5.6 5.6 0 0 1 0 13.6" />}
-          </>
-        )}
-    </svg>
+    <div data-liangbiao-stat-hint={props.kind} role="tooltip">
+      <strong>{props.label}</strong>
+      <dl>
+        <dt>{STAT_TODAY_LABEL}</dt>
+        <dd>{todayText}</dd>
+        <dt>{STAT_LIFETIME_LABEL}</dt>
+        <dd>{lifetimeText}</dd>
+      </dl>
+    </div>
   )
 }
 
@@ -417,7 +456,7 @@ export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, welcomeVisible, onDismissWelcome, avatarPulse, justCondensed, voteFeedback,
     onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
-    reconcilePending, onDevCredit,
+    reconcilePending,
   } = props
   const placement = props.placement ?? { stack: 'above' }
   const positionPulse = props.positionPulse ?? false
@@ -598,7 +637,7 @@ export function Panel(props: PanelProps): ReactElement {
         numbers overlay left/right and cannot shove that column.
 
           我的香火 N 炷   [梁气环 + 梁子]   下一炷 X 当量
-                          梁位 83.021952% → 梁圣
+                          梁位 83.021952% → 梁祖
       */}
       <div data-liangbiao-region="core" style={coreStyle}>
         <div data-liangbiao-core-anchor="" style={coreAnchorStyle}>
@@ -738,28 +777,6 @@ export function Panel(props: PanelProps): ReactElement {
       >
         {statusLine}
       </p>
-      {onDevCredit !== undefined && (
-        <p style={{ margin: '2px 0 0', textAlign: 'center' }}>
-          <button
-            type="button"
-            data-liangbiao-dev-credit=""
-            title={DEV_CREDIT_HINT}
-            onClick={onDevCredit}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: color.textTertiary,
-              fontFamily: font.family,
-              fontSize: '11px',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              textUnderlineOffset: '2px',
-            }}
-          >
-            {DEV_CREDIT_LABEL}
-          </button>
-        </p>
-      )}
 
       {/* Region 4 — 三界香火 / 五行香客 / 上达天听 share one row. */}
       <footer
@@ -776,7 +793,8 @@ export function Panel(props: PanelProps): ReactElement {
       >
         <span
           data-liangbiao-stat="incense"
-          title={`${INCENSE_STAT_HINT}：今日 ${snapshot.totalIncense.toLocaleString('zh-CN')} · 累计 ${formatZhCompactCount(lifetimeIncense)}`}
+          tabIndex={0}
+          aria-label={`${INCENSE_STAT_LABEL}。${INCENSE_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.totalIncense.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeIncense.toLocaleString('zh-CN')}`}
           style={statStyle}
         >
           <ThreeRealmsIncenseIcon size={18} />
@@ -784,10 +802,17 @@ export function Panel(props: PanelProps): ReactElement {
             <span data-liangbiao-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
             <strong style={statValueStyle}>{formatZhCompactCount(snapshot.totalIncense)}</strong>
           </span>
+          <SocialStatHint
+            kind="incense"
+            label={INCENSE_STAT_LABEL}
+            today={snapshot.totalIncense}
+            lifetime={lifetimeIncense}
+          />
         </span>
         <span
           data-liangbiao-stat="voters"
-          title={`${VOTER_STAT_HINT}：今日 ${snapshot.uniqueVoters.toLocaleString('zh-CN')} · 累计 ${formatZhCompactCount(lifetimeVoters)}`}
+          tabIndex={0}
+          aria-label={`${VOTER_STAT_LABEL}。${VOTER_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.uniqueVoters.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeVoters.toLocaleString('zh-CN')}`}
           style={statStyle}
         >
           <FivePhasePilgrimIcon size={18} />
@@ -795,6 +820,12 @@ export function Panel(props: PanelProps): ReactElement {
             <span data-liangbiao-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
             <strong style={statValueStyle}>{formatZhCompactCount(snapshot.uniqueVoters)}</strong>
           </span>
+          <SocialStatHint
+            kind="voters"
+            label={VOTER_STAT_LABEL}
+            today={snapshot.uniqueVoters}
+            lifetime={lifetimeVoters}
+          />
         </span>
         <div
           data-liangbiao-reconcile-slot=""

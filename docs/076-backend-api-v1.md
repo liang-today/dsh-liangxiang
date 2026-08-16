@@ -31,7 +31,7 @@
   "business_timezone": "Asia/Shanghai",
   "snapshot_refresh_seconds": 300,
   "token_policy": { "token_per_incense": 50000, "effective_token_formula": "input_plus_output" },
-  "liangzi_policy": { "version": "liangzi-v0.1-60-70-80-90", "boundaries": [0.6, 0.7, 0.8, 0.9] },
+  "liangzi_policy": { "version": "liangzi-v0.1-20-40-60-80", "boundaries": [0.2, 0.4, 0.6, 0.8] },
   "active_case": { "id": "case-2026-08-16", "business_date": "…", "title": "…", "status": "active",
                    "created_at": 0, "token_per_incense": 50000, "liangzi_policy_version": "…" },
   "authoritative_personal_state": {
@@ -47,7 +47,7 @@
     "case_id": "case-2026-08-16", "business_date": "2026-08-16",
     "up_votes": 1, "down_votes": 1, "total_incense": 2, "unique_voters": 1,
     "up_ratio": 0.5, "down_ratio": 0.5, "liangzi_state": "liang_gong",
-    "captured_at": 0, "sequence": 3, "policy_version": "liangzi-v0.1-60-70-80-90"
+    "captured_at": 0, "sequence": 3, "policy_version": "liangzi-v0.1-20-40-60-80"
   }
 }
 ```

@@ -133,7 +133,7 @@ export interface MockStoreSeed {
   tokenPerIncense?: number
 }
 
-/** Frozen demo scenario: 83% 夯 (梁圣), personal 5 炷 with 94% ring fill. */
+/** Frozen demo scenario: 83% 夯 (梁祖 under equal 20% bands), personal 5 炷 with 94% ring fill. */
 const DEFAULT_SEED: Required<MockStoreSeed> = {
   caseTitle: DEFAULT_CASE_TITLE,
   upVotes: 10_665,

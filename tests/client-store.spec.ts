@@ -7,12 +7,12 @@ import { describe, expect, it } from 'vitest'
 import { createMockLiangbiaoStore } from '../src/client/store.ts'
 
 describe('default demo seed', () => {
-  it('boots the frozen scenario: 83% 夯 / 梁圣 / 5 炷 / fill 94%', () => {
+  it('boots the frozen scenario: 83% 夯 / 梁祖 / 5 炷 / fill 94%', () => {
     const store = createMockLiangbiaoStore()
     const { snapshot, personal, activeCase } = store.getSnapshot()
     expect(activeCase.title).toBe('DeepSeek Harness 是夯还是拉')
     expect(snapshot.totalIncense).toBe(12_846)
-    expect(snapshot.liangziState).toBe('liang_sheng')
+    expect(snapshot.liangziState).toBe('liang_zu')
     expect(Math.round((snapshot.upRatio ?? 0) * 100)).toBe(83)
     expect(personal.remainingIncense).toBe(5)
     expect(personal.liangQiFill).toBeCloseTo(0.94, 10)
@@ -62,7 +62,7 @@ describe('vote flow', () => {
     expect(store.getSnapshot().snapshot.uniqueVoters).toBe(before + 1)
   })
 
-  it('a vote can cross a global threshold: 79.x% -> 80% flips 梁神 -> 梁圣', async () => {
+  it('a vote can cross a global threshold: 79.x% -> 80% flips 梁圣 -> 梁祖', async () => {
     const store = createMockLiangbiaoStore({
       upVotes: 79,
       downVotes: 20,
@@ -70,11 +70,11 @@ describe('vote flow', () => {
       effectiveTokensToday: 100_000,
       usedIncenseToday: 0,
     })
-    expect(store.getSnapshot().snapshot.liangziState).toBe('liang_shen')
+    expect(store.getSnapshot().snapshot.liangziState).toBe('liang_sheng')
     await store.vote('up')
     const after = store.getSnapshot()
     expect(after.snapshot.upRatio).toBe(0.8)
-    expect(after.snapshot.liangziState).toBe('liang_sheng')
+    expect(after.snapshot.liangziState).toBe('liang_zu')
     // The flip came from the ratio; personal fill did not move.
     expect(after.personal.liangQiFill).toBe(0)
     expect(after.personal.remainingIncense).toBe(1)
@@ -105,15 +105,15 @@ describe('token growth (凝香)', () => {
     expect(personal.liangQiFill).toBe(0)
     expect(personal.tokensToNextIncense).toBe(50_000)
     // Personal growth never moves the global Liangzi state.
-    expect(snapshot.liangziState).toBe('liang_sheng')
+    expect(snapshot.liangziState).toBe('liang_zu')
     expect(snapshot.upVotes).toBe(10_665)
   })
 
   it('personal token growth leaves the global snapshot state untouched', () => {
     const store = createMockLiangbiaoStore({ upVotes: 65, downVotes: 35, uniqueVoters: 10 })
-    expect(store.getSnapshot().snapshot.liangziState).toBe('liang_zong')
+    expect(store.getSnapshot().snapshot.liangziState).toBe('liang_sheng')
     store.addEffectiveTokens(500_000)
-    expect(store.getSnapshot().snapshot.liangziState).toBe('liang_zong')
+    expect(store.getSnapshot().snapshot.liangziState).toBe('liang_sheng')
   })
 })
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Credit simulated incense on the local fake ledger. Does not call a model.
 #
-# LOCAL_FAKE_DEV only (unset LIANGBIAO_BACKEND_URL). Staging UI tests should
-# click 「演示 +1 炷」 on the panel — that path is frontend-only.
+# LOCAL_FAKE_DEV only (unset LIANGBIAO_BACKEND_URL). There is no panel
+# 「演示 +1 炷」 button; this CLI writes the in-process fake ledger.
 #
 # Usage:
 #   pnpm run dev:credit           # +1 炷
@@ -50,7 +50,6 @@ except json.JSONDecodeError:
 if "error" in data:
     print("error:", data["error"], file=sys.stderr)
     print("Need LOCAL_FAKE_DEV: unset LIANGBIAO_BACKEND_URL, restart pnpm run dev:web.", file=sys.stderr)
-    print("Staging UI tests: click 「演示 +1 炷」 on the panel (frontend-only).", file=sys.stderr)
     raise SystemExit(1)
 personal = data["personal"]
 eff = personal["effectiveTokensToday"]

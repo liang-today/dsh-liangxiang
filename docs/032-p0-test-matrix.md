@@ -37,15 +37,15 @@
 
 ## 梁子 WAITING + 五态（§23.4）
 
-零票 waiting；整数票组合覆盖 0% / 59.999% / 60% / 69.999% / 70% / 79.999% / 80% / 89.999% / 90% / 100%；ratio 级同边界；非法阈值策略（重叠/越界/缺口/降序）拒绝。→ `domain-liangzi.spec.ts`
+零票 waiting；整数票组合覆盖 0% / 19.999% / 20% / 39.999% / 40% / 59.999% / 60% / 79.999% / 80% / 100%；ratio 级同边界；非法阈值策略（重叠/越界/缺口/降序）拒绝。→ `domain-liangzi.spec.ts`
 
 ## 全局/个人解耦（§23.5）
 
-remaining 0 + 全局 92% ⇒ 梁祖；remaining 100 + 65% ⇒ 梁总;个人 Token 397k→447k→497k 全局快照不变；全局 55→95% 个人梁气不变。→ `domain-independence.spec.ts`、`client-store.spec.ts`
+remaining 0 + 全局 92% ⇒ 梁祖；remaining 100 + 65% ⇒ 梁圣;个人 Token 397k→447k→497k 全局快照不变；全局 10→90% 个人梁气不变。→ `domain-independence.spec.ts`、`client-store.spec.ts`
 
 ## 阈值穿越（§23.6）
 
-79.x%→80%（79/20 +1 up = 80/100）梁神→梁圣；89.x%→90% 梁圣→梁祖；穿越原因是全局比例（个人仅 remaining -1、fill 不变）。→ `domain-independence.spec.ts`、`client-store.spec.ts`
+79.x%→80%（79/20 +1 up = 80/100）梁圣→梁祖；59.x%→60% 梁神→梁圣；穿越原因是全局比例（个人仅 remaining -1、fill 不变）。→ `domain-independence.spec.ts`、`client-store.spec.ts`
 
 ## 快照一致性（§23.12）/ 零票（§23.13）
 
@@ -57,11 +57,11 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 ## UI 结构（Prompt 1 §B 验收）
 
-四区顺序 case/core/vote/social、仅两个投票按钮（夯：升梁！/拉：降梁！，等宽标齐）、dialog 标题今日梁案、梁位与梁圣同快照、环居中且两翼 overlay、零票 `--`+待开梁、remaining 0 双按钮 disabled + 可访问 reason、六态头像两两视觉不同、三界香火 12,846 / 五行香客 2,841（西游 SVG 小标 + 10px 标签）、上达天听与统计同一行、case 区居中且无可见「本地演示」徽标（软信任标注在 `data-liangbiao-authority` + SR 摘要）。→ `client-panel.spec.tsx`、`badge.spec.tsx`
+四区顺序 case/core/vote/social、仅两个投票按钮（夯：升梁！/拉：降梁！，等宽标齐）、dialog 标题今日梁案、梁位与梁祖同快照、环居中且两翼 overlay、零票 `--`+待开梁、remaining 0 双按钮 disabled + 可访问 reason、六态头像两两视觉不同、三界香火 12,846 / 五行香客 2,841（西游 SVG 小标 + 10px 标签）、上达天听与统计同一行、case 区居中且无可见「本地演示」徽标（软信任标注在 `data-liangbiao-authority` + SR 摘要）。→ `client-panel.spec.tsx`、`badge.spec.tsx`
 
 ## 梁位显示：单值、带小数、不越阈值
 
-449/52 = 89.6207% ⇒ 显示 `89.6207%` 且头像仍梁圣（四舍五入会印出看似跨阈值的 `90%`）；任意小数位均截断；1000 票全枚举证明显示值恒落在所在状态区间内；两侧（夯/拉）恒和 100%；零票 `--`；`10,665→10,666` 一票即改变打印值；区间文案 `80% ≤ 夯率 < 90%` 由阈值策略推导。→ `domain-liangzi.spec.ts`、`client-panel.spec.tsx`
+399/501 = 79.6407% ⇒ 显示 `79.640718%` 且头像仍梁圣（四舍五入会印出看似跨阈值的 `80%`）；任意小数位均截断；1000 票全枚举证明显示值恒落在所在状态区间内；两侧（夯/拉）恒和 100%；零票 `--`；`10,665→10,666` 一票即改变打印值；区间文案 `60% ≤ 夯率 < 80%` 由阈值策略推导。→ `domain-liangzi.spec.ts`、`client-panel.spec.tsx`
 
 ## Region 2 新布局与自由放置
 

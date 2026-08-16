@@ -23,7 +23,8 @@ import {
   VOTE_DOWN_LABEL,
   VOTE_UP_LABEL,
   VOTER_STAT_LABEL,
-  DEV_CREDIT_LABEL,
+  STAT_LIFETIME_LABEL,
+  STAT_TODAY_LABEL,
 } from '../src/shared/index.ts'
 import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedElement, type RenderedNode } from './helpers/render.ts'
 
@@ -43,7 +44,6 @@ function renderPanel(
     onReconcileAsk?: () => void
     onReconcileConfirm?: () => void
     onReconcileCancel?: () => void
-    onDevCredit?: () => void
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -63,7 +63,6 @@ function renderPanel(
       onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
       onReconcileConfirm={extra.onReconcileConfirm ?? (() => undefined)}
       onReconcileCancel={extra.onReconcileCancel ?? (() => undefined)}
-      {...(extra.onDevCredit !== undefined ? { onDevCredit: extra.onDevCredit } : {})}
     />,
   )
 }
@@ -125,10 +124,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(position && textContent([position])).toContain('梁位')
     expect(position && textContent([position])).toContain('83.021952%')
     expect(position && textContent([position])).toContain('故称')
-    expect(position && textContent([position])).toContain('梁圣')
-    expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
-    expect(textContent(findByAttr(tree, 'data-liangbiao-avatar'))).not.toContain('梁圣')
-    expect(textContent(findByAttr(tree, 'data-liangbiao-liangzi-title'))).toBe('梁圣')
+    expect(position && textContent([position])).toContain('梁祖')
+    expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_zu')).toHaveLength(1)
+    expect(textContent(findByAttr(tree, 'data-liangbiao-avatar'))).not.toContain('梁祖')
+    expect(textContent(findByAttr(tree, 'data-liangbiao-liangzi-title'))).toBe('梁祖')
   })
 
   it('bobs the panel 梁子 with the logo: fill drives cadence, fill 0 is still', () => {
@@ -147,7 +146,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
   it('keeps 拉 as the complement in the tooltip instead of a second big number', () => {
     const tree = renderPanel(demoState())
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
-    expect(position?.props.title).toBe('夯 83.021952% / 拉 16.978048% → 梁圣')
+    expect(position?.props.title).toBe('夯 83.021952% / 拉 16.978048% → 梁祖')
   })
 
   it('sets 梁位 / value / arrow / 称呼 in one type size and weight', () => {
@@ -174,17 +173,17 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(footer).toHaveLength(1)
     expect(footer[0] && textContent([footer[0]])).toContain('83.021952%')
     expect(footer[0] && textContent([footer[0]])).toContain('故称')
-    expect(footer[0] && textContent([footer[0]])).toContain('梁圣')
+    expect(footer[0] && textContent([footer[0]])).toContain('梁祖')
     // The old up/down pair must not come back.
     expect(findByAttr(tree, 'data-liangbiao-ratio')).toHaveLength(0)
   })
 
   it('never rounds 梁位 past the threshold of the rendered state', () => {
-    // 449/501 = 89.6207…% -> 梁圣; rounding up would look like a 梁祖 mismatch.
-    const store = createMockLiangbiaoStore({ upVotes: 449, downVotes: 52, uniqueVoters: 40 })
+    // 399/501 = 79.6407…% -> 梁圣; rounding up would look like a 梁祖 mismatch.
+    const store = createMockLiangbiaoStore({ upVotes: 399, downVotes: 102, uniqueVoters: 40 })
     const tree = renderPanel(store.getSnapshot())
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
-    expect(position && textContent([position])).toContain('89.620758%')
+    expect(position && textContent([position])).toContain('79.640718%')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
   })
 
@@ -353,7 +352,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
 
   it('spells out the exact 夯率 band of the current state in the tooltip', () => {
     const tree = renderPanel(demoState())
-    const tooltips = findAll(tree, (node) => node.props.title === '梁圣：80% ≤ 夯率 < 90%')
+    const tooltips = findAll(tree, (node) => node.props.title === '梁祖：夯率 ≥ 80%')
     expect(tooltips.length).toBeGreaterThan(0)
   })
 
@@ -409,11 +408,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(copy).toContain('×0.5')
   })
 
-  it('shows 演示 +1 炷 when the credit callback is wired', () => {
-    expect(findByAttr(renderPanel(demoState()), 'data-liangbiao-dev-credit')).toHaveLength(0)
-    const tree = renderPanel(demoState(), '', { onDevCredit: () => undefined })
-    expect(findByAttr(tree, 'data-liangbiao-dev-credit')).toHaveLength(1)
-    expect(textContent(tree)).toContain(DEV_CREDIT_LABEL)
+  it('does not render a leftover 演示 +1 炷 probe', () => {
+    const tree = renderPanel(demoState())
+    expect(findByAttr(tree, 'data-liangbiao-dev-credit')).toHaveLength(0)
+    expect(textContent(tree)).not.toContain('演示 +1 炷')
   })
 
   it('zero votes: “--” 梁位 and the 待开梁 placeholder', () => {
@@ -470,11 +468,20 @@ describe('region 4: social stats', () => {
     const voters = findByAttr(tree, 'data-liangbiao-stat', 'voters')[0]
     expect(incense && textContent([incense])).toContain('1.3万')
     expect(voters && textContent([voters])).toContain('2,841')
-    expect(String(incense?.props.title)).toContain('12,846')
     expect(incense && textContent([incense])).toContain(INCENSE_STAT_LABEL)
     expect(voters && textContent([voters])).toContain(VOTER_STAT_LABEL)
     expect(INCENSE_STAT_LABEL).toBe('三界香火')
     expect(VOTER_STAT_LABEL).toBe('五行香客')
+    const incenseHint = findByAttr(tree, 'data-liangbiao-stat-hint', 'incense')[0]
+    const voterHint = findByAttr(tree, 'data-liangbiao-stat-hint', 'voters')[0]
+    expect(incenseHint && textContent([incenseHint])).toContain(STAT_TODAY_LABEL)
+    expect(incenseHint && textContent([incenseHint])).toContain(STAT_LIFETIME_LABEL)
+    expect(incenseHint && textContent([incenseHint])).toContain('12,846')
+    expect(voterHint && textContent([voterHint])).toContain(STAT_TODAY_LABEL)
+    expect(voterHint && textContent([voterHint])).toContain(STAT_LIFETIME_LABEL)
+    expect(voterHint && textContent([voterHint])).toContain('2,841')
+    expect(incense?.props.title).toBeUndefined()
+    expect(voters?.props.title).toBeUndefined()
   })
 
   it('uses Journey-to-the-West stat marks on the same row as 上达天听', () => {

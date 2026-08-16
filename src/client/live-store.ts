@@ -12,7 +12,7 @@
  *    hover / panel-open can force a host re-bootstrap instead of waiting for
  *    the next 1s snapshot poll. No extra background poll loop.
  */
-import { derivePersonalLiangQiState, type VoteResult, type VoteType } from '../domain/index.ts'
+import type { VoteResult, VoteType } from '../domain/index.ts'
 import { parseWireState, parseWireVoteResponse } from '../shared/wire.ts'
 import {
   createOfflineViewState,
@@ -79,12 +79,6 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
   refresh(options?: { force?: boolean }): void
   /** Drop local Token observation and re-read the server incense ledger. */
   reconcile(): Promise<void>
-  /**
-   * Frontend-only UI probe: move ring fill / 下一炷 on this tab's picture.
-   * Does not call the Host or the backend and does not add spendable incense.
-   * 上达天听 clears it.
-   */
-  creditDev(intent?: { sticks?: number, effectiveTokens?: number }): Promise<void>
   /** Abort in-flight work and close the stream. */
   dispose(): void
 }
@@ -96,7 +90,6 @@ export function createLiveLiangbiaoStore(
   let lastRevision = -1
   let lastHostEpoch = -1
   let lastWire: LiangbiaoViewState | null = null
-  let demoExtraTokens = 0
   let stream: { close(): void } | null = null
   let sseErrors = 0
   let disposed = false
@@ -106,29 +99,9 @@ export function createLiveLiangbiaoStore(
   let lastLiveRefreshAt = 0
   const listeners = new Set<() => void>()
 
-  const withDemoOverlay = (view: LiangbiaoViewState): LiangbiaoViewState => {
-    if (demoExtraTokens <= 0) return view
-    const painted = derivePersonalLiangQiState({
-      effectiveTokensToday: view.personal.effectiveTokensToday + demoExtraTokens,
-      usedIncenseToday: view.personal.usedIncenseToday,
-      tokenPerIncense: view.personal.tokenPerIncense,
-    })
-    // Ring fill / 下一炷 may move; spendable remaining stays on the
-    // authoritative ledger so the vote buttons cannot light up on a
-    // frontend-only overlay the backend will reject.
-    return {
-      ...view,
-      personal: {
-        ...painted,
-        remainingIncense: view.personal.remainingIncense,
-        earnedIncenseToday: view.personal.earnedIncenseToday,
-      },
-    }
-  }
-
   const publishWire = (view: LiangbiaoViewState): void => {
     lastWire = view
-    setState(withDemoOverlay(view))
+    setState(view)
   }
 
   const notify = (): void => {
@@ -255,8 +228,6 @@ export function createLiveLiangbiaoStore(
     },
     reconcile: () => {
       if (disposed || reconcileInFlight || starting) return Promise.resolve()
-      demoExtraTokens = 0
-      if (lastWire !== null) publishWire(lastWire)
       if (state.connection === 'offline') {
         if (!starting) bootstrap()
         return Promise.resolve()
@@ -273,16 +244,6 @@ export function createLiveLiangbiaoStore(
         .finally(() => {
           reconcileInFlight = false
         })
-    },
-    creditDev: (intent = { sticks: 1 }) => {
-      if (disposed) return Promise.resolve()
-      const tokenPerIncense = state.personal.tokenPerIncense
-      const add = intent.effectiveTokens ?? (intent.sticks ?? 1) * tokenPerIncense
-      if (!Number.isInteger(add) || add <= 0) return Promise.resolve()
-      demoExtraTokens += add
-      const base = lastWire ?? state
-      publishWire(base)
-      return Promise.resolve()
     },
     dispose: () => {
       disposed = true

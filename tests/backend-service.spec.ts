@@ -272,14 +272,14 @@ describe('global snapshot', () => {
   })
 
   it.each([
-    [59, 41, 'liang_gong'],
-    [60, 40, 'liang_zong'],
-    [69, 31, 'liang_zong'],
-    [70, 30, 'liang_shen'],
-    [79, 21, 'liang_shen'],
-    [80, 20, 'liang_sheng'],
-    [89, 11, 'liang_sheng'],
-    [90, 10, 'liang_zu'],
+    [19, 81, 'liang_gong'],
+    [20, 80, 'liang_zong'],
+    [39, 61, 'liang_zong'],
+    [40, 60, 'liang_shen'],
+    [59, 41, 'liang_shen'],
+    [60, 40, 'liang_sheng'],
+    [79, 21, 'liang_sheng'],
+    [80, 20, 'liang_zu'],
     [100, 0, 'liang_zu'],
   ])('publishes %d up / %d down as %s from one sequence', (upVotes, downVotes, expected) => {
     const f = boot()
@@ -294,7 +294,7 @@ describe('global snapshot', () => {
         up_votes: upVotes,
         down_votes: downVotes,
         unique_voters: 1,
-        policy_version: 'liangzi-v0.1-60-70-80-90',
+        policy_version: 'liangzi-v0.1-20-40-60-80',
         captured_at: FIXED_NOW,
       })
     })

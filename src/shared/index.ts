@@ -65,8 +65,10 @@ export const NEXT_INCENSE_WEIGHT_ROWS: ReadonlyArray<{ model: string, weight: st
 /** Region 4 stat labels (西游口吻：三界香火 / 取经五众). */
 export const INCENSE_STAT_LABEL = '三界香火'
 export const VOTER_STAT_LABEL = '五行香客'
-export const INCENSE_STAT_HINT = '今日梁案有效香火（悬停看累计）'
-export const VOTER_STAT_HINT = '今日至少上过一炷香的香客（悬停看累计）'
+export const INCENSE_STAT_HINT = '今日梁案有效香火'
+export const VOTER_STAT_HINT = '今日至少上过一炷香的香客'
+export const STAT_TODAY_LABEL = '今日'
+export const STAT_LIFETIME_LABEL = '累计'
 
 /** Honest soft-trust note for the LOCAL_FAKE_DEV authority mode (AGENTS.md §16). */
 export const LOCAL_MODE_NOTE = '本地演示模式：香火与投票均在本机，不代表可信全网结果'
@@ -117,10 +119,6 @@ export const RECONCILE_CONFIRM_PROMPT = '向服务器重新对账香火？'
 export const RECONCILE_CONFIRM_OK = '确认'
 export const RECONCILE_CONFIRM_CANCEL = '取消'
 
-/** Frontend-only UI probe: pump incense on this tab's picture. */
-export const DEV_CREDIT_LABEL = '演示 +1 炷'
-export const DEV_CREDIT_HINT = '仅本页画面，不请求服务器，也不消耗模型 Token'
-
 /** Display names of the central Liangzi states (WAITING is the zero-vote placeholder, not a tier). */
 export const LIANGZI_STATE_LABELS: Readonly<Record<LiangziState, string>> = {
   waiting: '待开梁',
@@ -139,7 +137,7 @@ function percentText(ratio: number): string {
 
 /**
  * The exact global 夯-ratio interval that keeps 梁子 in `state`, e.g.
- * `80% ≤ 夯率 < 90%` for 梁圣. Derived from the threshold policy so the copy
+ * `60% ≤ 夯率 < 80%` for 梁圣. Derived from the threshold policy so the copy
  * can never drift from `liangziStateForUpRatio`.
  */
 export function liangziRatioRangeText(

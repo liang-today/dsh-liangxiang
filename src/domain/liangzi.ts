@@ -39,9 +39,9 @@ export interface LiangziThresholdPolicy {
   readonly boundaries: readonly [number, number, number, number]
 }
 
-/** Frozen V0.1 thresholds: 60 / 70 / 80 / 90. */
+/** Frozen thresholds: five equal 20% bands from 0% to 100%. */
 export const DEFAULT_LIANGZI_THRESHOLDS: LiangziThresholdPolicy = {
-  boundaries: [0.6, 0.7, 0.8, 0.9],
+  boundaries: [0.2, 0.4, 0.6, 0.8],
 }
 
 /** Validate a threshold policy: four finite, strictly ascending values in (0,1). */

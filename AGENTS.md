@@ -65,7 +65,7 @@ DeepSeek Harness 是夯还是拉
 
 ```text
 今日香火 7 炷     [梁子 + 个人梁气环]     下一炷 3,000 当量
-                  梁位 83.021952% → 梁圣
+                  梁位 83.021952% → 梁祖
 ```
 
 Rules:
@@ -98,7 +98,7 @@ Rules:
   summary keep the exact integer.
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
   6 decimals (`LIANG_POSITION_DECIMALS`) — then a causal arrow to the 称呼
-  (`梁位 83.021952% → 梁圣`). The 称呼 is not painted on the portrait.
+  (`梁位 83.021952% → 梁祖`). The 称呼 is not painted on the portrait.
 - `down_ratio` gets **no** second big number: it is `1 − 梁位` and appears only in
   the tooltip and the screen-reader summary
 - the printed 梁位 must be TRUNCATED, never rounded, so it can never read as
@@ -159,28 +159,28 @@ LIANG_ZU     -> 梁祖
 ```text
 if total_votes == 0:
     liangzi_state = WAITING
-else if up_ratio < 0.60:
+else if up_ratio < 0.20:
     liangzi_state = LIANG_GONG
-else if up_ratio < 0.70:
+else if up_ratio < 0.40:
     liangzi_state = LIANG_ZONG
-else if up_ratio < 0.80:
+else if up_ratio < 0.60:
     liangzi_state = LIANG_SHEN
-else if up_ratio < 0.90:
+else if up_ratio < 0.80:
     liangzi_state = LIANG_SHENG
 else:
     liangzi_state = LIANG_ZU
 ```
 
-Frozen thresholds:
+Frozen thresholds — five equal 20% bands from 0% to 100% (升梁 / 降梁 same step):
 
 | Global up ratio | Liangzi state |
 |---|---|
 | 0 votes | 待开梁 |
-| `< 60%` | 梁工 |
-| `60% <= x < 70%` | 梁总 |
-| `70% <= x < 80%` | 梁神 |
-| `80% <= x < 90%` | 梁圣 |
-| `>= 90%` | 梁祖 |
+| `< 20%` | 梁工 |
+| `20% <= x < 40%` | 梁总 |
+| `40% <= x < 60%` | 梁神 |
+| `60% <= x < 80%` | 梁圣 |
+| `>= 80%` | 梁祖 |
 
 ### Visual direction
 
@@ -755,14 +755,14 @@ earned    = 1
 
 ```text
 0 total votes       -> 待开梁
-59.999% up          -> 梁工
-60% up              -> 梁总
-69.999% up          -> 梁总
-70% up              -> 梁神
-79.999% up          -> 梁神
-80% up              -> 梁圣
-89.999% up          -> 梁圣
-90% up              -> 梁祖
+19.999% up          -> 梁工
+20% up              -> 梁总
+39.999% up          -> 梁总
+40% up              -> 梁神
+59.999% up          -> 梁神
+60% up              -> 梁圣
+79.999% up          -> 梁圣
+80% up              -> 梁祖
 100% up             -> 梁祖
 ```
 
@@ -880,15 +880,19 @@ For substantial work:
 7. fix failures before considering the phase complete
 8. update docs when contracts/integration seams change
 
-### Git (standing, overrides Prompt 4)
+### Git (HARD RULE — 每次修复都必须 commit + push)
 
-After every completed change in this repository:
+After every completed change in this repository, **before considering the
+task done**:
 
-1. commit with a descriptive message
+1. `git commit` with a descriptive message
 2. `git push` to the tracked remote immediately
 
-Do not wait for the user to ask. The original Prompt 4 / Prompt 11 line
-「禁止 git push」is **overridden** by this standing instruction.
+Do not wait for the user to ask. Do not leave a finished fix uncommitted.
+The original Prompt 4 / Prompt 11 line 「禁止 git push」is **overridden**.
+Cursor rule: `.cursor/rules/git-commit-push.mdc`.
+
+Never commit `src/host/staging-defaults.ts` (community passphrase).
 
 ### Staging deploy (hard rule)
 
