@@ -2,6 +2,10 @@
 
 ## 0.1.0 — 未发布
 
+### 社区产品方案（未开工）
+
+- 选定 [`042`](docs/042-auth-trust-model.md) 路径 ③：不等 DSH 可验证身份，把 RC Demo 做成社区软信任产品。方案见 [`docs/120-community-product.md`](docs/120-community-product.md)。下一步是 C1（能发给朋友），需明确授权非 localhost 后端与 GitHub Release。
+
 ### 两翼计数缩写
 
 - **两翼计数**：`formatCompactCount`——`0–999` 原样，`1,000+` 四舍五入为 `K`/`M`/`B`（`3,000`→`3K`，`46,935`→`47K`，`1,234 炷`→`1.2K`）。这是防呆：默认 50K Token/炷时香火涨得慢，但两翼只有 64px。精确值仍在 tooltip 与屏幕阅读器里。梁位继续截断、不四舍五入。
