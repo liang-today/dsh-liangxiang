@@ -348,6 +348,10 @@ export function LiangbiaoBadge(): ReactElement {
     )
   }
 
+  const onDevCredit = (): void => {
+    store.creditDev({ sticks: 1 }).catch(() => setVoteFeedback('演示入账失败'))
+  }
+
   return (
     <div
       ref={anchorRef}
@@ -396,6 +400,7 @@ export function LiangbiaoBadge(): ReactElement {
           onReconcileAsk={onReconcileAsk}
           onReconcileConfirm={onReconcileConfirm}
           onReconcileCancel={onReconcileCancel}
+          {...(state.authorityMode === 'LOCAL_FAKE_DEV' ? { onDevCredit } : {})}
         />
       )}
     </div>

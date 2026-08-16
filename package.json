@@ -36,6 +36,7 @@
     "dev:uninstall": "bash scripts/dev-uninstall.sh",
     "dev:dump-config": "bash scripts/dump-config.sh",
     "dev:web": "bash scripts/dev-web.sh",
+    "dev:credit": "bash scripts/dev-credit.sh",
     "backend:start": "node lib/backend.js",
     "backend:dev": "pnpm run build && node lib/backend.js",
     "smoke:clean-profile": "bash scripts/smoke-clean-profile.sh",

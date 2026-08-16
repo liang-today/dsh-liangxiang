@@ -23,6 +23,7 @@ import {
   VOTE_DOWN_LABEL,
   VOTE_UP_LABEL,
   VOTER_STAT_LABEL,
+  DEV_CREDIT_LABEL,
 } from '../src/shared/index.ts'
 import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedElement, type RenderedNode } from './helpers/render.ts'
 
@@ -42,6 +43,7 @@ function renderPanel(
     onReconcileAsk?: () => void
     onReconcileConfirm?: () => void
     onReconcileCancel?: () => void
+    onDevCredit?: () => void
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -57,6 +59,7 @@ function renderPanel(
       onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
       onReconcileConfirm={extra.onReconcileConfirm ?? (() => undefined)}
       onReconcileCancel={extra.onReconcileCancel ?? (() => undefined)}
+      {...(extra.onDevCredit !== undefined ? { onDevCredit: extra.onDevCredit } : {})}
     />,
   )
 }
@@ -363,6 +366,13 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(copy).toContain('×1')
     expect(copy).toContain('V4-Flash')
     expect(copy).toContain('×0.5')
+  })
+
+  it('shows 演示 +1 炷 only when the local fake callback is wired', () => {
+    expect(findByAttr(renderPanel(demoState()), 'data-liangbiao-dev-credit')).toHaveLength(0)
+    const tree = renderPanel(demoState(), '', { onDevCredit: () => undefined })
+    expect(findByAttr(tree, 'data-liangbiao-dev-credit')).toHaveLength(1)
+    expect(textContent(tree)).toContain(DEV_CREDIT_LABEL)
   })
 
   it('zero votes: “--” 梁位 and the 待开梁 placeholder', () => {

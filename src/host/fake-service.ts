@@ -37,6 +37,7 @@ import {
 import type { LiangbiaoWireState, WireGlobalCounts, WireVoteRequest } from '../shared/wire.ts'
 import { WIRE_SCHEMA_VERSION } from '../shared/wire.ts'
 import { createBusinessDateProvider, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
+import { DEV_CREDIT_SESSION_ID } from './dev-credit.ts'
 import {
   creditObservedUsage,
   EMPTY_DAILY_USAGE,
@@ -314,6 +315,30 @@ export class FakeAuthoritativeLiangService {
   /** Local fake IS the ledger; there is no server overlay to restore. */
   reconcileNow(): void {
     this.refreshNow()
+  }
+
+  /**
+   * Pump Pro-equivalent tokens through the same usage fold as a live DSH
+   * session, so the panel, 凝香, and bob cadence all move without a model.
+   */
+  creditSimulatedUsage(deltaEffectiveTokens: number): void {
+    if (!Number.isInteger(deltaEffectiveTokens) || deltaEffectiveTokens <= 0) {
+      throw new Error('simulated credit must be a positive integer of Pro-equivalent tokens')
+    }
+    this.rotateToCurrentDate()
+    const previous = this.watermarks.get(DEV_CREDIT_SESSION_ID)
+    this.observeUsage(
+      DEV_CREDIT_SESSION_ID,
+      {
+        uncachedInputTokens: (previous?.inputHwm ?? 0) + deltaEffectiveTokens,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        outputTokens: previous?.outputHwm ?? 0,
+      },
+      previous === undefined
+        ? { kind: 'live', firstLiveSeq: 0 }
+        : { kind: 'live', firstLiveSeq: 1 },
+    )
   }
 
   getWireState(): LiangbiaoWireState {
