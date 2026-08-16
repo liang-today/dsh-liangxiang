@@ -19,7 +19,7 @@ import {
   type VoteType,
 } from '../domain/index.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
-import type { LiangbiaoWireState } from '../shared/wire.ts'
+import type { AuthorityMode, LiangbiaoWireState } from '../shared/wire.ts'
 
 export type ConnectionState = 'connecting' | 'live' | 'offline'
 
@@ -28,8 +28,11 @@ export interface LiangbiaoViewState {
   connection: ConnectionState
   /** False when the host reports the DSH accounting seams are absent. */
   accountingAvailable: boolean
-  /** True under the LOCAL_FAKE_DEV authority mode (honest labelling). */
-  localMode: boolean
+  /**
+   * Which trust model produced these numbers. Both shipped modes are soft
+   * trust; the panel labels them honestly (AGENTS.md §16).
+   */
+  authorityMode: AuthorityMode
   activeCase: DailyLiangCase
   /** Global snapshot: ratios + Liangzi state always share one sequence. */
   snapshot: PublicLiangSnapshot
@@ -49,7 +52,7 @@ export function wireToViewState(wire: LiangbiaoWireState, connection: Connection
   return {
     connection,
     accountingAvailable: wire.accounting.available,
-    localMode: wire.authorityMode === 'LOCAL_FAKE_DEV',
+    authorityMode: wire.authorityMode,
     activeCase: wire.activeCase,
     snapshot: buildPublicSnapshot({
       caseId: wire.global.caseId,
@@ -77,7 +80,7 @@ export function createOfflineViewState(connection: ConnectionState): LiangbiaoVi
   return {
     connection,
     accountingAvailable: false,
-    localMode: true,
+    authorityMode: 'LOCAL_FAKE_DEV',
     activeCase: {
       id: 'offline',
       businessDate: new Date().toISOString().slice(0, 10),
@@ -158,7 +161,7 @@ export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbia
   const buildState = (): LiangbiaoViewState => ({
     connection: 'live',
     accountingAvailable: true,
-    localMode: true,
+    authorityMode: 'LOCAL_FAKE_DEV',
     activeCase,
     snapshot: buildPublicSnapshot({ caseId: activeCase.id, aggregate, capturedAt: Date.now(), sequence }),
     personal,

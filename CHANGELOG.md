@@ -2,6 +2,15 @@
 
 ## 0.1.0 — 未发布
 
+### Backend + Online Integration（Phase 3，localhost / DEV_STAGING_ONLY）
+
+- **Authority 模式锁定**：Decision Gate A3 ⇒ `AUTHORITY_MODE=DEV_STAGING_ONLY`。后端对 `VERIFIED_PRODUCTION` 拒绝启动，wire 的 `AuthorityMode` 联合类型不含该值，个人状态恒带 `claim_source: host_observed_unverified` + `claim_verified: false`（见 `docs/075`）。
+- **后端**（`src/backend`，零新增依赖：`node:http` + `node:sqlite`）：schema v1（`daily_liang_case` / `daily_incense_state` / `liang_vote` / `daily_liang_stats` / `public_liang_snapshot`，一个业务日一个 active 案由 partial unique index 保证，`used*tpi <= claimed` 由 CHECK 兜底）；`/v1/bootstrap`、`/v1/token-claims`、`/v1/votes`、`/v1/snapshot`、`/v1/me/daily-state`、`/v1/health`；投票事务 `BEGIN IMMEDIATE` + 条件 UPDATE（CAS 扣香）+ `UNIQUE(installation_id, request_id)` 幂等 + 首票香客 +1；快照按 cadence append-only 发布，比例与梁子状态由同一行派生。
+- **Host 在线化**：`LiangHostService` 接口让 `/liangbiao/api/*` 同时服务两种模式（浏览器 wire 形状不变，UI 零改动）；`BackendLiangService` 上报 token claim（debounce + 单调 ratchet）、拉取快照、日切自动重新 bootstrap；`UsageProjection` 抽出本地观测；自铸假名 installation id 持久化于 storage domain `identity` 表（不复用 DSH 匿名 id）。
+- **诚实标注**：新增 `STAGING_MODE_NOTE`，面板 `data-liangbiao-authority` 与屏幕阅读器摘要按模式播报真实信任边界。
+- 新增 56 项测试（后端事务/HTTP 并发/幂等/多标签/日切/快照版本、Host↔Backend E2E），总计 236 项全绿；新增 `scripts/smoke-online.sh` 全链路冒烟（50 并发只接受 1 票）。
+- 文档：`070` 架构、`071` schema、`072` 事务与并发、`073` 业务日、`074` authority 数据流、`075` 决策与生产阻塞项、`076` `/v1` API。
+
 ### UI 修正（Phase 3 前）
 
 - 比例显示与阈值对齐：`formatRatioPercents(upVotes, downVotes)` 与梁子状态同源于快照原始计数，夯率截断到整数百分点（拉率取补数），修掉 89.6% 被四舍五入成 `90%` 却仍显示梁圣的观感错误;梁圣区间明确为 `80% ≤ 夯率 < 90%`。

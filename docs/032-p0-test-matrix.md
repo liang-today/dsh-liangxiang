@@ -63,7 +63,26 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 449/52 = 89.6% ⇒ 显示 `89%` / `11%` 且头像仍梁圣（四舍五入会印出看似跨阈值的 `90%`）；1000 票全枚举证明显示值恒落在所在状态区间内；两侧恒和 100%；零票双 `--`；区间文案 `80% ≤ 夯率 < 90%` 由阈值策略推导。→ `domain-liangzi.spec.ts`、`client-panel.spec.tsx`
 
+## Phase 3 服务层（在线 DEV_STAGING_ONLY）
+
+Token 边界 0/49,999/50,000/99,999/100,000/397,000/500,000/1,000,000 经 `/v1/token-claims` 折算；claim 单调 ratchet（更小值不回退余额）；异日 claim 被忽略。→ `backend-service.spec.ts`
+
+一票一炷且 token 进度不回退；重复/混投至耗尽后第 6 次 `insufficient_incense`；同 `request_id` 重放不二次扣香、异载荷 `idempotency_conflict`、幂等域按 installation 隔离；香客首票只 +1；未知/已关闭 case 被拒；store 层直呼扣香第二次返回 false。→ `backend-service.spec.ts`
+
+**并发超投**：remaining=1、100 个不同 `request_id` 并发 ⇒ 恰好 1×200 + 99×409；20 个同 id 并发 ⇒ 全 200 且 `used_incense=1`；两标签抢最后一炷 ⇒ 1 成功。→ `backend-http.spec.ts`、`host-backend.spec.ts`、`scripts/smoke-online.sh`（50 并发）
+
+**多标签收敛**：同 installation 顺序消费 3 炷 → 2/1/0 → 第 4 次 409；不同 installation 互不影响。→ `backend-http.spec.ts`
+
+**边界与信任**：缺失/畸形安装头 401；投票体带 `remaining_incense` 等权威字段 400（字段路径可断言）；第三态 `steady` 400；未知路由 404 / 错误方法 405 / 限流 429；`VERIFIED_PRODUCTION` 启动被拒。→ `backend-http.spec.ts`
+
+**快照 cadence 与版本**：投票后个人余额立即变、公共 sequence 不变；cadence 到点后 sequence+1 且比例/状态同版本；零票发布 `null/null + waiting`；个人 claim 暴涨不改梁子状态；跨进程帧的 `liangzi_state` 与同帧计数不符时**拒收**。→ `backend-service.spec.ts`、`host-backend.spec.ts`、`shared/backend-v1.ts` 校验器
+
+**日切**：新案/旧案关闭/个人归零/昨日聚合不泄漏/旧 case id 被拒/业务日只由服务器时钟+时区决定。→ `backend-service.spec.ts`、`host-backend.spec.ts`
+
+**Host↔Backend E2E**：DSH 四桶用量（10k+20k+5k input & 15k output = 50k）→ claim → 1 炷 → 投票 → wire 帧（`DEV_STAGING_ONLY`）→ 浏览器视图。→ `host-backend.spec.ts`、`scripts/smoke-online.sh`
+
 ## 留待 P2（本矩阵中尚未覆盖）
 
-- 真实 DSH 映射端到端（projection → effective）、replay/restart 不重复、multi-session 聚合、day rollover。
-- 并发超投（remaining=1 并发 N）、request_id 幂等执行、香客首票 +1 的服务层实现、多 tab 收敛。
+- 真实 DSH 映射端到端（projection → effective）在**多会话/replay/restart** 下的长跑验证。
+- 跨进程（多个 DSH Host 共享一个 DB 文件）的并发压测；目前并发覆盖同进程 + WAL 语义分析。
+- 反女巫 / 真实身份 / 可验证 Token：A3 下不可实现，属生产阻塞项（[`075`](075-backend-decision.md)）。

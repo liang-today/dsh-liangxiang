@@ -28,6 +28,9 @@ export const LIANGBIAO_DOMAIN_VERSION = 1
 
 class RecordShapeError extends Error {}
 
+/** Mirrors the backend's accepted installation-id shape. */
+const INSTALLATION_ID_PATTERN = /^[A-Za-z0-9._-]{8,64}$/
+
 function requireCountField(record: Record<string, unknown>, field: string): number {
   const value = record[field]
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
@@ -97,6 +100,17 @@ const voteSchema: DshValueSchema = {
   },
 }
 
+const identitySchema: DshValueSchema = {
+  parse(raw: unknown): { installationId: string } {
+    const record = asStoredRecord(raw)
+    const installationId = record.installationId
+    if (typeof installationId !== 'string' || !INSTALLATION_ID_PATTERN.test(installationId)) {
+      throw new RecordShapeError('installationId must match [A-Za-z0-9._-]{8,64}')
+    }
+    return { installationId }
+  },
+}
+
 const LIANGBIAO_DOMAIN_SPEC = {
   name: LIANGBIAO_DOMAIN_NAME,
   version: LIANGBIAO_DOMAIN_VERSION,
@@ -106,11 +120,29 @@ const LIANGBIAO_DOMAIN_SPEC = {
     ledgers: { valueSchema: ledgerSchema },
     aggregates: { valueSchema: aggregateSchema },
     votes: { valueSchema: voteSchema },
+    identity: { valueSchema: identitySchema },
   },
 } as const
 
+/** Single row key of the identity table. */
+const IDENTITY_KEY = 'installation'
+
+/**
+ * The pseudonymous installation identity port.
+ *
+ * The id is MINTED BY LIANGBIAO (a fresh uuid), never read from DSH's own
+ * `.anonymous-user-id`: borrowing DSH's identifier would blur a DSH-internal
+ * value into something we send to a server, and it still would not be
+ * authentication (docs/002, docs/043).
+ */
+export interface LiangbiaoIdentityPort {
+  /** The stored id, minting and persisting one on first use. */
+  resolve(): Promise<string>
+}
+
 export interface LiangbiaoPersistenceHandle {
   port: LiangPersistencePort
+  identity: LiangbiaoIdentityPort
   close(): Promise<void>
 }
 
@@ -136,6 +168,7 @@ export async function openLiangbiaoPersistence(
   const ledgers = domain.table('ledgers')
   const aggregates = domain.table('aggregates')
   const votes = domain.table('votes')
+  const identityTable = domain.table('identity')
 
   const writeBehind = (label: string, write: () => Promise<unknown>): void => {
     write().then(
@@ -166,5 +199,18 @@ export async function openLiangbiaoPersistence(
     deleteVote: (requestId) => writeBehind('vote-delete', () => votes.delete(requestId)),
   }
 
-  return { port, close: () => domain.close() }
+  const identity: LiangbiaoIdentityPort = {
+    async resolve(): Promise<string> {
+      const stored = identityTable.get(IDENTITY_KEY)
+      if (stored !== undefined) {
+        return (identitySchema.parse(stored) as { installationId: string }).installationId
+      }
+      const installationId = `inst-${crypto.randomUUID()}`
+      // Await this write: an unpersisted id would silently reset the ledger.
+      await identityTable.put(IDENTITY_KEY, { installationId })
+      return installationId
+    },
+  }
+
+  return { port, identity, close: () => domain.close() }
 }

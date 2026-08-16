@@ -13,10 +13,10 @@ import type { CSSProperties, KeyboardEvent, ReactElement } from 'react'
 import { formatRatioPercents, type VoteType } from '../domain/index.ts'
 import {
   ACCOUNTING_UNAVAILABLE_HINT,
+  AUTHORITY_MODE_NOTES,
   INCENSE_STAT_ICON,
   INCENSE_STAT_LABEL,
   LIANGZI_STATE_LABELS,
-  LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
   OFFLINE_REASON,
   PANEL_TITLE,
@@ -176,14 +176,14 @@ export function Panel(props: PanelProps): ReactElement {
     + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
     + `${VOTE_UP_NAME}占比 ${percents.up}，${VOTE_DOWN_NAME}占比 ${percents.down}。`
     + `我的剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} Token。`
-    + (state.localMode ? LOCAL_MODE_NOTE + '。' : '')
+    + `${AUTHORITY_MODE_NOTES[state.authorityMode]}。`
 
   return (
     <section
       role="dialog"
       aria-label={PANEL_TITLE}
       data-liangbiao-panel=""
-      data-liangbiao-authority={state.localMode ? 'LOCAL_FAKE_DEV' : 'unknown'}
+      data-liangbiao-authority={state.authorityMode}
       tabIndex={-1}
       style={panelStyle}
       onKeyDown={onKeyDown}

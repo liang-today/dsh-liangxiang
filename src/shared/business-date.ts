@@ -1,9 +1,12 @@
 /**
- * Clock + BusinessDateProvider. LOCAL/DEV ONLY authority: the business
- * timezone is an explicit configuration (never the browser locale, never
- * scattered `new Date().toLocaleDateString()` calls). Once a real backend
- * exists, its `business_date` / server time replaces this provider
- * (AGENTS.md §10); this module must not be promoted to production authority.
+ * Clock + BusinessDateProvider, shared by the backend (authoritative) and the
+ * host (local observation only).
+ *
+ * The business timezone is always an explicit configuration — never the
+ * browser locale, never a scattered `new Date().toLocaleDateString()` call.
+ * In the online path the BACKEND's provider is the authority and the host
+ * adopts `business_date` from `/v1/bootstrap` (AGENTS.md §10); the host's own
+ * provider only buckets locally observed tokens for its daily claim.
  */
 
 export interface Clock {

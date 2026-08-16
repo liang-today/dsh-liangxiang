@@ -1,0 +1,114 @@
+/**
+ * SQLite schema (v1) for the Liangbiao backend.
+ *
+ * Design notes that matter for the frozen invariants:
+ *
+ *  - `daily_liang_case`: at most ONE active case per business date, enforced by
+ *    a partial unique index rather than by application code.
+ *  - `daily_incense_state`: the installation-level daily spend ledger. The
+ *    CHECK constraint `used_incense * token_per_incense <= claimed_effective_tokens`
+ *    means the database itself refuses an overspend, so a bug in the service
+ *    cannot produce a row that violates `used <= earned`.
+ *  - `liang_vote`: `UNIQUE (installation_id, request_id)` is the idempotency
+ *    key. Only ACCEPTED votes are recorded, so a rejection never poisons a
+ *    request id.
+ *  - `daily_liang_stats`: the raw aggregate, updated inside the vote
+ *    transaction (immediately consistent).
+ *  - `public_liang_snapshot`: append-only published snapshots. Ratios and
+ *    Liangzi state are NOT stored — they are derived from one snapshot row by
+ *    the same domain policy the UI uses, so they cannot come from different
+ *    versions (AGENTS.md §12). The stored `policy_version` records which
+ *    threshold policy the row was published under.
+ *
+ * Ratios/state deliberately have no columns; adding them would create a second
+ * source of truth for something the domain already derives.
+ */
+import type { DatabaseSync } from 'node:sqlite'
+
+export const BACKEND_SCHEMA_USER_VERSION = 1
+
+const DDL = `
+CREATE TABLE IF NOT EXISTS daily_liang_case (
+  id                      TEXT    PRIMARY KEY,
+  business_date           TEXT    NOT NULL,
+  title                   TEXT    NOT NULL,
+  status                  TEXT    NOT NULL CHECK (status IN ('active', 'closed')),
+  token_per_incense       INTEGER NOT NULL CHECK (token_per_incense > 0),
+  liangzi_policy_version  TEXT    NOT NULL,
+  created_at              INTEGER NOT NULL,
+  opened_at               INTEGER NOT NULL,
+  closed_at               INTEGER
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_case_one_active_per_date
+  ON daily_liang_case (business_date) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS daily_incense_state (
+  installation_id           TEXT    NOT NULL,
+  business_date             TEXT    NOT NULL,
+  claimed_effective_tokens  INTEGER NOT NULL DEFAULT 0 CHECK (claimed_effective_tokens >= 0),
+  used_incense              INTEGER NOT NULL DEFAULT 0 CHECK (used_incense >= 0),
+  token_per_incense         INTEGER NOT NULL CHECK (token_per_incense > 0),
+  claim_source              TEXT    NOT NULL,
+  version                   INTEGER NOT NULL DEFAULT 0,
+  created_at                INTEGER NOT NULL,
+  updated_at                INTEGER NOT NULL,
+  PRIMARY KEY (installation_id, business_date),
+  CHECK (used_incense * token_per_incense <= claimed_effective_tokens)
+);
+
+CREATE TABLE IF NOT EXISTS liang_vote (
+  id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id               TEXT    NOT NULL,
+  installation_id          TEXT    NOT NULL,
+  case_id                  TEXT    NOT NULL REFERENCES daily_liang_case (id),
+  business_date            TEXT    NOT NULL,
+  vote_type                TEXT    NOT NULL CHECK (vote_type IN ('up', 'down')),
+  used_incense_after       INTEGER NOT NULL CHECK (used_incense_after > 0),
+  remaining_incense_after  INTEGER NOT NULL CHECK (remaining_incense_after >= 0),
+  created_at               INTEGER NOT NULL,
+  UNIQUE (installation_id, request_id)
+);
+
+CREATE INDEX IF NOT EXISTS ix_vote_case_installation
+  ON liang_vote (case_id, installation_id);
+
+CREATE TABLE IF NOT EXISTS daily_liang_stats (
+  case_id        TEXT    PRIMARY KEY REFERENCES daily_liang_case (id),
+  business_date  TEXT    NOT NULL,
+  up_votes       INTEGER NOT NULL DEFAULT 0 CHECK (up_votes >= 0),
+  down_votes     INTEGER NOT NULL DEFAULT 0 CHECK (down_votes >= 0),
+  unique_voters  INTEGER NOT NULL DEFAULT 0 CHECK (unique_voters >= 0),
+  version        INTEGER NOT NULL DEFAULT 0,
+  updated_at     INTEGER NOT NULL,
+  CHECK (unique_voters <= up_votes + down_votes)
+);
+
+CREATE TABLE IF NOT EXISTS public_liang_snapshot (
+  case_id         TEXT    NOT NULL REFERENCES daily_liang_case (id),
+  sequence        INTEGER NOT NULL CHECK (sequence > 0),
+  business_date   TEXT    NOT NULL,
+  up_votes        INTEGER NOT NULL CHECK (up_votes >= 0),
+  down_votes      INTEGER NOT NULL CHECK (down_votes >= 0),
+  unique_voters   INTEGER NOT NULL CHECK (unique_voters >= 0),
+  policy_version  TEXT    NOT NULL,
+  captured_at     INTEGER NOT NULL,
+  PRIMARY KEY (case_id, sequence)
+);
+`
+
+/** Apply the schema and record its user_version (idempotent). */
+export function migrate(db: DatabaseSync): void {
+  db.exec('PRAGMA foreign_keys = ON')
+  db.exec(DDL)
+  const row = db.prepare('PRAGMA user_version').get() as { user_version?: number } | undefined
+  const current = typeof row?.user_version === 'number' ? row.user_version : 0
+  if (current > BACKEND_SCHEMA_USER_VERSION) {
+    throw new Error(
+      `liangbiao backend database is at schema version ${current}, newer than this build (${BACKEND_SCHEMA_USER_VERSION})`,
+    )
+  }
+  if (current !== BACKEND_SCHEMA_USER_VERSION) {
+    db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
+  }
+}

@@ -4,9 +4,24 @@
 
 产品语义冻结于 [`AGENTS.md`](AGENTS.md) 与 [`docs/PRODUCT_FREEZE_V0.1.md`](docs/PRODUCT_FREEZE_V0.1.md);历史勘察文档中的旧模型(梁签、cache-read 10% 权重等)已废弃,见 [`docs/SEMANTIC_CORRECTION_R2.md`](docs/SEMANTIC_CORRECTION_R2.md)。
 
-当前状态:**真实 Token + 本地完整闭环(LOCAL_FAKE_DEV)**。真实 DSH provider-reported 用量(`tokenUsage` 投影,水位差分防重)驱动个人梁气;`FakeAuthoritativeLiangService` 在 Host 内提供本地投票闭环(幂等、并发防双花、香客计数、快照 cadence);Client 经 `/liangbiao/api`(state/SSE/vote)消费。**诚实声明**:Decision Gate A 判定为 A3(`docs/043`)——当前 DSH 不提供服务器可验证的身份与 Token 权威,生产"可信全网投票"标记 BLOCKED;本仓一切投票均为本地演示/软信任,UI 以「本地演示」标签如实标注。
+当前状态:**在线全链路(localhost)+ 两种诚实标注的 authority 模式**。
 
-设计文档见 [`docs/`](docs/):`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵(含实际使用的接口)。
+| 模式 | 触发 | 权威 | 适用 |
+|---|---|---|---|
+| `LOCAL_FAKE_DEV` | 不设 `LIANGBIAO_BACKEND_URL` | Host 进程内(`FakeAuthoritativeLiangService`) | 单机演示 |
+| `DEV_STAGING_ONLY` | 设 `LIANGBIAO_BACKEND_URL` | 独立 Liangbiao 后端 + SQLite(`/v1/*`) | 本地/团队内 staging |
+
+在线链路:DSH Host 观测真实 provider-reported 用量(`tokenUsage` 投影,水位差分防重)→ 作为**声明**上报 `POST /v1/token-claims` → 后端在 DB 事务里原子扣香、幂等去重、更新聚合 → 按 cadence 发布 `public_liang_snapshot` → Host 经 `/liangbiao/api`(state/SSE/vote)推给浏览器。
+
+**诚实声明(必读)**:Decision Gate A 判定为 **A3**([`docs/043`](docs/043-decision-gate-a.md))——DSH 不提供服务器可验证的身份与 Token 权威。因此:
+
+- 后端**能**保证:同一安装不超支、同一 `request_id` 不重复扣香、多标签收敛、业务日与快照版本一致;
+- 后端**不能**保证:投票者是谁(`installation_id` 是自铸可重置的**假名安装标识**)、Token 用量是否真实(`claimed_effective_tokens` 是**不可验证的声明**);
+- 因此这**不是** secure / verified / 可信全网 usage voting。`VERIFIED_PRODUCTION` 在后端启动门禁与 wire 类型上双重禁用,UI 屏幕阅读器摘要固定播报「本地预发模式:…Token 用量无法被服务端验证」。详见 [`docs/075`](docs/075-backend-decision.md)。
+
+未部署公网、未发布 npm。
+
+设计文档见 [`docs/`](docs/):`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵(含实际使用的接口);在线阶段见 `070` 后端架构、`071` DB schema、`072` 投票事务/并发/幂等、`073` 业务日、`074` authority 数据流、`075` authority 决策与阻塞项、`076` `/v1` API。
 
 ## 结构
 
@@ -18,8 +33,9 @@
     ├── index.ts          # Host entry(package main)
     ├── host/             # Host 插件本体
     ├── client/           # Client entry + 占位徽章
-    ├── shared/           # host↔client 共享契约
-    ├── domain/           # 纯逻辑层(后续里程碑)
+    ├── shared/           # host↔client wire + host↔backend /v1 契约
+    ├── domain/           # 纯逻辑层(折算/阈值/快照/投票词汇)
+    ├── backend/          # 独立后端进程(node:http + node:sqlite),不进 DSH bundle
     └── compat/dsh/       # 唯一允许直接 import DSH API 的层
 ```
 
@@ -45,6 +61,20 @@
 | 卸载插件 | `pnpm run dev:uninstall` |
 | 打本地 tarball | `pnpm run pack:tarball` |
 | 干净 profile 冒烟测试 | `pnpm run smoke:clean-profile` |
+| 启动后端(在线模式) | `pnpm run backend:start`(默认 `http://127.0.0.1:4180`) |
+| 构建 + 启动后端 | `pnpm run backend:dev` |
+| 在线全链路冒烟 | `pnpm run smoke:online` |
+
+### 在线模式(DEV_STAGING_ONLY)本地跑法
+
+```bash
+pnpm run build
+LIANGBIAO_BACKEND_DB=.liangbiao-backend/dev.sqlite pnpm run backend:start
+# 另一个终端:
+LIANGBIAO_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
+```
+
+`pnpm run smoke:online` 会自动完成上面两步并断言:后端拒绝 `VERIFIED_PRODUCTION`、Host 报告 `DEV_STAGING_ONLY`、claim 折算、同 `request_id` 只扣一次香、50 并发只接受 1 票、快照按 cadence 发布。
 
 ### 开发循环
 

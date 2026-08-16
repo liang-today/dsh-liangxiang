@@ -1,26 +1,37 @@
 /**
- * Host half: real DSH token observation + the local full voting loop.
+ * Host half: real DSH token observation plus the voting loop, in one of two
+ * honestly-labelled authority modes.
+ *
+ *   LIANGBIAO_BACKEND_URL unset -> LOCAL_FAKE_DEV
+ *     `FakeAuthoritativeLiangService`: everything in this process.
+ *
+ *   LIANGBIAO_BACKEND_URL set    -> DEV_STAGING_ONLY
+ *     `BackendLiangService`: the online Liangbiao backend owns the spend
+ *     ledger, idempotency, the aggregate and the business date; this half
+ *     observes tokens (a claim, not a proof), holds the self-minted
+ *     pseudonymous installation id, and serves the browser channel.
  *
  * Wiring (all DSH touchpoints via compat/dsh; docs/044):
  *  - `webServer` inject      -> /liangbiao/api routes (state / SSE / vote)
- *  - `storageDomain` inject  -> hydrate + write-behind persistence
+ *  - `storageDomain` inject  -> hydrate + write-behind persistence + identity
  *  - `sessionProjections`+`sessions` inject -> tokenUsage observation
  *
- * Any missing service degrades that capability only (accounting unavailable
- * / memory-only) — the client keeps rendering (frozen requirement 9). A
- * bounded readiness fallback covers assemblies without a storage domain.
- * Every registration is an effect: plugin unload clears routes, SSE
- * connections, subscriptions, and timers.
+ * Any missing service degrades that capability only (accounting unavailable /
+ * memory-only) — the client keeps rendering. Every registration is an effect:
+ * plugin unload clears routes, SSE connections, subscriptions and timers.
  */
 import type { DshHostContext } from '../compat/dsh/host-context.ts'
 import { resolveDshHostServices } from '../compat/dsh/host-services.ts'
 import { openLiangbiaoPersistence, type LiangbiaoPersistenceHandle } from '../compat/dsh/storage.ts'
 import { attachUsageObservation } from '../compat/dsh/usage-observer.ts'
+import { systemClock } from '../shared/business-date.ts'
 import { HOST_PLUGIN_NAME, PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
-import { systemClock } from './business-date.ts'
-import { resolveHostConfig } from './config.ts'
+import { createBackendClient } from './backend-client.ts'
+import { BackendLiangService } from './backend-service.ts'
+import { resolveHostRuntimeConfig } from './config.ts'
 import { FakeAuthoritativeLiangService } from './fake-service.ts'
 import { createLiangbiaoApi } from './routes.ts'
+import type { LiangHostService } from './service.ts'
 
 export const name = HOST_PLUGIN_NAME
 
@@ -42,11 +53,30 @@ export function apply(ctx: DshHostContext): void {
     }
   }, 'liangbiao: lifecycle marker')
 
-  const config = resolveHostConfig(process.env, warn)
-  const service = new FakeAuthoritativeLiangService(config, systemClock, warn)
+  const { service: serviceConfig, backendUrl } = resolveHostRuntimeConfig(process.env, warn)
+  const online = backendUrl !== null
+    ? new BackendLiangService({
+      client: createBackendClient({ baseUrl: backendUrl }),
+      timezone: serviceConfig.timezone,
+      clock: systemClock,
+      warn,
+    })
+    : null
+  const local = online === null
+    ? new FakeAuthoritativeLiangService(serviceConfig, systemClock, warn)
+    : null
+  const service: LiangHostService = online ?? (local as FakeAuthoritativeLiangService)
 
-  // Bounded readiness fallback: if no storage domain hydrates us in time,
-  // run memory-only rather than serving 503 forever.
+  console.log(
+    `[${PLUGIN_PACKAGE_NAME}] authority mode: ${online === null ? 'LOCAL_FAKE_DEV (in-process)' : `DEV_STAGING_ONLY (${backendUrl as string})`}`
+    + ' — soft trust: pseudonymous installation id, unverifiable Token claims',
+  )
+
+  ctx.effect(() => () => service.dispose?.(), 'liangbiao: service lifecycle')
+
+  // Bounded readiness fallback: if no storage domain hydrates us in time, run
+  // memory-only (local mode) / with an ephemeral installation id (online mode)
+  // rather than serving 503 forever.
   ctx.effect(() => {
     const timer = setTimeout(() => {
       service.markReadyMemoryOnly('storage domain did not attach within the startup window')
@@ -54,12 +84,13 @@ export function apply(ctx: DshHostContext): void {
     return () => clearTimeout(timer)
   }, 'liangbiao: readiness fallback')
 
-  // Snapshot cadence: raw aggregates update per accepted vote; the published
-  // global snapshot (ratios + Liangzi state, one sequence) refreshes here.
+  // Cadence: local mode publishes its own snapshot here; online mode pulls the
+  // backend's published snapshot. Either way the public ratio and the Liangzi
+  // state move together, at this cadence, never per vote.
   ctx.effect(() => {
     const interval = setInterval(() => {
       service.tick()
-    }, config.snapshotRefreshSeconds * 1000)
+    }, serviceConfig.snapshotRefreshSeconds * 1000)
     return () => clearInterval(interval)
   }, 'liangbiao: snapshot cadence')
 
@@ -93,7 +124,16 @@ export function apply(ctx: DshHostContext): void {
             return
           }
           handle = opened
-          await service.attachPersistence(opened.port)
+          if (online !== null) {
+            // Online mode: persistence carries the local token projection and
+            // the pseudonymous installation id; the spend ledger is the
+            // backend's, never this file's.
+            const persisted = await opened.port.load()
+            online.hydrateUsage(persisted.watermarks, persisted.dailyUsage, opened.port)
+            online.attachIdentity(await opened.identity.resolve())
+          } else {
+            await local?.attachPersistence(opened.port)
+          }
         })
         .catch((error: unknown) => {
           warn(`[${PLUGIN_PACKAGE_NAME}] persistence unavailable: ${error instanceof Error ? error.message : String(error)}`)

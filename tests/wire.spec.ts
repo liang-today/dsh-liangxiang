@@ -44,7 +44,7 @@ describe('state frame round-trip', () => {
     // demo seed 83% -> 梁圣, derived from the SAME raw counts as the ratios.
     expect(view.snapshot.liangziState).toBe('liang_sheng')
     expect(view.snapshot.totalIncense).toBe(12_846)
-    expect(view.localMode).toBe(true)
+    expect(view.authorityMode).toBe('LOCAL_FAKE_DEV')
   })
 
   it('a vote response round-trips result + state', () => {

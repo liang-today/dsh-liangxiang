@@ -36,7 +36,7 @@ import {
 } from '../domain/index.ts'
 import type { LiangbiaoWireState, WireGlobalCounts, WireVoteRequest } from '../shared/wire.ts'
 import { WIRE_SCHEMA_VERSION } from '../shared/wire.ts'
-import { createBusinessDateProvider, type BusinessDateProvider, type Clock } from './business-date.ts'
+import { createBusinessDateProvider, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import {
   addDailyUsage,
   EMPTY_DAILY_USAGE,

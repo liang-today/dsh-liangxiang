@@ -43,8 +43,8 @@ describe('host half wiring', () => {
     apply(ctx)
 
     expect(log).toHaveBeenCalledWith('[dsh-liangbiao] host half active')
-    // lifecycle marker + readiness fallback + snapshot cadence.
-    expect(disposers.length).toBe(3)
+    // lifecycle marker + service lifecycle + readiness fallback + snapshot cadence.
+    expect(disposers.length).toBe(4)
     expect(injectedDeps).toEqual([
       ['webServer'],
       ['storageDomain'],
