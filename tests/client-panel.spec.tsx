@@ -9,8 +9,14 @@ import { Panel } from '../src/client/Panel.tsx'
 import { createMockLiangbiaoStore } from '../src/client/store.ts'
 import type { LiangbiaoViewState } from '../src/client/store.ts'
 import { LIANGZI_STATES } from '../src/domain/index.ts'
-import { NO_INCENSE_REASON, PANEL_TITLE } from '../src/shared/index.ts'
-import { findAll, findByAttr, renderDeep, textContent, type RenderedNode } from './helpers/render.ts'
+import {
+  INCENSE_STAT_ICON,
+  LOCAL_MODE_NOTE,
+  NO_INCENSE_REASON,
+  PANEL_TITLE,
+  VOTER_STAT_ICON,
+} from '../src/shared/index.ts'
+import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedNode } from './helpers/render.ts'
 
 function renderPanel(state: LiangbiaoViewState, voteFeedback = ''): RenderedNode[] {
   return renderDeep(
@@ -47,6 +53,19 @@ describe('four visual regions', () => {
     expect(dialog[0]?.props['aria-label']).toBe(PANEL_TITLE)
     expect(textContent(tree)).toContain('DeepSeek Harness 是夯还是拉')
   })
+
+  it('centers the case region and keeps the trust mode out of the visible copy', () => {
+    const tree = renderPanel(demoState())
+    const header = findByAttr(tree, 'data-liangbiao-region', 'case')[0]
+    expect(styleOf(header).textAlign).toBe('center')
+    // Local soft-trust stays honest via the attribute + screen-reader summary,
+    // not a visible badge next to the title.
+    expect(header === undefined ? '' : textContent([header])).not.toContain('本地演示')
+    const dialog = findAll(tree, (node) => node.props.role === 'dialog')[0]
+    expect(dialog?.props['data-liangbiao-authority']).toBe('LOCAL_FAKE_DEV')
+    const summary = findAll(tree, (node) => node.props['aria-live'] === 'polite')[0]
+    expect(summary && textContent([summary])).toContain(LOCAL_MODE_NOTE)
+  })
 })
 
 describe('region 2: ratios + concrete 梁子 + personal 梁气环', () => {
@@ -58,6 +77,23 @@ describe('region 2: ratios + concrete 梁子 + personal 梁气环', () => {
     expect(down && textContent([down])).toContain('17%')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
     expect(textContent(tree)).toContain('梁圣')
+  })
+
+  it('never rounds the 夯 percent past the threshold of the rendered state', () => {
+    // 449/501 = 89.62% -> 梁圣; a rounded 90% would look like a 梁祖 mismatch.
+    const store = createMockLiangbiaoStore({ upVotes: 449, downVotes: 52, uniqueVoters: 40 })
+    const tree = renderPanel(store.getSnapshot())
+    const up = findByAttr(tree, 'data-liangbiao-ratio', 'up')[0]
+    const down = findByAttr(tree, 'data-liangbiao-ratio', 'down')[0]
+    expect(up && textContent([up])).toContain('89%')
+    expect(down && textContent([down])).toContain('11%')
+    expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
+  })
+
+  it('spells out the exact 夯率 band of the current state in the tooltip', () => {
+    const tree = renderPanel(demoState())
+    const tooltips = findAll(tree, (node) => node.props.title === '梁圣：80% ≤ 夯率 < 90%')
+    expect(tooltips.length).toBeGreaterThan(0)
   })
 
   it('integrates “5 炷 · 再 3,000 Token” inside the LiangQi ring component', () => {
@@ -115,6 +151,15 @@ describe('region 4: social stats', () => {
     expect(voters && textContent([voters])).toContain('2,841')
     expect(incense && textContent([incense])).toContain('香火')
     expect(voters && textContent([voters])).toContain('香客')
+  })
+
+  it('uses the shared stat glyphs and a larger stat type scale', () => {
+    const tree = renderPanel(demoState())
+    const social = findByAttr(tree, 'data-liangbiao-region', 'social')[0]
+    expect(styleOf(social).fontSize).toBe('15px')
+    const text = social === undefined ? '' : textContent([social])
+    expect(text).toContain(INCENSE_STAT_ICON)
+    expect(text).toContain(VOTER_STAT_ICON)
   })
 })
 

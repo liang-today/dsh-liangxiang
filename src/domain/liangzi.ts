@@ -80,6 +80,30 @@ export function liangziStateForUpRatio(
   return 'liang_zu'
 }
 
+/** The up-ratio interval `[minInclusive, maxExclusive)` owned by a state. */
+export interface LiangziUpRatioBand {
+  /** null = open on that side; WAITING has both sides null (no ratio at all). */
+  minInclusive: number | null
+  maxExclusive: number | null
+}
+
+/** The exact up-ratio band of one state under a policy (single source for UI copy). */
+export function liangziUpRatioBand(
+  state: LiangziState,
+  policy: LiangziThresholdPolicy = DEFAULT_LIANGZI_THRESHOLDS,
+): LiangziUpRatioBand {
+  assertValidThresholdPolicy(policy)
+  const [b0, b1, b2, b3] = policy.boundaries
+  switch (state) {
+    case 'waiting': return { minInclusive: null, maxExclusive: null }
+    case 'liang_gong': return { minInclusive: null, maxExclusive: b0 }
+    case 'liang_zong': return { minInclusive: b0, maxExclusive: b1 }
+    case 'liang_shen': return { minInclusive: b1, maxExclusive: b2 }
+    case 'liang_sheng': return { minInclusive: b2, maxExclusive: b3 }
+    case 'liang_zu': return { minInclusive: b3, maxExclusive: null }
+  }
+}
+
 /**
  * Derive the Liangzi state from raw accepted vote counts.
  * `0/0` is WAITING; anything else goes through the threshold policy.

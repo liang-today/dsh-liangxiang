@@ -14,7 +14,7 @@
  */
 import type { CSSProperties, ReactElement } from 'react'
 import type { LiangziState } from '../domain/index.ts'
-import { LIANGZI_STATE_LABELS } from '../shared/index.ts'
+import { LIANGZI_STATE_LABELS, liangziRatioRangeText } from '../shared/index.ts'
 import { color, font } from './theme.ts'
 
 export interface LiangAvatarProps {
@@ -58,6 +58,8 @@ function rays(count: number, length: number, stroke: string): ReactElement[] {
 export function LiangAvatar({ state, pulse, reducedMotion }: LiangAvatarProps): ReactElement {
   const palette = PALETTES[state]
   const waiting = state === 'waiting'
+  const rangeText = liangziRatioRangeText(state)
+  const stateText = `${LIANGZI_STATE_LABELS[state]}（${rangeText}）`
   const floating = (state === 'liang_shen' || state === 'liang_sheng' || state === 'liang_zu') && !reducedMotion
 
   const wrapStyle: CSSProperties = {
@@ -75,7 +77,7 @@ export function LiangAvatar({ state, pulse, reducedMotion }: LiangAvatarProps): 
         height={92}
         viewBox="0 0 96 96"
         role="img"
-        aria-label={`梁子当前状态：${LIANGZI_STATE_LABELS[state]}`}
+        aria-label={`梁子当前状态：${stateText}`}
         style={{
           overflow: 'visible',
           animation: floating ? 'liangbiao-avatar-float 3.2s ease-in-out infinite' : undefined,
@@ -135,6 +137,7 @@ export function LiangAvatar({ state, pulse, reducedMotion }: LiangAvatarProps): 
         )}
       </svg>
       <span
+        title={`${LIANGZI_STATE_LABELS[state]}：${rangeText}`}
         style={{
           fontFamily: font.family,
           fontSize: '13px',

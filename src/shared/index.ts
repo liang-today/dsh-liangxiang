@@ -3,7 +3,12 @@
  * and client halves. Pure TypeScript only — no React, no DSH, no Node APIs.
  * May import from `domain/` (also pure); nothing else.
  */
-import type { LiangziState } from '../domain/index.ts'
+import {
+  DEFAULT_LIANGZI_THRESHOLDS,
+  liangziUpRatioBand,
+  type LiangziState,
+  type LiangziThresholdPolicy,
+} from '../domain/index.ts'
 
 /** npm package name: the loader row `name`, the client bundle id, and the `/plugins/<id>/client.js` route segment. */
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangbiao'
@@ -35,6 +40,13 @@ export const VOTE_DOWN_NAME = '拉'
 export const INCENSE_STAT_LABEL = '香火'
 export const VOTER_STAT_LABEL = '香客'
 
+/** Region 4 stat glyphs (swap here only — never inline in components). */
+export const INCENSE_STAT_ICON = '🪔'
+export const VOTER_STAT_ICON = '🙏'
+
+/** Honest soft-trust note for the LOCAL_FAKE_DEV authority mode (AGENTS.md §16). */
+export const LOCAL_MODE_NOTE = '本地演示模式：香火与投票均在本机，不代表可信全网结果'
+
 /** Disabled-vote reason surfaced when the personal incense pool is empty. */
 export const NO_INCENSE_REASON = '香火不足：再积累 Token 获得下一炷香后即可投票'
 
@@ -52,6 +64,28 @@ export const LIANGZI_STATE_LABELS: Readonly<Record<LiangziState, string>> = {
   liang_shen: '梁神',
   liang_sheng: '梁圣',
   liang_zu: '梁祖',
+}
+
+function percentText(ratio: number): string {
+  // Boundaries are whole/one-decimal percents; trim the trailing `.0`.
+  const percent = Number((ratio * 100).toFixed(1))
+  return `${percent}%`
+}
+
+/**
+ * The exact global 夯-ratio interval that keeps 梁子 in `state`, e.g.
+ * `80% ≤ 夯率 < 90%` for 梁圣. Derived from the threshold policy so the copy
+ * can never drift from `liangziStateForUpRatio`.
+ */
+export function liangziRatioRangeText(
+  state: LiangziState,
+  policy: LiangziThresholdPolicy = DEFAULT_LIANGZI_THRESHOLDS,
+): string {
+  const { minInclusive, maxExclusive } = liangziUpRatioBand(state, policy)
+  if (minInclusive === null && maxExclusive === null) return '尚无投票'
+  if (minInclusive === null) return `夯率 < ${percentText(maxExclusive as number)}`
+  if (maxExclusive === null) return `夯率 ≥ ${percentText(minInclusive)}`
+  return `${percentText(minInclusive)} ≤ 夯率 < ${percentText(maxExclusive)}`
 }
 
 /** List-entry id of the badge inside the `shell.overlay` slot. */

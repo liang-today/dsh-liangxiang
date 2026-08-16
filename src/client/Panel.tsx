@@ -10,19 +10,23 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, ReactElement } from 'react'
-import type { VoteType } from '../domain/index.ts'
+import { formatRatioPercents, type VoteType } from '../domain/index.ts'
 import {
   ACCOUNTING_UNAVAILABLE_HINT,
+  INCENSE_STAT_ICON,
   INCENSE_STAT_LABEL,
   LIANGZI_STATE_LABELS,
+  LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
   OFFLINE_REASON,
   PANEL_TITLE,
+  VOTER_STAT_ICON,
   VOTER_STAT_LABEL,
   VOTE_DOWN_LABEL,
   VOTE_DOWN_NAME,
   VOTE_UP_LABEL,
   VOTE_UP_NAME,
+  liangziRatioRangeText,
 } from '../shared/index.ts'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangQiRing } from './LiangQiRing.tsx'
@@ -38,11 +42,6 @@ export interface PanelProps {
   voteFeedback: string
   onVote: (voteType: VoteType) => void
   onClose: () => void
-}
-
-function formatRatio(ratio: number | null): string {
-  if (ratio === null) return '--'
-  return `${Math.round(ratio * 100)}%`
 }
 
 const panelStyle: CSSProperties = {
@@ -62,6 +61,23 @@ const panelStyle: CSSProperties = {
   fontFamily: font.family,
   boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
   pointerEvents: 'auto',
+}
+
+const statStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+}
+
+const statIconStyle: CSSProperties = {
+  fontSize: '17px',
+  lineHeight: 1,
+}
+
+const statValueStyle: CSSProperties = {
+  fontSize: '17px',
+  fontWeight: 700,
+  color: color.textPrimary,
 }
 
 const ratioBlockStyle: CSSProperties = {
@@ -153,15 +169,21 @@ export function Panel(props: PanelProps): ReactElement {
     }
   }
 
-  const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}。`
-    + `${VOTE_UP_NAME}占比 ${formatRatio(snapshot.upRatio)}，${VOTE_DOWN_NAME}占比 ${formatRatio(snapshot.downRatio)}。`
+  // Percentages come from the snapshot's own raw counts, so they can never
+  // contradict the Liangzi state rendered beside them (AGENTS.md §12).
+  const percents = formatRatioPercents(snapshot.upVotes, snapshot.downVotes)
+  const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}`
+    + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
+    + `${VOTE_UP_NAME}占比 ${percents.up}，${VOTE_DOWN_NAME}占比 ${percents.down}。`
     + `我的剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} Token。`
+    + (state.localMode ? LOCAL_MODE_NOTE + '。' : '')
 
   return (
     <section
       role="dialog"
       aria-label={PANEL_TITLE}
       data-liangbiao-panel=""
+      data-liangbiao-authority={state.localMode ? 'LOCAL_FAKE_DEV' : 'unknown'}
       tabIndex={-1}
       style={panelStyle}
       onKeyDown={onKeyDown}
@@ -171,39 +193,22 @@ export function Panel(props: PanelProps): ReactElement {
       {/* Region 1 — 今日梁案 */}
       <header
         data-liangbiao-region="case"
-        style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}
+        style={{ position: 'relative', marginBottom: '10px', padding: '0 22px', textAlign: 'center' }}
       >
-        <div>
-          <h2 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: color.textTertiary, letterSpacing: '1px' }}>
-            {PANEL_TITLE}
-            {state.localMode && (
-              <span
-                data-liangbiao-authority=""
-                title="本地演示模式：香火与投票均在本机，不代表可信全网结果"
-                style={{
-                  marginLeft: '8px',
-                  padding: '1px 6px',
-                  borderRadius: '999px',
-                  border: `1px solid ${color.border}`,
-                  fontSize: '10px',
-                  fontWeight: 500,
-                  letterSpacing: '0.5px',
-                  color: color.textTertiary,
-                }}
-              >
-                本地演示
-              </span>
-            )}
-          </h2>
-          <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: 600, color: color.textPrimary }}>
-            {activeCase.title}
-          </p>
-        </div>
+        <h2 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: color.textTertiary, letterSpacing: '1px' }}>
+          {PANEL_TITLE}
+        </h2>
+        <p style={{ margin: '4px 0 0', fontSize: '15px', fontWeight: 600, color: color.textPrimary }}>
+          {activeCase.title}
+        </p>
         <button
           type="button"
           aria-label="关闭面板"
           onClick={onClose}
           style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
             border: 'none',
             background: 'transparent',
             color: color.textTertiary,
@@ -224,14 +229,14 @@ export function Panel(props: PanelProps): ReactElement {
       >
         <div style={ratioBlockStyle} data-liangbiao-ratio="up">
           <span style={{ fontSize: '13px', color: color.textSecondary }}>{VOTE_UP_NAME}</span>
-          <span style={{ fontSize: '20px', fontWeight: 700, color: color.up }}>{formatRatio(snapshot.upRatio)}</span>
+          <span style={{ fontSize: '20px', fontWeight: 700, color: color.up }}>{percents.up}</span>
         </div>
         <LiangQiRing personal={personal} reducedMotion={reducedMotion} justCondensed={justCondensed}>
           <LiangAvatar state={snapshot.liangziState} pulse={avatarPulse} reducedMotion={reducedMotion} />
         </LiangQiRing>
         <div style={ratioBlockStyle} data-liangbiao-ratio="down">
           <span style={{ fontSize: '13px', color: color.textSecondary }}>{VOTE_DOWN_NAME}</span>
-          <span style={{ fontSize: '20px', fontWeight: 700, color: color.danger }}>{formatRatio(snapshot.downRatio)}</span>
+          <span style={{ fontSize: '20px', fontWeight: 700, color: color.danger }}>{percents.down}</span>
         </div>
       </div>
 
@@ -274,25 +279,23 @@ export function Panel(props: PanelProps): ReactElement {
         style={{
           display: 'flex',
           justifyContent: 'center',
-          gap: '18px',
+          gap: '22px',
           marginTop: '10px',
-          paddingTop: '10px',
+          paddingTop: '12px',
           borderTop: `1px solid ${color.border}`,
-          fontSize: '13px',
+          fontSize: '15px',
           color: color.textSecondary,
         }}
       >
-        <span data-liangbiao-stat="incense">
-          {'🔥 '}
+        <span data-liangbiao-stat="incense" style={statStyle}>
+          <span aria-hidden="true" style={statIconStyle}>{INCENSE_STAT_ICON}</span>
           {INCENSE_STAT_LABEL}
-          {' '}
-          <strong style={{ color: color.textPrimary }}>{snapshot.totalIncense.toLocaleString('zh-CN')}</strong>
+          <strong style={statValueStyle}>{snapshot.totalIncense.toLocaleString('zh-CN')}</strong>
         </span>
-        <span data-liangbiao-stat="voters">
-          {'👤 '}
+        <span data-liangbiao-stat="voters" style={statStyle}>
+          <span aria-hidden="true" style={statIconStyle}>{VOTER_STAT_ICON}</span>
           {VOTER_STAT_LABEL}
-          {' '}
-          <strong style={{ color: color.textPrimary }}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
+          <strong style={statValueStyle}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
         </span>
       </footer>
 

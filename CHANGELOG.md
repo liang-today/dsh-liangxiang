@@ -2,6 +2,14 @@
 
 ## 0.1.0 — 未发布
 
+### UI 修正（Phase 3 前）
+
+- 比例显示与阈值对齐：`formatRatioPercents(upVotes, downVotes)` 与梁子状态同源于快照原始计数，夯率截断到整数百分点（拉率取补数），修掉 89.6% 被四舍五入成 `90%` 却仍显示梁圣的观感错误;梁圣区间明确为 `80% ≤ 夯率 < 90%`。
+- 状态区间可见化：`liangziUpRatioBand` + `liangziRatioRangeText` 从阈值策略推导文案，梁子标签 `title` 与 svg `aria-label` 直接给出精确区间。
+- 社会化区放大（15px 文案 / 17px 加粗数值），图标改为 `🪔 香火` / `🙏 香客`（常量集中于 `shared/index.ts`）。
+- 梁案标题与内容居中，关闭按钮绝对定位;移除可见「本地演示」徽标，软信任标注改由 `data-liangbiao-authority` 与屏幕阅读器摘要承载。
+- 新增 10 项测试（区间、截断、补数、居中、图标、tooltip），总计 180 项全绿。
+
 ### DSH Authority Spike + 真实 Token + 本地完整闭环（Prompt 2）
 
 - Authority Spike（docs/040–044）：DSH 无 authenticated user、无服务器可验证 Token 权威;anonymous-user-id 仅假名标识。**Decision Gate A = A3**，生产可信投票标记 BLOCKED（P0 open risk），本地闭环以 `LOCAL_FAKE_DEV` 模式诚实标注。
