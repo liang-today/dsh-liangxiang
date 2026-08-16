@@ -9,7 +9,7 @@ import { RING_SIZE } from '../src/client/LiangQiRing.tsx'
 import { Panel } from '../src/client/Panel.tsx'
 import { createMockLiangbiaoStore } from '../src/client/store.ts'
 import type { LiangbiaoViewState } from '../src/client/store.ts'
-import { LIANGZI_STATES } from '../src/domain/index.ts'
+import { LIANGZI_STATES, liangQiFloatPeriodMs } from '../src/domain/index.ts'
 import {
   INCENSE_STAT_LABEL,
   LOCAL_MODE_NOTE,
@@ -115,6 +115,19 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(position && textContent([position])).toContain('83.021952%')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
     expect(textContent(tree)).toContain('梁圣')
+  })
+
+  it('bobs the panel 梁子 with the logo: fill drives cadence, fill 0 is still', () => {
+    const filling = renderPanel(demoState())
+    const fillingFigure = findByAttr(filling, 'data-liangbiao-avatar-figure')[0]
+    expect(demoState().personal.liangQiFill).toBeCloseTo(0.94, 10)
+    expect(fillingFigure?.props['data-liangbiao-float-ms']).toBe(liangQiFloatPeriodMs(0.94))
+    expect(styleOf(fillingFigure).animation).toContain('liangbiao-avatar-figure-float')
+
+    const still = renderPanel(createMockLiangbiaoStore({ effectiveTokensToday: 50_000, usedIncenseToday: 0 }).getSnapshot())
+    const stillFigure = findByAttr(still, 'data-liangbiao-avatar-figure')[0]
+    expect(stillFigure?.props['data-liangbiao-float-ms']).toBe(0)
+    expect(styleOf(stillFigure).animation).toBeUndefined()
   })
 
   it('keeps 拉 as the complement in the tooltip instead of a second big number', () => {

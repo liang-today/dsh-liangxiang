@@ -3,7 +3,14 @@
  * 梁位 truncation is a different helper — do not reuse that rule here.
  */
 import { describe, expect, it } from 'vitest'
-import { DomainError, formatCompactCount, incensePlaceValue } from '../src/domain/index.ts'
+import {
+  DomainError,
+  LIANG_QI_FLOAT_PERIOD_FAST_MS,
+  LIANG_QI_FLOAT_PERIOD_SLOW_MS,
+  formatCompactCount,
+  incensePlaceValue,
+  liangQiFloatPeriodMs,
+} from '../src/domain/index.ts'
 
 describe('formatCompactCount', () => {
   it('prints 0–999 exactly (everyday incense and small remainders)', () => {
@@ -66,5 +73,21 @@ describe('incensePlaceValue', () => {
   it('does not draw 10 moons; 1000+ is a compact overflow instead', () => {
     expect(incensePlaceValue(1_000)).toEqual({ ones: 0, tens: 0, hundreds: 0, overflow: 1_000 })
     expect(incensePlaceValue(1_234)).toEqual({ ones: 0, tens: 0, hundreds: 0, overflow: 1_234 })
+  })
+})
+
+describe('liangQiFloatPeriodMs', () => {
+  it('stays still at fill 0 and speeds up as the next stick fills', () => {
+    expect(liangQiFloatPeriodMs(0)).toBeNull()
+    expect(liangQiFloatPeriodMs(1)).toBe(LIANG_QI_FLOAT_PERIOD_FAST_MS)
+    expect(liangQiFloatPeriodMs(0.5)).toBe(
+      Math.round((LIANG_QI_FLOAT_PERIOD_SLOW_MS + LIANG_QI_FLOAT_PERIOD_FAST_MS) / 2),
+    )
+    expect(liangQiFloatPeriodMs(0.01)!).toBeGreaterThan(liangQiFloatPeriodMs(0.94)!)
+  })
+
+  it('rejects a non-finite fill', () => {
+    expect(() => liangQiFloatPeriodMs(-0.1)).toThrow(DomainError)
+    expect(() => liangQiFloatPeriodMs(Number.NaN)).toThrow(DomainError)
   })
 })

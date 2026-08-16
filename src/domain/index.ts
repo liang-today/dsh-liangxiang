@@ -72,11 +72,14 @@ export {
 } from './case.ts'
 export {
   LIANG_POSITION_DECIMALS,
+  LIANG_QI_FLOAT_PERIOD_FAST_MS,
+  LIANG_QI_FLOAT_PERIOD_SLOW_MS,
   WAITING_PERCENT_TEXT,
   formatCompactCount,
   formatLiangPosition,
   formatRatioPercents,
   incensePlaceValue,
+  liangQiFloatPeriodMs,
   liangQiIntensity,
   type IncensePlaceValue,
   type RatioPercentPair,

@@ -484,7 +484,13 @@ export function Panel(props: PanelProps): ReactElement {
               </span>
             )}
           >
-            <LiangAvatar state={snapshot.liangziState} pulse={avatarPulse} reducedMotion={reducedMotion} size={68} />
+            <LiangAvatar
+              state={snapshot.liangziState}
+              pulse={avatarPulse}
+              reducedMotion={reducedMotion}
+              size={68}
+              liangQiFill={personal.liangQiFill}
+            />
           </LiangQiRing>
         </div>
         <div style={{ ...flankStyle, left: '0px' }} data-liangbiao-personal="incense">
