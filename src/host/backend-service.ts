@@ -462,13 +462,15 @@ export class BackendLiangService implements LiangHostService {
   }
 
   /**
-   * If local daily is behind the server claim (reconcile / new host), treat
-   * it as a suffix to add. Otherwise it already includes the claimed amount.
+   * How much of the local daily total is already inside the server ledger:
+   * the smaller of the two. A ledger ahead of local (reconcile, or another
+   * host claiming on the same installation) means the whole local total is
+   * already represented and must never be re-added on top of the ledger.
    */
   private syncDisplayBaselineFromLedger(): void {
     const locallyObserved = this.usage.effectiveTokensFor(this.businessDate)
     const claimed = this.personal?.claimed_effective_tokens ?? 0
-    this.displayBaseline = claimed > locallyObserved ? 0 : claimed
+    this.displayBaseline = Math.min(claimed, locallyObserved)
   }
 
   private requireIdentity(): string {
