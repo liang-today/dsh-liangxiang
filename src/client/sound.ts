@@ -13,7 +13,8 @@ const LEVEL_GAIN: Record<SoundLevel, number> = { 0: 0, 1: 0.33, 2: 0.66, 3: 1 }
 const STORAGE_KEY = 'liangbiao:sound:level'
 const LEGACY_KEY = 'liangbiao:sound:v1'
 
-let level: SoundLevel = 3
+/** Fresh install / no preference: muted. A stored 1–3 is kept. */
+let level: SoundLevel = 0
 try {
   const stored = typeof localStorage === 'undefined' ? null : localStorage.getItem(STORAGE_KEY)
   if (stored !== null) {
@@ -23,7 +24,7 @@ try {
     level = 0
   }
 } catch {
-  /* privacy mode / quota: keep default */
+  /* privacy mode / quota: keep default mute */
 }
 
 let audioContext: AudioContext | null = null
@@ -80,6 +81,15 @@ export function cycleSoundLevel(): SoundLevel {
     /* ignore */
   }
   return level
+}
+
+/**
+ * Preview the level just selected: same gain table as real cues.
+ * Mute plays nothing — the crossed-out icon is the confirmation.
+ */
+export function playVolumePreview(): void {
+  if (level === 0) return
+  tone(784, 784, 120, 'sine', 0.1)
 }
 
 /** 升梁: a short rising chirp. */

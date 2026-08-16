@@ -9,6 +9,7 @@ import { AVATAR_SLOT, RING_SIZE } from '../src/client/LiangQiRing.tsx'
 import { Panel } from '../src/client/Panel.tsx'
 import { createMockLiangbiaoStore } from '../src/client/store.ts'
 import type { LiangbiaoViewState } from '../src/client/store.ts'
+import { color } from '../src/client/theme.ts'
 import { LIANGZI_STATES, liangQiFloatPeriodMs } from '../src/domain/index.ts'
 import {
   INCENSE_STAT_LABEL,
@@ -233,6 +234,24 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
     expect(value.fontVariantNumeric).toBe('tabular-nums')
+  })
+
+  it('paints 今日香火 and 下一炷 with the same orange value and row rhythm', () => {
+    const tree = renderPanel(demoState())
+    const incenseWrap = findByAttr(tree, 'data-liangbiao-personal', 'incense')[0]
+    const nextWrap = findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0]
+    expect(styleOf(incenseWrap).gap).toBe(styleOf(nextWrap).gap)
+    const valueRow = (wrap: RenderedElement | undefined): RenderedElement | undefined =>
+      wrap?.children.find((child): child is RenderedElement =>
+        child.kind === 'element' && styleOf(child).fontSize === '11px')
+    const incenseValueRow = valueRow(incenseWrap)
+    const nextValueRow = valueRow(nextWrap)
+    expect(styleOf(incenseValueRow).color).toBe(color.warn)
+    expect(styleOf(nextValueRow).color).toBe(color.warn)
+    expect(styleOf(incenseValueRow).lineHeight).toBe('16px')
+    expect(styleOf(nextValueRow).lineHeight).toBe('16px')
+    expect(styleOf(incenseValueRow).fontWeight).toBe(600)
+    expect(styleOf(nextValueRow).fontWeight).toBe(600)
   })
 
   it('compacts flank counts so thousands stay short (and keeps exact values in the tooltip / SR)', () => {

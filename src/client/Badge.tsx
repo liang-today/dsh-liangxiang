@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
 import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
-import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
+import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
@@ -183,7 +183,9 @@ export function LiangbiaoBadge(): ReactElement {
   const throttle = useThrottleFill(state.personal, reducedMotion)
   const [soundLevel, setSoundLevel] = useState(() => readSoundLevel())
   const onCycleSound = useCallback(() => {
-    setSoundLevel(cycleSoundLevel())
+    const next = cycleSoundLevel()
+    setSoundLevel(next)
+    playVolumePreview()
   }, [])
   const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
   const onDismissWelcome = useCallback(() => {
@@ -293,10 +295,22 @@ export function LiangbiaoBadge(): ReactElement {
     return () => window.clearTimeout(timer)
   }, [state.snapshot.upVotes, state.snapshot.downVotes])
 
-  // One short 凝香 feedback when a new incense stick is earned.
+  // One short 凝香 feedback when a new incense stick is earned. The first
+  // live frame is a baseline (Cmd+Shift+R starts at earned=0 then hydrates),
+  // never a condensation. Bob / 下一炷 may replay; this overlay must not.
   const [justCondensed, setJustCondensed] = useState(false)
   const prevEarned = useRef(state.personal.earnedIncenseToday)
+  const incenseEarnPrimed = useRef(false)
   useEffect(() => {
+    if (state.connection !== 'live') {
+      incenseEarnPrimed.current = false
+      return undefined
+    }
+    if (!incenseEarnPrimed.current) {
+      incenseEarnPrimed.current = true
+      prevEarned.current = state.personal.earnedIncenseToday
+      return undefined
+    }
     const grew = state.personal.earnedIncenseToday > prevEarned.current
     prevEarned.current = state.personal.earnedIncenseToday
     if (!grew) return undefined
@@ -304,7 +318,7 @@ export function LiangbiaoBadge(): ReactElement {
     playIncenseEarn()
     const timer = window.setTimeout(() => setJustCondensed(false), 1400)
     return () => window.clearTimeout(timer)
-  }, [state.personal.earnedIncenseToday])
+  }, [state.connection, state.personal.earnedIncenseToday])
 
   // Transient vote feedback (已上香).
   const [voteFeedback, setVoteFeedback] = useState('')
