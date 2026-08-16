@@ -6,7 +6,7 @@
  *   POST /liangbiao/api/vote       minimal vote intent -> result + fresh state
  *   POST /liangbiao/api/refresh    force host re-read (hover / panel open)
  *   POST /liangbiao/api/reconcile  drop local Token observation, re-read incense
- *   POST /liangbiao/api/dev/credit LOCAL_FAKE_DEV only: simulate Token credit
+ *   POST /liangbiao/api/dev/credit simulate Token credit (display-only online)
  *
  * The handler validates every request body at the boundary, bounds body
  * size, and owns SSE connection cleanup (`closeAllConnections` runs on
@@ -148,8 +148,8 @@ export function createLiangbiaoApi(
   const handleDevCredit = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const state = service.getWireState()
     const credit = service.creditSimulatedUsage
-    if (state.authorityMode !== 'LOCAL_FAKE_DEV' || credit === undefined) {
-      writeJson(res, 404, { error: 'dev credit is only available in LOCAL_FAKE_DEV' })
+    if (credit === undefined) {
+      writeJson(res, 404, { error: 'dev credit is not available on this host' })
       return
     }
     let intent

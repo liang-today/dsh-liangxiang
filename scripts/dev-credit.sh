@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Credit simulated incense on the local fake ledger. Does not call a model.
 #
-# Requires LOCAL_FAKE_DEV: unset LIANGBIAO_BACKEND_URL and restart `pnpm run dev:web`.
+# Requires `pnpm run dev:web`. Works in local fake AND online staging:
+# the credit is display-only when a backend is connected (never claimed).
 #
 # Usage:
 #   pnpm run dev:credit           # +1 炷
@@ -43,7 +44,7 @@ except json.JSONDecodeError:
     raise SystemExit(1)
 if "error" in data:
     print("error:", data["error"], file=sys.stderr)
-    print("Need LOCAL_FAKE_DEV: unset LIANGBIAO_BACKEND_URL, restart pnpm run dev:web.", file=sys.stderr)
+    print("Restart pnpm run dev:web so the Host picks up /liangbiao/api/dev/credit.", file=sys.stderr)
     raise SystemExit(1)
 personal = data["personal"]
 eff = personal["effectiveTokensToday"]

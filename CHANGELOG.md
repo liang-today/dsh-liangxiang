@@ -4,7 +4,7 @@
 
 ### 本地演示入账
 
-- `LOCAL_FAKE_DEV` 可 `POST /liangbiao/api/dev/credit` 或点面板「演示 +1 炷」灌香火，不走模型。`pnpm run dev:credit -- 9`。在线模式 404，避免假 claim。
+- 本地可 `POST /liangbiao/api/dev/credit` 或点面板「演示 +1 炷」灌香火，不走模型。连着 staging 时只改本机画面、不上报 claim。`pnpm run dev:credit -- 9`。上达天听会清掉演示香火。
 
 ### 下一炷可见数字
 

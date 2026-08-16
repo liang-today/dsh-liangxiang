@@ -67,7 +67,7 @@ export interface PanelProps {
   onReconcileConfirm: () => void
   onReconcileCancel: () => void
   reconcilePending: boolean
-  /** LOCAL_FAKE_DEV only: simulate +1 炷 without a model. */
+  /** Simulate +1 炷 without a model. Staging: display overlay only. */
   onDevCredit?: () => void
 }
 
@@ -572,7 +572,7 @@ export function Panel(props: PanelProps): ReactElement {
       >
         {statusLine}
       </p>
-      {onDevCredit !== undefined && state.authorityMode === 'LOCAL_FAKE_DEV' && (
+      {onDevCredit !== undefined && (
         <p style={{ margin: '2px 0 0', textAlign: 'center' }}>
           <button
             type="button"
