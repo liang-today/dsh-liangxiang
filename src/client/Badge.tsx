@@ -15,7 +15,8 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
 import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
-import { isSoundEnabled, playIncenseEarn, playVoteDown, playVoteUp, setSoundEnabled } from './sound.ts'
+import { cycleSoundLevel, playIncenseEarn, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
+import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
@@ -176,13 +177,14 @@ export function LiangbiaoBadge(): ReactElement {
   const reducedMotion = useReducedMotion()
   // Smoothed + rate-extrapolated ring fill for the 油门 feel (presentation only).
   const throttle = useThrottleFill(state.personal, reducedMotion)
-  const [soundOn, setSoundOn] = useState(() => isSoundEnabled())
-  const onToggleSound = useCallback(() => {
-    setSoundOn((value) => {
-      const next = !value
-      setSoundEnabled(next)
-      return next
-    })
+  const [soundLevel, setSoundLevel] = useState(() => readSoundLevel())
+  const onCycleSound = useCallback(() => {
+    setSoundLevel(cycleSoundLevel())
+  }, [])
+  const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
+  const onDismissWelcome = useCallback(() => {
+    markWelcomeSeen()
+    setWelcomeVisible(false)
   }, [])
 
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -410,8 +412,10 @@ export function LiangbiaoBadge(): ReactElement {
           state={state}
           reducedMotion={reducedMotion}
           throttle={throttle}
-          soundOn={soundOn}
-          onToggleSound={onToggleSound}
+          soundLevel={soundLevel}
+          onCycleSound={onCycleSound}
+          welcomeVisible={welcomeVisible}
+          onDismissWelcome={onDismissWelcome}
           avatarPulse={avatarPulse}
           justCondensed={justCondensed}
           voteFeedback={voteFeedback}

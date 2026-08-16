@@ -97,6 +97,15 @@ export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合�
 /** Backend guard notice: a single Token claim was clamped as absurd. */
 export const ABSURD_CLAIM_NOTICE = 'Token 上报超出合理上限，已限幅（疑似异常）'
 
+/** First-run welcome: three plain-language lines (not just screen-reader copy). */
+export const WELCOME_TITLE = '欢迎来到梁标'
+export const WELCOME_LINES = [
+  '香火从 DSH 对话里攒：输入 + 输出每 5 万当量凝成一炷。',
+  '花一炷香投「夯」或「拉」，共同决定今日梁子。',
+  '这是社区软信任，不是加密验证的公投。',
+]
+export const WELCOME_DISMISS = '知道了'
+
 /**
  * Quiet ritual control: drop locally inflated Token observation and re-read
  * the server incense ledger. Not a fifth region, not a third vote option.
