@@ -232,6 +232,21 @@ describe('online bootstrap', () => {
     expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.remaining_incense).toBe(0)
   })
 
+  it('does not re-claim a catch-up session after a stale persist hydrate', async () => {
+    const s = await startStack({}, { claimDebounceMs: 0 })
+    const alreadyThere = usage(2_000_000, 0, 0, 150_000)
+    s.host.observeUsage(SESSION, alreadyThere, { kind: 'catchup' })
+    s.host.hydrateUsage(
+      new Map([[SESSION, { inputHwm: 50_000, outputHwm: 0 }]]),
+      new Map(),
+      { putWatermark: () => undefined, putDailyUsage: () => undefined, deleteDailyUsage: () => undefined },
+    )
+    s.host.observeUsage(SESSION, alreadyThere, { kind: 'live', firstLiveSeq: 0 })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(0)
+    expect(frame(s).personal.effectiveTokensToday).toBe(0)
+  })
+
   it('turns observed DSH usage into an authoritative claim (input+output, all buckets)', async () => {
     const s = await startStack()
     // 10k uncached + 20k cacheRead + 5k cacheWrite = 35k input; +15k output = 50k.

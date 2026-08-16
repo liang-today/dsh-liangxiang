@@ -46,15 +46,42 @@ export class UsageProjection {
     this.warn = deps.warn
   }
 
-  /** Adopt persisted state and the write-behind sink. */
+  /**
+   * Adopt persisted state and the write-behind sink.
+   *
+   * MUST merge, never replace: usage observation starts in a separate DSH
+   * inject from persistence, so catch-up can baseline live sessions before
+   * this runs. Replacing the maps rewound those high-water marks; the next
+   * `firstLiveSeq === 0` live event then credited the whole session again.
+   */
   hydrate(
     watermarks: Map<string, SessionUsageWatermark>,
     daily: Map<string, DailyUsageRecord>,
     sink: UsageProjectionSink,
   ): void {
-    this.watermarks = watermarks
-    this.daily = daily
     this.sink = sink
+    for (const [sessionId, persisted] of watermarks) {
+      const current = this.watermarks.get(sessionId)
+      this.watermarks.set(sessionId, current === undefined
+        ? { ...persisted }
+        : {
+          inputHwm: Math.max(current.inputHwm, persisted.inputHwm),
+          outputHwm: Math.max(current.outputHwm, persisted.outputHwm),
+        })
+    }
+    for (const [date, persisted] of daily) {
+      const current = this.daily.get(date)
+      this.daily.set(date, current === undefined
+        ? { ...persisted }
+        : {
+          inputTokens: Math.max(current.inputTokens, persisted.inputTokens),
+          outputTokens: Math.max(current.outputTokens, persisted.outputTokens),
+          weightCarry: Math.max(current.weightCarry, persisted.weightCarry),
+          observedAt: Math.max(current.observedAt, persisted.observedAt),
+        })
+    }
+    for (const [sessionId, watermark] of this.watermarks) sink.putWatermark(sessionId, watermark)
+    for (const [date, record] of this.daily) sink.putDailyUsage(date, record)
   }
 
   /**
