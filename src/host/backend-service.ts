@@ -85,6 +85,12 @@ export class BackendLiangService implements LiangHostService {
   private claimInFlight = false
   private claimAgain = false
   private lastClaimSent = -1
+  /**
+   * How much of `locallyObserved` is already represented in `claimed`.
+   * After 上达天听 the local daily total resets while claimed stays; new
+   * deltas must be added on top, not max()'d against the server watermark.
+   */
+  private displayBaseline = 0
   private bootstrapping: Promise<void> | null = null
   private ticks = 0
   private disposed = false
@@ -190,6 +196,7 @@ export class BackendLiangService implements LiangHostService {
   async reconcileNow(): Promise<void> {
     this.usage.discardDailyTotals()
     this.lastClaimSent = -1
+    this.displayBaseline = 0
     await this.refreshBootstrap()
   }
 
@@ -268,6 +275,7 @@ export class BackendLiangService implements LiangHostService {
         effectiveTokensToday: displayedEffectiveTokens(
           personal,
           this.usage.effectiveTokensFor(this.businessDate),
+          this.displayBaseline,
         ),
         usedIncenseToday: personal.used_incense,
         tokenPerIncense: personal.token_per_incense,
@@ -341,6 +349,7 @@ export class BackendLiangService implements LiangHostService {
     this.snapshot = bootstrap.global_snapshot
     this.businessDate = bootstrap.business_date
     this.usage.alignDailyBucket(this.businessDate)
+    this.syncDisplayBaselineFromLedger()
     this.bump()
   }
 
@@ -371,10 +380,19 @@ export class BackendLiangService implements LiangHostService {
     this.claimInFlight = true
     try {
       const response = await this.client.submitClaim(installationId, claimed, businessDate)
-      this.lastClaimSent = claimed
       this.personal = response.authoritative_personal_state
       this.activeCase = response.active_case
       this.businessDate = response.business_date
+      if (response.claim_applied === false) {
+        // Server already has more than this local total; do not retry it.
+        if (claimed <= this.personal.claimed_effective_tokens) this.lastClaimSent = claimed
+      } else {
+        this.lastClaimSent = claimed
+        this.displayBaseline = Math.min(
+          this.usage.effectiveTokensFor(businessDate),
+          this.personal.claimed_effective_tokens,
+        )
+      }
       this.bump()
     } catch (error) {
       this.reportFailure('token-claim', error)
@@ -385,6 +403,16 @@ export class BackendLiangService implements LiangHostService {
         this.scheduleClaim()
       }
     }
+  }
+
+  /**
+   * If local daily is behind the server claim (reconcile / new host), treat
+   * it as a suffix to add. Otherwise it already includes the claimed amount.
+   */
+  private syncDisplayBaselineFromLedger(): void {
+    const locallyObserved = this.usage.effectiveTokensFor(this.businessDate)
+    const claimed = this.personal?.claimed_effective_tokens ?? 0
+    this.displayBaseline = claimed > locallyObserved ? 0 : claimed
   }
 
   private requireIdentity(): string {
@@ -412,11 +440,16 @@ export class BackendLiangService implements LiangHostService {
   }
 }
 
-function displayedEffectiveTokens(personal: V1PersonalState, locallyObserved: number): number {
+function displayedEffectiveTokens(
+  personal: V1PersonalState,
+  locallyObserved: number,
+  displayBaseline: number,
+): number {
   // Cover already-spent incense so a brief local/date mismatch cannot emit
   // a wire frame with used > earned.
   const spentFloor = personal.used_incense * personal.token_per_incense
-  return Math.max(personal.claimed_effective_tokens, locallyObserved, spentFloor)
+  const unclaimedLocal = Math.max(0, locallyObserved - displayBaseline)
+  return Math.max(personal.claimed_effective_tokens + unclaimedLocal, spentFloor)
 }
 
 function toDomainCase(row: V1Case): DailyLiangCase {

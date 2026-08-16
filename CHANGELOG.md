@@ -8,7 +8,7 @@
 
 ### 在线香火刷新
 
-- 在线 Host 按后端 `business_date` 桶化本机 Token 观测，时区不一致时香火不再读成 0。浏览器在 Host 重启后仍接受新的低 revision 帧。
+- 在线 Host 按后端 `business_date` 桶化本机 Token 观测，时区不一致时香火不再读成 0。上达天听之后新增用量加在服务端 claim 之上，不再被 `max(claimed, local)` 吞掉。浏览器在 Host 重启后仍接受新的低 revision 帧。
 
 ### 下一炷可见数字
 

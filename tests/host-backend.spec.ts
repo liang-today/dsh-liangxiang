@@ -184,6 +184,20 @@ describe('online bootstrap', () => {
     expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(0)
   })
 
+  it('keeps painting new tokens after 上达天听 when the server claim is ahead', async () => {
+    const s = await startStack({}, { claimDebounceMs: 0 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => claimedOnBackend(s, 50_000), 'the first stick to be claimed')
+    await s.host.reconcileNow()
+    expect(frame(s).personal.effectiveTokensToday).toBe(50_000)
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 3_000), { kind: 'live', firstLiveSeq: 0 })
+    const view = wireToViewState(frame(s), 'live')
+    expect(view.personal.effectiveTokensToday).toBe(53_000)
+    expect(view.personal.tokensToNextIncense).toBe(47_000)
+    expect(view.personal.remainingIncense).toBe(1)
+  })
+
   it('turns observed DSH usage into an authoritative claim (input+output, all buckets)', async () => {
     const s = await startStack()
     // 10k uncached + 20k cacheRead + 5k cacheWrite = 35k input; +15k output = 50k.
