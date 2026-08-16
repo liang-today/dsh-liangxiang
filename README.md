@@ -29,7 +29,7 @@
 
 - 后端**能**保证:同一安装不超支、同一 `request_id` 不重复扣香、多标签收敛、业务日与快照版本一致;
 - 后端**不能**保证:投票者是谁(`installation_id` 是自铸可重置的**假名安装标识**)、Token 用量是否真实(`claimed_effective_tokens` 是**不可验证的声明**);
-- 因此这**不是** secure / verified / 可信全网 usage voting。`VERIFIED_PRODUCTION` 在后端启动门禁与 wire 类型上双重禁用,UI 屏幕阅读器摘要固定播报「本地预发模式:…Token 用量无法被服务端验证」。详见 [`docs/075`](docs/075-backend-decision.md)。
+- 因此这**不是** secure / verified / 可信全网 usage voting。`VERIFIED_PRODUCTION` 在后端启动门禁与 wire 类型上双重禁用,UI 屏幕阅读器摘要固定播报社区软信任说明（安装密钥 + 本机声明 Token，不是公投）。详见 [`docs/075`](docs/075-backend-decision.md)、[`docs/121`](docs/121-vps-deploy.md)。
 
 未部署公网、未发布 npm。
 

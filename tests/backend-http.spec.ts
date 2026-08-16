@@ -33,6 +33,7 @@ async function start(options: { voteRateLimitPerMinute?: number, tokenPerIncense
       LIANGBIAO_BACKEND_PORT: '0',
       LIANGBIAO_SNAPSHOT_SECONDS: '300',
       LIANGBIAO_TOKEN_PER_INCENSE: String(options.tokenPerIncense ?? 50_000),
+      LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
     },
     () => undefined,
   )
@@ -40,7 +41,9 @@ async function start(options: { voteRateLimitPerMinute?: number, tokenPerIncense
   const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
   const api = createBackendHttpApi({
     service,
+    store,
     voteRateLimitPerMinute: options.voteRateLimitPerMinute ?? 0,
+    allowUnsigned: true,
     log: () => undefined,
   })
   await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
@@ -342,6 +345,163 @@ describe('authority mode guard', () => {
   })
 
   it('defaults to DEV_STAGING_ONLY', () => {
-    expect(resolveBackendConfig({}, () => undefined).authorityMode).toBe('DEV_STAGING_ONLY')
+    const config = resolveBackendConfig({}, () => undefined)
+    expect(config.authorityMode).toBe('DEV_STAGING_ONLY')
+    expect(config.allowUnsigned).toBe(false)
+    expect(config.maxTokensPerMinute).toBe(50_000)
+    expect(config.communityKey).toBeNull()
+  })
+})
+
+describe('community Ed25519 auth', () => {
+  it('rejects unsigned bootstrap when allowUnsigned is off', async () => {
+    const config = resolveBackendConfig(
+      {
+        LIANGBIAO_BACKEND_DB: ':memory:',
+        LIANGBIAO_BACKEND_PORT: '0',
+        LIANGBIAO_SNAPSHOT_SECONDS: '300',
+        LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
+      },
+      () => undefined,
+    )
+    const store = openBackendStore(config.databasePath)
+    const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
+    const api = createBackendHttpApi({
+      service,
+      store,
+      voteRateLimitPerMinute: 0,
+      allowUnsigned: false,
+      log: () => undefined,
+    })
+    await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
+    const address = api.server.address()
+    if (address === null || typeof address === 'string') throw new Error('server did not bind a port')
+    const response = await fetch(`http://127.0.0.1:${address.port}/v1/bootstrap`, {
+      headers: { [INSTALLATION_HEADER]: INSTALLATION },
+    })
+    expect(response.status).toBe(401)
+    expect(await response.json()).toMatchObject({ error: { code: 'invalid_signature' } })
+    await new Promise<void>((resolve) => api.server.close(() => resolve()))
+    api.reset()
+    store.close()
+  })
+
+  it('accepts a signed bootstrap and binds a device fingerprint once', async () => {
+    const { generateCommunityKeypair, signRequest } = await import('../src/host/community-keys.ts')
+    const {
+      DEVICE_HEADER,
+      PUBLIC_KEY_HEADER,
+      SIGNATURE_HEADER,
+      TIMESTAMP_HEADER,
+    } = await import('../src/shared/backend-v1.ts')
+    const config = resolveBackendConfig(
+      {
+        LIANGBIAO_BACKEND_DB: ':memory:',
+        LIANGBIAO_BACKEND_PORT: '0',
+        LIANGBIAO_SNAPSHOT_SECONDS: '300',
+        LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
+      },
+      () => undefined,
+    )
+    const store = openBackendStore(config.databasePath)
+    const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
+    const api = createBackendHttpApi({
+      service,
+      store,
+      voteRateLimitPerMinute: 0,
+      allowUnsigned: false,
+      log: () => undefined,
+    })
+    await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
+    const address = api.server.address()
+    if (address === null || typeof address === 'string') throw new Error('server did not bind a port')
+    const baseUrl = `http://127.0.0.1:${address.port}`
+
+    const first = generateCommunityKeypair('device-fingerprint-alpha')
+    const timestamp = Date.now()
+    const signed = await fetch(`${baseUrl}/v1/bootstrap`, {
+      headers: {
+        [INSTALLATION_HEADER]: first.installationId,
+        [PUBLIC_KEY_HEADER]: first.publicKey,
+        [TIMESTAMP_HEADER]: String(timestamp),
+        [SIGNATURE_HEADER]: signRequest({
+          privateKeyPem: first.privateKeyPem,
+          method: 'GET',
+          path: '/v1/bootstrap',
+          timestamp,
+          body: '',
+          installationId: first.installationId,
+        }),
+        [DEVICE_HEADER]: first.deviceFingerprint as string,
+      },
+    })
+    expect(signed.status).toBe(200)
+
+    const second = generateCommunityKeypair('device-fingerprint-alpha')
+    const ts2 = Date.now()
+    const conflict = await fetch(`${baseUrl}/v1/bootstrap`, {
+      headers: {
+        [INSTALLATION_HEADER]: second.installationId,
+        [PUBLIC_KEY_HEADER]: second.publicKey,
+        [TIMESTAMP_HEADER]: String(ts2),
+        [SIGNATURE_HEADER]: signRequest({
+          privateKeyPem: second.privateKeyPem,
+          method: 'GET',
+          path: '/v1/bootstrap',
+          timestamp: ts2,
+          body: '',
+          installationId: second.installationId,
+        }),
+        [DEVICE_HEADER]: second.deviceFingerprint as string,
+      },
+    })
+    expect(conflict.status).toBe(409)
+    expect(await conflict.json()).toMatchObject({ error: { code: 'device_conflict' } })
+
+    await new Promise<void>((resolve) => api.server.close(() => resolve()))
+    api.reset()
+    store.close()
+  })
+
+  it('requires the community key when configured', async () => {
+    const config = resolveBackendConfig(
+      {
+        LIANGBIAO_BACKEND_DB: ':memory:',
+        LIANGBIAO_BACKEND_PORT: '0',
+        LIANGBIAO_SNAPSHOT_SECONDS: '300',
+        LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
+        LIANGBIAO_COMMUNITY_KEY: 'admit-me',
+        LIANGBIAO_ALLOW_UNSIGNED: '1',
+      },
+      () => undefined,
+    )
+    const store = openBackendStore(config.databasePath)
+    const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
+    const api = createBackendHttpApi({
+      service,
+      store,
+      voteRateLimitPerMinute: 0,
+      allowUnsigned: true,
+      communityKey: config.communityKey,
+      log: () => undefined,
+    })
+    await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
+    const address = api.server.address()
+    if (address === null || typeof address === 'string') throw new Error('server did not bind a port')
+    const missing = await fetch(`http://127.0.0.1:${address.port}/v1/bootstrap`, {
+      headers: { [INSTALLATION_HEADER]: INSTALLATION },
+    })
+    expect(missing.status).toBe(401)
+    const { COMMUNITY_KEY_HEADER } = await import('../src/shared/backend-v1.ts')
+    const ok = await fetch(`http://127.0.0.1:${address.port}/v1/bootstrap`, {
+      headers: {
+        [INSTALLATION_HEADER]: INSTALLATION,
+        [COMMUNITY_KEY_HEADER]: 'admit-me',
+      },
+    })
+    expect(ok.status).toBe(200)
+    await new Promise<void>((resolve) => api.server.close(() => resolve()))
+    api.reset()
+    store.close()
   })
 })

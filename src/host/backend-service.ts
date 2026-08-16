@@ -28,6 +28,7 @@ import { createBusinessDateProvider, type Clock } from '../shared/business-date.
 import { PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
 import { WIRE_SCHEMA_VERSION, type LiangbiaoWireState, type WireVoteRequest } from '../shared/wire.ts'
 import { BackendClientError, type BackendClient } from './backend-client.ts'
+import { generateCommunityKeypair, type CommunityKeypair } from './community-keys.ts'
 import type { LiangHostService, VoteOutcome } from './service.ts'
 import { UsageProjection, type UsageProjectionSink } from './usage-projection.ts'
 import type { DailyUsageRecord, SessionUsageWatermark } from './usage-ledger.ts'
@@ -52,6 +53,11 @@ export interface BackendLiangServiceDeps {
   warn?: (message: string) => void
   /** Coalescing window for token claims; tests use 0. */
   claimDebounceMs?: number
+  /**
+   * Mutable community keypair holder shared with the HTTP client's signer.
+   * Production always fills this; unsigned test stacks may leave it null.
+   */
+  identityRef?: { current: CommunityKeypair | null }
 }
 
 export class BackendLiangService implements LiangHostService {
@@ -59,6 +65,7 @@ export class BackendLiangService implements LiangHostService {
   private readonly claimDebounceMs: number
   private readonly warn: (message: string) => void
   private readonly usage: UsageProjection
+  private readonly identityRef: { current: CommunityKeypair | null }
 
   private installationId: string | null = null
   private bootstrap: V1Bootstrap | null = null
@@ -83,6 +90,7 @@ export class BackendLiangService implements LiangHostService {
     this.client = deps.client
     this.claimDebounceMs = deps.claimDebounceMs ?? CLAIM_DEBOUNCE_MS
     this.warn = deps.warn ?? ((message) => console.warn(message))
+    this.identityRef = deps.identityRef ?? { current: null }
     this.usage = new UsageProjection({
       dates: createBusinessDateProvider(deps.timezone),
       clock: deps.clock,
@@ -115,8 +123,8 @@ export class BackendLiangService implements LiangHostService {
   }
 
   /**
-   * Adopt the installation id and bootstrap against the backend. The id is a
-   * self-minted pseudonymous installation identifier — NOT an authenticated
+   * Adopt the community keypair (or a test installation id) and bootstrap.
+   * The id is a self-minted installation identifier — NOT an authenticated
    * user (docs/043).
    */
   attachIdentity(installationId: string): void {
@@ -125,16 +133,22 @@ export class BackendLiangService implements LiangHostService {
     void this.refreshBootstrap()
   }
 
+  attachCommunityIdentity(identity: CommunityKeypair): void {
+    this.identityRef.current = identity
+    this.attachIdentity(identity.installationId)
+  }
+
   markReadyMemoryOnly(reason: string): void {
     if (this.installationId !== null) return
-    // No storage domain: use an ephemeral id so the loop still works locally,
-    // and say so loudly — its votes will not survive a restart.
-    const ephemeral = `eph-${crypto.randomUUID()}`
+    // No storage domain: mint an ephemeral keypair so signed requests still
+    // work, but skip MAC binding — a throwaway id must not occupy the device
+    // fingerprint of a later persisted install.
+    const ephemeral = generateCommunityKeypair(null)
     this.warn(
-      `[${PLUGIN_PACKAGE_NAME}] no persisted installation id (${reason}); `
-      + `using an ephemeral one for this process only`,
+      `[${PLUGIN_PACKAGE_NAME}] no persisted installation identity (${reason}); `
+      + `using an ephemeral keypair for this process only`,
     )
-    this.attachIdentity(ephemeral)
+    this.attachCommunityIdentity(ephemeral)
   }
 
   setAccountingAvailable(available: boolean): void {

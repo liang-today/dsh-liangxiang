@@ -8,24 +8,32 @@
  *   GET  /v1/me/daily-state  cheap personal refresh
  *   GET  /v1/health          liveness + authority mode
  *
- * Boundary rules: every body is size-bounded and schema-validated, the
- * installation header is required and pattern-checked, votes are rate-limited
- * per installation, and errors are structured `{ error: { code, message } }`.
- * Request logs carry only method/path/status/installation prefix — never a
- * prompt, response, path, or key.
+ * Boundary rules: every body is size-bounded and schema-validated, signed
+ * community identity is required unless `allowUnsigned` is on (localhost
+ * smoke / legacy tests), votes are rate-limited per installation, and errors
+ * are structured `{ error: { code, message } }`. Request logs carry only
+ * method/path/status/installation prefix — never a prompt, response, path, or key.
  */
+import { timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { WireError } from '../shared/wire.ts'
 import {
   BACKEND_API_PREFIX,
+  COMMUNITY_KEY_HEADER,
+  DEVICE_HEADER,
   INSTALLATION_HEADER,
+  PUBLIC_KEY_HEADER,
+  SIGNATURE_HEADER,
+  TIMESTAMP_HEADER,
   parseInstallationId,
   parseV1TokenClaimRequest,
   parseV1VoteRequest,
   type V1ErrorBody,
   type V1ErrorCode,
 } from '../shared/backend-v1.ts'
+import { authenticateCommunityRequest, CommunityAuthError } from './community-auth.ts'
 import type { LiangbiaoBackendService } from './service.ts'
+import type { BackendStore } from './store.ts'
 
 const MAX_BODY_BYTES = 4096
 const RATE_WINDOW_MS = 60_000
@@ -34,8 +42,13 @@ const RATE_WINDOW_EVICT_THRESHOLD = 1_000
 
 export interface BackendHttpOptions {
   service: LiangbiaoBackendService
+  store: BackendStore
   /** Per-installation vote requests per minute; 0 disables the limit. */
   voteRateLimitPerMinute: number
+  /** Accept the old unsigned installation header (localhost tests / curl smoke). */
+  allowUnsigned?: boolean
+  /** Shared admission secret; null/undefined means not required. */
+  communityKey?: string | null
   log?: (message: string) => void
 }
 
@@ -98,8 +111,23 @@ function statusForRejection(reason: string): number {
   return 400
 }
 
+function headerValue(req: IncomingMessage, name: string): string | undefined {
+  const raw = req.headers[name]
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return value === undefined || value === '' ? undefined : value
+}
+
+function communityKeyMatches(expected: string, presented: string): boolean {
+  const left = Buffer.from(expected)
+  const right = Buffer.from(presented)
+  if (left.length !== right.length) return false
+  return timingSafeEqual(left, right)
+}
+
 export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpApi {
-  const { service, voteRateLimitPerMinute } = options
+  const { service, store, voteRateLimitPerMinute } = options
+  const allowUnsigned = options.allowUnsigned === true
+  const communityKey = options.communityKey ?? null
   const log = options.log ?? ((message: string) => console.log(message))
   /** installation -> timestamps of recent vote attempts (bounded window). */
   const voteWindows = new Map<string, number[]>()
@@ -129,9 +157,40 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     return false
   }
 
-  const installationOf = (req: IncomingMessage): string => {
-    const raw = req.headers[INSTALLATION_HEADER]
-    return parseInstallationId(Array.isArray(raw) ? raw[0] : raw)
+  const authenticate = (req: IncomingMessage, method: string, path: string, rawBody: string): string => {
+    if (communityKey !== null) {
+      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
+        throw new CommunityAuthError(401, 'invalid_signature', 'community key required')
+      }
+    }
+
+    const publicKey = headerValue(req, PUBLIC_KEY_HEADER)
+    const signature = headerValue(req, SIGNATURE_HEADER)
+    const timestamp = headerValue(req, TIMESTAMP_HEADER)
+    const signed = publicKey !== undefined && signature !== undefined && timestamp !== undefined
+
+    if (!signed) {
+      if (!allowUnsigned) {
+        throw new CommunityAuthError(401, 'invalid_signature', 'signed identity headers required')
+      }
+      return parseInstallationId(headerValue(req, INSTALLATION_HEADER))
+    }
+
+    const installationId = parseInstallationId(headerValue(req, INSTALLATION_HEADER))
+    const device = headerValue(req, DEVICE_HEADER) ?? null
+    return authenticateCommunityRequest({
+      store,
+      method,
+      path,
+      body: rawBody,
+      installationId,
+      publicKey,
+      signature,
+      timestamp,
+      deviceFingerprint: device,
+      now: Date.now(),
+    })
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -170,10 +229,34 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       return
     }
 
+    let rawBody = ''
+    if (method === 'POST') {
+      try {
+        rawBody = await readBoundedBody(req)
+      } catch (error) {
+        if (error instanceof OversizedBodyError) {
+          res.setHeader('connection', 'close')
+          writeError(res, 413, 'invalid_request', `request body exceeds ${MAX_BODY_BYTES} bytes`)
+          return
+        }
+        const message = error instanceof Error ? error.message : String(error)
+        writeError(res, 400, 'invalid_request', `invalid request body: ${message}`)
+        return
+      }
+    }
+
     let installationId: string
     try {
-      installationId = installationOf(req)
+      installationId = authenticate(req, method, path, rawBody)
     } catch (error) {
+      if (error instanceof CommunityAuthError) {
+        writeError(res, error.httpStatus, error.code, error.message)
+        return
+      }
+      if (error instanceof WireError) {
+        writeError(res, 401, 'missing_installation', `installation header invalid: ${error.message}`, error.field)
+        return
+      }
       const message = error instanceof Error ? error.message : String(error)
       writeError(res, 401, 'missing_installation', `installation header invalid: ${message}`, INSTALLATION_HEADER)
       return
@@ -190,14 +273,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
 
     let body: unknown
     try {
-      const raw = await readBoundedBody(req)
-      body = raw === '' ? {} : (JSON.parse(raw) as unknown)
+      body = rawBody === '' ? {} : (JSON.parse(rawBody) as unknown)
     } catch (error) {
-      if (error instanceof OversizedBodyError) {
-        res.setHeader('connection', 'close')
-        writeError(res, 413, 'invalid_request', `request body exceeds ${MAX_BODY_BYTES} bytes`)
-        return
-      }
       const message = error instanceof Error ? error.message : String(error)
       writeError(res, 400, 'invalid_request', `invalid request body: ${message}`)
       return

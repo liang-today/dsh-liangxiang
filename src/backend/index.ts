@@ -17,6 +17,7 @@ export {
   openBackendStore,
   type BackendStore,
   type CaseRow,
+  type CommunityIdentityRow,
   type IncenseRow,
   type SnapshotRow,
   type StatsRow,

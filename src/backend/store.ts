@@ -65,6 +65,14 @@ export interface SnapshotRow {
   captured_at: number
 }
 
+export interface CommunityIdentityRow {
+  installation_id: string
+  public_key: string
+  device_fingerprint: string | null
+  created_at: number
+  last_seen_at: number
+}
+
 export interface VoteRow {
   id: number
   request_id: string
@@ -114,6 +122,13 @@ export interface BackendStore {
   insertSnapshot: (row: SnapshotRow) => void
   /** Drop all but the newest `keep` snapshots of one case; returns rows deleted. */
   pruneSnapshots: (caseId: string, keep: number) => number
+  identityByInstallation: (installationId: string) => CommunityIdentityRow | undefined
+  identityByFingerprint: (fingerprint: string) => CommunityIdentityRow | undefined
+  /**
+   * Insert or refresh last_seen. Throws SQLITE unique on a fingerprint already
+   * bound to a different installation.
+   */
+  upsertIdentity: (row: CommunityIdentityRow) => void
   close: () => void
 }
 
@@ -225,6 +240,20 @@ export function openBackendStore(databasePath: string): BackendStore {
         SELECT MAX(sequence) - ? FROM public_liang_snapshot WHERE case_id = ?
       )`,
   )
+  const selectIdentity = db.prepare(
+    'SELECT * FROM community_identity WHERE installation_id = ?',
+  )
+  const selectIdentityByFingerprint = db.prepare(
+    'SELECT * FROM community_identity WHERE device_fingerprint = ?',
+  )
+  const upsertIdentityStmt = db.prepare(
+    `INSERT INTO community_identity
+       (installation_id, public_key, device_fingerprint, created_at, last_seen_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (installation_id) DO UPDATE SET
+       last_seen_at = excluded.last_seen_at,
+       device_fingerprint = COALESCE(community_identity.device_fingerprint, excluded.device_fingerprint)`,
+  )
 
   return {
     transaction<T>(body: () => T): T {
@@ -306,6 +335,19 @@ export function openBackendStore(databasePath: string): BackendStore {
       )
     },
     pruneSnapshots: (caseId, keep) => changed(pruneSnapshotsStmt.run(caseId, keep, caseId)),
+    identityByInstallation: (installationId) =>
+      selectIdentity.get(installationId) as CommunityIdentityRow | undefined,
+    identityByFingerprint: (fingerprint) =>
+      selectIdentityByFingerprint.get(fingerprint) as CommunityIdentityRow | undefined,
+    upsertIdentity(row) {
+      upsertIdentityStmt.run(
+        row.installation_id,
+        row.public_key,
+        row.device_fingerprint,
+        row.created_at,
+        row.last_seen_at,
+      )
+    },
     close: () => db.close(),
   }
 }

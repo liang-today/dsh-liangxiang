@@ -45,15 +45,46 @@ export const LIANGZI_POLICY_VERSION = 'liangzi-v0.1-60-70-80-90'
  * Authority modes. `VERIFIED_PRODUCTION` requires server-verifiable identity
  * AND server-verifiable Token usage; Decision Gate A = A3 (docs/043) means it
  * is NOT reachable today, so the backend refuses to boot in that mode.
+ *
+ * Community Ed25519 keys prove the *installation* holds a private key. They
+ * do not verify DSH Token usage. The mode stays DEV_STAGING_ONLY.
  */
 export const AUTHORITY_MODES = ['DEV_STAGING_ONLY', 'VERIFIED_PRODUCTION'] as const
 export type BackendAuthorityMode = (typeof AUTHORITY_MODES)[number]
 
-/** Pseudonymous installation id header (NOT authentication — see module JSDoc). */
+/** Pseudonymous installation id header (NOT DSH authentication). */
 export const INSTALLATION_HEADER = 'x-liangbiao-installation'
+/** Raw Ed25519 public key, base64url (32 bytes). */
+export const PUBLIC_KEY_HEADER = 'x-liangbiao-public-key'
+/** Ed25519 signature of `communityAuthMessage`, base64url. */
+export const SIGNATURE_HEADER = 'x-liangbiao-signature'
+/** Unix milliseconds used in the signed message. */
+export const TIMESTAMP_HEADER = 'x-liangbiao-timestamp'
+/** Optional SHA-256/base64url of local MAC set (sybil cost, spoofable). */
+export const DEVICE_HEADER = 'x-liangbiao-device'
+/** Shared community admission key when the server has LIANGBIAO_COMMUNITY_KEY. */
+export const COMMUNITY_KEY_HEADER = 'x-liangbiao-community-key'
 
 /** Self-minted installation ids: uuid-ish, url-safe, bounded. */
 const INSTALLATION_ID_PATTERN = /^[A-Za-z0-9._-]{8,64}$/
+
+/** Canonical string the Host signs and the backend verifies. */
+export function communityAuthMessage(input: {
+  method: string
+  path: string
+  timestamp: string
+  bodySha256: string
+  installationId: string
+}): string {
+  return [
+    'liangbiao-v1',
+    input.method.toUpperCase(),
+    input.path,
+    input.timestamp,
+    input.bodySha256,
+    input.installationId,
+  ].join('\n')
+}
 
 /** The only token-claim provenance A3 can offer. */
 export const CLAIM_SOURCE_HOST_OBSERVED = 'host_observed_unverified'
@@ -201,6 +232,8 @@ export interface V1SnapshotResponse {
 export const V1_ERROR_CODES = [
   'invalid_request',
   'missing_installation',
+  'invalid_signature',
+  'device_conflict',
   'unknown_route',
   'method_not_allowed',
   'stale_case',

@@ -65,11 +65,12 @@ export const VOTER_STAT_ICON = '🙏'
 export const LOCAL_MODE_NOTE = '本地演示模式：香火与投票均在本机，不代表可信全网结果'
 
 /**
- * Honest soft-trust note for DEV_STAGING_ONLY: the backend really is the
- * authority for spending, but under Decision Gate A3 it can neither
- * authenticate the voter nor verify the Token usage behind the incense.
+ * Honest community soft-trust note for DEV_STAGING_ONLY: the backend really
+ * is the authority for spending, but under Decision Gate A3 it can neither
+ * authenticate a DSH user nor verify the Token usage behind the incense.
+ * Ed25519 installation keys only prove "same Host still holds this private key".
  */
-export const STAGING_MODE_NOTE = '本地预发模式：投票由 Liangbiao 服务端记账，但身份仅为匿名安装标识、Token 用量无法被服务端验证'
+export const STAGING_MODE_NOTE = '社区软信任：投票由梁标服务端记账；身份是本机安装密钥，Token 用量由本机声明、服务端无法核验。不是可信全网公投。'
 
 /** The note that must accompany each authority mode. */
 export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {

@@ -1,7 +1,9 @@
-# 071 — Database Schema v1（SQLite）
+# 071 — Database Schema v2（SQLite）
 
-`PRAGMA user_version = 1`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
+`PRAGMA user_version = 2`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
 比例、`liangzi_state`、`earned/remaining/fill` **一律不入库**：它们由 `domain/` 从原始计数派生，存一份就会出现第二个真相源。
+
+v1 → v2 只增加 `community_identity`。旧库启动时自动建表，不改既有账本。
 
 ## daily_liang_case
 
@@ -85,6 +87,17 @@ total = up_votes + down_votes
 total == 0 → ratio = null/null, liangzi_state = WAITING
 否则       → up_ratio = up/total, liangzi_state = policy(up_ratio)
 ```
+
+## community_identity（v2，社区安装身份）
+
+| 列 | 类型 | 说明 |
+|---|---|---|
+| `installation_id` | TEXT PK | `lk_` + Ed25519 公钥（base64url） |
+| `public_key` | TEXT UNIQUE | 32 字节公钥，base64url。私钥只留 Host |
+| `device_fingerprint` | TEXT UNIQUE | 本机非内部 MAC 的 SHA-256；`NULL` 可重复（无网卡的 VM 跳过绑定） |
+| `created_at` / `last_seen_at` | INTEGER | epoch ms。`created_at` 是香火 drip 的计时原点 |
+
+这不是 DSH 认证。公钥证明「还是这把私钥」；指纹只提高同一台机器反复建号的成本，MAC 可伪造，不是反女巫。
 
 ## 不存在的表（永不添加）
 

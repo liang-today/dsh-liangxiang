@@ -21,7 +21,7 @@ LIANGBIAO_BACKEND_DB=.liangbiao-backend/dev.sqlite pnpm run backend:start   # ht
 LIANGBIAO_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 ```
 
-此时 authority mode 变为 `DEV_STAGING_ONLY`（服务端记账的软信任，见 [`075`](075-backend-decision.md)）。
+此时 authority mode 变为 `DEV_STAGING_ONLY`（服务端记账的社区软信任，见 [`075`](075-backend-decision.md)）。公网 VPS 配方见 [`121-vps-deploy.md`](121-vps-deploy.md)。
 
 一键自检：`pnpm run smoke:online`（会断言拒绝 `VERIFIED_PRODUCTION`、claim 折算、幂等只扣一次、50 并发只接受 1 票、快照发布）。
 
@@ -44,6 +44,7 @@ dsh plugin --profile <你的 profile> add ./dsh-liangbiao-0.1.0.tgz
 | 变量 | 作用 |
 |---|---|
 | `LIANGBIAO_BACKEND_URL` | 设了就走在线模式（`DEV_STAGING_ONLY`），不设就是本地演示 |
+| `LIANGBIAO_COMMUNITY_KEY` | 与后端相同的社区口令；后端设了则 Host 必带 |
 | `LIANGBIAO_TOKEN_PER_INCENSE` | 每炷香的 Token 数（默认 50,000；调小便于演示） |
 | `LIANGBIAO_SNAPSHOT_SECONDS` | 快照/轮询节奏（默认 1s） |
 | `LIANGBIAO_BUSINESS_TZ` | 业务时区（默认 `Asia/Shanghai`）；在线模式下**后端**的这项才是权威 |

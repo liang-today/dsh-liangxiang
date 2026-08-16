@@ -2,6 +2,13 @@
 
 ## 0.1.0 — 未发布
 
+### 社区软信任上公网（Ed25519 + 香火 drip + VPS）
+
+- **安装身份**：每次安装生成 Ed25519 密钥对（私钥留 Host，公钥进 `community_identity`）。请求签名；可选 MAC 集合哈希绑定，挡住同一台机器轻易重装。这不是 DSH 认证，也不是反女巫。
+- **香火 drip**：默认每分钟最多接受 50,000 声明 Token（= 1 炷）。防瞬间自报天文数字；不能证明 DSH 真跑过。时间用服务器时钟，启动时向硬编码 NTP 告警偏移。
+- **公网鉴权**：默认拒绝未签名请求；可选 `LIANGBIAO_COMMUNITY_KEY`。VPS 配方见 [`docs/121-vps-deploy.md`](docs/121-vps-deploy.md)（systemd + Caddy）。仍禁止声称 verified。
+- **文案**：`STAGING_MODE_NOTE` 改为社区软信任说明，不再说「本地预发」。
+
 ### 社区产品方案（未开工）
 
 - 选定 [`042`](docs/042-auth-trust-model.md) 路径 ③：不等 DSH 可验证身份，把 RC Demo 做成社区软信任产品。方案见 [`docs/120-community-product.md`](docs/120-community-product.md)。下一步是 C1（能发给朋友），需明确授权非 localhost 后端与 GitHub Release。

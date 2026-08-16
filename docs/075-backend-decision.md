@@ -11,7 +11,7 @@ AUTHORITY_MODE = DEV_STAGING_ONLY
 - 后端 `resolveBackendConfig` 对 `LIANGBIAO_AUTHORITY_MODE=VERIFIED_PRODUCTION` **直接拒绝启动**（`BackendConfigError`，exit 2）。这不是提示，而是启动门禁：想“悄悄升级为可信生产”必须先改代码并留下 diff。
 - Host wire 的 `AuthorityMode` 联合类型只有 `LOCAL_FAKE_DEV | DEV_STAGING_ONLY`，`VERIFIED_PRODUCTION` 在 wire 上**不可表示**。
 - `/v1` 个人状态永远带 `claim_source: host_observed_unverified` 与 `claim_verified: false`；`claim_verified: true` 会被校验器拒绝。
-- UI 屏幕阅读器摘要在该模式下固定播报 `STAGING_MODE_NOTE`（“身份仅为匿名安装标识、Token 用量无法被服务端验证”）。
+- UI 屏幕阅读器摘要在该模式下固定播报 `STAGING_MODE_NOTE`（社区软信任：安装密钥 + 本机声明 Token，不是可信全网公投）。公网部署配方见 [`121`](121-vps-deploy.md)。
 
 ## A3 信任边界（逐项）
 
