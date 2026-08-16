@@ -229,7 +229,13 @@ export class LiangbiaoBackendService {
         // trust), never rewound. A single-claim jump beyond the absurd ceiling
         // is clamped WITH a notice — it is a guard against an impossible
         // self-report, never a silent "香火不涨".
-        if (requested <= row.claimed_effective_tokens) return { applied: false, notice: undefined }
+        if (requested <= row.claimed_effective_tokens) {
+          this.warn(
+            `[liangbiao-backend] claim below_watermark: install=${installationId.slice(0, 8)}… `
+            + `requested=${requested} have=${row.claimed_effective_tokens}`,
+          )
+          return { applied: false, notice: undefined }
+        }
         let target = requested
         let notice: V1PersonalStateResponse['claim_notice']
         const ceiling = this.config.absurdClaimTokens
