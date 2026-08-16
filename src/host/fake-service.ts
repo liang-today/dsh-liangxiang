@@ -358,6 +358,7 @@ export class FakeAuthoritativeLiangService {
       personal: {
         effectiveTokensToday: personal.effectiveTokensToday,
         usedIncenseToday: personal.usedIncenseToday,
+        remainingIncense: personal.remainingIncense,
         tokenPerIncense: personal.tokenPerIncense,
       },
       accounting: {

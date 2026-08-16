@@ -67,11 +67,22 @@ export function wireToViewState(wire: LiangbiaoWireState, connection: Connection
       capturedAt: wire.global.capturedAt,
       sequence: wire.global.sequence,
     }),
-    personal: derivePersonalLiangQiState({
-      effectiveTokensToday: wire.personal.effectiveTokensToday,
-      usedIncenseToday: wire.personal.usedIncenseToday,
-      tokenPerIncense: wire.personal.tokenPerIncense,
-    }),
+    personal: (() => {
+      // Ring fill / 下一炷 keep the optimistic local effective tokens; the
+      // spendable incense (今日香火 / 可投 / vote button) uses the AUTHORITATIVE
+      // server ledger so a stale local bucket can never show spendable incense
+      // the backend has not recorded.
+      const optimistic = derivePersonalLiangQiState({
+        effectiveTokensToday: wire.personal.effectiveTokensToday,
+        usedIncenseToday: wire.personal.usedIncenseToday,
+        tokenPerIncense: wire.personal.tokenPerIncense,
+      })
+      return {
+        ...optimistic,
+        remainingIncense: wire.personal.remainingIncense,
+        earnedIncenseToday: wire.personal.remainingIncense + wire.personal.usedIncenseToday,
+      }
+    })(),
   }
 }
 

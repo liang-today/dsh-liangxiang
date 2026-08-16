@@ -284,6 +284,7 @@ export class BackendLiangService implements LiangHostService {
           this.displayBaseline,
         ),
         usedIncenseToday: personal.used_incense,
+        remainingIncense: personal.remaining_incense,
         tokenPerIncense: personal.token_per_incense,
       },
       accounting: {

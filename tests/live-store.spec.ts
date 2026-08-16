@@ -147,7 +147,7 @@ describe('live store', () => {
     const restarted = JSON.parse(JSON.stringify(service.getWireState())) as LiangbiaoWireState
     restarted.hostEpoch = restarted.hostEpoch + 1
     restarted.revision = 0
-    restarted.personal.effectiveTokensToday = 500_000
+    restarted.personal.remainingIncense = 10
     controls.pushFrame(restarted)
     expect(store.getSnapshot().personal.earnedIncenseToday).toBe(10)
     store.dispose()
