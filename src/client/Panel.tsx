@@ -40,6 +40,9 @@ import {
   RECONCILE_LABEL,
   DEV_CREDIT_HINT,
   DEV_CREDIT_LABEL,
+  WELCOME_DISMISS,
+  WELCOME_LINES,
+  WELCOME_TITLE,
   liangziRatioRangeText,
 } from '../shared/index.ts'
 import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
@@ -56,9 +59,12 @@ export interface PanelProps {
   reducedMotion: boolean
   /** Smoothed + rate-extrapolated fill for the 油门 animation (optional). */
   throttle?: ThrottledProgress
-  /** Whether sound cues are on (speaker toggle). */
-  soundOn: boolean
-  onToggleSound: () => void
+  /** Sound volume step 0-3 (无/小/中/大). */
+  soundLevel: number
+  onCycleSound: () => void
+  /** First-run welcome overlay visibility. */
+  welcomeVisible: boolean
+  onDismissWelcome: () => void
   avatarPulse: boolean
   justCondensed: boolean
   /** Transient feedback line under the buttons (e.g. 已上香), empty = none. */
@@ -374,21 +380,22 @@ const visuallyHidden: CSSProperties = {
   border: 0,
 }
 
-function SoundIcon({ on }: { on: boolean }): ReactElement {
+function SoundIcon({ level }: { level: number }): ReactElement {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
-      {on
+      {level === 0
         ? (
           <>
-            <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-            <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+            <line x1="16" y1="9" x2="22" y2="15" />
+            <line x1="22" y1="9" x2="16" y2="15" />
           </>
         )
         : (
           <>
-            <line x1="16" y1="9" x2="22" y2="15" />
-            <line x1="22" y1="9" x2="16" y2="15" />
+            {level >= 1 && <path d="M15.5 8.5a5 5 0 0 1 0 7" />}
+            {level >= 2 && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}
+            {level >= 3 && <path d="M21.5 2.5a13 13 0 0 1 0 19" />}
           </>
         )}
     </svg>
@@ -397,7 +404,7 @@ function SoundIcon({ on }: { on: boolean }): ReactElement {
 
 export function Panel(props: PanelProps): ReactElement {
   const {
-    state, reducedMotion, throttle, soundOn, onToggleSound, avatarPulse, justCondensed, voteFeedback,
+    state, reducedMotion, throttle, soundLevel, onCycleSound, welcomeVisible, onDismissWelcome, avatarPulse, justCondensed, voteFeedback,
     onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, onDevCredit,
   } = props
@@ -443,6 +450,7 @@ export function Panel(props: PanelProps): ReactElement {
   const remainingExact = personal.remainingIncense.toLocaleString('zh-CN')
   const toNextExact = personal.tokensToNextIncense.toLocaleString('zh-CN')
   const earnedCompact = formatCompactCount(personal.earnedIncenseToday)
+  const remainingCompact = formatCompactCount(personal.remainingIncense)
   const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}`
     + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
     + `${LIANG_POSITION_LABEL} ${percents.up}（即${VOTE_UP_NAME} ${percents.up}，${VOTE_DOWN_NAME} ${percents.down}）。`
@@ -460,6 +468,53 @@ export function Panel(props: PanelProps): ReactElement {
       onKeyDown={onKeyDown}
     >
       <style>{PANEL_CSS}</style>
+
+      {welcomeVisible && (
+        <div
+          role="dialog"
+          aria-label={WELCOME_TITLE}
+          data-liangbiao-welcome=""
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 5,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '20px',
+            borderRadius: '12px',
+            background: color.bgLayer,
+            boxSizing: 'border-box',
+          }}
+        >
+          <strong style={{ fontSize: '15px', fontWeight: 700, color: color.textPrimary }}>{WELCOME_TITLE}</strong>
+          {WELCOME_LINES.map((line) => (
+            <p key={line} style={{ margin: 0, fontSize: '12px', lineHeight: '1.6', color: color.textSecondary, textAlign: 'center' }}>
+              {line}
+            </p>
+          ))}
+          <button
+            type="button"
+            onClick={onDismissWelcome}
+            style={{
+              marginTop: '4px',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 16px',
+              background: color.buttonPrimaryFill,
+              color: color.buttonPrimaryText,
+              fontFamily: font.family,
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {WELCOME_DISMISS}
+          </button>
+        </div>
+      )}
 
       {/* Region 1 — 今日梁案 */}
       <header
@@ -486,16 +541,16 @@ export function Panel(props: PanelProps): ReactElement {
         </p>
         <button
           type="button"
-          aria-label={soundOn ? '关闭声音' : '打开声音'}
-          aria-pressed={soundOn}
-          onClick={onToggleSound}
+          aria-label={`声音：${['无', '小', '中', '大'][soundLevel] ?? ''}`}
+          aria-pressed={soundLevel > 0}
+          onClick={onCycleSound}
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             border: 'none',
             background: 'transparent',
-            color: soundOn ? color.textSecondary : color.textTertiary,
+            color: soundLevel > 0 ? color.textSecondary : color.textTertiary,
             padding: '4px',
             cursor: 'pointer',
             display: 'inline-flex',
@@ -503,7 +558,7 @@ export function Panel(props: PanelProps): ReactElement {
             justifyContent: 'center',
           }}
         >
-          <SoundIcon on={soundOn} />
+          <SoundIcon level={soundLevel} />
         </button>
         <button
           type="button"
@@ -603,6 +658,9 @@ export function Panel(props: PanelProps): ReactElement {
           >
             <span data-liangbiao-compact="incense">{earnedCompact}</span>
             <span style={{ fontSize: '10px', fontWeight: 600 }}> 炷</span>
+          </span>
+          <span title={`可投 ${remainingExact} 炷`} style={{ fontSize: '10px', color: color.textTertiary, lineHeight: '14px' }}>
+            可投 {remainingCompact} 炷
           </span>
         </div>
         <div

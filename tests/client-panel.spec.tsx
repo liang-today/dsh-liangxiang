@@ -50,8 +50,10 @@ function renderPanel(
     <Panel
       state={state}
       reducedMotion={false}
-      soundOn={false}
-      onToggleSound={() => undefined}
+      soundLevel={0}
+      onCycleSound={() => undefined}
+      welcomeVisible={false}
+      onDismissWelcome={() => undefined}
       avatarPulse={false}
       justCondensed={false}
       voteFeedback={voteFeedback}
@@ -307,8 +309,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       <Panel
         state={state}
         reducedMotion={false}
-        soundOn={false}
-        onToggleSound={() => undefined}
+        soundLevel={0}
+        onCycleSound={() => undefined}
+        welcomeVisible={false}
+        onDismissWelcome={() => undefined}
         avatarPulse={false}
         justCondensed={false}
         voteFeedback=""
@@ -328,8 +332,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       <Panel
         state={state}
         reducedMotion
-        soundOn={false}
-        onToggleSound={() => undefined}
+        soundLevel={0}
+        onCycleSound={() => undefined}
+        welcomeVisible={false}
+        onDismissWelcome={() => undefined}
         avatarPulse={false}
         justCondensed={false}
         voteFeedback=""
