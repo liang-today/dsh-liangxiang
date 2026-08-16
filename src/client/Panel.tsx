@@ -199,7 +199,24 @@ const flankStyle: CSSProperties = {
 
 const flankCaptionStyle: CSSProperties = {
   fontSize: '9px',
+  lineHeight: '12px',
   color: color.textSecondary,
+}
+
+/** Shared by 今日香火 and 下一炷 so the two numbers are one voice. */
+const flankValueStyle: CSSProperties = {
+  ...numericStyle,
+  fontSize: '11px',
+  fontWeight: 600,
+  color: color.warn,
+  lineHeight: '16px',
+}
+
+const flankUnitStyle: CSSProperties = {
+  fontSize: '10px',
+  fontWeight: 600,
+  color: color.textTertiary,
+  lineHeight: '14px',
 }
 
 const voteRowStyle: CSSProperties = {
@@ -702,14 +719,11 @@ export function Panel(props: PanelProps): ReactElement {
         </div>
         <div style={{ ...flankStyle, left: '0px' }} data-liangbiao-personal="incense">
           <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
-          <span
-            title={`今日生成 ${earnedExact} 炷`}
-            style={{ ...numericStyle, fontSize: '11px', fontWeight: 600, color: color.warn, lineHeight: '16px' }}
-          >
+          <span title={`今日生成 ${earnedExact} 炷`} style={flankValueStyle}>
             <span data-liangbiao-compact="incense">{earnedCompact}</span>
-            <span style={{ fontSize: '10px', fontWeight: 600 }}> 炷</span>
+            <span style={flankUnitStyle}> 炷</span>
           </span>
-          <span title={`可投 ${remainingExact} 炷`} style={{ fontSize: '10px', color: color.textTertiary, lineHeight: '14px' }}>
+          <span title={`可投 ${remainingExact} 炷`} style={flankUnitStyle}>
             可投 {remainingCompact} 炷
           </span>
         </div>
@@ -720,14 +734,16 @@ export function Panel(props: PanelProps): ReactElement {
           aria-label={`${NEXT_INCENSE_LABEL} ${toNextExact} ${NEXT_INCENSE_UNIT}，悬停查看模型权重`}
         >
           <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
-          <span
-            data-liangbiao-compact="next-incense"
-            title={`${toNextExact} ${NEXT_INCENSE_UNIT}`}
-            style={{ ...numericStyle, fontSize: '11px', fontWeight: 600, color: color.textPrimary, lineHeight: '16px' }}
-          >
-            {displayEstimated ? '≈ ' : ''}{formatCompactCount(displayTokensToNext)}
+          <span style={flankValueStyle}>
+            <span
+              data-liangbiao-compact="next-incense"
+              title={`${toNextExact} ${NEXT_INCENSE_UNIT}`}
+            >
+              {displayEstimated ? '≈ ' : ''}{formatCompactCount(displayTokensToNext)}
+            </span>
+            <span style={flankUnitStyle}> {NEXT_INCENSE_UNIT}</span>
           </span>
-          <span style={{ fontSize: '10px', color: color.textTertiary }}>{NEXT_INCENSE_UNIT}</span>
+          <span aria-hidden="true" style={{ display: 'block', height: '14px' }} />
           <div data-liangbiao-weight-hint="" role="tooltip">
             <table>
               <caption>{NEXT_INCENSE_WEIGHT_TITLE}</caption>

@@ -93,7 +93,9 @@ export function apply(ctx: DshHostContext): void {
 
   // Cadence: local mode publishes its own snapshot here; online mode pulls the
   // backend's published snapshot. Either way the public ratio and the Liangzi
-  // state move together, at this cadence, never per vote.
+  // state move together, at this cadence (default 1s), never as a per-vote
+  // strobe for spectators. The voter's own response already carries the new
+  // snapshot so their 梁位 still moves on the click.
   ctx.effect(() => {
     const interval = setInterval(() => {
       service.tick()
