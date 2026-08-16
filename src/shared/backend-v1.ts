@@ -218,6 +218,8 @@ export interface V1PersonalStateResponse {
   authoritative_personal_state: V1PersonalState
   /** True when the claim was applied; false when it was stale/ignored. */
   claim_applied?: boolean
+  /** Set when the claim was clamped as absurd (so it reads as a guard, not a bug). */
+  claim_notice?: 'claim_capped_absurd'
 }
 
 export interface V1SnapshotResponse {
@@ -678,6 +680,10 @@ export function parseV1PersonalStateResponse(raw: unknown): V1PersonalStateRespo
   if (claimApplied !== undefined && typeof claimApplied !== 'boolean') {
     throw new WireError('personalResponse.claim_applied', 'expected a boolean')
   }
+  const claimNotice = record.claim_notice
+  if (claimNotice !== undefined && claimNotice !== 'claim_capped_absurd') {
+    throw new WireError('personalResponse.claim_notice', 'expected claim_capped_absurd or absent')
+  }
   const parsed: V1PersonalStateResponse = {
     schema_version: BACKEND_SCHEMA_VERSION,
     business_date: requireBusinessDate(record.business_date, 'personalResponse.business_date'),
@@ -689,6 +695,7 @@ export function parseV1PersonalStateResponse(raw: unknown): V1PersonalStateRespo
     ),
   }
   if (claimApplied !== undefined) parsed.claim_applied = claimApplied
+  if (claimNotice !== undefined) parsed.claim_notice = claimNotice
   return parsed
 }
 

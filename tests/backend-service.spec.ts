@@ -83,6 +83,28 @@ describe('bootstrap and token claims', () => {
     expect(shrunk.authoritative_personal_state.earned_incense).toBe(5)
   })
 
+  it('clamps an absurd single-claim jump and flags it', () => {
+    const f = boot({ LIANGBIAO_ABSURD_CLAIM_TOKENS: '1000000' })
+    const response = f.service.applyTokenClaim(INSTALLATION, {
+      claimed_effective_tokens: 5_000_000,
+      claim_business_date: '2026-08-16',
+    })
+    expect(response.claim_notice).toBe('claim_capped_absurd')
+    expect(response.claim_applied).toBe(true)
+    // Clamped to the ceiling (1M), not the absurd 5M.
+    expect(response.authoritative_personal_state.claimed_effective_tokens).toBe(1_000_000)
+  })
+
+  it('leaves honest claims untouched by the absurd guard', () => {
+    const f = boot()
+    const response = f.service.applyTokenClaim(INSTALLATION, {
+      claimed_effective_tokens: 300_000,
+      claim_business_date: '2026-08-16',
+    })
+    expect(response.claim_notice).toBeUndefined()
+    expect(response.authoritative_personal_state.claimed_effective_tokens).toBe(300_000)
+  })
+
   it('ignores a claim computed for a different business date', () => {
     const f = boot()
     const response = f.service.applyTokenClaim(INSTALLATION, {

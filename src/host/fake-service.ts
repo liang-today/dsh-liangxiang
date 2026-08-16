@@ -365,6 +365,7 @@ export class FakeAuthoritativeLiangService {
         inputTokensToday: usage.inputTokens,
         outputTokensToday: usage.outputTokens,
         observedAt: usage.observedAt === 0 ? null : usage.observedAt,
+        notice: null,
       },
     }
   }

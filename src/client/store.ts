@@ -28,6 +28,8 @@ export interface LiangbiaoViewState {
   connection: ConnectionState
   /** False when the host reports the DSH accounting seams are absent. */
   accountingAvailable: boolean
+  /** Backend guard notice (e.g. absurd claim clamped); null normally. */
+  accountingNotice: string | null
   /**
    * Which trust model produced these numbers. Both shipped modes are soft
    * trust; the panel labels them honestly (AGENTS.md §16).
@@ -52,6 +54,7 @@ export function wireToViewState(wire: LiangbiaoWireState, connection: Connection
   return {
     connection,
     accountingAvailable: wire.accounting.available,
+    accountingNotice: wire.accounting.notice,
     authorityMode: wire.authorityMode,
     activeCase: wire.activeCase,
     snapshot: buildPublicSnapshot({
@@ -80,6 +83,7 @@ export function createOfflineViewState(connection: ConnectionState): LiangbiaoVi
   return {
     connection,
     accountingAvailable: false,
+    accountingNotice: null,
     authorityMode: 'LOCAL_FAKE_DEV',
     activeCase: {
       id: 'offline',
@@ -161,6 +165,7 @@ export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbia
   const buildState = (): LiangbiaoViewState => ({
     connection: 'live',
     accountingAvailable: true,
+    accountingNotice: null,
     authorityMode: 'LOCAL_FAKE_DEV',
     activeCase,
     snapshot: buildPublicSnapshot({ caseId: activeCase.id, aggregate, capturedAt: Date.now(), sequence }),
