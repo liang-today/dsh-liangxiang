@@ -36,4 +36,4 @@ ssh "$REMOTE" "cd '$PREFIX' && pnpm install && pnpm run build && systemctl resta
 
 echo "== deployed version =="
 ssh "$REMOTE" "cat '$PREFIX/VERSION'"
-ssh "$REMOTE" "curl -fsS http://127.0.0.1:4180/v1/health" && echo
+ssh "$REMOTE" "systemctl is-active liangbiao-backend" && echo
