@@ -168,6 +168,18 @@ export function formatCompactCount(n: number): string {
   return formatScaled(n, 1_000_000_000, 'B', Number.POSITIVE_INFINITY, '')
 }
 
+/**
+ * Chinese compact counts for crowded UI (Region 4, hover titles):
+ * exact below 1 万, then 万 / 百万 / 亿.
+ */
+export function formatZhCompactCount(n: number): string {
+  assertCount(n, 'invalid_token_count', 'zhCompactCount')
+  if (n < 10_000) return n.toLocaleString('zh-CN')
+  if (n < 1_000_000) return formatScaled(n, 10_000, '万', 1_000_000, '百万')
+  if (n < 100_000_000) return formatScaled(n, 1_000_000, '百万', 100_000_000, '亿')
+  return formatScaled(n, 100_000_000, '亿', Number.POSITIVE_INFINITY, '')
+}
+
 function formatScaled(
   n: number,
   unit: number,

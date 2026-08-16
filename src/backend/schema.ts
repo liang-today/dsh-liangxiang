@@ -28,7 +28,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 
-export const BACKEND_SCHEMA_USER_VERSION = 2
+export const BACKEND_SCHEMA_USER_VERSION = 3
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -110,6 +110,19 @@ CREATE TABLE IF NOT EXISTS community_identity (
 );
 `
 
+const DDL_V3 = `
+CREATE TABLE IF NOT EXISTS case_queue (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  title        TEXT    NOT NULL,
+  publish_on   TEXT,
+  sort_order   INTEGER NOT NULL,
+  created_at   INTEGER NOT NULL,
+  consumed_at  INTEGER
+);
+CREATE INDEX IF NOT EXISTS ix_case_queue_pending
+  ON case_queue (consumed_at, publish_on, sort_order);
+`
+
 /** Apply the schema and record its user_version (idempotent). */
 export function migrate(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON')
@@ -122,6 +135,7 @@ export function migrate(db: DatabaseSync): void {
     )
   }
   if (current < 2) db.exec(DDL_V2)
+  if (current < 3) db.exec(DDL_V3)
   if (current !== BACKEND_SCHEMA_USER_VERSION) {
     db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
   }

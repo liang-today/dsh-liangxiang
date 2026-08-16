@@ -335,6 +335,7 @@ describe('business date rollover', () => {
     const today = f.service.ensureActiveCase()
     expect(today.business_date).toBe('2026-08-17')
     expect(today.id).not.toBe(yesterday.id)
+    expect(today.title).toBe(yesterday.title)
     expect(f.store.caseById(yesterday.id)?.status).toBe('closed')
 
     const state = f.service.dailyState(INSTALLATION).authoritative_personal_state
@@ -411,6 +412,8 @@ describe('same-day publish', () => {
     expect(published.global_snapshot.total_incense).toBe(0)
     expect(published.global_snapshot.liangzi_state).toBe('waiting')
     expect(published.global_snapshot.up_ratio).toBeNull()
+    expect(published.global_snapshot.lifetime_incense).toBe(2)
+    expect(published.global_snapshot.lifetime_voters).toBe(1)
 
     expect(f.store.caseById(firstId)?.status).toBe('closed')
     expect(f.store.statsFor(firstId)).toMatchObject({ up_votes: 1, down_votes: 1, unique_voters: 1 })
@@ -444,5 +447,29 @@ describe('same-day publish', () => {
     expect(second.archived_case?.id).toBe(first.active_case.id)
     expect(f.store.activeCaseFor('2026-08-16')?.id).toBe(second.active_case.id)
     expect(f.store.caseById(first.active_case.id)?.status).toBe('closed')
+  })
+})
+
+describe('case queue', () => {
+  it('opens the next day with a dated queue row instead of copying yesterday', () => {
+    const f = boot()
+    f.service.ensureActiveCase()
+    f.service.enqueueCase('排队梁案是夯还是拉', '2026-08-17')
+    expect(f.service.listQueue()).toHaveLength(1)
+    f.clock.advance(DAY_MS)
+    const today = f.service.ensureActiveCase()
+    expect(today.business_date).toBe('2026-08-17')
+    expect(today.title).toBe('排队梁案是夯还是拉')
+    expect(f.service.listQueue()).toHaveLength(0)
+  })
+
+  it('uses FIFO when midnight has no dated row', () => {
+    const f = boot()
+    f.service.ensureActiveCase()
+    f.service.enqueueCase('先排的是夯还是拉', null)
+    f.service.enqueueCase('后排的是夯还是拉', null)
+    f.clock.advance(DAY_MS)
+    expect(f.service.ensureActiveCase().title).toBe('先排的是夯还是拉')
+    expect(f.service.listQueue()).toHaveLength(1)
   })
 })

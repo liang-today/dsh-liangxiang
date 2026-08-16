@@ -5,8 +5,8 @@
  * be handled explicitly:
  *  - the stored point is clamped back into view on every read (a window that
  *    shrank, or a monitor that went away, must not hide the entry);
- *  - the panel flips to whichever side has room, and its vertical anchor moves
- *    to the near edge when the badge is close to the top or bottom;
+ *  - the panel always stacks above or below the badge (never beside it), so
+ *    the DSH composer on the right stays clear and the panel can stay open;
  *  - `localStorage` is used ONLY for this cosmetic preference. It is never an
  *    authority for votes or balances (AGENTS.md §15).
  */
@@ -16,12 +16,15 @@ export const BADGE_SIZE = 40
 /** Portrait inside the entry. Was 30px; same 4/3 step as `BADGE_SIZE`. */
 export const BADGE_ICON_SIZE = 40
 export const BADGE_MARGIN = 12
+/** Leave the DSH settings control in the bottom-left corner uncovered. */
+export const SETTINGS_CLEARANCE = 56
 export const PANEL_WIDTH = 260
 export const PANEL_GAP = 10
-/** Room the panel needs above/below its vertical centre before it must re-anchor. */
-const PANEL_HALF_HEIGHT = 158
+/** Approximate expanded panel height; used only to pick above vs below. */
+const PANEL_STACK_HEIGHT = 316
 
-export const BADGE_POSITION_STORAGE_KEY = 'liangbiao:badge-position:v1'
+export const BADGE_POSITION_STORAGE_KEY = 'liangbiao:badge-position:v2'
+export const PANEL_OPEN_STORAGE_KEY = 'liangbiao:panel-open:v1'
 
 export interface BadgePoint {
   /** Distance from the frame's left edge, in px, of the badge's top-left. */
@@ -34,17 +37,16 @@ export interface Viewport {
   height: number
 }
 
-/** Panel side and vertical anchor derived from where the badge ended up. */
+/** Panel stacks above or below the badge — never left/right of it. */
 export interface PanelPlacement {
-  side: 'left' | 'right'
-  vertical: 'center' | 'top' | 'bottom'
+  stack: 'above' | 'below'
 }
 
-/** Default dock: right edge, vertically centred (the pre-drag behaviour). */
+/** Default dock: bottom-left, sitting just above the DSH settings control. */
 export function defaultBadgePosition(viewport: Viewport): BadgePoint {
   return {
-    x: Math.max(BADGE_MARGIN, viewport.width - BADGE_SIZE - 16),
-    y: Math.max(BADGE_MARGIN, Math.round(viewport.height / 2 - BADGE_SIZE / 2)),
+    x: BADGE_MARGIN,
+    y: Math.max(BADGE_MARGIN, viewport.height - BADGE_SIZE - SETTINGS_CLEARANCE),
   }
 }
 
@@ -96,23 +98,42 @@ export function saveBadgePosition(
 }
 
 /**
- * Choose the panel's side and vertical anchor for a badge position.
+ * Choose above vs below for a badge position.
  * @param point - the badge's top-left in frame coordinates.
  * @param viewport - the frame size.
  * @returns where the panel should be drawn relative to the badge.
  */
 export function panelPlacementFor(point: BadgePoint, viewport: Viewport): PanelPlacement {
-  const roomOnLeft = point.x
-  const roomOnRight = viewport.width - (point.x + BADGE_SIZE)
-  const needed = PANEL_WIDTH + PANEL_GAP + BADGE_MARGIN
-  // Prefer the left side (the historical placement) and flip only when the
-  // badge has been dragged somewhere that cannot fit the panel.
-  const side: PanelPlacement['side'] = roomOnLeft >= needed || roomOnLeft >= roomOnRight ? 'left' : 'right'
-  const centre = point.y + BADGE_SIZE / 2
-  const vertical: PanelPlacement['vertical'] = centre < PANEL_HALF_HEIGHT
-    ? 'top'
-    : centre > viewport.height - PANEL_HALF_HEIGHT
-      ? 'bottom'
-      : 'center'
-  return { side, vertical }
+  const needed = PANEL_STACK_HEIGHT + PANEL_GAP + BADGE_MARGIN
+  const roomAbove = point.y
+  const roomBelow = viewport.height - (point.y + BADGE_SIZE)
+  // Prefer above (the default dock is in the bottom-left) and only drop
+  // below when the badge has been dragged too close to the top.
+  const stack: PanelPlacement['stack'] = roomAbove >= needed || roomAbove >= roomBelow ? 'above' : 'below'
+  return { stack }
+}
+
+/** Default the expanded panel to open; persist × / badge toggles per browser. */
+export function loadPanelOpen(storage: Pick<Storage, 'getItem'> | null): boolean {
+  if (storage === null) return true
+  try {
+    const raw = storage.getItem(PANEL_OPEN_STORAGE_KEY)
+    if (raw === '0') return false
+    if (raw === '1') return true
+  } catch {
+    /* ignore */
+  }
+  return true
+}
+
+export function savePanelOpen(
+  open: boolean,
+  storage: Pick<Storage, 'setItem'> | null,
+): void {
+  if (storage === null) return
+  try {
+    storage.setItem(PANEL_OPEN_STORAGE_KEY, open ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
 }

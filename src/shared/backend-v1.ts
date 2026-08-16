@@ -143,6 +143,10 @@ export interface V1Snapshot {
   captured_at: number
   sequence: number
   policy_version: string
+  /** Sum of accepted votes across every case (today included). */
+  lifetime_incense: number
+  /** Distinct installations that have ever had an accepted vote. */
+  lifetime_voters: number
 }
 
 export interface V1Bootstrap {
@@ -455,6 +459,12 @@ export function parseV1Snapshot(
     captured_at: requireFinite(record.captured_at, `${field}.captured_at`),
     sequence: requireCount(record.sequence, `${field}.sequence`),
     policy_version: requireString(record.policy_version, `${field}.policy_version`),
+    lifetime_incense: record.lifetime_incense === undefined
+      ? totalIncense
+      : requireCount(record.lifetime_incense, `${field}.lifetime_incense`),
+    lifetime_voters: record.lifetime_voters === undefined
+      ? uniqueVoters
+      : requireCount(record.lifetime_voters, `${field}.lifetime_voters`),
   }
 }
 

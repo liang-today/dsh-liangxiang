@@ -221,13 +221,15 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       [`${BACKEND_API_PREFIX}/token-claims`]: 'POST',
       [`${BACKEND_API_PREFIX}/votes`]: 'POST',
       [`${BACKEND_API_PREFIX}/admin/cases`]: 'POST',
+      [`${BACKEND_API_PREFIX}/admin/queue`]: 'GET,POST',
     }
     const expected = routes[path]
     if (expected === undefined) {
       writeError(res, 404, 'unknown_route', `unknown route ${path}`)
       return
     }
-    if (method !== expected) {
+    const allowed = expected.split(',')
+    if (!allowed.includes(method)) {
       writeError(res, 405, 'method_not_allowed', `method ${method} not allowed for ${path}`)
       return
     }
@@ -260,6 +262,36 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         writeError(res, 400, 'invalid_request', `invalid request body: ${message}`)
         return
       }
+    }
+
+    if (path === `${BACKEND_API_PREFIX}/admin/queue`) {
+      if (communityKey === null) {
+        writeError(res, 401, 'invalid_signature', 'the case queue requires LIANGBIAO_COMMUNITY_KEY')
+        return
+      }
+      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
+        writeError(res, 401, 'invalid_signature', 'community key required')
+        return
+      }
+      try {
+        if (method === 'GET') {
+          writeJson(res, 200, { items: service.listQueue() })
+          return
+        }
+        const body = rawBody === '' ? {} : (JSON.parse(rawBody) as unknown)
+        const record = body as Record<string, unknown>
+        const title = typeof record.title === 'string' ? record.title : ''
+        const publishOn = record.publish_on === undefined || record.publish_on === null
+          ? null
+          : String(record.publish_on)
+        const queued = service.enqueueCase(title, publishOn)
+        writeJson(res, 200, queued)
+        log(`[liangbiao-backend] queue id=${queued.id} on=${queued.publish_on ?? 'fifo'} ip=${peerAddress(req)}`)
+      } catch (error) {
+        writeValidationError(res, error)
+      }
+      return
     }
 
     if (path === `${BACKEND_API_PREFIX}/admin/cases`) {

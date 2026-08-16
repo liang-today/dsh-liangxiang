@@ -78,6 +78,7 @@ export {
   formatCompactCount,
   formatLiangPosition,
   formatRatioPercents,
+  formatZhCompactCount,
   incensePlaceValue,
   liangQiFloatPeriodMs,
   liangQiIntensity,

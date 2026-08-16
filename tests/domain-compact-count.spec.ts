@@ -8,6 +8,7 @@ import {
   LIANG_QI_FLOAT_PERIOD_FAST_MS,
   LIANG_QI_FLOAT_PERIOD_SLOW_MS,
   formatCompactCount,
+  formatZhCompactCount,
   incensePlaceValue,
   liangQiFloatPeriodMs,
 } from '../src/domain/index.ts'
@@ -98,5 +99,22 @@ describe('liangQiFloatPeriodMs', () => {
   it('rejects a non-finite fill', () => {
     expect(() => liangQiFloatPeriodMs(-0.1)).toThrow(DomainError)
     expect(() => liangQiFloatPeriodMs(Number.NaN)).toThrow(DomainError)
+  })
+})
+
+describe('formatZhCompactCount', () => {
+  it('prints below 1 万 with grouping', () => {
+    expect(formatZhCompactCount(0)).toBe('0')
+    expect(formatZhCompactCount(2_841)).toBe('2,841')
+    expect(formatZhCompactCount(9_999)).toBe('9,999')
+  })
+
+  it('uses 万 / 百万 / 亿 above that', () => {
+    expect(formatZhCompactCount(10_000)).toBe('1万')
+    expect(formatZhCompactCount(12_846)).toBe('1.3万')
+    expect(formatZhCompactCount(128_500)).toBe('12.9万')
+    expect(formatZhCompactCount(1_000_000)).toBe('1百万')
+    expect(formatZhCompactCount(1_500_000)).toBe('1.5百万')
+    expect(formatZhCompactCount(100_000_000)).toBe('1亿')
   })
 })

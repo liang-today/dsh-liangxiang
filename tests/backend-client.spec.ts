@@ -42,6 +42,8 @@ const SNAPSHOT = {
   captured_at: 1_776_297_600_000,
   sequence: 2,
   policy_version: LIANGZI_POLICY_VERSION,
+  lifetime_incense: 1,
+  lifetime_voters: 1,
 }
 
 const ACTIVE_CASE = {
