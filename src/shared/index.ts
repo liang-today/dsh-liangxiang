@@ -87,6 +87,14 @@ export const OFFLINE_REASON = '未连接本地服务：显示最近状态，重�
 /** Status line when the DSH accounting seams are absent in this assembly. */
 export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合缺少 token 投影能力'
 
+/**
+ * Quiet ritual control: drop locally inflated Token observation and re-read
+ * the server incense ledger. Not a fifth region, not a third vote option.
+ */
+export const RECONCILE_LABEL = '上达天听'
+export const RECONCILE_HINT = '和服务器重新对账香火数据'
+export const RECONCILE_DONE = '已上达天听'
+
 /** Display names of the central Liangzi states (WAITING is the zero-vote placeholder, not a tier). */
 export const LIANGZI_STATE_LABELS: Readonly<Record<LiangziState, string>> = {
   waiting: '待开梁',

@@ -177,6 +177,16 @@ export class BackendLiangService implements LiangHostService {
     await this.refreshBootstrap()
   }
 
+  /**
+   * Drop locally observed daily Token totals (keep watermarks + identity) and
+   * re-read the backend incense ledger so the panel cannot stay inflated.
+   */
+  async reconcileNow(): Promise<void> {
+    this.usage.discardDailyTotals()
+    this.lastClaimSent = -1
+    await this.refreshBootstrap()
+  }
+
   /** Re-read the authoritative personal balance (out-of-band changes). */
   async refreshPersonal(): Promise<void> {
     const installationId = this.installationId

@@ -81,6 +81,7 @@ export interface LiangPersistencePort {
   putAggregate(caseId: string, aggregate: GlobalVoteAggregate): void
   putVote(requestId: string, record: PersistedVoteRecord): void
   deleteVote(requestId: string): void
+  deleteDailyUsage(businessDate: string): void
 }
 
 const DEMO_SEED: GlobalVoteAggregate = { upVotes: 10_665, downVotes: 2_181, uniqueVoters: 2_841 }
@@ -297,6 +298,11 @@ export class FakeAuthoritativeLiangService {
   refreshNow(): void {
     this.rotateToCurrentDate()
     this.bump()
+  }
+
+  /** Local fake IS the ledger; there is no server overlay to restore. */
+  reconcileNow(): void {
+    this.refreshNow()
   }
 
   getWireState(): LiangbiaoWireState {

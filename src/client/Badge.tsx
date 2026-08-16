@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
-import { HOVER_TEXT, LIANGZI_STATE_LABELS, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { HOVER_TEXT, LIANGZI_STATE_LABELS, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
 import {
   BADGE_SIZE,
   clampBadgePosition,
@@ -308,6 +308,13 @@ export function LiangbiaoBadge(): ReactElement {
     )
   }
 
+  const onReconcile = (): void => {
+    store.reconcile().then(
+      () => setVoteFeedback(RECONCILE_DONE),
+      () => setVoteFeedback('上达天听失败，请稍后重试'),
+    )
+  }
+
   return (
     <div
       ref={anchorRef}
@@ -351,6 +358,7 @@ export function LiangbiaoBadge(): ReactElement {
           placement={panelPlacementFor(position, viewport)}
           onVote={onVote}
           onClose={() => setOpen(false)}
+          onReconcile={onReconcile}
         />
       )}
     </div>

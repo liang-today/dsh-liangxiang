@@ -36,6 +36,12 @@ export interface LiangHostService {
    * rotate to the current business date. Optional so older fakes stay valid.
    */
   refreshNow?: () => void | Promise<void>
+  /**
+   * Drop local Token observation (keep identity + watermarks) and re-read the
+   * authoritative incense ledger. Online: overlay the server remaining.
+   * Local fake: date rotate only — this process IS the ledger.
+   */
+  reconcileNow?: () => void | Promise<void>
   /** Release timers, in-flight requests and subscriptions. */
   dispose?: () => void
 }

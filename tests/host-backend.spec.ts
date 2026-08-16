@@ -143,6 +143,17 @@ describe('online bootstrap', () => {
     expect(view.personal.tokensToNextIncense).toBe(50_000)
   })
 
+  it('上达天听 drops inflated local observation so the panel follows the server ledger', async () => {
+    const s = await startStack({ LIANGBIAO_MAX_TOKENS_PER_MINUTE: '50000' }, { claimDebounceMs: 60_000 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(200_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    expect(frame(s).personal.effectiveTokensToday).toBe(200_000)
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(0)
+    await s.host.reconcileNow()
+    expect(frame(s).personal.effectiveTokensToday).toBe(0)
+    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(0)
+  })
+
   it('turns observed DSH usage into an authoritative claim (input+output, all buckets)', async () => {
     const s = await startStack()
     // 10k uncached + 20k cacheRead + 5k cacheWrite = 35k input; +15k output = 50k.

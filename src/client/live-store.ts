@@ -25,6 +25,7 @@ const STATE_PATH = '/liangbiao/api/state'
 const EVENTS_PATH = '/liangbiao/api/events'
 const VOTE_PATH = '/liangbiao/api/vote'
 const REFRESH_PATH = '/liangbiao/api/refresh'
+const RECONCILE_PATH = '/liangbiao/api/reconcile'
 const FETCH_TIMEOUT_MS = 6_000
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
@@ -76,6 +77,8 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
    * `force` skips the hover throttle (panel open).
    */
   refresh(options?: { force?: boolean }): void
+  /** Drop local Token observation and re-read the server incense ledger. */
+  reconcile(): Promise<void>
   /** Abort in-flight work and close the stream. */
   dispose(): void
 }
@@ -90,6 +93,7 @@ export function createLiveLiangbiaoStore(
   let disposed = false
   let starting = false
   let refreshInFlight = false
+  let reconcileInFlight = false
   let lastLiveRefreshAt = 0
   const listeners = new Set<() => void>()
 
@@ -209,6 +213,25 @@ export function createLiveLiangbiaoStore(
         return
       }
       pullLatest(options?.force === true)
+    },
+    reconcile: () => {
+      if (disposed || reconcileInFlight || starting) return Promise.resolve()
+      if (state.connection === 'offline') {
+        if (!starting) bootstrap()
+        return Promise.resolve()
+      }
+      reconcileInFlight = true
+      return transport.fetchJson(RECONCILE_PATH, { method: 'POST' })
+        .then((raw) => {
+          if (!disposed) applyWire(raw)
+        })
+        .catch((error: unknown) => {
+          console.warn(`[dsh-liangbiao] reconcile failed: ${error instanceof Error ? error.message : String(error)}`)
+          throw error
+        })
+        .finally(() => {
+          reconcileInFlight = false
+        })
     },
     dispose: () => {
       disposed = true

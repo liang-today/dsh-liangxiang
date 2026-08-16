@@ -212,6 +212,7 @@ export async function openLiangbiaoPersistence(
     putAggregate: (caseId, aggregate) => writeBehind('aggregate', () => aggregates.put(caseId, aggregate)),
     putVote: (requestId, record) => writeBehind('vote', () => votes.put(requestId, record)),
     deleteVote: (requestId) => writeBehind('vote-delete', () => votes.delete(requestId)),
+    deleteDailyUsage: (businessDate) => writeBehind('daily_usage-delete', () => dailyUsage.delete(businessDate)),
   }
 
   const identity: LiangbiaoIdentityPort = {

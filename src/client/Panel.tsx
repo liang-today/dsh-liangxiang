@@ -29,6 +29,8 @@ import {
   VOTE_DOWN_NAME,
   VOTE_UP_LABEL,
   VOTE_UP_NAME,
+  RECONCILE_HINT,
+  RECONCILE_LABEL,
   liangziRatioRangeText,
 } from '../shared/index.ts'
 import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
@@ -50,6 +52,8 @@ export interface PanelProps {
   placement?: PanelPlacement
   onVote: (voteType: VoteType) => void
   onClose: () => void
+  /** Drop local Token observation and re-read the server incense ledger. */
+  onReconcile: () => void
 }
 
 const panelStyle: CSSProperties = {
@@ -221,7 +225,7 @@ const visuallyHidden: CSSProperties = {
 }
 
 export function Panel(props: PanelProps): ReactElement {
-  const { state, reducedMotion, avatarPulse, justCondensed, voteFeedback, onVote, onClose } = props
+  const { state, reducedMotion, avatarPulse, justCondensed, voteFeedback, onVote, onClose, onReconcile } = props
   const placement = props.placement ?? { side: 'left', vertical: 'center' }
   const positionPulse = props.positionPulse ?? false
   const { snapshot, personal, activeCase } = state
@@ -442,6 +446,28 @@ export function Panel(props: PanelProps): ReactElement {
         </span>
         {/* Both stats sit in fixed-width boxes for the same reason as Region 2. */}
       </footer>
+      <p style={{ margin: '8px 0 0', textAlign: 'center' }}>
+        <button
+          type="button"
+          data-liangbiao-reconcile=""
+          title={RECONCILE_HINT}
+          aria-label={`${RECONCILE_LABEL}：${RECONCILE_HINT}`}
+          disabled={offline}
+          onClick={onReconcile}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            padding: '2px 6px',
+            cursor: offline ? 'not-allowed' : 'pointer',
+            fontFamily: font.family,
+            fontSize: '12px',
+            letterSpacing: '1px',
+            color: color.textTertiary,
+          }}
+        >
+          {RECONCILE_LABEL}
+        </button>
+      </p>
 
       {/* Screen-reader summary of the full state. */}
       <p aria-live="polite" style={visuallyHidden}>{summary}</p>
