@@ -259,11 +259,15 @@ export function LiangbiaoBadge(): ReactElement {
 
   // Transient vote feedback (已上香).
   const [voteFeedback, setVoteFeedback] = useState('')
+  const [reconcilePending, setReconcilePending] = useState(false)
   useEffect(() => {
     if (voteFeedback === '') return undefined
     const timer = window.setTimeout(() => setVoteFeedback(''), 2000)
     return () => window.clearTimeout(timer)
   }, [voteFeedback])
+  useEffect(() => {
+    if (!open) setReconcilePending(false)
+  }, [open])
 
   // Outside click closes the panel.
   useEffect(() => {
@@ -308,7 +312,14 @@ export function LiangbiaoBadge(): ReactElement {
     )
   }
 
-  const onReconcile = (): void => {
+  const onReconcileAsk = (): void => {
+    setReconcilePending(true)
+  }
+  const onReconcileCancel = (): void => {
+    setReconcilePending(false)
+  }
+  const onReconcileConfirm = (): void => {
+    setReconcilePending(false)
     store.reconcile().then(
       () => setVoteFeedback(RECONCILE_DONE),
       () => setVoteFeedback('上达天听失败，请稍后重试'),
@@ -358,7 +369,10 @@ export function LiangbiaoBadge(): ReactElement {
           placement={panelPlacementFor(position, viewport)}
           onVote={onVote}
           onClose={() => setOpen(false)}
-          onReconcile={onReconcile}
+          reconcilePending={reconcilePending}
+          onReconcileAsk={onReconcileAsk}
+          onReconcileConfirm={onReconcileConfirm}
+          onReconcileCancel={onReconcileCancel}
         />
       )}
     </div>

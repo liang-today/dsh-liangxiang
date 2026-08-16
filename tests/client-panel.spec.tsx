@@ -15,6 +15,9 @@ import {
   LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
   PANEL_TITLE,
+  RECONCILE_CONFIRM_CANCEL,
+  RECONCILE_CONFIRM_OK,
+  RECONCILE_CONFIRM_PROMPT,
   RECONCILE_HINT,
   RECONCILE_LABEL,
   VOTE_DOWN_LABEL,
@@ -23,7 +26,16 @@ import {
 } from '../src/shared/index.ts'
 import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedNode } from './helpers/render.ts'
 
-function renderPanel(state: LiangbiaoViewState, voteFeedback = ''): RenderedNode[] {
+function renderPanel(
+  state: LiangbiaoViewState,
+  voteFeedback = '',
+  extra: {
+    reconcilePending?: boolean
+    onReconcileAsk?: () => void
+    onReconcileConfirm?: () => void
+    onReconcileCancel?: () => void
+  } = {},
+): RenderedNode[] {
   return renderDeep(
     <Panel
       state={state}
@@ -33,7 +45,10 @@ function renderPanel(state: LiangbiaoViewState, voteFeedback = ''): RenderedNode
       voteFeedback={voteFeedback}
       onVote={() => undefined}
       onClose={() => undefined}
-      onReconcile={() => undefined}
+      reconcilePending={extra.reconcilePending ?? false}
+      onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
+      onReconcileConfirm={extra.onReconcileConfirm ?? (() => undefined)}
+      onReconcileCancel={extra.onReconcileCancel ?? (() => undefined)}
     />,
   )
 }
@@ -200,7 +215,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         positionPulse
         onVote={() => undefined}
         onClose={() => undefined}
-        onReconcile={() => undefined}
+        reconcilePending={false}
+        onReconcileAsk={() => undefined}
+        onReconcileConfirm={() => undefined}
+        onReconcileCancel={() => undefined}
       />,
     )
     const pulsingValue = styleOf(findByAttr(pulsing, 'data-liangbiao-liang-position-value')[0])
@@ -216,7 +234,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         positionPulse
         onVote={() => undefined}
         onClose={() => undefined}
-        onReconcile={() => undefined}
+        reconcilePending={false}
+        onReconcileAsk={() => undefined}
+        onReconcileConfirm={() => undefined}
+        onReconcileCancel={() => undefined}
       />,
     )
     expect(styleOf(findByAttr(reduced, 'data-liangbiao-liang-position-value')[0]).animation).toBeUndefined()
@@ -293,7 +314,7 @@ describe('region 4: social stats', () => {
 })
 
 describe('上达天听', () => {
-  it('is a quiet control under the social stats, not a fifth region or third vote', () => {
+  it('is corner chrome under the social stats, not a fifth region or third vote', () => {
     const tree = renderPanel(demoState())
     const regions = findByAttr(tree, 'data-liangbiao-region')
     expect(regions.map((node) => node.props['data-liangbiao-region'])).toEqual([
@@ -304,10 +325,27 @@ describe('上达天听', () => {
     ])
     const votes = findByAttr(tree, 'data-liangbiao-vote')
     expect(votes).toHaveLength(2)
+    const slot = findByAttr(tree, 'data-liangbiao-reconcile-slot')[0]
+    expect(styleOf(slot).position).toBe('absolute')
+    expect(styleOf(slot).right).toBe('12px')
     const control = findByAttr(tree, 'data-liangbiao-reconcile')[0]
-    expect(control && textContent([control])).toBe(RECONCILE_LABEL)
-    expect(control?.props.title).toBe(RECONCILE_HINT)
+    expect(control && textContent([control])).toContain(RECONCILE_LABEL)
+    expect(control?.props.title).toBeUndefined()
     expect(control?.props['aria-label']).toBe(`${RECONCILE_LABEL}：${RECONCILE_HINT}`)
+    expect(findByAttr(tree, 'data-liangbiao-heaven-icon')).toHaveLength(1)
+    const hint = findByAttr(tree, 'data-liangbiao-hint')[0]
+    expect(hint && textContent([hint])).toBe(RECONCILE_HINT)
+    expect(findByAttr(tree, 'data-liangbiao-reconcile-confirm')).toHaveLength(0)
+  })
+
+  it('asks for confirmation before the expensive sync', () => {
+    const tree = renderPanel(demoState(), '', { reconcilePending: true })
+    expect(findByAttr(tree, 'data-liangbiao-reconcile')).toHaveLength(0)
+    const confirm = findByAttr(tree, 'data-liangbiao-reconcile-confirm')[0]
+    expect(confirm?.props.role).toBe('alertdialog')
+    expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_PROMPT)
+    expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_OK)
+    expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_CANCEL)
   })
 })
 
