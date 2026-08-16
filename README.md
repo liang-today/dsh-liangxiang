@@ -48,6 +48,7 @@
 | DSH 版本基线与升级清单 | [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) |
 | RC 结论 | [`docs/100-release-readiness.md`](docs/100-release-readiness.md) |
 | 原始禁令 vs 当前实现 | [`docs/110-prohibition-refresh.md`](docs/110-prohibition-refresh.md) |
+| Demo → 社区产品 | [`docs/120-community-product.md`](docs/120-community-product.md) |
 
 其余设计文档:`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵、`020` UI、`030–032` 领域模型/不变量/P0 矩阵、`040–044` authority 勘察、`050–062` 本地闭环、`070–076` 在线后端。
 
