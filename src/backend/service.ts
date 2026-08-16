@@ -38,15 +38,18 @@ import {
   type V1PersonalState,
   type V1PersonalStateResponse,
   type V1PublishCaseResponse,
+  type V1RekeyResponse,
   type V1Snapshot,
   type V1SnapshotResponse,
   type V1TokenClaimRequest,
+  type V1UnbindResponse,
   type V1VoteRequest,
   type V1VoteResponse,
   type V1VoteResult,
 } from '../shared/backend-v1.ts'
 import { createBusinessDateProvider, systemClock, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import { SNAPSHOT_HISTORY_LIMIT, type BackendConfig } from './config.ts'
+import { CommunityAuthError } from './community-auth.ts'
 import {
   isUniqueConstraintError,
   type BackendStore,
@@ -306,6 +309,97 @@ export class LiangbiaoBackendService {
       business_date: caseRow.business_date,
       active_case: toV1Case(caseRow),
       global_snapshot: this.publishedSnapshot(caseRow, now),
+    }
+  }
+
+  /**
+   * Operator unbind: delete one installation's identity row so its device
+   * fingerprint is released and it can re-register (same or fresh key). The old
+   * identity's incense/votes are orphaned — its key can no longer authenticate.
+   * Community-key gated by the HTTP layer.
+   */
+  unbindIdentity(installationId: string, now = this.clock.now()): V1UnbindResponse {
+    return {
+      schema_version: BACKEND_SCHEMA_VERSION,
+      installation_id: installationId,
+      unbound: this.store.deleteIdentity(installationId),
+      server_time: now,
+    }
+  }
+
+  /**
+   * Self-serve re-key — the "cost" of recovery. A device whose MAC fingerprint
+   * is already bound to a previous installation may take over that binding, but
+   * only after `rekeyCooldownMs` has elapsed since the previous identity was
+   * last seen, and only by forfeiting it: its incense/votes are never
+   * transferred to the new key (the new id starts at zero).
+   */
+  rekeyIdentity(
+    installationId: string,
+    publicKey: string,
+    deviceFingerprint: string,
+    now = this.clock.now(),
+  ): V1RekeyResponse {
+    if (deviceFingerprint === '') {
+      throw new CommunityAuthError(400, 'invalid_request', 'a device fingerprint is required to re-key')
+    }
+    const previous = this.store.identityByFingerprint(deviceFingerprint)
+    if (previous === undefined) {
+      this.store.upsertIdentity({
+        installation_id: installationId,
+        public_key: publicKey,
+        device_fingerprint: deviceFingerprint,
+        created_at: now,
+        last_seen_at: now,
+      })
+      return {
+        schema_version: BACKEND_SCHEMA_VERSION,
+        rekeyed: false,
+        installation_id: installationId,
+        previous_installation_id: null,
+        server_time: now,
+      }
+    }
+    if (previous.installation_id === installationId) {
+      return {
+        schema_version: BACKEND_SCHEMA_VERSION,
+        rekeyed: false,
+        installation_id: installationId,
+        previous_installation_id: null,
+        server_time: now,
+      }
+    }
+    const cooldown = this.config.rekeyCooldownMs
+    if (cooldown > 0) {
+      const elapsed = now - previous.last_seen_at
+      if (elapsed < cooldown) {
+        throw new CommunityAuthError(
+          409,
+          'rekey_cooldown',
+          `device fingerprint was active ${elapsed} ms ago; wait ${cooldown - elapsed} ms before re-keying`,
+        )
+      }
+    }
+    this.store.transaction(() => {
+      this.store.deleteIdentity(previous.installation_id)
+      this.store.upsertIdentity({
+        installation_id: installationId,
+        public_key: publicKey,
+        device_fingerprint: deviceFingerprint,
+        created_at: now,
+        last_seen_at: now,
+      })
+    })
+    this.warn(
+      `[liangbiao-backend] rekey: device ${deviceFingerprint.slice(0, 8)}… `
+      + `${previous.installation_id.slice(0, 8)}… -> ${installationId.slice(0, 8)}…`,
+    )
+    return {
+      schema_version: BACKEND_SCHEMA_VERSION,
+      rekeyed: true,
+      installation_id: installationId,
+      previous_installation_id: previous.installation_id,
+      server_time: now,
     }
   }
 

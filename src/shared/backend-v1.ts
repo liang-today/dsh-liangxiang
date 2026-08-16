@@ -250,12 +250,35 @@ export interface V1PublishCaseResponse {
   global_snapshot: V1Snapshot
 }
 
+/**
+ * POST /v1/identity/rekey response. A device whose MAC fingerprint is already
+ * bound to a previous installation can take over that binding after the re-key
+ * cooldown; the previous identity (and its incense/votes) is orphaned — never
+ * transferred. `rekeyed` is false when there was nothing to take over.
+ */
+export interface V1RekeyResponse {
+  schema_version: typeof BACKEND_SCHEMA_VERSION
+  rekeyed: boolean
+  installation_id: string
+  previous_installation_id: string | null
+  server_time: number
+}
+
+/** POST /v1/admin/identity/unbind response (operator, community key). */
+export interface V1UnbindResponse {
+  schema_version: typeof BACKEND_SCHEMA_VERSION
+  installation_id: string
+  unbound: boolean
+  server_time: number
+}
+
 /** Structured error codes (HTTP status is carried separately). */
 export const V1_ERROR_CODES = [
   'invalid_request',
   'missing_installation',
   'invalid_signature',
   'device_conflict',
+  'rekey_cooldown',
   'unknown_route',
   'method_not_allowed',
   'stale_case',
