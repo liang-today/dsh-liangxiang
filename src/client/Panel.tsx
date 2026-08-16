@@ -44,7 +44,7 @@ import {
 import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
-import { LiangAvatar } from './LiangAvatar.tsx'
+import { LiangAvatar, LIANGZI_LABEL_COLOR } from './LiangAvatar.tsx'
 import { LiangQiRing, AVATAR_SLOT, RING_SIZE } from './LiangQiRing.tsx'
 import type { LiangbiaoViewState } from './store.ts'
 import { color, font } from './theme.ts'
@@ -67,7 +67,7 @@ export interface PanelProps {
   onReconcileConfirm: () => void
   onReconcileCancel: () => void
   reconcilePending: boolean
-  /** Simulate +1 炷 without a model. Staging: display overlay only. */
+  /** Frontend-only UI probe: +1 炷 on this tab's picture, no Host/backend. */
   onDevCredit?: () => void
 }
 
@@ -455,7 +455,7 @@ export function Panel(props: PanelProps): ReactElement {
         numbers overlay left/right and cannot shove that column.
 
           我的香火 N 炷   [梁气环 + 梁子]   下一炷 X 当量
-                          梁位 83.021952%
+                          梁位 83.021952% → 梁圣
       */}
       <div data-liangbiao-region="core" style={coreStyle}>
         <div data-liangbiao-core-anchor="" style={coreAnchorStyle}>
@@ -466,19 +466,19 @@ export function Panel(props: PanelProps): ReactElement {
             footer={(
               <span
                 data-liangbiao-liang-position=""
-                title={`${VOTE_UP_NAME} ${percents.up} / ${VOTE_DOWN_NAME} ${percents.down}`}
+                title={`${VOTE_UP_NAME} ${percents.up} / ${VOTE_DOWN_NAME} ${percents.down} → ${LIANGZI_STATE_LABELS[snapshot.liangziState]}`}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'baseline',
                   justifyContent: 'center',
-                  gap: '4px',
-                  width: '132px',
+                  gap: '5px',
                   boxSizing: 'border-box',
-                  padding: '1px 6px',
+                  padding: '2px 8px',
                   borderRadius: '999px',
                   border: `1px solid ${color.border}`,
                   background: color.bgLayer,
                   lineHeight: '16px',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <span style={{ fontSize: '10px', color: color.textTertiary, letterSpacing: '0.5px' }}>
@@ -498,6 +498,21 @@ export function Panel(props: PanelProps): ReactElement {
                 >
                   {percents.up}
                 </strong>
+                <span aria-hidden="true" style={{ fontSize: '11px', color: color.textTertiary }}>→</span>
+                <span
+                  data-liangbiao-liangzi-title=""
+                  title={`${LIANGZI_STATE_LABELS[snapshot.liangziState]}：${liangziRatioRangeText(snapshot.liangziState)}`}
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    letterSpacing: '0.4px',
+                    color: snapshot.liangziState === 'waiting'
+                      ? color.textTertiary
+                      : LIANGZI_LABEL_COLOR[snapshot.liangziState],
+                  }}
+                >
+                  {LIANGZI_STATE_LABELS[snapshot.liangziState]}
+                </span>
               </span>
             )}
           >
@@ -506,6 +521,9 @@ export function Panel(props: PanelProps): ReactElement {
               pulse={avatarPulse}
               reducedMotion={reducedMotion}
               size={AVATAR_SLOT}
+              hideLabel
+              liangQiFill={personal.liangQiFill}
+            />
               liangQiFill={personal.liangQiFill}
             />
           </LiangQiRing>

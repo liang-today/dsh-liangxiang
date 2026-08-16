@@ -12,16 +12,16 @@ pnpm run dev:web         # 启动 WebUI，默认 http://127.0.0.1:3080
 
 右缘会出现一个圆形入口，图标就是当前梁子状态，悬停显示 `今日梁位`；可以拖到任意位置。
 
-默认是 `LOCAL_FAKE_DEV`（进程内记账，零出网）。香火上涨不必打模型，连着 staging 也可以（只改本机画面，不上报）：
+默认是 `LOCAL_FAKE_DEV`（进程内记账，零出网）。面板投票区下方有 **演示 +1 炷**：只改这一页的画面，不打模型、也不请求 Host/后端。点 **上达天听** 会清掉。连点九次可看九根香柱。
+
+本地假账才走 CLI 入账（会写入本机账本，可投票）：
 
 ```bash
-pnpm run dev:web              # 终端 A（可带着 LIANGBIAO_BACKEND_URL）
+unset LIANGBIAO_BACKEND_URL   # 必须是本地假账
+pnpm run dev:web              # 终端 A
 pnpm run dev:credit           # 终端 B：+1 炷
-pnpm run dev:credit -- 9      # +9 炷，看九根香柱
-pnpm run dev:credit -- --tokens 3000   # 只推下一炷进度 / 浮动
+pnpm run dev:credit -- 9      # +9 炷
 ```
-
-面板投票区下方有 **演示 +1 炷**。Host 需重启一次才能挂上这条入口。点 **上达天听** 会清掉演示香火。
 
 想跑在线链路：
 

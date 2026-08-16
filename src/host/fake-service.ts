@@ -121,6 +121,7 @@ export class FakeAuthoritativeLiangService {
   private revision = 0
   private accountingAvailable = false
   private readonly listeners = new Set<() => void>()
+  private readonly hostEpoch = Date.now()
 
   constructor(config: LiangServiceConfig, clock: Clock, warn: (message: string) => void = (message) => console.warn(message)) {
     this.config = config
@@ -348,6 +349,7 @@ export class FakeAuthoritativeLiangService {
     return {
       schemaVersion: WIRE_SCHEMA_VERSION,
       revision: this.revision,
+      hostEpoch: this.hostEpoch,
       authorityMode: 'LOCAL_FAKE_DEV',
       snapshotRefreshSeconds: this.config.snapshotRefreshSeconds,
       businessDate: this.currentDate,

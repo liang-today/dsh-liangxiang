@@ -12,7 +12,7 @@
  *    hover / panel-open can force a host re-bootstrap instead of waiting for
  *    the next 1s snapshot poll. No extra background poll loop.
  */
-import type { VoteResult, VoteType } from '../domain/index.ts'
+import { derivePersonalLiangQiState, type VoteResult, type VoteType } from '../domain/index.ts'
 import { parseWireState, parseWireVoteResponse } from '../shared/wire.ts'
 import {
   createOfflineViewState,
@@ -26,7 +26,6 @@ const EVENTS_PATH = '/liangbiao/api/events'
 const VOTE_PATH = '/liangbiao/api/vote'
 const REFRESH_PATH = '/liangbiao/api/refresh'
 const RECONCILE_PATH = '/liangbiao/api/reconcile'
-const DEV_CREDIT_PATH = '/liangbiao/api/dev/credit'
 const FETCH_TIMEOUT_MS = 6_000
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
@@ -80,7 +79,10 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
   refresh(options?: { force?: boolean }): void
   /** Drop local Token observation and re-read the server incense ledger. */
   reconcile(): Promise<void>
-  /** Fold simulated tokens into today's incense without a model. Staging: display only. */
+  /**
+   * Frontend-only UI probe: add incense on this tab's picture.
+   * Does not call the Host or the backend. 上达天听 clears it.
+   */
   creditDev(intent?: { sticks?: number, effectiveTokens?: number }): Promise<void>
   /** Abort in-flight work and close the stream. */
   dispose(): void
@@ -91,6 +93,9 @@ export function createLiveLiangbiaoStore(
 ): LiveLiangbiaoStore {
   let state: LiangbiaoViewState = createOfflineViewState('connecting')
   let lastRevision = -1
+  let lastHostEpoch = -1
+  let lastWire: LiangbiaoViewState | null = null
+  let demoExtraTokens = 0
   let stream: { close(): void } | null = null
   let sseErrors = 0
   let disposed = false
@@ -99,6 +104,23 @@ export function createLiveLiangbiaoStore(
   let reconcileInFlight = false
   let lastLiveRefreshAt = 0
   const listeners = new Set<() => void>()
+
+  const withDemoOverlay = (view: LiangbiaoViewState): LiangbiaoViewState => {
+    if (demoExtraTokens <= 0) return view
+    return {
+      ...view,
+      personal: derivePersonalLiangQiState({
+        effectiveTokensToday: view.personal.effectiveTokensToday + demoExtraTokens,
+        usedIncenseToday: view.personal.usedIncenseToday,
+        tokenPerIncense: view.personal.tokenPerIncense,
+      }),
+    }
+  }
+
+  const publishWire = (view: LiangbiaoViewState): void => {
+    lastWire = view
+    setState(withDemoOverlay(view))
+  }
 
   const notify = (): void => {
     for (const listener of listeners) listener()
@@ -111,13 +133,18 @@ export function createLiveLiangbiaoStore(
 
   const applyWire = (raw: unknown): void => {
     const wire = parseWireState(raw)
+    if (wire.hostEpoch !== lastHostEpoch) {
+      lastHostEpoch = wire.hostEpoch
+      lastRevision = -1
+    }
     if (wire.revision > lastRevision) {
       lastRevision = wire.revision
-      setState(wireToViewState(wire, 'live'))
+      publishWire(wireToViewState(wire, 'live'))
     } else if (state.connection !== 'live') {
       // Reconnect delivering an already-known revision: only flip the
       // connection flag; never rewind to a stale frame.
-      setState({ ...state, connection: 'live' })
+      const base = lastWire ?? state
+      publishWire({ ...base, connection: 'live' })
     }
   }
 
@@ -219,6 +246,8 @@ export function createLiveLiangbiaoStore(
     },
     reconcile: () => {
       if (disposed || reconcileInFlight || starting) return Promise.resolve()
+      demoExtraTokens = 0
+      if (lastWire !== null) publishWire(lastWire)
       if (state.connection === 'offline') {
         if (!starting) bootstrap()
         return Promise.resolve()
@@ -237,16 +266,14 @@ export function createLiveLiangbiaoStore(
         })
     },
     creditDev: (intent = { sticks: 1 }) => {
-      if (disposed || starting) return Promise.resolve()
-      const body = JSON.stringify(intent)
-      return transport.fetchJson(DEV_CREDIT_PATH, { method: 'POST', body })
-        .then((raw) => {
-          if (!disposed) applyWire(raw)
-        })
-        .catch((error: unknown) => {
-          console.warn(`[dsh-liangbiao] dev credit failed: ${error instanceof Error ? error.message : String(error)}`)
-          throw error
-        })
+      if (disposed) return Promise.resolve()
+      const tokenPerIncense = state.personal.tokenPerIncense
+      const add = intent.effectiveTokens ?? (intent.sticks ?? 1) * tokenPerIncense
+      if (!Number.isInteger(add) || add <= 0) return Promise.resolve()
+      demoExtraTokens += add
+      const base = lastWire ?? state
+      publishWire(base)
+      return Promise.resolve()
     },
     dispose: () => {
       disposed = true

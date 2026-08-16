@@ -78,6 +78,7 @@ export class BackendLiangService implements LiangHostService {
 
   private accountingAvailable = false
   private revision = 0
+  private readonly hostEpoch = Date.now()
   private readonly listeners = new Set<() => void>()
 
   private claimTimer: ReturnType<typeof setTimeout> | null = null
@@ -87,11 +88,6 @@ export class BackendLiangService implements LiangHostService {
   private bootstrapping: Promise<void> | null = null
   private ticks = 0
   private disposed = false
-  /**
-   * Display-only Token overlay for local visual tests. Never included in
-   * `/v1/token-claims`. Cleared by 上达天听 / process restart.
-   */
-  private simulatedDisplayTokens = 0
 
   constructor(deps: BackendLiangServiceDeps) {
     this.client = deps.client
@@ -170,21 +166,9 @@ export class BackendLiangService implements LiangHostService {
     origin: UsageObservationOrigin,
     modelId?: string | null,
   ): void {
-    if (!this.usage.observe(sessionId, value, origin, modelId)) return
+    if (!this.usage.observe(sessionId, value, origin, modelId, this.businessDate || undefined)) return
     this.bump()
     this.scheduleClaim()
-  }
-
-  /**
-   * Pump incense on the panel without a model and without claiming it to the
-   * backend. Visual tests only; 上达天听 clears the overlay.
-   */
-  creditSimulatedUsage(deltaEffectiveTokens: number): void {
-    if (!Number.isInteger(deltaEffectiveTokens) || deltaEffectiveTokens <= 0) {
-      throw new Error('simulated credit must be a positive integer of Pro-equivalent tokens')
-    }
-    this.simulatedDisplayTokens += deltaEffectiveTokens
-    this.bump()
   }
 
   /** Cadence hook: pull the published snapshot (and re-bootstrap on rollover). */
@@ -205,7 +189,6 @@ export class BackendLiangService implements LiangHostService {
    */
   async reconcileNow(): Promise<void> {
     this.usage.discardDailyTotals()
-    this.simulatedDisplayTokens = 0
     this.lastClaimSent = -1
     await this.refreshBootstrap()
   }
@@ -264,6 +247,7 @@ export class BackendLiangService implements LiangHostService {
     return {
       schemaVersion: WIRE_SCHEMA_VERSION,
       revision: this.revision,
+      hostEpoch: this.hostEpoch,
       authorityMode: 'DEV_STAGING_ONLY',
       snapshotRefreshSeconds: bootstrap.snapshot_refresh_seconds,
       businessDate: this.businessDate,
@@ -283,7 +267,7 @@ export class BackendLiangService implements LiangHostService {
         // server ledger so a vote cannot be invented here.
         effectiveTokensToday: displayedEffectiveTokens(
           personal,
-          this.usage.effectiveTokensFor(this.businessDate) + this.simulatedDisplayTokens,
+          this.usage.effectiveTokensFor(this.businessDate),
         ),
         usedIncenseToday: personal.used_incense,
         tokenPerIncense: personal.token_per_incense,
@@ -356,6 +340,7 @@ export class BackendLiangService implements LiangHostService {
     this.personal = bootstrap.authoritative_personal_state
     this.snapshot = bootstrap.global_snapshot
     this.businessDate = bootstrap.business_date
+    this.usage.alignDailyBucket(this.businessDate)
     this.bump()
   }
 
