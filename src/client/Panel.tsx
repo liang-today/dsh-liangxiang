@@ -12,6 +12,7 @@
 import type { CSSProperties, KeyboardEvent, ReactElement } from 'react'
 import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, type VoteType } from '../domain/index.ts'
 import {
+  ABSURD_CLAIM_NOTICE,
   ACCOUNTING_UNAVAILABLE_HINT,
   AUTHORITY_MODE_NOTES,
   INCENSE_STAT_HINT,
@@ -391,13 +392,16 @@ export function Panel(props: PanelProps): ReactElement {
     : outOfIncense
       ? NO_INCENSE_REASON
       : ''
+  const absurdNotice = state.accountingNotice === 'claim_capped_absurd'
   const statusLine = offline
     ? OFFLINE_REASON
     : !state.accountingAvailable
       ? ACCOUNTING_UNAVAILABLE_HINT
-      : outOfIncense
-        ? NO_INCENSE_REASON
-        : voteFeedback
+      : absurdNotice
+        ? ABSURD_CLAIM_NOTICE
+        : outOfIncense
+          ? NO_INCENSE_REASON
+          : voteFeedback
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
@@ -614,7 +618,7 @@ export function Panel(props: PanelProps): ReactElement {
       <p
         role="status"
         data-liangbiao-vote-feedback=""
-        style={{ margin: '4px 0 0', minHeight: '14px', fontSize: '11px', color: outOfIncense || offline ? color.warn : color.textTertiary, textAlign: 'center' }}
+        style={{ margin: '4px 0 0', minHeight: '14px', fontSize: '11px', color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary, textAlign: 'center' }}
       >
         {statusLine}
       </p>

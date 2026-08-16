@@ -63,6 +63,8 @@ export interface WireAccounting {
   outputTokensToday: number
   /** Epoch ms of the last observed usage change; null before any. */
   observedAt: number | null
+  /** Backend guard notice (e.g. an absurd claim was clamped); null normally. */
+  notice: string | null
 }
 
 /** One full state frame (GET /state and every SSE frame). */
@@ -222,6 +224,9 @@ export function parseWireState(raw: unknown): LiangbiaoWireState {
       observedAt: accountingRecord.observedAt === null
         ? null
         : requireFinite(accountingRecord.observedAt, 'state.accounting.observedAt'),
+      notice: accountingRecord.notice == null
+        ? null
+        : requireString(accountingRecord.notice, 'state.accounting.notice'),
     },
   }
 }

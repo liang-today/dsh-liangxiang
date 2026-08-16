@@ -219,16 +219,33 @@ export class LiangbiaoBackendService {
   ): V1PersonalStateResponse {
     const caseRow = this.ensureActiveCase(now)
     let applied = false
+    let claimNotice: V1PersonalStateResponse['claim_notice']
     if (claim.claim_business_date === caseRow.business_date) {
-      applied = this.store.transaction(() => {
+      const outcome = this.store.transaction(() => {
         this.ensureRow(installationId, caseRow, now)
         const row = this.requireRow(installationId, caseRow.business_date)
-        // Monotonic ratchet only. The claim is a host observation (A3 soft
-        // trust): it must never rewind, but it is no longer dripped against a
-        // wall-clock cap — honest usage outruns any fixed tokens/minute bound.
-        if (claim.claimed_effective_tokens <= row.claimed_effective_tokens) return false
-        return this.store.raiseClaim(installationId, caseRow.business_date, claim.claimed_effective_tokens, now)
+        const requested = claim.claimed_effective_tokens
+        // Monotonic ratchet only: the claim is a host observation (A3 soft
+        // trust), never rewound. A single-claim jump beyond the absurd ceiling
+        // is clamped WITH a notice — it is a guard against an impossible
+        // self-report, never a silent "香火不涨".
+        if (requested <= row.claimed_effective_tokens) return { applied: false, notice: undefined }
+        let target = requested
+        let notice: V1PersonalStateResponse['claim_notice']
+        const ceiling = this.config.absurdClaimTokens
+        if (ceiling > 0 && requested - row.claimed_effective_tokens > ceiling) {
+          target = row.claimed_effective_tokens + ceiling
+          notice = 'claim_capped_absurd'
+          this.warn(
+            `[liangbiao-backend] absurd claim clamped: install=${installationId.slice(0, 8)}… `
+            + `requested=${requested} clamped_to=${target} ceiling=${ceiling}`,
+          )
+        }
+        this.store.raiseClaim(installationId, caseRow.business_date, target, now)
+        return { applied: true, notice }
       })
+      applied = outcome.applied
+      claimNotice = outcome.notice
     } else {
       this.warn(
         `[liangbiao-backend] ignoring token claim for ${claim.claim_business_date} `
@@ -242,6 +259,7 @@ export class LiangbiaoBackendService {
       active_case: toV1Case(caseRow),
       authoritative_personal_state: this.personalState(installationId, caseRow, now),
       claim_applied: applied,
+      ...claimNotice === undefined ? {} : { claim_notice: claimNotice },
     }
   }
 

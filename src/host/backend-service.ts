@@ -84,6 +84,8 @@ export class BackendLiangService implements LiangHostService {
   private claimTimer: ReturnType<typeof setTimeout> | null = null
   private claimInFlight: Promise<void> | null = null
   private lastClaimSent = -1
+  /** Latest backend guard notice (absurd claim clamped); null normally. */
+  private claimNotice: string | null = null
   /**
    * How much of `locallyObserved` is already represented in `claimed`.
    * After 上达天听 the local daily total resets while claimed stays; new
@@ -289,6 +291,7 @@ export class BackendLiangService implements LiangHostService {
         inputTokensToday: usage.inputTokens,
         outputTokensToday: usage.outputTokens,
         observedAt: usage.observedAt === 0 ? null : usage.observedAt,
+        notice: this.claimNotice,
       },
     }
   }
@@ -413,6 +416,7 @@ export class BackendLiangService implements LiangHostService {
       this.personal = response.authoritative_personal_state
       this.activeCase = response.active_case
       this.businessDate = response.business_date
+      this.claimNotice = response.claim_notice ?? null
       if (response.claim_applied === false) {
         // Server already has more than this local total; do not retry it.
         if (claimed <= this.personal.claimed_effective_tokens) this.lastClaimSent = claimed

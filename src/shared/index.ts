@@ -94,6 +94,9 @@ export const OFFLINE_REASON = '未连接本地服务：显示最近状态，重�
 /** Status line when the DSH accounting seams are absent in this assembly. */
 export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合缺少 token 投影能力'
 
+/** Backend guard notice: a single Token claim was clamped as absurd. */
+export const ABSURD_CLAIM_NOTICE = 'Token 上报超出合理上限，已限幅（疑似异常）'
+
 /**
  * Quiet ritual control: drop locally inflated Token observation and re-read
  * the server incense ledger. Not a fifth region, not a third vote option.

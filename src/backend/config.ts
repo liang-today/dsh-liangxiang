@@ -31,6 +31,14 @@ const MAX_SNAPSHOT_REFRESH_SECONDS = 3600
  */
 export const SNAPSHOT_HISTORY_LIMIT = 200
 
+/**
+ * Absurd single-claim ceiling in tokens (~500 炷 at the 50K default). This is
+ * NOT a rate limit for honest usage — it only clamps a host that reports an
+ * impossible per-claim jump, with an explicit notice so it reads as a guard,
+ * not as a silent "香火不涨" bug. 0 disables the guard.
+ */
+export const DEFAULT_ABSURD_CLAIM_TOKENS = 25_000_000
+
 export interface BackendConfig {
   authorityMode: BackendAuthorityMode
   host: string
@@ -43,6 +51,8 @@ export interface BackendConfig {
   caseTitle: string
   /** Per-installation vote rate limit (requests per minute); 0 disables it. */
   voteRateLimitPerMinute: number
+  /** Absurd single-claim ceiling (tokens); 0 disables the guard. */
+  absurdClaimTokens: number
   /** When true, HTTP accepts the old unsigned installation header (localhost tests). */
   allowUnsigned: boolean
   /** Shared admission secret; null means not required. */
@@ -130,6 +140,13 @@ export function resolveBackendConfig(
       env.LIANGBIAO_VOTE_RATE_LIMIT,
       600,
       'LIANGBIAO_VOTE_RATE_LIMIT',
+      warn,
+      { min: 0 },
+    ),
+    absurdClaimTokens: parseInt_(
+      env.LIANGBIAO_ABSURD_CLAIM_TOKENS,
+      DEFAULT_ABSURD_CLAIM_TOKENS,
+      'LIANGBIAO_ABSURD_CLAIM_TOKENS',
       warn,
       { min: 0 },
     ),
