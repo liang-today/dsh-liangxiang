@@ -114,11 +114,12 @@ incense.
 ### Region 4 — Social stats
 
 ```text
-🔥 香火 12,846     👤 香客 2,841
+三界香火 12,846     五行香客 2,841     上达天听
 ```
 
-- global 香火 = accepted votes for the current case
-- 香客 = unique users with at least one accepted vote for the current case/day
+- 三界香火 = accepted votes for the current case (天/人/地香火汇于一炉)
+- 五行香客 = unique users with at least one accepted vote for the current case/day (取经五众)
+- 上达天听 sits on the same row as a small ritual control (confirm before sync). Not a fifth region.
 
 ---
 

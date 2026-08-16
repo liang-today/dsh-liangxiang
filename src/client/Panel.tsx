@@ -4,7 +4,7 @@
  *   1. 今日梁案 (single active case)
  *   2. overlay flanks | centered 梁子 + 梁气环 | 梁位
  *   3. two equal-width vote buttons 夯：升梁！ / 拉：降梁！
- *   4. global 香火 + 香客
+ *   4. 三界香火 + 五行香客 + 上达天听（同一行）
  *
  * No personal-growth section, no ranking, no third option.
  * Presentational only (no hooks); the container wires state and callbacks.
@@ -14,7 +14,7 @@ import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, type 
 import {
   ACCOUNTING_UNAVAILABLE_HINT,
   AUTHORITY_MODE_NOTES,
-  INCENSE_STAT_ICON,
+  INCENSE_STAT_HINT,
   INCENSE_STAT_LABEL,
   LIANGZI_STATE_LABELS,
   LIANG_POSITION_LABEL,
@@ -23,7 +23,7 @@ import {
   NO_INCENSE_REASON,
   OFFLINE_REASON,
   PANEL_TITLE,
-  VOTER_STAT_ICON,
+  VOTER_STAT_HINT,
   VOTER_STAT_LABEL,
   VOTE_DOWN_LABEL,
   VOTE_DOWN_NAME,
@@ -38,6 +38,7 @@ import {
 } from '../shared/index.ts'
 import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
+import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangQiRing, RING_SIZE } from './LiangQiRing.tsx'
 import type { LiangbiaoViewState } from './store.ts'
@@ -69,7 +70,7 @@ const panelStyle: CSSProperties = {
   maxHeight: 'min(560px, 80vh)',
   overflowY: 'auto',
   boxSizing: 'border-box',
-  padding: '16px 16px 36px',
+  padding: '16px',
   borderRadius: '14px',
   border: `1px solid ${color.border}`,
   background: color.bgLayer,
@@ -82,23 +83,32 @@ const panelStyle: CSSProperties = {
 const statStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
-  justifyContent: 'center',
-  gap: '6px',
-  width: '132px',
-  flex: '0 0 auto',
+  gap: '5px',
+  flex: '1 1 0',
+  minWidth: 0,
   whiteSpace: 'nowrap',
 }
 
-const statIconStyle: CSSProperties = {
-  fontSize: '17px',
-  lineHeight: 1,
+const statCopyStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: '1px',
+  minWidth: 0,
+}
+
+const statLabelStyle: CSSProperties = {
+  fontSize: '11px',
+  lineHeight: 1.2,
+  color: color.textSecondary,
 }
 
 const statValueStyle: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
   fontFeatureSettings: '"tnum"',
-  fontSize: '17px',
+  fontSize: '15px',
   fontWeight: 700,
+  lineHeight: 1.2,
   color: color.textPrimary,
 }
 
@@ -485,35 +495,58 @@ export function Panel(props: PanelProps): ReactElement {
         {statusLine}
       </p>
 
-      {/* Region 4 — social stats. 上达天听 is corner chrome, not a fifth region. */}
+      {/* Region 4 — 三界香火 / 五行香客 / 上达天听 share one row. */}
       <footer
         data-liangbiao-region="social"
         style={{
           display: 'flex',
-          justifyContent: 'center',
-          gap: '22px',
+          alignItems: 'center',
+          gap: '8px',
           marginTop: '10px',
           paddingTop: '12px',
           borderTop: `1px solid ${color.border}`,
-          fontSize: '15px',
           color: color.textSecondary,
         }}
       >
-        <span data-liangbiao-stat="incense" style={statStyle}>
-          <span aria-hidden="true" style={statIconStyle}>{INCENSE_STAT_ICON}</span>
-          {INCENSE_STAT_LABEL}
-          <strong style={statValueStyle}>{snapshot.totalIncense.toLocaleString('zh-CN')}</strong>
+        <span
+          data-liangbiao-stat="incense"
+          title={INCENSE_STAT_HINT}
+          style={statStyle}
+        >
+          <ThreeRealmsIncenseIcon size={18} />
+          <span style={statCopyStyle}>
+            <span data-liangbiao-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
+            <strong style={statValueStyle}>{snapshot.totalIncense.toLocaleString('zh-CN')}</strong>
+          </span>
         </span>
-        <span data-liangbiao-stat="voters" style={statStyle}>
-          <span aria-hidden="true" style={statIconStyle}>{VOTER_STAT_ICON}</span>
-          {VOTER_STAT_LABEL}
-          <strong style={statValueStyle}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
+        <span
+          data-liangbiao-stat="voters"
+          title={VOTER_STAT_HINT}
+          style={statStyle}
+        >
+          <FivePhasePilgrimIcon size={18} />
+          <span style={statCopyStyle}>
+            <span data-liangbiao-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
+            <strong style={statValueStyle}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
+          </span>
         </span>
-      </footer>
-      <div
-        data-liangbiao-reconcile-slot=""
-        style={{ position: 'absolute', right: '12px', bottom: '8px', zIndex: 2 }}
-      >
+        <div
+          data-liangbiao-reconcile-slot=""
+          style={{ position: 'relative', flex: '0 0 auto', marginLeft: 'auto' }}
+        >
+          <button
+            type="button"
+            data-liangbiao-reconcile=""
+            aria-label={`${RECONCILE_LABEL}：${RECONCILE_HINT}`}
+            aria-hidden={reconcilePending || undefined}
+            disabled={offline || reconcilePending}
+            onClick={onReconcileAsk}
+            style={reconcilePending ? { visibility: 'hidden' } : undefined}
+          >
+            <HeavenHearIcon size={14} />
+            {RECONCILE_LABEL}
+            <span data-liangbiao-hint="" aria-hidden="true">{RECONCILE_HINT}</span>
+          </button>
           {reconcilePending
             ? (
               <div
@@ -521,6 +554,10 @@ export function Panel(props: PanelProps): ReactElement {
                 aria-label={RECONCILE_CONFIRM_PROMPT}
                 data-liangbiao-reconcile-confirm=""
                 style={{
+                  position: 'absolute',
+                  right: 0,
+                  bottom: 'calc(100% + 6px)',
+                  zIndex: 3,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-end',
@@ -574,20 +611,9 @@ export function Panel(props: PanelProps): ReactElement {
                 </span>
               </div>
             )
-            : (
-              <button
-                type="button"
-                data-liangbiao-reconcile=""
-                aria-label={`${RECONCILE_LABEL}：${RECONCILE_HINT}`}
-                disabled={offline}
-                onClick={onReconcileAsk}
-              >
-                <HeavenHearIcon size={14} />
-                {RECONCILE_LABEL}
-                <span data-liangbiao-hint="" aria-hidden="true">{RECONCILE_HINT}</span>
-              </button>
-            )}
+            : null}
         </div>
+      </footer>
 
       {/* Screen-reader summary of the full state. */}
       <p aria-live="polite" style={visuallyHidden}>{summary}</p>

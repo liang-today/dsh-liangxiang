@@ -11,7 +11,7 @@ import { createMockLiangbiaoStore } from '../src/client/store.ts'
 import type { LiangbiaoViewState } from '../src/client/store.ts'
 import { LIANGZI_STATES } from '../src/domain/index.ts'
 import {
-  INCENSE_STAT_ICON,
+  INCENSE_STAT_LABEL,
   LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
   PANEL_TITLE,
@@ -22,7 +22,7 @@ import {
   RECONCILE_LABEL,
   VOTE_DOWN_LABEL,
   VOTE_UP_LABEL,
-  VOTER_STAT_ICON,
+  VOTER_STAT_LABEL,
 } from '../src/shared/index.ts'
 import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedNode } from './helpers/render.ts'
 
@@ -169,7 +169,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(incense.height).toBe(`${RING_SIZE}px`)
       expect(next.height).toBe(`${RING_SIZE}px`)
       expect(pill.width).toBe('176px')
-      expect(social.map((node) => styleOf(node).width)).toEqual(['132px', '132px'])
+      expect(social.map((node) => styleOf(node).flex)).toEqual(['1 1 0', '1 1 0'])
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
     expect(value.fontVariantNumeric).toBe('tabular-nums')
@@ -293,28 +293,31 @@ describe('region 3: exactly two vote buttons', () => {
 })
 
 describe('region 4: social stats', () => {
-  it('shows 香火 12,846 and 香客 2,841', () => {
+  it('shows 三界香火 12,846 and 五行香客 2,841', () => {
     const tree = renderPanel(demoState())
     const incense = findByAttr(tree, 'data-liangbiao-stat', 'incense')[0]
     const voters = findByAttr(tree, 'data-liangbiao-stat', 'voters')[0]
     expect(incense && textContent([incense])).toContain('12,846')
     expect(voters && textContent([voters])).toContain('2,841')
-    expect(incense && textContent([incense])).toContain('香火')
-    expect(voters && textContent([voters])).toContain('香客')
+    expect(incense && textContent([incense])).toContain(INCENSE_STAT_LABEL)
+    expect(voters && textContent([voters])).toContain(VOTER_STAT_LABEL)
+    expect(INCENSE_STAT_LABEL).toBe('三界香火')
+    expect(VOTER_STAT_LABEL).toBe('五行香客')
   })
 
-  it('uses the shared stat glyphs and a larger stat type scale', () => {
+  it('uses Journey-to-the-West stat marks on the same row as 上达天听', () => {
     const tree = renderPanel(demoState())
     const social = findByAttr(tree, 'data-liangbiao-region', 'social')[0]
-    expect(styleOf(social).fontSize).toBe('15px')
-    const text = social === undefined ? '' : textContent([social])
-    expect(text).toContain(INCENSE_STAT_ICON)
-    expect(text).toContain(VOTER_STAT_ICON)
+    expect(findByAttr(tree, 'data-liangbiao-incense-icon')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangbiao-voter-icon')).toHaveLength(1)
+    expect(findByAttr(social === undefined ? [] : [social], 'data-liangbiao-reconcile-slot')).toHaveLength(1)
+    expect(styleOf(findByAttr(tree, 'data-liangbiao-stat-label', 'incense')[0]).fontSize).toBe('11px')
+    expect(styleOf(findByAttr(tree, 'data-liangbiao-stat', 'incense')[0]).flex).toBe('1 1 0')
   })
 })
 
 describe('上达天听', () => {
-  it('is corner chrome under the social stats, not a fifth region or third vote', () => {
+  it('sits on the social row, not a fifth region or third vote', () => {
     const tree = renderPanel(demoState())
     const regions = findByAttr(tree, 'data-liangbiao-region')
     expect(regions.map((node) => node.props['data-liangbiao-region'])).toEqual([
@@ -326,8 +329,8 @@ describe('上达天听', () => {
     const votes = findByAttr(tree, 'data-liangbiao-vote')
     expect(votes).toHaveLength(2)
     const slot = findByAttr(tree, 'data-liangbiao-reconcile-slot')[0]
-    expect(styleOf(slot).position).toBe('absolute')
-    expect(styleOf(slot).right).toBe('12px')
+    expect(styleOf(slot).position).toBe('relative')
+    expect(styleOf(slot).flex).toBe('0 0 auto')
     const control = findByAttr(tree, 'data-liangbiao-reconcile')[0]
     expect(control && textContent([control])).toContain(RECONCILE_LABEL)
     expect(control?.props.title).toBeUndefined()
@@ -340,12 +343,12 @@ describe('上达天听', () => {
 
   it('asks for confirmation before the expensive sync', () => {
     const tree = renderPanel(demoState(), '', { reconcilePending: true })
-    expect(findByAttr(tree, 'data-liangbiao-reconcile')).toHaveLength(0)
     const confirm = findByAttr(tree, 'data-liangbiao-reconcile-confirm')[0]
     expect(confirm?.props.role).toBe('alertdialog')
     expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_PROMPT)
     expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_OK)
     expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_CANCEL)
+    expect(styleOf(findByAttr(tree, 'data-liangbiao-reconcile')[0]).visibility).toBe('hidden')
   })
 })
 

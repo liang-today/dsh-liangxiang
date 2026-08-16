@@ -47,19 +47,17 @@ export const LIANG_POSITION_LABEL = '梁位'
 export const NEXT_INCENSE_LABEL = '下一炷'
 
 /**
- * Caption of the personal remaining-incense flank. Deliberately NOT plain
- * 香火: Region 4 already uses that word for the GLOBAL accepted-vote count, and
- * two different numbers under one label is the fastest way to misread the panel.
+ * Caption of the personal remaining-incense flank. Deliberately NOT 三界香火:
+ * Region 4 uses that for the GLOBAL accepted-vote count, and two different
+ * numbers under one label is the fastest way to misread the panel.
  */
 export const MY_INCENSE_LABEL = '我的香火'
 
-/** Region 4 stat labels. */
-export const INCENSE_STAT_LABEL = '香火'
-export const VOTER_STAT_LABEL = '香客'
-
-/** Region 4 stat glyphs (swap here only — never inline in components). */
-export const INCENSE_STAT_ICON = '🪔'
-export const VOTER_STAT_ICON = '🙏'
+/** Region 4 stat labels (西游口吻：三界香火 / 取经五众). */
+export const INCENSE_STAT_LABEL = '三界香火'
+export const VOTER_STAT_LABEL = '五行香客'
+export const INCENSE_STAT_HINT = '今日梁案累计有效香火'
+export const VOTER_STAT_HINT = '今日至少上过一炷香的香客'
 
 /** Honest soft-trust note for the LOCAL_FAKE_DEV authority mode (AGENTS.md §16). */
 export const LOCAL_MODE_NOTE = '本地演示模式：香火与投票均在本机，不代表可信全网结果'
