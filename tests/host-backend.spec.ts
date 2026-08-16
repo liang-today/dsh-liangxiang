@@ -130,6 +130,18 @@ describe('online bootstrap', () => {
     expect(view.personal.remainingIncense).toBe(0)
   })
 
+  it('paints simulated incense on the panel without claiming it to the backend', async () => {
+    const s = await startStack({}, { claimDebounceMs: 0 })
+    s.host.creditSimulatedUsage(9 * 50_000)
+    const view = wireToViewState(frame(s), 'live')
+    expect(view.personal.remainingIncense).toBe(9)
+    expect(view.personal.earnedIncenseToday).toBe(9)
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(0)
+    await s.host.reconcileNow()
+    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(0)
+  })
+
   it('paints local incense immediately, without waiting for the remote claim', async () => {
     const s = await startStack({}, { claimDebounceMs: 60_000 })
     s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })

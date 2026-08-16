@@ -105,9 +105,9 @@ export const RECONCILE_CONFIRM_PROMPT = '向服务器重新对账香火？'
 export const RECONCILE_CONFIRM_OK = '确认'
 export const RECONCILE_CONFIRM_CANCEL = '取消'
 
-/** LOCAL_FAKE_DEV only: pump incense without talking to a model. */
+/** Pump incense without talking to a model. Staging: display overlay only. */
 export const DEV_CREDIT_LABEL = '演示 +1 炷'
-export const DEV_CREDIT_HINT = '本地假账，不消耗模型 Token'
+export const DEV_CREDIT_HINT = '仅本机画面，不消耗模型 Token，也不报到服务器'
 
 /** Display names of the central Liangzi states (WAITING is the zero-vote placeholder, not a tier). */
 export const LIANGZI_STATE_LABELS: Readonly<Record<LiangziState, string>> = {

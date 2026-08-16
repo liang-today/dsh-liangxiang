@@ -87,6 +87,11 @@ export class BackendLiangService implements LiangHostService {
   private bootstrapping: Promise<void> | null = null
   private ticks = 0
   private disposed = false
+  /**
+   * Display-only Token overlay for local visual tests. Never included in
+   * `/v1/token-claims`. Cleared by 上达天听 / process restart.
+   */
+  private simulatedDisplayTokens = 0
 
   constructor(deps: BackendLiangServiceDeps) {
     this.client = deps.client
@@ -170,6 +175,18 @@ export class BackendLiangService implements LiangHostService {
     this.scheduleClaim()
   }
 
+  /**
+   * Pump incense on the panel without a model and without claiming it to the
+   * backend. Visual tests only; 上达天听 clears the overlay.
+   */
+  creditSimulatedUsage(deltaEffectiveTokens: number): void {
+    if (!Number.isInteger(deltaEffectiveTokens) || deltaEffectiveTokens <= 0) {
+      throw new Error('simulated credit must be a positive integer of Pro-equivalent tokens')
+    }
+    this.simulatedDisplayTokens += deltaEffectiveTokens
+    this.bump()
+  }
+
   /** Cadence hook: pull the published snapshot (and re-bootstrap on rollover). */
   tick(): void {
     this.ticks += 1
@@ -188,6 +205,7 @@ export class BackendLiangService implements LiangHostService {
    */
   async reconcileNow(): Promise<void> {
     this.usage.discardDailyTotals()
+    this.simulatedDisplayTokens = 0
     this.lastClaimSent = -1
     await this.refreshBootstrap()
   }
@@ -263,7 +281,10 @@ export class BackendLiangService implements LiangHostService {
         // 梁气 immediately. The backend claim is a background ratchet for
         // spend authority, not the display clock. used incense stays the
         // server ledger so a vote cannot be invented here.
-        effectiveTokensToday: displayedEffectiveTokens(personal, this.usage.effectiveTokensFor(this.businessDate)),
+        effectiveTokensToday: displayedEffectiveTokens(
+          personal,
+          this.usage.effectiveTokensFor(this.businessDate) + this.simulatedDisplayTokens,
+        ),
         usedIncenseToday: personal.used_incense,
         tokenPerIncense: personal.token_per_incense,
       },

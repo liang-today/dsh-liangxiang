@@ -80,7 +80,7 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
   refresh(options?: { force?: boolean }): void
   /** Drop local Token observation and re-read the server incense ledger. */
   reconcile(): Promise<void>
-  /** LOCAL_FAKE_DEV: fold simulated tokens into today's incense without a model. */
+  /** Fold simulated tokens into today's incense without a model. Staging: display only. */
   creditDev(intent?: { sticks?: number, effectiveTokens?: number }): Promise<void>
   /** Abort in-flight work and close the stream. */
   dispose(): void

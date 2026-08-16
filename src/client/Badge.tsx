@@ -400,7 +400,7 @@ export function LiangbiaoBadge(): ReactElement {
           onReconcileAsk={onReconcileAsk}
           onReconcileConfirm={onReconcileConfirm}
           onReconcileCancel={onReconcileCancel}
-          {...(state.authorityMode === 'LOCAL_FAKE_DEV' ? { onDevCredit } : {})}
+          {...{ onDevCredit }}
         />
       )}
     </div>

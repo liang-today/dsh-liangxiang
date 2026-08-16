@@ -368,7 +368,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(copy).toContain('×0.5')
   })
 
-  it('shows 演示 +1 炷 only when the local fake callback is wired', () => {
+  it('shows 演示 +1 炷 when the credit callback is wired', () => {
     expect(findByAttr(renderPanel(demoState()), 'data-liangbiao-dev-credit')).toHaveLength(0)
     const tree = renderPanel(demoState(), '', { onDevCredit: () => undefined })
     expect(findByAttr(tree, 'data-liangbiao-dev-credit')).toHaveLength(1)
