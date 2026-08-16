@@ -13,10 +13,10 @@
 
 export const BADGE_SIZE = 32
 export const BADGE_MARGIN = 12
-export const PANEL_WIDTH = 336
+export const PANEL_WIDTH = 252
 export const PANEL_GAP = 10
 /** Room the panel needs above/below its vertical centre before it must re-anchor. */
-const PANEL_HALF_HEIGHT = 210
+const PANEL_HALF_HEIGHT = 158
 
 export const BADGE_POSITION_STORAGE_KEY = 'liangbiao:badge-position:v1'
 

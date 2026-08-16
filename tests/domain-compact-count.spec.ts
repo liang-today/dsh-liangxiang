@@ -3,7 +3,7 @@
  * 梁位 truncation is a different helper — do not reuse that rule here.
  */
 import { describe, expect, it } from 'vitest'
-import { DomainError, formatCompactCount } from '../src/domain/index.ts'
+import { DomainError, formatCompactCount, incensePlaceValue } from '../src/domain/index.ts'
 
 describe('formatCompactCount', () => {
   it('prints 0–999 exactly (everyday incense and small remainders)', () => {
@@ -37,7 +37,7 @@ describe('formatCompactCount', () => {
     expect(formatCompactCount(1_000_000_000)).toBe('1B')
   })
 
-  it('keeps every compact form short enough for the 64px flanks', () => {
+  it('keeps every compact form short enough for the 48px flanks', () => {
     const samples = [
       0, 9, 10, 999, 1_000, 1_499, 9_950, 46_935, 50_000, 999_500, 1_500_000, 12_000_000, 1_000_000_000,
     ]
@@ -49,5 +49,22 @@ describe('formatCompactCount', () => {
   it('rejects non-counts', () => {
     expect(() => formatCompactCount(-1)).toThrow(DomainError)
     expect(() => formatCompactCount(1.5)).toThrow(DomainError)
+  })
+})
+
+describe('incensePlaceValue', () => {
+  it('splits remaining incense onto separate 炷/月/日 orbits', () => {
+    expect(incensePlaceValue(0)).toEqual({ ones: 0, tens: 0, hundreds: 0, overflow: 0 })
+    expect(incensePlaceValue(9)).toEqual({ ones: 9, tens: 0, hundreds: 0, overflow: 0 })
+    expect(incensePlaceValue(10)).toEqual({ ones: 0, tens: 1, hundreds: 0, overflow: 0 })
+    expect(incensePlaceValue(23)).toEqual({ ones: 3, tens: 2, hundreds: 0, overflow: 0 })
+    expect(incensePlaceValue(105)).toEqual({ ones: 5, tens: 0, hundreds: 1, overflow: 0 })
+    expect(incensePlaceValue(100)).toEqual({ ones: 0, tens: 0, hundreds: 1, overflow: 0 })
+    expect(incensePlaceValue(999)).toEqual({ ones: 9, tens: 9, hundreds: 9, overflow: 0 })
+  })
+
+  it('does not draw 10 moons; 1000+ is a compact overflow instead', () => {
+    expect(incensePlaceValue(1_000)).toEqual({ ones: 0, tens: 0, hundreds: 0, overflow: 1_000 })
+    expect(incensePlaceValue(1_234)).toEqual({ ones: 0, tens: 0, hundreds: 0, overflow: 1_234 })
   })
 })

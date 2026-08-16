@@ -2,7 +2,7 @@
  * LiangQiRing — the personal 梁气 overlay around the central 梁子.
  *
  * One component, two visual variables (frozen contract, AGENTS.md §4):
- *  - remaining incense  -> vitality/intensity (glow + flame dots)
+ *  - remaining incense  -> vitality + pictorial 炷/月/日 on separate orbits
  *  - token remainder    -> ring fill (progress towards the next incense)
  *
  * The ring owns GEOMETRY only. The `footer` slot sits at the ring's bottom edge
@@ -13,7 +13,7 @@
  * Presentational only: no hooks.
  */
 import type { CSSProperties, ReactElement, ReactNode } from 'react'
-import { liangQiIntensity, type PersonalLiangQiState } from '../domain/index.ts'
+import { formatCompactCount, incensePlaceValue, liangQiIntensity, type PersonalLiangQiState } from '../domain/index.ts'
 import { color, font, ringColorForFill } from './theme.ts'
 
 export interface LiangQiRingProps {
@@ -28,9 +28,24 @@ export interface LiangQiRingProps {
 }
 
 /** Geometry of the central ring. The panel overlays personal flanks around this box. */
-export const RING_SIZE = 168
-const RING_RADIUS = 76
-const RING_STROKE = 7
+export const RING_SIZE = 126
+const RING_RADIUS = 54
+const RING_STROKE = 5
+const AVATAR_SLOT = 68
+
+function markAngle(index: number, count: number): number {
+  const span = 2.35
+  const t = count <= 1 ? 0.5 : index / (count - 1)
+  return -Math.PI / 2 - span / 2 + t * span
+}
+
+function markPoint(index: number, count: number, radius: number): { cx: number, cy: number } {
+  const angle = markAngle(index, count)
+  return {
+    cx: RING_SIZE / 2 + Math.cos(angle) * radius,
+    cy: RING_SIZE / 2 + Math.sin(angle) * radius,
+  }
+}
 
 export function LiangQiRing({
   personal,
@@ -43,22 +58,50 @@ export function LiangQiRing({
   const fill = personal.liangQiFill
   const circumference = 2 * Math.PI * RING_RADIUS
   const stroke = ringColorForFill(fill)
-  const flameCount = Math.min(personal.remainingIncense, 8)
+  const places = incensePlaceValue(personal.remainingIncense)
 
-  const flames: ReactElement[] = []
-  for (let i = 0; i < flameCount; i += 1) {
-    // Spread flame dots over the top arc; density/opacity express vitality.
-    const angle = -Math.PI / 2 + ((i - (flameCount - 1) / 2) * Math.PI) / 10
-    const cx = RING_SIZE / 2 + Math.cos(angle) * (RING_RADIUS + 7)
-    const cy = RING_SIZE / 2 + Math.sin(angle) * (RING_RADIUS + 7)
-    flames.push(
+  const marks: ReactElement[] = []
+  for (let i = 0; i < places.ones; i += 1) {
+    const { cx, cy } = markPoint(i, places.ones, RING_RADIUS + 6)
+    marks.push(
       <circle
-        key={i}
+        key={`one-${i}`}
+        data-liangbiao-incense-mark="one"
         cx={cx}
         cy={cy}
-        r={2.2 + intensity * 1.6}
+        r={2.1}
         fill={color.warn}
-        opacity={0.35 + intensity * 0.6}
+        opacity={0.45 + intensity * 0.5}
+      />,
+    )
+  }
+  for (let i = 0; i < places.tens; i += 1) {
+    const { cx, cy } = markPoint(i, places.tens, RING_RADIUS + 13)
+    marks.push(
+      <circle
+        key={`ten-${i}`}
+        data-liangbiao-incense-mark="ten"
+        cx={cx}
+        cy={cy}
+        r={3.4}
+        fill="none"
+        stroke={color.warn}
+        strokeWidth={1.4}
+        opacity={0.55 + intensity * 0.4}
+      />,
+    )
+  }
+  for (let i = 0; i < places.hundreds; i += 1) {
+    const { cx, cy } = markPoint(i, places.hundreds, RING_RADIUS - 11)
+    marks.push(
+      <circle
+        key={`hundred-${i}`}
+        data-liangbiao-incense-mark="hundred"
+        cx={cx}
+        cy={cy}
+        r={2.6}
+        fill={color.warn}
+        opacity={0.5 + intensity * 0.45}
       />,
     )
   }
@@ -70,10 +113,10 @@ export function LiangQiRing({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    filter: intensity > 0 ? `drop-shadow(0 0 ${Math.round(4 + intensity * 10)}px rgba(216, 135, 58, ${(0.15 + intensity * 0.45).toFixed(2)}))` : undefined,
+    filter: intensity > 0 ? `drop-shadow(0 0 ${Math.round(3 + intensity * 8)}px rgba(216, 135, 58, ${(0.15 + intensity * 0.45).toFixed(2)}))` : undefined,
   }
 
-  const ringLabel = `梁气：剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} Token`
+  const ringLabel = `梁气：剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} 当量`
 
   return (
     <div style={wrapStyle} data-liangbiao-ring="" data-remaining={personal.remainingIncense} data-fill={fill.toFixed(4)}>
@@ -85,7 +128,6 @@ export function LiangQiRing({
         aria-label={ringLabel}
         style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
       >
-        {/* track */}
         <circle
           cx={RING_SIZE / 2}
           cy={RING_SIZE / 2}
@@ -95,7 +137,6 @@ export function LiangQiRing({
           strokeWidth={RING_STROKE}
           opacity={0.5}
         />
-        {/* fill arc: token progress towards the next incense stick */}
         <circle
           cx={RING_SIZE / 2}
           cy={RING_SIZE / 2}
@@ -109,15 +150,39 @@ export function LiangQiRing({
           transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
           style={reducedMotion ? undefined : { transition: 'stroke-dashoffset 0.6s ease, stroke 0.6s ease' }}
         />
-        {flames}
+        {marks}
       </svg>
-      {children}
+      <div style={{ width: AVATAR_SLOT, display: 'flex', justifyContent: 'center' }}>
+        {children}
+      </div>
+      {places.overflow > 0 && (
+        <span
+          data-liangbiao-incense-overflow=""
+          title={`${personal.remainingIncense.toLocaleString('zh-CN')} 炷`}
+          style={{
+            position: 'absolute',
+            top: '2px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '0 5px',
+            borderRadius: '999px',
+            background: color.warn,
+            color: '#ffffff',
+            fontFamily: font.family,
+            fontSize: '10px',
+            fontWeight: 700,
+            lineHeight: '16px',
+          }}
+        >
+          {formatCompactCount(places.overflow)}炷
+        </span>
+      )}
       {footer !== undefined && (
         <span
           data-liangbiao-ring-footer=""
           style={{
             position: 'absolute',
-            bottom: '-6px',
+            bottom: '-4px',
             left: '50%',
             transform: 'translateX(-50%)',
             whiteSpace: 'nowrap',
@@ -141,7 +206,7 @@ export function LiangQiRing({
             background: color.warn,
             color: '#ffffff',
             fontFamily: font.family,
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: 600,
             animation: reducedMotion ? undefined : 'liangbiao-condense 1.2s ease-out 1',
           }}
