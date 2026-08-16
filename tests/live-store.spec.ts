@@ -54,6 +54,10 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
         if (path === '/liangbiao/api/state') {
           return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
         }
+        if (path === '/liangbiao/api/refresh') {
+          service.refreshNow()
+          return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
+        }
         if (path === '/liangbiao/api/vote') {
           const intent = JSON.parse(init?.body ?? '{}') as { caseId: string, voteType: 'up' | 'down', requestId: string }
           const outcome = service.vote(intent)
@@ -164,6 +168,21 @@ describe('live store', () => {
     await settled()
     expect(store.getSnapshot().connection).toBe('live')
     expect(controls.streamsOpened).toBe(2)
+    store.dispose()
+  })
+
+  it('while live, refresh() POSTs /refresh so hover can pick up a new case without waiting', async () => {
+    const service = makeService()
+    const controls = fakeTransport(service)
+    const store = createLiveLiangbiaoStore(controls.transport)
+    store.start()
+    await settled()
+    const before = store.getSnapshot().activeCase.id
+    store.refresh()
+    await settled()
+    expect(controls.requests.some((request) => request.path === '/liangbiao/api/refresh')).toBe(true)
+    expect(store.getSnapshot().connection).toBe('live')
+    expect(store.getSnapshot().activeCase.id).toBe(before)
     store.dispose()
   })
 

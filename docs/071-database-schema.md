@@ -9,7 +9,7 @@ v1 → v2 只增加 `community_identity`。旧库启动时自动建表，不改�
 
 | 列 | 类型 | 说明 |
 |---|---|---|
-| `id` | TEXT PK | `case-YYYY-MM-DD` |
+| `id` | TEXT PK | 懒开：`case-YYYY-MM-DD`；运营发布：`case-YYYY-MM-DD-<8 hex>` |
 | `business_date` | TEXT | 业务日（服务器时区） |
 | `title` | TEXT | 梁案标题 |
 | `status` | TEXT | `active` / `closed` |
@@ -22,7 +22,7 @@ CREATE UNIQUE INDEX ux_case_one_active_per_date
   ON daily_liang_case (business_date) WHERE status = 'active';
 ```
 
-**一个业务日最多一个 active 梁案由数据库保证**，不靠应用代码自律。日切时旧案 `status='closed'`。
+**一个业务日最多一个 active 梁案由数据库保证**，不靠应用代码自律。日切或运营发布时旧案 `status='closed'`。同日可多次 archive+open（TEMP）；索引仍拒绝两个 active。
 
 ## daily_incense_state（installation 级个人日状态）
 

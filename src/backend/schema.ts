@@ -4,7 +4,10 @@
  * Design notes that matter for the frozen invariants:
  *
  *  - `daily_liang_case`: at most ONE active case per business date, enforced by
- *    a partial unique index rather than by application code.
+ *    a partial unique index rather than by application code. Operators may
+ *    archive today's case and open another (same-day republish); the index
+ *    still refuses two actives. The first lazy-open id is `case-YYYY-MM-DD`;
+ *    later publishes use `case-YYYY-MM-DD-<hex>`.
  *  - `daily_incense_state`: the installation-level daily spend ledger. The
  *    CHECK constraint `used_incense * token_per_incense <= claimed_effective_tokens`
  *    means the database itself refuses an overspend, so a bug in the service

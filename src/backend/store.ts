@@ -101,6 +101,10 @@ export interface BackendStore {
   caseById: (caseId: string) => CaseRow | undefined
   insertCase: (input: InsertCaseInput) => void
   closeCasesBefore: (businessDate: string, now: number) => number
+  /** Close today's active case (same-day republish). Returns rows changed. */
+  closeActiveCaseFor: (businessDate: string, now: number) => number
+  /** Clear spent incense for a business date; claimed tokens stay. */
+  resetUsedIncenseForDate: (businessDate: string, now: number) => number
   statsFor: (caseId: string) => StatsRow | undefined
   incenseFor: (installationId: string, businessDate: string) => IncenseRow | undefined
   ensureIncenseRow: (
@@ -171,6 +175,15 @@ export function openBackendStore(databasePath: string): BackendStore {
   const closeOldCases = db.prepare(
     `UPDATE daily_liang_case SET status = 'closed', closed_at = ?
       WHERE status = 'active' AND business_date < ?`,
+  )
+  const closeActiveForDate = db.prepare(
+    `UPDATE daily_liang_case SET status = 'closed', closed_at = ?
+      WHERE status = 'active' AND business_date = ?`,
+  )
+  const resetUsedIncense = db.prepare(
+    `UPDATE daily_incense_state
+        SET used_incense = 0, version = version + 1, updated_at = ?
+      WHERE business_date = ? AND used_incense > 0`,
   )
   const insertStats = db.prepare(
     `INSERT INTO daily_liang_stats (case_id, business_date, up_votes, down_votes, unique_voters, version, updated_at)
@@ -286,6 +299,8 @@ export function openBackendStore(databasePath: string): BackendStore {
       insertStats.run(input.id, input.businessDate, input.now)
     },
     closeCasesBefore: (businessDate, now) => changed(closeOldCases.run(now, businessDate)),
+    closeActiveCaseFor: (businessDate, now) => changed(closeActiveForDate.run(now, businessDate)),
+    resetUsedIncenseForDate: (businessDate, now) => changed(resetUsedIncense.run(now, businessDate)),
     statsFor: (caseId) => selectStats.get(caseId) as StatsRow | undefined,
     incenseFor: (installationId, businessDate) =>
       selectIncense.get(installationId, businessDate) as IncenseRow | undefined,

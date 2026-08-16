@@ -20,7 +20,8 @@
   position persists per browser (a cosmetic preference, never an authority).
 - Panel title: **今日梁案**
 - 梁位 = the single public number = global `up_ratio`, printed with decimals.
-- There is normally one Active daily case per business date.
+- There is at most one Active case at a time. Normally one per business date;
+  operators may archive today's case and open another on the same date (TEMP).
 - Voting is strictly binary:
   - `up` -> UI: **夯**
   - `down` -> UI: **拉**

@@ -52,6 +52,8 @@ export interface BadgeButtonProps {
   dragging?: boolean
   onToggle: () => void
   onEscape: () => void
+  /** Hover / keyboard focus: probe the host for a newer 梁案. */
+  onProbeLatest?: () => void
   onPointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void
   buttonRef: RefObject<HTMLButtonElement> | null
 }
@@ -64,6 +66,7 @@ export function BadgeButton({
   dragging = false,
   onToggle,
   onEscape,
+  onProbeLatest,
   onPointerDown,
   buttonRef,
 }: BadgeButtonProps): ReactElement {
@@ -76,6 +79,8 @@ export function BadgeButton({
       aria-haspopup="dialog"
       aria-expanded={open}
       onClick={onToggle}
+      onPointerEnter={() => onProbeLatest?.()}
+      onFocus={() => onProbeLatest?.()}
       onPointerDown={onPointerDown}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && open) onEscape()
@@ -139,9 +144,10 @@ export function LiangbiaoBadge(): ReactElement {
   // (screenshots, smoke checks). Normal sessions start collapsed.
   const [open, setOpen] = useState<boolean>(() =>
     typeof location !== 'undefined' && location.hash.includes('liangbiao-open'))
-  // Reopening the panel while offline is the bounded reconnect trigger.
+  // Reopening the panel while offline reconnects; while live it forces a
+  // host re-bootstrap so the expanded 今日梁案 is not up to ~1s stale.
   useEffect(() => {
-    if (open) store.refresh()
+    if (open) store.refresh({ force: true })
   }, [open, store])
   const reducedMotion = useReducedMotion()
 
@@ -328,6 +334,9 @@ export function LiangbiaoBadge(): ReactElement {
           setOpen((value) => !value)
         }}
         onEscape={() => setOpen(false)}
+        onProbeLatest={() => {
+          if (!dragging) store.refresh()
+        }}
         onPointerDown={onPointerDown}
         buttonRef={buttonRef}
       />

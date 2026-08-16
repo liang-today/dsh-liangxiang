@@ -8,8 +8,9 @@
  *    uncertain outcome);
  *  - SSE errors are counted; after a bounded number the stream closes and
  *    the store goes `offline` (the UI keeps rendering the last known state);
- *  - `refresh()` (called when the user reopens the panel) is the only
- *    reconnect trigger — no unbounded background retry loops.
+ *  - `refresh()` reconnects when offline; while live it POSTs `/refresh` so
+ *    hover / panel-open can force a host re-bootstrap instead of waiting for
+ *    the next 1s snapshot poll. No extra background poll loop.
  */
 import type { VoteResult, VoteType } from '../domain/index.ts'
 import { parseWireState, parseWireVoteResponse } from '../shared/wire.ts'
@@ -23,9 +24,12 @@ import {
 const STATE_PATH = '/liangbiao/api/state'
 const EVENTS_PATH = '/liangbiao/api/events'
 const VOTE_PATH = '/liangbiao/api/vote'
+const REFRESH_PATH = '/liangbiao/api/refresh'
 const FETCH_TIMEOUT_MS = 6_000
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
+/** Hover may fire often; skip if a live refresh ran this recently. */
+const MIN_LIVE_REFRESH_MS = 2_000
 
 /** Injectable transport (real fetch/EventSource in the browser, fakes in tests). */
 export interface LiveStoreTransport {
@@ -67,8 +71,11 @@ function createBrowserTransport(): LiveStoreTransport {
 export interface LiveLiangbiaoStore extends LiangbiaoStore {
   /** Bootstrap + open the push stream (idempotent). */
   start(): void
-  /** Manual reconnect (panel reopen) when offline; no-op while live. */
-  refresh(): void
+  /**
+   * Offline: reconnect. Live: ask the host to re-read the backend now.
+   * `force` skips the hover throttle (panel open).
+   */
+  refresh(options?: { force?: boolean }): void
   /** Abort in-flight work and close the stream. */
   dispose(): void
 }
@@ -82,6 +89,8 @@ export function createLiveLiangbiaoStore(
   let sseErrors = 0
   let disposed = false
   let starting = false
+  let refreshInFlight = false
+  let lastLiveRefreshAt = 0
   const listeners = new Set<() => void>()
 
   const notify = (): void => {
@@ -151,6 +160,24 @@ export function createLiveLiangbiaoStore(
       })
   }
 
+  const pullLatest = (force: boolean): void => {
+    if (disposed || refreshInFlight || starting) return
+    const now = Date.now()
+    if (!force && now - lastLiveRefreshAt < MIN_LIVE_REFRESH_MS) return
+    refreshInFlight = true
+    lastLiveRefreshAt = now
+    transport.fetchJson(REFRESH_PATH, { method: 'POST' })
+      .then((raw) => {
+        if (!disposed) applyWire(raw)
+      })
+      .catch((error: unknown) => {
+        console.warn(`[dsh-liangbiao] live refresh failed: ${error instanceof Error ? error.message : String(error)}`)
+      })
+      .finally(() => {
+        refreshInFlight = false
+      })
+  }
+
   const postVote = async (voteType: VoteType, requestId: string): Promise<VoteResult> => {
     const body = JSON.stringify({ caseId: state.activeCase.id, voteType, requestId })
     const attempt = (): Promise<unknown> => transport.fetchJson(VOTE_PATH, { method: 'POST', body })
@@ -175,8 +202,13 @@ export function createLiveLiangbiaoStore(
     },
     vote: (voteType) => postVote(voteType, transport.randomRequestId()),
     start: () => bootstrap(),
-    refresh: () => {
-      if (state.connection === 'offline' && !starting) bootstrap()
+    refresh: (options) => {
+      if (disposed) return
+      if (state.connection === 'offline') {
+        if (!starting) bootstrap()
+        return
+      }
+      pullLatest(options?.force === true)
     },
     dispose: () => {
       disposed = true

@@ -280,4 +280,24 @@ describe('online rollover', () => {
     })
     expect(stale.result.status).toBe('rejected')
   })
+
+  it('picks up a published case on the existing snapshot poll', async () => {
+    const s = await startStack()
+    const previous = frame(s)
+    s.backend.publishCase('Host 应在一秒内看到的新案')
+    await s.host.refreshSnapshot()
+    const next = frame(s)
+    expect(next.activeCase.id).not.toBe(previous.activeCase.id)
+    expect(next.activeCase.title).toBe('Host 应在一秒内看到的新案')
+    expect(next.global.upVotes).toBe(0)
+    expect(next.global.downVotes).toBe(0)
+    expect(wireToViewState(next, 'live').snapshot.liangziState).toBe('waiting')
+  })
+
+  it('refreshNow re-bootstraps without waiting for the next tick', async () => {
+    const s = await startStack()
+    s.backend.publishCase('悬停应立刻看到')
+    await s.host.refreshNow()
+    expect(frame(s).activeCase.title).toBe('悬停应立刻看到')
+  })
 })

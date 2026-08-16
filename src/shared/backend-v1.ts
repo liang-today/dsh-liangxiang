@@ -228,6 +228,22 @@ export interface V1SnapshotResponse {
   global_snapshot: V1Snapshot
 }
 
+/** POST /v1/admin/cases body — operator publish, not a voter intent. */
+export const CASE_TITLE_MAX_LENGTH = 120
+
+export interface V1PublishCaseRequest {
+  title: string
+}
+
+export interface V1PublishCaseResponse {
+  schema_version: typeof BACKEND_SCHEMA_VERSION
+  business_date: string
+  server_time: number
+  archived_case: V1Case | null
+  active_case: V1Case
+  global_snapshot: V1Snapshot
+}
+
 /** Structured error codes (HTTP status is carried separately). */
 export const V1_ERROR_CODES = [
   'invalid_request',
@@ -713,5 +729,36 @@ export function parseV1TokenClaimRequest(raw: unknown): V1TokenClaimRequest {
   return {
     claimed_effective_tokens: requireCount(record.claimed_effective_tokens, 'claim.claimed_effective_tokens'),
     claim_business_date: requireBusinessDate(record.claim_business_date, 'claim.claim_business_date'),
+  }
+}
+
+/** Validate an operator publish body (backend boundary). */
+export function parseV1PublishCaseRequest(raw: unknown): V1PublishCaseRequest {
+  const record = asRecord(raw, 'publish')
+  const title = requireString(record.title, 'publish.title').trim()
+  if (title.length === 0) throw new WireError('publish.title', 'expected a non-empty string')
+  if (title.length > CASE_TITLE_MAX_LENGTH) {
+    throw new WireError('publish.title', `must be at most ${CASE_TITLE_MAX_LENGTH} characters`)
+  }
+  if ([...title].some((char) => char.charCodeAt(0) < 32)) {
+    throw new WireError('publish.title', 'must not contain control characters')
+  }
+  return { title }
+}
+
+/** Validate a publish response (host / curl boundary). */
+export function parseV1PublishCaseResponse(raw: unknown): V1PublishCaseResponse {
+  const record = asRecord(raw, 'publishResponse')
+  if (record.schema_version !== BACKEND_SCHEMA_VERSION) {
+    throw new WireError('publishResponse.schema_version', `unsupported schema version ${String(record.schema_version)}`)
+  }
+  const archived = record.archived_case
+  return {
+    schema_version: BACKEND_SCHEMA_VERSION,
+    business_date: requireBusinessDate(record.business_date, 'publishResponse.business_date'),
+    server_time: requireFinite(record.server_time, 'publishResponse.server_time'),
+    archived_case: archived === null ? null : parseCase(archived, 'publishResponse.archived_case'),
+    active_case: parseCase(record.active_case, 'publishResponse.active_case'),
+    global_snapshot: parseV1Snapshot(record.global_snapshot, 'publishResponse.global_snapshot'),
   }
 }

@@ -172,13 +172,18 @@ export class BackendLiangService implements LiangHostService {
     if (this.ticks % PERSONAL_REFRESH_EVERY_TICKS === 0) void this.refreshPersonal()
   }
 
+  /** Hover / panel-open: re-bootstrap so the expanded view is not up to ~1s stale. */
+  async refreshNow(): Promise<void> {
+    await this.refreshBootstrap()
+  }
+
   /** Re-read the authoritative personal balance (out-of-band changes). */
   async refreshPersonal(): Promise<void> {
     const installationId = this.installationId
     if (this.disposed || installationId === null || this.bootstrap === null) return
     try {
       const response = await this.client.dailyState(installationId)
-      if (response.business_date !== this.businessDate) {
+      if (response.business_date !== this.businessDate || response.active_case.id !== this.activeCase?.id) {
         await this.refreshBootstrap()
         return
       }
