@@ -34,13 +34,13 @@
 
 | # | 触点 | 位置(file:symbol) | 分级 | 用途 | 破坏征兆 | 适配函数(计划) | 降级路径 |
 |---|---|---|---|---|---|---|---|
-| C1 | `ctx.slots.register` / `ctx.slots.inject` | `packages/client/runtime/src/client/slots.ts:143-205`;`packages/client/ui-slots/src/index.ts`(`SlotCore`) | 公开 | 徽章注册 | register 选项/校验变化 | `registerOverlayEntry(ctx, comp, face)` | 无同级替代;破坏即上报 |
-| C2 | `shell.overlay` slot(list/root,click-through) | `packages/client/ui-layout/src/client/index.ts:83,126`;渲染 `AppFrame.tsx:193-195` | 公开(SlotMap JSDoc) | 徽章座位 | slot 更名/删除;层 CSS 语义变化(遮挡/不可点) | 同 C1(slot 名收敛于此) | 备选座位 `conversation.composer.dock`(会话内,体验降级);或上游提案新 slot |
+| C1 | `ctx.slots.register` / `ctx.slots.inject` | `packages/client/runtime/src/client/slots.ts:143-205`;`packages/client/ui-slots/src/index.ts`(`SlotCore`) | 公开 | 徽章注册 | register 选项/校验变化 | **已实现**:`registerOverlayEntry(ctx, spec)`,`src/compat/dsh/overlay-slot.ts` | 无同级替代;破坏即上报 |
+| C2 | `shell.overlay` slot(list/root,click-through) | `packages/client/ui-layout/src/client/index.ts:83,126`;渲染 `AppFrame.tsx:193-195` | 公开(SlotMap JSDoc) | 徽章座位 | slot 更名/删除;层 CSS 语义变化(遮挡/不可点) | 同 C1(slot 名与 SlotMap 类型合并均收敛于 `overlay-slot.ts`) | 备选座位 `conversation.composer.dock`(会话内,体验降级);或上游提案新 slot |
 | C3 | inject `hooks` 隔间 + `HostObservable`(`getSnapshot`/`subscribe`) | `packages/client/ui-slots/src/index.ts:378-432`;`renderer.ts:31-34`;绑定 `web-react/src/scoped-slots.tsx:117-126` | 公开 | 快照 observable → `use<Name>` hook | 隔间约定变化 | `makeHooksFace(store)` | 经 inject 回调轮询(最后手段,有界) |
 | C4 | `GlobalStandardProps`(`useSessions`/`useWorkspaces`) | `packages/client/runtime/src/client/index.ts:145-150` | 公开 | 暂不用(root scope 标准席位仅此两项,无 `useProjection`) | — | — | — |
 | C5 | `--dsw-*` 主题 token;`body[data-ds-dark-theme]`;`prefers-reduced-motion` | `packages/client/ui-theme/src/styles/`;`ui-layout/src/client/theme-presenter.ts:12-42` | 公开 | 主题一致与可达性 | token 更名;暗色切换机制变化 | CSS 内聚一个 `liangbiao.css`(变量集中在 `:root` 别名) | 本地回退色板(灰阶),不阻断功能 |
-| C6 | 浏览器 bundle 包装:`window.__ModuleLoader__.load({id, factory})` + externals 懒 CJS 表 | 格式源:`packages/client/tsdown.client.ts:170-273(banner 269-271)`;加载器 `packages/client/modules/src/client/system.ts`、`manifest.ts:9-25` | **半公开**(树内 preset 不发布;加载器行为有包 README) | 树外必须复刻的产物格式 | banner/require 协议变化;externals 集变化 | 隔离在 `tsdown.config.ts` 一处 + 构建后冒烟(加载 `lib/client.js` 断言 register 成功) | 升级时对照 `tsdown.client.ts` 重新复刻;此为最大单点风险(`docs/004` 风险 2) |
-| C7 | `dsh.client` 扫描 + `exports["./client"]` + `/plugins/<id>/client.js` | `packages/client/modules/src/index.ts:112-141,344-364` | 公开 | Client 半接入 | 校验错误文案即征兆(载入失败 loud) | package.json 单点 | 无;破坏即上报 |
+| C6 | 浏览器 bundle 包装:`window.__ModuleLoader__.load({id, factory})` + externals 懒 CJS 表 | 格式源:`packages/client/tsdown.client.ts:170-273(banner 269-271)`;加载器 `packages/client/modules/src/client/system.ts`、`manifest.ts:9-25` | **半公开**(树内 preset 不发布;加载器行为有包 README) | 树外必须复刻的产物格式 | banner/require 协议变化;externals 集变化 | **已实现**:复刻于 `tsdown.config.ts` 一处(banner/footer/intro、externals 表、NODE_ENV define);`scripts/smoke-clean-profile.sh` 断言产物 banner 与 `/plugins/dsh-liangbiao/client.js` 服务 | 升级时对照 `tsdown.client.ts` 重新复刻;此为最大单点风险(`docs/004` 风险 2) |
+| C7 | `dsh.client` 扫描 + `exports["./client"]` + `/plugins/<id>/client.js` | `packages/client/modules/src/index.ts:112-141,344-364` | 公开 | Client 半接入 | 校验错误文案即征兆(载入失败 loud) | **已实现**:package.json 单点;`tests/manifest.spec.ts` 守护清单不漂移 | 无;破坏即上报 |
 
 ## 构建 / 安装触点
 
@@ -50,8 +50,31 @@
 | B2 | git 安装 `prepare` + pnpm `allowBuilds` | `docs/user/develop/basic/publish.md:161-173` | 公开 | 开发分发 | pnpm 策略变化 | 发 tarball/npm |
 | B3 | HMR stat-poll(`lib/client.js`)+ SSE `/plugins/events` | `packages/client/hmr/src/index.ts:148-190`;`src/events.ts:16` | 半公开 | 仅开发体验 | 热替换失效 | 手动整页刷新;无运行时影响 |
 
+## 骨架里程碑(v0.1 skeleton)实际使用接口
+
+骨架落地后本节记录**实际接触面**(与上表"计划"列区分)。验证方式:strict typecheck、17 项单元测试、`liangbiao-dev` profile 安装 + `--dump-config`、WebUI 启动探测、干净 profile 冒烟脚本、卸载后消失验证(全部通过,2026-08-15)。
+
+| 触点 | 状态 | 落点 | 备注 |
+|---|---|---|---|
+| C1 `slots.inject`/`slots.register` | **使用中** | `src/compat/dsh/overlay-slot.ts` | 注册形态照 slot catalog 官方示例(`slot-catalog.ts:1474`);处置随 fiber,卸载自动回收(验证:卸载后启动图/路由/日志三处均无残留) |
+| C2 `shell.overlay` | **使用中** | 同上 | SlotMap 类型合并经 `import type {} from '@deepseek-ai/dsh-client-ui-layout/client'`;误写 slot 名会被 TS 拒绝(已验证) |
+| C6 bundle 包装 | **使用中** | `tsdown.config.ts` | banner/footer/intro、externals(PLATFORM_MODULES + runtime store 豁免镜像)、NODE_ENV/import.meta.env define;rolldown 会把 banner 重排为多行,加载语义不变。tsdown 0.22.14 对 `external`/`noExternal` 报 deprecation(新名 `deps.neverBundle`/`alwaysBundle`),为与树内 preset 保持逐字段对应暂不迁移 |
+| C7 `dsh.client` 扫描 | **使用中** | `package.json` + `tests/manifest.spec.ts` | `/plugins/dsh-liangbiao/client.js?rev=<hash>` 已在启动图观测到 |
+| B1 `dsh plugin add` + `dsh.profile.bundles` 对账 | **使用中** | `scripts/dev-install.sh`、`scripts/smoke-clean-profile.sh` | 本地检出以 pnpm link 安装(dev),tarball 以 file: 安装(smoke);`--dump-config` 均出现 `# == dsh-liangbiao` 层 |
+| B2 `prepare` 自包含构建 | **已就位,git 安装未实测** | `package.json` `prepare: tsdown` | 本地 `pnpm install` 触发验证过;github: 安装 + `allowBuilds` 流程未跑 |
+| B3 HMR stat-poll | **未验证** | — | 仅开发体验,后续里程碑顺带验证 |
+| cordis `Context.effect` / 插件对象形态(`name`/`apply`/`inject`) | **使用中** | `src/host/index.ts`、`src/client/index.ts`;类型别名在 `src/compat/dsh/{host,client}-context.ts` | 公开(develop/basic 教程与全部第一方先例);Host 半 v0.1 骨架仅一个生命周期标记 effect |
+| H1–H13(用量/存储/路由等) | **未使用** | — | 属后续里程碑;上表"计划"列保持有效 |
+
+版本事实(骨架实际链接的 DSH 面):
+
+- 类型与 CLI devDependencies 来自 npm:`@deepseek-ai/dsh`、`dsh-client-runtime`、`dsh-client-ui-slots`、`dsh-client-ui-layout` 均钉 **`0.1.0-rc.6`**;`@deepseek-ai/cordis` 钉 **`4.0.1`**。npm 上无 `0.1.0-rc.5`;rc.6 系从本勘察基线 `47f94385`(root manifest 标 rc.5)所在 master 发布的直接后继。源码级证据仍以 `47f94385` 检出为准,升级任一侧前按 `docs/000` 重勘察清单核对。
+- 运行时零依赖:Host 半产物无 import,Client 半仅 `require("react/jsx-runtime")`(加载器模块表内)。所有 `@deepseek-ai/*` import 均为 type-only,构建期擦除。
+- 开发环:CLI 以 devDependency 运行(`pnpm exec dsh`),`DSH_HOME` 默认指向项目本地 `.dsh-home`;dev/smoke profile 需另装 `@deepseek-ai/dsh-web-app`(in-box 名在启动时优先从 CLI 安装解析)。本机 Node 22.17.0 低于 DSH 声明的 `^22.19.0`,rc.6 CLI 实测可用;profile 依赖 `koffi@3.1.5` 的构建脚本被 pnpm 默认拦截,WebUI 启动与本插件不受影响。
+
 ## 汇总
 
 - 运行时依赖共 **17 个 Host 行 + 7 个 Client 行**,其中实际依赖:公开 15 项、半公开 2 项(C6 bundle 包装格式、B3 仅开发);**私有 0 项**。
+- 骨架里程碑实际使用:C1、C2、C6、C7、B1、B2(部分)+ cordis 插件核心形态;H 行全部未启用(见上节)。
 - 明确排除:H14(commands 作投票通道)、H15(ApiProxy/HostFrame)、H16(树外 `@Remote`)、C4。
 - 最大风险集中在 C6 与"rc 预发布无兼容承诺"总项;缓解与观测点见 [`docs/004`](004-open-risks.md)。
