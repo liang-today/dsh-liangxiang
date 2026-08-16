@@ -94,8 +94,8 @@ describe('four visual regions', () => {
     // not a visible badge next to the title.
     expect(header === undefined ? '' : textContent([header])).not.toContain('本地演示')
     const caseTitle = findByAttr(tree, 'data-liangbiao-case-title')[0]
-    expect(styleOf(findAll(header === undefined ? [] : [header], (node) => node.type === 'h2')[0]).fontSize).toBe('13px')
-    expect(styleOf(caseTitle).fontSize).toBe('15px')
+    expect(styleOf(findAll(header === undefined ? [] : [header], (node) => node.type === 'h2')[0]).fontSize).toBe('16px')
+    expect(styleOf(caseTitle).fontSize).toBe('13px')
     expect(styleOf(caseTitle).whiteSpace).toBe('nowrap')
     const dialog = findAll(tree, (node) => node.props.role === 'dialog')[0]
     expect(dialog?.props['data-liangbiao-authority']).toBe('LOCAL_FAKE_DEV')
@@ -120,7 +120,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     // 10,665/12,846 = 83.0219…%, truncated to six decimals.
     expect(position && textContent([position])).toContain('梁位')
     expect(position && textContent([position])).toContain('83.021952%')
-    expect(position && textContent([position])).toContain('→')
+    expect(position && textContent([position])).toContain('故称')
     expect(position && textContent([position])).toContain('梁圣')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
     expect(textContent(findByAttr(tree, 'data-liangbiao-avatar'))).not.toContain('梁圣')
@@ -151,7 +151,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const parts = [
       findByAttr(tree, 'data-liangbiao-liang-position-label')[0],
       findByAttr(tree, 'data-liangbiao-liang-position-value')[0],
-      findByAttr(tree, 'data-liangbiao-liang-position-arrow')[0],
+      findByAttr(tree, 'data-liangbiao-liang-position-causal')[0],
       findByAttr(tree, 'data-liangbiao-liangzi-title')[0],
     ]
     for (const part of parts) {
@@ -169,7 +169,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const footer = ring === undefined ? [] : findByAttr([ring], 'data-liangbiao-ring-footer')
     expect(footer).toHaveLength(1)
     expect(footer[0] && textContent([footer[0]])).toContain('83.021952%')
-    expect(footer[0] && textContent([footer[0]])).toContain('→')
+    expect(footer[0] && textContent([footer[0]])).toContain('故称')
     expect(footer[0] && textContent([footer[0]])).toContain('梁圣')
     // The old up/down pair must not come back.
     expect(findByAttr(tree, 'data-liangbiao-ratio')).toHaveLength(0)
@@ -225,7 +225,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(styleOf(findByAttr(tree, 'data-liangbiao-ring-footer')[0]).top).toBe('100%')
       expect(styleOf(findByAttr(tree, 'data-liangbiao-ring-footer')[0]).marginTop).toBe('8px')
       expect(styleOf(findByAttr(tree, 'data-liangbiao-avatar')[0]).width).toBe(AVATAR_SLOT)
-      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('312px')
+      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('344px')
       expect(social.map((node) => styleOf(node).flex)).toEqual(['1 1 0', '1 1 0'])
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
@@ -409,7 +409,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const tree = renderPanel(store.getSnapshot())
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
     expect(position && textContent([position])).toContain('--')
-    expect(position && textContent([position])).toContain('→')
+    expect(position && textContent([position])).toContain('故称')
     expect(position && textContent([position])).toContain('待开梁')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'waiting')).toHaveLength(1)
     expect(textContent(tree)).toContain('待开梁')

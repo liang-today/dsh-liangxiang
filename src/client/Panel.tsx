@@ -162,7 +162,7 @@ const CORE_PAD_Y = 6
 
 const coreStyle: CSSProperties = {
   position: 'relative',
-  padding: `${CORE_PAD_Y}px 0 34px`,
+  padding: `${CORE_PAD_Y}px 0 40px`,
   overflow: 'visible',
 }
 
@@ -195,7 +195,7 @@ const voteRowStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: '8px',
-  marginTop: '4px',
+  marginTop: '12px',
 }
 
 const voteButtonBase: CSSProperties = {
@@ -346,9 +346,10 @@ const PANEL_CSS = `
   padding-bottom: 4px;
 }
 @keyframes liangbiao-condense {
-  0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  30% { opacity: 1; transform: translateX(-50%) translateY(0); }
-  100% { opacity: 1; }
+  0% { opacity: 0; transform: translate(-50%, 12px) scale(0.85); }
+  22% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  70% { opacity: 1; transform: translate(-50%, -3px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -8px) scale(0.95); }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-liangbiao-panel] * {
@@ -440,17 +441,17 @@ export function Panel(props: PanelProps): ReactElement {
         data-liangbiao-region="case"
         style={{ position: 'relative', marginBottom: '8px', padding: '0 22px', textAlign: 'center' }}
       >
-        <h2 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: color.textTertiary, letterSpacing: '1px' }}>
+        <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: color.textPrimary, letterSpacing: '0.5px' }}>
           {PANEL_TITLE}
         </h2>
         <p
           data-liangbiao-case-title=""
           title={activeCase.title}
           style={{
-            margin: '4px 0 0',
-            fontSize: '15px',
-            fontWeight: 600,
-            color: color.textPrimary,
+            margin: '5px 0 0',
+            fontSize: '13px',
+            fontWeight: 500,
+            color: color.textSecondary,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -527,11 +528,11 @@ export function Panel(props: PanelProps): ReactElement {
                 >
                   {percents.up}
                 </strong>
-                <span aria-hidden="true" data-liangbiao-liang-position-arrow="" style={positionGlueStyle}>→</span>
+                <span aria-hidden="true" data-liangbiao-liang-position-causal="" style={{ ...positionGlueStyle, color: color.textTertiary }}>故称</span>
                 <span
                   data-liangbiao-liangzi-title=""
                   title={`${LIANGZI_STATE_LABELS[snapshot.liangziState]}：${liangziRatioRangeText(snapshot.liangziState)}`}
-                  style={positionFactStyle}
+                  style={{ ...positionFactStyle, color: color.brand }}
                 >
                   {LIANGZI_STATE_LABELS[snapshot.liangziState]}
                 </span>
