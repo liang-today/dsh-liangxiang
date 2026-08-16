@@ -1,0 +1,22 @@
+# Shared prologue for all dev scripts. Sourced, not executed.
+#
+# Isolation: everything (profiles, storages, settings) lives under a
+# project-local DSH home so the developer's real ~/.dsh is never touched.
+# Override with DSH_HOME in the environment or .env (never commit .env).
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+if [ -f .env ]; then
+  # shellcheck disable=SC1091
+  set -a; . ./.env; set +a
+fi
+
+export DSH_HOME="${DSH_HOME:-$REPO_ROOT/.dsh-home}"
+PROFILE="${LIANGBIAO_PROFILE:-liangbiao-dev}"
+WEB_APP_SPEC="${LIANGBIAO_WEB_APP_SPEC:-@deepseek-ai/dsh-web-app@0.1.0-rc.6}"
+
+dsh_cli() {
+  pnpm exec dsh "$@"
+}

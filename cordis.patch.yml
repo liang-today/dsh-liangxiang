@@ -1,0 +1,7 @@
+# dsh-liangbiao bundle layer: insert the host plugin row.
+# The client half needs no row here — the ClientModuleRegistry scan discovers
+# it from this package's `dsh.client` declaration + `exports["./client"]`
+# (docs/003 row C7).
+- insert:
+    - id: liangbiao
+      name: dsh-liangbiao
