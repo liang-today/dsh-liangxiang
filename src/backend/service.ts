@@ -52,9 +52,11 @@ import {
   type BackendStore,
   type CaseRow,
   type IncenseRow,
+  type QueueRow,
   type SnapshotRow,
   type StatsRow,
 } from './store.ts'
+import { WireError } from '../shared/wire.ts'
 
 /** Thrown when a concurrent duplicate wins the idempotency race. */
 class DuplicateRequestSignal extends Error {}
@@ -105,11 +107,14 @@ export class LiangbiaoBackendService {
       this.store.closeCasesBefore(businessDate, now)
       const raced = this.store.activeCaseFor(businessDate)
       if (raced !== undefined) return raced
+      const queued = this.store.takeQueuedTitle(businessDate, now)
+      const previous = this.store.latestCaseBefore(businessDate)
+      const title = queued ?? previous?.title ?? this.config.caseTitle
       const id = `case-${businessDate}`
       this.store.insertCase({
         id,
         businessDate,
-        title: this.config.caseTitle,
+        title,
         tokenPerIncense: this.config.tokenPerIncense,
         liangziPolicyVersion: LIANGZI_POLICY_VERSION,
         now,
@@ -130,6 +135,19 @@ export class LiangbiaoBackendService {
       if (created === undefined) throw new Error('failed to open the daily case')
       return created
     })
+  }
+
+  /** Enqueue a 梁案 for a calendar day, or the next unused midnight (FIFO). */
+  enqueueCase(title: string, publishOn: string | null, now = this.clock.now()): QueueRow {
+    const { title: normalized } = parseV1PublishCaseRequest({ title })
+    if (publishOn !== null && !/^\d{4}-\d{2}-\d{2}$/.test(publishOn)) {
+      throw new WireError('publish_on', 'expected YYYY-MM-DD')
+    }
+    return this.store.enqueueCase(normalized, publishOn, now)
+  }
+
+  listQueue(): QueueRow[] {
+    return this.store.pendingQueue()
   }
 
   /**
@@ -507,7 +525,7 @@ export class LiangbiaoBackendService {
       policy_version: LIANGZI_POLICY_VERSION,
       captured_at: now,
     }
-    return toV1Snapshot(row, this.policy)
+    return toV1Snapshot(row, this.policy, this.store.lifetimeTotals())
   }
 
   private isPublishDue(latest: SnapshotRow | undefined, stats: StatsRow, now: number): boolean {
@@ -603,7 +621,11 @@ function toV1Case(row: CaseRow): V1Case {
 }
 
 /** Derive the public view of one snapshot row (ratios + state, one version). */
-export function toV1Snapshot(row: SnapshotRow, policy: LiangziThresholdPolicy): V1Snapshot {
+export function toV1Snapshot(
+  row: SnapshotRow,
+  policy: LiangziThresholdPolicy,
+  lifetime?: { incense: number, voters: number },
+): V1Snapshot {
   const totalIncense = row.up_votes + row.down_votes
   return {
     case_id: row.case_id,
@@ -618,5 +640,7 @@ export function toV1Snapshot(row: SnapshotRow, policy: LiangziThresholdPolicy): 
     captured_at: row.captured_at,
     sequence: row.sequence,
     policy_version: row.policy_version,
+    lifetime_incense: lifetime?.incense ?? totalIncense,
+    lifetime_voters: lifetime?.voters ?? row.unique_voters,
   }
 }

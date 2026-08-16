@@ -46,6 +46,10 @@ export interface WireGlobalCounts {
   uniqueVoters: number
   capturedAt: number
   sequence: number
+  /** All-time accepted votes across archived cases; defaults to today. */
+  lifetimeIncense: number
+  /** All-time unique voters across archived cases; defaults to today. */
+  lifetimeVoters: number
 }
 
 /** Raw personal accounting (LiangQi progress derived via the domain fold). */
@@ -218,6 +222,12 @@ export function parseWireState(raw: unknown): LiangbiaoWireState {
       uniqueVoters,
       capturedAt: requireFinite(globalRecord.capturedAt, 'state.global.capturedAt'),
       sequence: requireCount(globalRecord.sequence, 'state.global.sequence'),
+      lifetimeIncense: globalRecord.lifetimeIncense === undefined
+        ? upVotes + downVotes
+        : requireCount(globalRecord.lifetimeIncense, 'state.global.lifetimeIncense'),
+      lifetimeVoters: globalRecord.lifetimeVoters === undefined
+        ? uniqueVoters
+        : requireCount(globalRecord.lifetimeVoters, 'state.global.lifetimeVoters'),
     },
     personal,
     accounting: {

@@ -10,7 +10,7 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, ReactElement } from 'react'
-import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, type VoteType } from '../domain/index.ts'
+import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, formatZhCompactCount, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
   ACCOUNTING_UNAVAILABLE_HINT,
@@ -222,14 +222,12 @@ const voteButtonBase: CSSProperties = {
   border: `1px solid ${color.border}`,
 }
 
-/** Anchor the panel to the badge on whichever side/edge has room. */
+/** Anchor the panel above or below the badge — never beside it. */
 function placementStyle(placement: PanelPlacement): CSSProperties {
-  const horizontal: CSSProperties = placement.side === 'left'
-    ? { right: `calc(100% + ${PANEL_GAP}px)` }
-    : { left: `calc(100% + ${PANEL_GAP}px)` }
-  if (placement.vertical === 'top') return { ...horizontal, top: '0px' }
-  if (placement.vertical === 'bottom') return { ...horizontal, bottom: '0px' }
-  return { ...horizontal, top: '50%', transform: 'translateY(-50%)' }
+  const stack = placement.stack === 'below'
+    ? { top: `calc(100% + ${PANEL_GAP}px)` }
+    : { bottom: `calc(100% + ${PANEL_GAP}px)` }
+  return { left: '0px', ...stack }
 }
 
 /** Panel-scoped CSS that inline styles cannot express (focus ring, keyframes). */
@@ -381,21 +379,34 @@ const visuallyHidden: CSSProperties = {
 }
 
 function SoundIcon({ level }: { level: number }): ReactElement {
+  // Waves must fit inside the 24×24 viewBox: rightmost point is startX + rx.
+  // The old r=13 third arc ran to x≈34 and was clipped by the 14px box.
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      overflow="visible"
+      aria-hidden="true"
+    >
       <path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
       {level === 0
         ? (
           <>
-            <line x1="16" y1="9" x2="22" y2="15" />
-            <line x1="22" y1="9" x2="16" y2="15" />
+            <line x1="15" y1="9" x2="21" y2="15" />
+            <line x1="21" y1="9" x2="15" y2="15" />
           </>
         )
         : (
           <>
-            {level >= 1 && <path d="M15.5 8.5a5 5 0 0 1 0 7" />}
-            {level >= 2 && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}
-            {level >= 3 && <path d="M21.5 2.5a13 13 0 0 1 0 19" />}
+            {level >= 1 && <path d="M14.5 9.5a3.2 3.2 0 0 1 0 5" />}
+            {level >= 2 && <path d="M16.8 7.2a5.6 5.6 0 0 1 0 9.6" />}
+            {level >= 3 && <path d="M18.2 5.2a5.6 5.6 0 0 1 0 13.6" />}
           </>
         )}
     </svg>
@@ -408,9 +419,9 @@ export function Panel(props: PanelProps): ReactElement {
     onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, onDevCredit,
   } = props
-  const placement = props.placement ?? { side: 'left', vertical: 'center' }
+  const placement = props.placement ?? { stack: 'above' }
   const positionPulse = props.positionPulse ?? false
-  const { snapshot, personal, activeCase } = state
+  const { snapshot, personal, activeCase, lifetimeIncense, lifetimeVoters } = state
   // Throttled (smoothed/extrapolated) display values — presentation only. The
   // authoritative remaining incense / vote availability stay on `personal`.
   const displayFill = throttle?.fill ?? personal.liangQiFill
@@ -765,24 +776,24 @@ export function Panel(props: PanelProps): ReactElement {
       >
         <span
           data-liangbiao-stat="incense"
-          title={INCENSE_STAT_HINT}
+          title={`${INCENSE_STAT_HINT}：今日 ${snapshot.totalIncense.toLocaleString('zh-CN')} · 累计 ${formatZhCompactCount(lifetimeIncense)}`}
           style={statStyle}
         >
           <ThreeRealmsIncenseIcon size={18} />
           <span style={statCopyStyle}>
             <span data-liangbiao-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
-            <strong style={statValueStyle}>{snapshot.totalIncense.toLocaleString('zh-CN')}</strong>
+            <strong style={statValueStyle}>{formatZhCompactCount(snapshot.totalIncense)}</strong>
           </span>
         </span>
         <span
           data-liangbiao-stat="voters"
-          title={VOTER_STAT_HINT}
+          title={`${VOTER_STAT_HINT}：今日 ${snapshot.uniqueVoters.toLocaleString('zh-CN')} · 累计 ${formatZhCompactCount(lifetimeVoters)}`}
           style={statStyle}
         >
           <FivePhasePilgrimIcon size={18} />
           <span style={statCopyStyle}>
             <span data-liangbiao-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
-            <strong style={statValueStyle}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
+            <strong style={statValueStyle}>{formatZhCompactCount(snapshot.uniqueVoters)}</strong>
           </span>
         </span>
         <div

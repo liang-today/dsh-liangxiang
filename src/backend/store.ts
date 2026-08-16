@@ -133,7 +133,23 @@ export interface BackendStore {
    * bound to a different installation.
    */
   upsertIdentity: (row: CommunityIdentityRow) => void
+  /** Most recently opened case strictly before this business date. */
+  latestCaseBefore: (businessDate: string) => CaseRow | undefined
+  lifetimeTotals: () => { incense: number, voters: number }
+  enqueueCase: (title: string, publishOn: string | null, now: number) => QueueRow
+  pendingQueue: () => QueueRow[]
+  /** First unused queue row for `today`, else the oldest undated FIFO row. */
+  takeQueuedTitle: (today: string, now: number) => string | undefined
   close: () => void
+}
+
+export interface QueueRow {
+  id: number
+  title: string
+  publish_on: string | null
+  sort_order: number
+  created_at: number
+  consumed_at: number | null
 }
 
 /** SQLite constraint failures we translate into business outcomes. */
@@ -253,6 +269,42 @@ export function openBackendStore(databasePath: string): BackendStore {
         SELECT MAX(sequence) - ? FROM public_liang_snapshot WHERE case_id = ?
       )`,
   )
+  const selectLatestBefore = db.prepare(
+    `SELECT * FROM daily_liang_case
+      WHERE business_date < ?
+      ORDER BY business_date DESC, opened_at DESC
+      LIMIT 1`,
+  )
+  const selectLifetimeIncense = db.prepare(
+    `SELECT COALESCE(SUM(up_votes + down_votes), 0) AS incense FROM daily_liang_stats`,
+  )
+  const selectLifetimeVoters = db.prepare(
+    `SELECT COUNT(DISTINCT installation_id) AS voters FROM liang_vote`,
+  )
+  const insertQueue = db.prepare(
+    `INSERT INTO case_queue (title, publish_on, sort_order, created_at, consumed_at)
+     VALUES (?, ?, COALESCE((SELECT MAX(sort_order) FROM case_queue), 0) + 1, ?, NULL)`,
+  )
+  const selectQueuePending = db.prepare(
+    `SELECT * FROM case_queue WHERE consumed_at IS NULL
+      ORDER BY CASE WHEN publish_on IS NULL THEN 1 ELSE 0 END, publish_on, sort_order`,
+  )
+  const selectQueueForDate = db.prepare(
+    `SELECT * FROM case_queue
+      WHERE consumed_at IS NULL AND publish_on IS NOT NULL AND publish_on <= ?
+      ORDER BY publish_on, sort_order
+      LIMIT 1`,
+  )
+  const selectQueueFifo = db.prepare(
+    `SELECT * FROM case_queue
+      WHERE consumed_at IS NULL AND publish_on IS NULL
+      ORDER BY sort_order
+      LIMIT 1`,
+  )
+  const consumeQueue = db.prepare(
+    `UPDATE case_queue SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL`,
+  )
+  const selectQueueById = db.prepare('SELECT * FROM case_queue WHERE id = ?')
   const selectIdentity = db.prepare(
     'SELECT * FROM community_identity WHERE installation_id = ?',
   )
@@ -362,6 +414,30 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.created_at,
         row.last_seen_at,
       )
+    },
+    latestCaseBefore: (businessDate) => selectLatestBefore.get(businessDate) as CaseRow | undefined,
+    lifetimeTotals() {
+      const incenseRow = selectLifetimeIncense.get() as { incense: number | bigint } | undefined
+      const voterRow = selectLifetimeVoters.get() as { voters: number | bigint } | undefined
+      return {
+        incense: Number(incenseRow?.incense ?? 0),
+        voters: Number(voterRow?.voters ?? 0),
+      }
+    },
+    enqueueCase(title, publishOn, now) {
+      const result = insertQueue.run(title, publishOn, now)
+      const id = Number(result.lastInsertRowid)
+      const row = selectQueueById.get(id) as QueueRow | undefined
+      if (row === undefined) throw new Error('failed to enqueue case')
+      return row
+    },
+    pendingQueue: () => selectQueuePending.all() as unknown as QueueRow[],
+    takeQueuedTitle(today, now) {
+      const dated = selectQueueForDate.get(today) as QueueRow | undefined
+      const row = dated ?? selectQueueFifo.get() as QueueRow | undefined
+      if (row === undefined) return undefined
+      if (changed(consumeQueue.run(now, row.id)) === 0) return undefined
+      return row.title
     },
     close: () => db.close(),
   }

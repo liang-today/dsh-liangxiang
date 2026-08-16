@@ -432,6 +432,8 @@ export class FakeAuthoritativeLiangService {
       uniqueVoters: this.aggregate.uniqueVoters,
       capturedAt: this.clock.now(),
       sequence: this.snapshotSequence,
+      lifetimeIncense: this.aggregate.upVotes + this.aggregate.downVotes,
+      lifetimeVoters: this.aggregate.uniqueVoters,
     }
     this.bump()
   }

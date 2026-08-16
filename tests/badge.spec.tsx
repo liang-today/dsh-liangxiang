@@ -10,7 +10,7 @@ import {
   BADGE_ICON_SIZE,
   BADGE_MARGIN,
   BADGE_SIZE,
-  PANEL_WIDTH,
+  SETTINGS_CLEARANCE,
   clampBadgePosition,
   defaultBadgePosition,
   loadBadgePosition,
@@ -160,10 +160,10 @@ describe('LiangbiaoBadge entry', () => {
 describe('free placement', () => {
   const viewport = { width: 1200, height: 800 }
 
-  it('docks to the right edge, vertically centred, by default', () => {
+  it('docks to the bottom-left, just above the settings control, by default', () => {
     const point = defaultBadgePosition(viewport)
-    expect(point.x).toBe(viewport.width - BADGE_SIZE - 16)
-    expect(point.y).toBe(Math.round(viewport.height / 2 - BADGE_SIZE / 2))
+    expect(point.x).toBe(BADGE_MARGIN)
+    expect(point.y).toBe(viewport.height - BADGE_SIZE - SETTINGS_CLEARANCE)
   })
 
   it('clamps a point back into the frame', () => {
@@ -204,18 +204,8 @@ describe('free placement', () => {
     expect(point.y).toBeLessThanOrEqual(small.height - BADGE_SIZE - BADGE_MARGIN)
   })
 
-  it('flips the panel to whichever side has room', () => {
-    // Docked right: the panel opens to the left, as it always has.
-    expect(panelPlacementFor({ x: viewport.width - 48, y: 400 }, viewport).side).toBe('left')
-    // Dragged to the left edge: opening left would go off-frame.
-    expect(panelPlacementFor({ x: BADGE_MARGIN, y: 400 }, viewport).side).toBe('right')
-    // Just past the panel width there is room on the left again.
-    expect(panelPlacementFor({ x: PANEL_WIDTH + 40, y: 400 }, viewport).side).toBe('left')
-  })
-
-  it('re-anchors the panel vertically near the top and bottom edges', () => {
-    expect(panelPlacementFor({ x: 600, y: 400 }, viewport).vertical).toBe('center')
-    expect(panelPlacementFor({ x: 600, y: BADGE_MARGIN }, viewport).vertical).toBe('top')
-    expect(panelPlacementFor({ x: 600, y: viewport.height - 60 }, viewport).vertical).toBe('bottom')
+  it('stacks the panel above or below the badge, never beside it', () => {
+    expect(panelPlacementFor({ x: BADGE_MARGIN, y: viewport.height - 96 }, viewport).stack).toBe('above')
+    expect(panelPlacementFor({ x: BADGE_MARGIN, y: BADGE_MARGIN }, viewport).stack).toBe('below')
   })
 })

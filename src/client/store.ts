@@ -38,6 +38,10 @@ export interface LiangbiaoViewState {
   activeCase: DailyLiangCase
   /** Global snapshot: ratios + Liangzi state always share one sequence. */
   snapshot: PublicLiangSnapshot
+  /** All-time accepted votes (archived cases included). */
+  lifetimeIncense: number
+  /** All-time unique voters (archived cases included). */
+  lifetimeVoters: number
   /** Personal LiangQi: spendable incense + next-incense progress. */
   personal: PersonalLiangQiState
 }
@@ -67,6 +71,8 @@ export function wireToViewState(wire: LiangbiaoWireState, connection: Connection
       capturedAt: wire.global.capturedAt,
       sequence: wire.global.sequence,
     }),
+    lifetimeIncense: wire.global.lifetimeIncense,
+    lifetimeVoters: wire.global.lifetimeVoters,
     personal: (() => {
       // Ring fill / 下一炷 keep the optimistic local effective tokens; the
       // spendable incense (今日香火 / 可投 / vote button) uses the AUTHORITATIVE
@@ -110,6 +116,8 @@ export function createOfflineViewState(connection: ConnectionState): LiangbiaoVi
       capturedAt: 0,
       sequence: 0,
     }),
+    lifetimeIncense: 0,
+    lifetimeVoters: 0,
     personal: derivePersonalLiangQiState({ effectiveTokensToday: 0, usedIncenseToday: 0 }),
   }
 }
@@ -180,6 +188,8 @@ export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbia
     authorityMode: 'LOCAL_FAKE_DEV',
     activeCase,
     snapshot: buildPublicSnapshot({ caseId: activeCase.id, aggregate, capturedAt: Date.now(), sequence }),
+    lifetimeIncense: aggregate.upVotes + aggregate.downVotes,
+    lifetimeVoters: aggregate.uniqueVoters,
     personal,
   })
   let state = buildState()

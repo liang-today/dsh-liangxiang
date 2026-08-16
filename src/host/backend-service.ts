@@ -273,6 +273,8 @@ export class BackendLiangService implements LiangHostService {
         uniqueVoters: snapshot.unique_voters,
         capturedAt: snapshot.captured_at,
         sequence: snapshot.sequence,
+        lifetimeIncense: snapshot.lifetime_incense,
+        lifetimeVoters: snapshot.lifetime_voters,
       },
       personal: {
         // LiangQi is personal and local: Token observation must move 香火 /

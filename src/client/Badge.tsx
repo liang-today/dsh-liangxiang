@@ -15,15 +15,17 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
 import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
-import { cycleSoundLevel, playIncenseEarn, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
+import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
   clampBadgePosition,
   loadBadgePosition,
+  loadPanelOpen,
   panelPlacementFor,
   saveBadgePosition,
+  savePanelOpen,
   type BadgePoint,
 } from './badge-position.ts'
 import { LiangAvatar } from './LiangAvatar.tsx'
@@ -165,10 +167,12 @@ export function LiangbiaoBadge(): ReactElement {
     return () => store.dispose()
   }, [store])
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
-  // Dev/QA affordance: `#liangbiao-open` boots with the panel expanded
-  // (screenshots, smoke checks). Normal sessions start collapsed.
-  const [open, setOpen] = useState<boolean>(() =>
-    typeof location !== 'undefined' && location.hash.includes('liangbiao-open'))
+  // Default open so the stacked left-dock can stay visible without covering
+  // the DSH composer. × / the badge persist the preference per browser.
+  const [open, setOpen] = useState<boolean>(() => {
+    if (typeof location !== 'undefined' && location.hash.includes('liangbiao-open')) return true
+    return loadPanelOpen(typeof localStorage === 'undefined' ? null : localStorage)
+  })
   // Reopening the panel while offline reconnects; while live it forces a
   // host re-bootstrap so the expanded 今日梁案 is not up to ~1s stale.
   useEffect(() => {
@@ -259,9 +263,17 @@ export function LiangbiaoBadge(): ReactElement {
   // One short avatar pulse when the GLOBAL Liangzi state crosses a threshold.
   const [avatarPulse, setAvatarPulse] = useState(false)
   const prevLiangziState = useRef(state.snapshot.liangziState)
+  const liangziSoundPrimed = useRef(false)
   useEffect(() => {
+    if (!liangziSoundPrimed.current) {
+      liangziSoundPrimed.current = true
+      prevLiangziState.current = state.snapshot.liangziState
+      return undefined
+    }
     if (prevLiangziState.current === state.snapshot.liangziState) return undefined
+    const from = prevLiangziState.current
     prevLiangziState.current = state.snapshot.liangziState
+    playLiangziShift(from, state.snapshot.liangziState)
     setAvatarPulse(true)
     const timer = window.setTimeout(() => setAvatarPulse(false), 950)
     return () => window.clearTimeout(timer)
@@ -388,9 +400,16 @@ export function LiangbiaoBadge(): ReactElement {
             suppressClick.current = false
             return
           }
-          setOpen((value) => !value)
+          setOpen((value) => {
+            const next = !value
+            savePanelOpen(next, typeof localStorage === 'undefined' ? null : localStorage)
+            return next
+          })
         }}
-        onEscape={() => setOpen(false)}
+        onEscape={() => {
+          savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
+          setOpen(false)
+        }}
         onProbeLatest={() => {
           if (!dragging) store.refresh()
         }}
@@ -412,7 +431,10 @@ export function LiangbiaoBadge(): ReactElement {
           positionPulse={positionPulse}
           placement={panelPlacementFor(position, viewport)}
           onVote={onVote}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
+            setOpen(false)
+          }}
           reconcilePending={reconcilePending}
           onReconcileAsk={onReconcileAsk}
           onReconcileConfirm={onReconcileConfirm}
