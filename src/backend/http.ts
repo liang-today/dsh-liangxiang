@@ -16,6 +16,7 @@
  */
 import { timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { formatLiangPosition } from '../domain/index.ts'
 import { WireError } from '../shared/wire.ts'
 import {
   BACKEND_API_PREFIX,
@@ -109,6 +110,19 @@ function statusForRejection(reason: string): number {
   if (reason === 'insufficient_incense') return 409
   if (reason === 'stale_case' || reason === 'case_not_active') return 409
   return 400
+}
+
+function peerAddress(req: IncomingMessage): string {
+  const raw = req.socket.remoteAddress ?? '?'
+  return raw.startsWith('::ffff:') ? raw.slice(7) : raw
+}
+
+function installShort(installationId: string): string {
+  return installationId.length <= 12 ? installationId : `${installationId.slice(0, 12)}…`
+}
+
+function who(req: IncomingMessage, installationId: string): string {
+  return `install=${installShort(installationId)} ip=${peerAddress(req)}`
 }
 
 function headerValue(req: IncomingMessage, name: string): string | undefined {
@@ -251,6 +265,13 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     } catch (error) {
       if (error instanceof CommunityAuthError) {
         writeError(res, error.httpStatus, error.code, error.message)
+        const install = headerValue(req, INSTALLATION_HEADER)
+        if (install !== undefined) {
+          log(
+            `[liangbiao-backend] deny ${error.httpStatus} ${error.code} `
+            + `${who(req, install)} ${method} ${path}`,
+          )
+        }
         return
       }
       if (error instanceof WireError) {
@@ -264,6 +285,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
 
     if (path === `${BACKEND_API_PREFIX}/bootstrap`) {
       writeJson(res, 200, service.bootstrap(installationId))
+      log(`[liangbiao-backend] hello ${who(req, installationId)}`)
       return
     }
     if (path === `${BACKEND_API_PREFIX}/me/daily-state`) {
@@ -283,7 +305,20 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     if (path === `${BACKEND_API_PREFIX}/token-claims`) {
       try {
         const claim = parseV1TokenClaimRequest(body)
-        writeJson(res, 200, service.applyTokenClaim(installationId, claim))
+        const prior = store.incenseFor(installationId, service.businessDate())
+        const priorEarned = prior === undefined
+          ? 0
+          : Math.floor(prior.claimed_effective_tokens / prior.token_per_incense)
+        const response = service.applyTokenClaim(installationId, claim)
+        writeJson(res, 200, response)
+        const earned = response.authoritative_personal_state.earned_incense
+        if (response.claim_applied === true && earned > priorEarned) {
+          log(
+            `[liangbiao-backend] incense +${earned - priorEarned}炷 ${who(req, installationId)} `
+            + `remaining=${response.authoritative_personal_state.remaining_incense} `
+            + `tokens=${response.authoritative_personal_state.claimed_effective_tokens}`,
+          )
+        }
       } catch (error) {
         writeValidationError(res, error)
       }
@@ -293,6 +328,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     // POST /v1/votes
     if (rateLimited(installationId, Date.now())) {
       writeError(res, 429, 'invalid_request', 'too many vote requests; slow down')
+      log(`[liangbiao-backend] vote 429 ${who(req, installationId)}`)
       return
     }
     try {
@@ -300,10 +336,22 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       const response = service.vote(installationId, intent)
       const status = response.result.status === 'accepted' ? 200 : statusForRejection(response.result.reason)
       writeJson(res, status, response)
-      log(
-        `[liangbiao-backend] POST /v1/votes ${status} installation=${installationId.slice(0, 8)}… `
-        + `result=${response.result.status}`,
-      )
+      const direction = intent.vote_type === 'up' ? '夯' : '拉'
+      const snapshot = response.global_snapshot
+      const position = formatLiangPosition(snapshot.up_votes, snapshot.down_votes)
+      const remaining = response.authoritative_personal_state.remaining_incense
+      if (response.result.status === 'accepted') {
+        const replayed = response.result.replayed ? ' replay' : ''
+        log(
+          `[liangbiao-backend] vote ${direction} accepted${replayed} ${who(req, installationId)} `
+          + `remaining=${remaining} 梁位=${position} 香火=${snapshot.total_incense} 香客=${snapshot.unique_voters}`,
+        )
+      } else {
+        log(
+          `[liangbiao-backend] vote ${direction} rejected ${response.result.reason} ${who(req, installationId)} `
+          + `remaining=${remaining}`,
+        )
+      }
     } catch (error) {
       writeValidationError(res, error)
     }
