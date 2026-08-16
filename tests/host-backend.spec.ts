@@ -352,6 +352,25 @@ describe('online rollover', () => {
     expect(stale.result.status).toBe('rejected')
   })
 
+  it('resets the claim watermark on rollover so a small new-day claim is not skipped', async () => {
+    const s = await startStack({}, { claimDebounceMs: 0 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(6_000_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => claimedOnBackend(s, 6_000_000), 'day-1 claim to land')
+
+    // Roll over. The host still holds day-1's watermark (6M) and business date.
+    s.clock.advance(DAY_MS)
+
+    // First new-day observation: the host submits for the stale day, the
+    // backend reports the new day, and the host must reset its watermark.
+    s.host.observeUsage(SESSION, usage(6_001_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => frame(s).businessDate === '2026-08-17', 'host to adopt day 2')
+
+    // A second small delta must NOT be skipped by day-1's 6M watermark.
+    s.host.observeUsage(SESSION, usage(6_002_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => claimedOnBackend(s, 1_000), 'day-2 claim to land')
+  })
+
   it('picks up a published case on the existing snapshot poll', async () => {
     const s = await startStack()
     const previous = frame(s)
