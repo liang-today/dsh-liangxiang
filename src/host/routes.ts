@@ -11,7 +11,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { WireError, parseWireVoteRequest } from '../shared/wire.ts'
-import type { FakeAuthoritativeLiangService } from './fake-service.ts'
+import type { LiangHostService } from './service.ts'
 
 const MAX_VOTE_BODY_BYTES = 4096
 const SSE_HEARTBEAT_MS = 25_000
@@ -63,7 +63,7 @@ function readBoundedBody(req: IncomingMessage): Promise<string> {
 }
 
 export function createLiangbiaoApi(
-  service: FakeAuthoritativeLiangService,
+  service: LiangHostService,
   warn: (message: string) => void,
 ): LiangbiaoApi {
   const connections = new Set<SseConnection>()
@@ -115,12 +115,19 @@ export function createLiangbiaoApi(
       writeJson(res, 400, { error: `invalid vote request: ${message}` })
       return
     }
-    const outcome = service.vote(intent)
-    writeJson(res, 200, {
-      schemaVersion: outcome.state.schemaVersion,
-      result: outcome.result,
-      state: outcome.state,
-    })
+    try {
+      // The authority may be in-process (local mode) or a backend round trip.
+      const outcome = await service.vote(intent)
+      writeJson(res, 200, {
+        schemaVersion: outcome.state.schemaVersion,
+        result: outcome.result,
+        state: outcome.state,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      warn(`[dsh-liangbiao] vote could not be resolved: ${message}`)
+      writeJson(res, 502, { error: 'vote authority unavailable; retry with the same requestId' })
+    }
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {

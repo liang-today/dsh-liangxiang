@@ -23,8 +23,10 @@ dsh-liangbiao/
     ├── host/               # Host 插件本体(仅经 compat 触碰 DSH)
     ├── client/             # 浏览器半(仅经 compat 触碰 DSH client API)
     ├── compat/dsh/         # 唯一允许直接 import/触碰 DSH API 的层
-    └── backend/            # future backend adapter:仅接口占位,v0.1 不实现
+    └── backend/            # Phase 3 起为真实后端进程(node:http + node:sqlite)
 ```
+
+> **Phase 3 更新(2026-08-16)**:`backend/` 不再是占位接口,而是可运行的 localhost 权威服务(`/v1/*` + SQLite),Host 以 `LIANGBIAO_BACKEND_URL` 切换 `LOCAL_FAKE_DEV` / `DEV_STAGING_ONLY`。全链路见 [`070`](070-backend-architecture.md),schema 见 [`071`](071-database-schema.md),API 见 [`076`](076-backend-api-v1.md),信任边界见 [`075`](075-backend-decision.md)。
 
 ```mermaid
 flowchart LR
@@ -54,7 +56,7 @@ flowchart LR
 - `domain/` 不 import 任何其他层;函数纯、可独立测试。香火折算(`tokenPerIncense`)、梁气进度(remainder/fill/toNext)、梁子五态阈值策略、投票规则全部在此。
 - `shared/` 只含可序列化类型与解析校验(手写窄校验或本地小实现,不为此加依赖);两半共同的 wire 单一事实源。
 - `host/`、`client/` 不直接 import DSH 符号;所有 DSH 触点收敛为 `compat/dsh/` 中一个个具名适配函数(每个触点一个函数,对应 `docs/003` 一行)。
-- `backend/` v0.1 只定义 `VoteBackend` 接口占位(提交投票、拉取社区快照,均带超时/取消/幂等键),不做任何实现与网络调用。
+- `backend/` 是独立 node 进程(不进 DSH bundle),只被 `src/host/backend-client.ts` 经 HTTP 访问;它 import `domain/` 与 `shared/`,但 `domain/`、`shared/`、`client/` 永不 import 它。
 
 ## 3. 打包与安装形态
 

@@ -18,11 +18,18 @@ Decision Gate A = **A3**（docs/043）：本地一切 Token/身份数据都不�
 - 服务类名 `FakeAuthoritativeLiangService` 不改名、不包装、不重导出为中性名称。
 - README/文档描述本地闭环时必须带"本地/演示/软信任"限定词;禁止 verified/secure/可信全网 等表述。
 
-## 生产接线时（Prompt 3+）
+## Phase 3 已接线（DEV_STAGING_ONLY，2026-08-16）
 
-- `used/remaining` 切换为 Backend 权威;本地 observed 只作 diagnostics/差异检测（不自动采信较大值）。
-- Vote payload 保持最小（caseId/voteType/requestId）;身份与 Token 资格由 Backend 侧解析。
-- 若 authority 仍 BLOCKED：生产可信端点保持禁用;staging 明确标注。
+- `used/remaining` **已**切换为 Backend 权威（`daily_incense_state`）;本地 observed 仅作为 `POST /v1/token-claims` 的**声明**与 UI 诊断，从不自动采信较大值。
+- Vote payload 保持最小（`case_id`/`vote_type`/`request_id`）;多带权威字段直接 400。
+- authority 仍 BLOCKED：`VERIFIED_PRODUCTION` 在后端启动门禁与 wire 联合类型上双重禁用（[`075`](075-backend-decision.md)）。
+- 分类表新增一行：
+
+| 状态 | 本质 | 命名/落点 | 允许用途 | 禁止用途 |
+|---|---|---|---|---|
+| `claimed_effective_tokens` | **不可验证的声明**（单调 ratchet） | Backend `daily_incense_state` | 派生 staging 票权预算 | 称为 verified usage |
+| Backend `used_incense` | **服务端权威**（事务/CAS/幂等） | 同表 | 唯一可花余额、多标签收敛 | 称为“一人一票” |
+| 假名 `installation_id` | 自铸可重置标识 | storage domain `identity` 表 | 区分参与安装、幂等域 | 冒充 authenticated user |
 
 ## 数据完整性防线
 

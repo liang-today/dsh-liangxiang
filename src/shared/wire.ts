@@ -20,8 +20,23 @@ import {
 
 export const WIRE_SCHEMA_VERSION = 1
 
-/** The only authority mode this milestone ships. Honest naming, by contract. */
-export type AuthorityMode = 'LOCAL_FAKE_DEV'
+/**
+ * Authority modes the host can serve, honestly named by contract:
+ *
+ *   LOCAL_FAKE_DEV     everything in-process (`FakeAuthoritativeLiangService`)
+ *   DEV_STAGING_ONLY   the online backend is authority, but identity is a
+ *                      pseudonymous installation id and the Token figure is an
+ *                      unverifiable host claim (Decision Gate A3, docs/043)
+ *
+ * `VERIFIED_PRODUCTION` is deliberately absent: nothing in this build can honor
+ * it, so it must not be representable on the wire.
+ */
+export const AUTHORITY_MODES = ['LOCAL_FAKE_DEV', 'DEV_STAGING_ONLY'] as const
+export type AuthorityMode = (typeof AUTHORITY_MODES)[number]
+
+export function isAuthorityMode(value: unknown): value is AuthorityMode {
+  return typeof value === 'string' && (AUTHORITY_MODES as readonly string[]).includes(value)
+}
 
 /** Raw global counts of one published snapshot (ratios derived client-side). */
 export interface WireGlobalCounts {
@@ -154,9 +169,10 @@ export function parseWireState(raw: unknown): LiangbiaoWireState {
   if (record.schemaVersion !== WIRE_SCHEMA_VERSION) {
     throw new WireError('state.schemaVersion', `unsupported schema version ${String(record.schemaVersion)}`)
   }
-  if (record.authorityMode !== 'LOCAL_FAKE_DEV') {
+  if (!isAuthorityMode(record.authorityMode)) {
     throw new WireError('state.authorityMode', `unknown authority mode ${String(record.authorityMode)}`)
   }
+  const authorityMode = record.authorityMode
   const globalRecord = asRecord(record.global, 'state.global')
   const personalRecord = asRecord(record.personal, 'state.personal')
   const accountingRecord = asRecord(record.accounting, 'state.accounting')
@@ -180,7 +196,7 @@ export function parseWireState(raw: unknown): LiangbiaoWireState {
   return {
     schemaVersion: WIRE_SCHEMA_VERSION,
     revision: requireCount(record.revision, 'state.revision'),
-    authorityMode: 'LOCAL_FAKE_DEV',
+    authorityMode,
     snapshotRefreshSeconds: requireCount(record.snapshotRefreshSeconds, 'state.snapshotRefreshSeconds'),
     businessDate: requireString(record.businessDate, 'state.businessDate'),
     activeCase: parseCase(record.activeCase, 'state.activeCase'),

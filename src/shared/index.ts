@@ -9,6 +9,7 @@ import {
   type LiangziState,
   type LiangziThresholdPolicy,
 } from '../domain/index.ts'
+import type { AuthorityMode } from './wire.ts'
 
 /** npm package name: the loader row `name`, the client bundle id, and the `/plugins/<id>/client.js` route segment. */
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangbiao'
@@ -46,6 +47,19 @@ export const VOTER_STAT_ICON = '🙏'
 
 /** Honest soft-trust note for the LOCAL_FAKE_DEV authority mode (AGENTS.md §16). */
 export const LOCAL_MODE_NOTE = '本地演示模式：香火与投票均在本机，不代表可信全网结果'
+
+/**
+ * Honest soft-trust note for DEV_STAGING_ONLY: the backend really is the
+ * authority for spending, but under Decision Gate A3 it can neither
+ * authenticate the voter nor verify the Token usage behind the incense.
+ */
+export const STAGING_MODE_NOTE = '本地预发模式：投票由 Liangbiao 服务端记账，但身份仅为匿名安装标识、Token 用量无法被服务端验证'
+
+/** The note that must accompany each authority mode. */
+export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {
+  LOCAL_FAKE_DEV: LOCAL_MODE_NOTE,
+  DEV_STAGING_ONLY: STAGING_MODE_NOTE,
+}
 
 /** Disabled-vote reason surfaced when the personal incense pool is empty. */
 export const NO_INCENSE_REASON = '香火不足：再积累 Token 获得下一炷香后即可投票'

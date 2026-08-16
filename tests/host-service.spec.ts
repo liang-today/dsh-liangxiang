@@ -11,7 +11,7 @@ import {
   type LiangPersistencePort,
   type LiangServiceConfig,
 } from '../src/host/fake-service.ts'
-import type { Clock } from '../src/host/business-date.ts'
+import type { Clock } from '../src/shared/business-date.ts'
 
 /** 2026-08-16 12:00 Asia/Shanghai (04:00 UTC). */
 const NOON_SHANGHAI = Date.UTC(2026, 7, 16, 4, 0, 0)

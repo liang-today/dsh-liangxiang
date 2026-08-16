@@ -36,7 +36,10 @@
     "dev:uninstall": "bash scripts/dev-uninstall.sh",
     "dev:dump-config": "bash scripts/dump-config.sh",
     "dev:web": "bash scripts/dev-web.sh",
-    "smoke:clean-profile": "bash scripts/smoke-clean-profile.sh"
+    "backend:start": "node lib/backend.js",
+    "backend:dev": "pnpm run build && node lib/backend.js",
+    "smoke:clean-profile": "bash scripts/smoke-clean-profile.sh",
+    "smoke:online": "bash scripts/smoke-online.sh"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
