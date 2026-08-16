@@ -77,3 +77,53 @@ export function formatLiangPosition(
 ): string {
   return formatRatioPercents(upVotes, downVotes, decimals).up
 }
+
+/**
+ * Compact count for the Region 2 flanks (remaining incense / tokens-to-next).
+ *
+ * Everyday stocks stay exact (`0`–`999`). From 1,000 up, fold into K/M/B with
+ * ROUNDING so both wings stay a few characters wide even if someone later
+ * lowers `token_per_incense` and incense grows faster than the 50K default.
+ *
+ * This is presentation only. 梁位 still truncates — these are counts, not a
+ * threshold-crossing public ratio. Screen-reader copy should keep the exact
+ * integer; the compact form is for the visible flanks.
+ *
+ *   9        -> 9
+ *   999      -> 999
+ *   1,000    -> 1K
+ *   1,499    -> 1.5K
+ *   3,000    -> 3K
+ *   46,935   -> 47K
+ *   50,000   -> 50K
+ *   1,500,000 -> 1.5M
+ */
+export function formatCompactCount(n: number): string {
+  assertCount(n, 'invalid_token_count', 'compactCount')
+  if (n < 1_000) return String(n)
+  if (n < 1_000_000) return formatScaled(n, 1_000, 'K', 1_000_000, 'M')
+  if (n < 1_000_000_000) return formatScaled(n, 1_000_000, 'M', 1_000_000_000, 'B')
+  return formatScaled(n, 1_000_000_000, 'B', Number.POSITIVE_INFINITY, '')
+}
+
+function formatScaled(
+  n: number,
+  unit: number,
+  suffix: string,
+  nextUnit: number,
+  nextSuffix: string,
+): string {
+  const oneDecimalUntil = unit * 10
+  if (n < oneDecimalUntil) {
+    const rounded = Math.round((n / unit) * 10) / 10
+    if (rounded >= 10) return `10${suffix}`
+    return `${trimDecimal(rounded)}${suffix}`
+  }
+  const rounded = Math.round(n / unit)
+  if (nextSuffix !== '' && rounded * unit >= nextUnit) return `1${nextSuffix}`
+  return `${rounded}${suffix}`
+}
+
+function trimDecimal(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1)
+}

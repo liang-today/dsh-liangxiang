@@ -78,7 +78,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const next = findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0]
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
     expect(incense && textContent([incense])).toContain('5 炷')
-    expect(next && textContent([next])).toContain('3,000')
+    expect(next && textContent([next])).toContain('3K')
+    expect(next && textContent([next])).not.toContain('3,000')
     expect(next && textContent([next])).toContain('Token')
     // 10,665/12,846 = 83.0219…%, truncated to four decimals.
     expect(position && textContent([position])).toContain('梁位')
@@ -154,6 +155,34 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
     expect(value.fontVariantNumeric).toBe('tabular-nums')
+  })
+
+  it('compacts flank counts so thousands stay short (and keeps exact values in the tooltip / SR)', () => {
+    const demo = renderPanel(demoState())
+    expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'incense'))).toBe('5')
+    expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'next-incense'))).toBe('3K')
+    expect(findByAttr(demo, 'data-liangbiao-compact', 'next-incense')[0]?.props.title).toBe('3,000 Token')
+    expect(textContent(demo)).toContain('距下一炷还差 3,000 Token')
+
+    // 1,234 炷 / 50,000 Token — the previous tests never reached this width.
+    const huge = createMockLiangbiaoStore({
+      effectiveTokensToday: 1_234 * 50_000,
+      usedIncenseToday: 0,
+    })
+    const tree = renderPanel(huge.getSnapshot())
+    expect(huge.getSnapshot().personal.remainingIncense).toBe(1_234)
+    expect(huge.getSnapshot().personal.tokensToNextIncense).toBe(50_000)
+    expect(textContent(findByAttr(tree, 'data-liangbiao-compact', 'incense'))).toBe('1.2K')
+    expect(textContent(findByAttr(tree, 'data-liangbiao-compact', 'next-incense'))).toBe('50K')
+    expect(findByAttr(tree, 'data-liangbiao-personal', 'incense')[0]
+      && findByAttr(tree, 'data-liangbiao-compact', 'incense')[0]).toBeDefined()
+    const incenseValue = findByAttr(tree, 'data-liangbiao-personal', 'incense')[0]
+    expect(incenseValue && textContent([incenseValue])).toContain('1.2K')
+    expect(incenseValue && textContent([incenseValue])).not.toContain('1,234')
+
+    const tinyNext = createMockLiangbiaoStore({ effectiveTokensToday: 49_991, usedIncenseToday: 0 })
+    expect(tinyNext.getSnapshot().personal.tokensToNextIncense).toBe(9)
+    expect(textContent(findByAttr(renderPanel(tinyNext.getSnapshot()), 'data-liangbiao-compact', 'next-incense'))).toBe('9')
   })
 
   it('pops the 梁位 value when it moves, and never under reduced motion', () => {

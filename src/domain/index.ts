@@ -65,6 +65,7 @@ export {
 export {
   LIANG_POSITION_DECIMALS,
   WAITING_PERCENT_TEXT,
+  formatCompactCount,
   formatLiangPosition,
   formatRatioPercents,
   liangQiIntensity,
