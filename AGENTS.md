@@ -65,7 +65,7 @@ DeepSeek Harness 是夯还是拉
 
 ```text
 我的香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 当量
-                       梁位 83.021952%
+                  梁位 83.021952% → 梁圣
 ```
 
 Rules:
@@ -97,7 +97,8 @@ Rules:
   typical 下一炷 band as a stuck `33K`. Hover title and the screen-reader
   summary keep the exact integer.
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
-  6 decimals (`LIANG_POSITION_DECIMALS`)
+  6 decimals (`LIANG_POSITION_DECIMALS`) — then a causal arrow to the 称呼
+  (`梁位 83.021952% → 梁圣`). The 称呼 is not painted on the portrait.
 - `down_ratio` gets **no** second big number: it is `1 − 梁位` and appears only in
   the tooltip and the screen-reader summary
 - the printed 梁位 must be TRUNCATED, never rounded, so it can never read as

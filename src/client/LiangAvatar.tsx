@@ -61,7 +61,7 @@ const AVATAR_MOTION_CSS = `
 }
 `
 
-const LABEL_COLOR: Record<LiangziState, string> = {
+export const LIANGZI_LABEL_COLOR: Record<LiangziState, string> = {
   waiting: '#8a93a2',
   liang_gong: '#5f7d95',
   liang_zong: '#2d3442',
@@ -86,13 +86,11 @@ export function LiangAvatar({
   const floating = floatMs !== null
 
   const wrapStyle: CSSProperties = {
-    position: 'relative',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     width: size,
-    height: hideLabel ? undefined : size,
-    gap: '2px',
+    gap: hideLabel ? 0 : '2px',
     overflow: 'visible',
     background: 'transparent',
     animation: pulse && !reducedMotion ? 'liangbiao-avatar-pulse 0.9s ease-out 1' : undefined,
@@ -147,18 +145,11 @@ export function LiangAvatar({
         <span
           title={`${LIANGZI_STATE_LABELS[state]}：${rangeText}`}
           style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: '8px',
             fontFamily: font.family,
             fontSize: size < 80 ? '11px' : '13px',
-            fontWeight: 700,
-            color: waiting ? color.textTertiary : LABEL_COLOR[state],
+            fontWeight: 600,
+            color: waiting ? color.textTertiary : LIANGZI_LABEL_COLOR[state],
             letterSpacing: '0.5px',
-            textAlign: 'center',
-            textShadow: '0 1px 2px rgba(255,255,255,0.92), 0 0 8px rgba(255,255,255,0.75)',
-            pointerEvents: 'none',
           }}
         >
           {LIANGZI_STATE_LABELS[state]}

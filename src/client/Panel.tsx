@@ -524,8 +524,6 @@ export function Panel(props: PanelProps): ReactElement {
               hideLabel
               liangQiFill={personal.liangQiFill}
             />
-              liangQiFill={personal.liangQiFill}
-            />
           </LiangQiRing>
         </div>
         <div style={{ ...flankStyle, left: '0px' }} data-liangbiao-personal="incense">
