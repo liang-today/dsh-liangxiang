@@ -37,7 +37,10 @@ function usage(uncachedInput: number, cacheRead: number, cacheWrite: number, out
   }
 }
 
-async function startStack(env: Record<string, string | undefined> = {}): Promise<Stack> {
+async function startStack(
+  env: Record<string, string | undefined> = {},
+  hostOptions: { claimDebounceMs?: number } = {},
+): Promise<Stack> {
   const config = resolveBackendConfig(
     {
       LIANGBIAO_BACKEND_DB: ':memory:',
@@ -66,7 +69,7 @@ async function startStack(env: Record<string, string | undefined> = {}): Promise
     timezone: config.timezone,
     clock,
     warn: () => undefined,
-    claimDebounceMs: 0,
+    claimDebounceMs: hostOptions.claimDebounceMs ?? 0,
   })
   host.setAccountingAvailable(true)
   host.attachIdentity(INSTALLATION)
@@ -93,6 +96,10 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 2_00
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
   throw new Error(`timed out waiting for ${label}`)
+}
+
+function claimedOnBackend(s: Stack, tokens: number): boolean {
+  return s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens === tokens
 }
 
 function frame(s: Stack) {
@@ -123,12 +130,25 @@ describe('online bootstrap', () => {
     expect(view.personal.remainingIncense).toBe(0)
   })
 
+  it('paints local incense immediately, without waiting for the remote claim', async () => {
+    const s = await startStack({}, { claimDebounceMs: 60_000 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(10_000, 20_000, 5_000, 15_000), { kind: 'live', firstLiveSeq: 0 })
+    const wire = frame(s)
+    expect(wire.personal.effectiveTokensToday).toBe(50_000)
+    expect(wire.accounting.inputTokensToday).toBe(35_000)
+    const view = wireToViewState(wire, 'live')
+    expect(view.personal.earnedIncenseToday).toBe(1)
+    expect(view.personal.remainingIncense).toBe(1)
+    expect(view.personal.tokensToNextIncense).toBe(50_000)
+  })
+
   it('turns observed DSH usage into an authoritative claim (input+output, all buckets)', async () => {
     const s = await startStack()
     // 10k uncached + 20k cacheRead + 5k cacheWrite = 35k input; +15k output = 50k.
     s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     s.host.observeUsage(SESSION, usage(10_000, 20_000, 5_000, 15_000), { kind: 'live', firstLiveSeq: 0 })
-    await waitFor(() => frame(s).personal.effectiveTokensToday === 50_000, 'the claim to be recorded')
+    await waitFor(() => claimedOnBackend(s, 50_000), 'the claim to be recorded')
 
     const wire = frame(s)
     expect(wire.accounting.inputTokensToday).toBe(35_000)
@@ -148,7 +168,7 @@ describe('online voting', () => {
       firstLiveSeq: 0,
     })
     await waitFor(
-      () => frame(s).personal.effectiveTokensToday === count * 50_000 + extraTokens,
+      () => claimedOnBackend(s, count * 50_000 + extraTokens),
       'the claim to be recorded',
     )
     return s
@@ -237,7 +257,7 @@ describe('online rollover', () => {
     const s = await startStack()
     s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     s.host.observeUsage(SESSION, usage(100_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    await waitFor(() => frame(s).personal.effectiveTokensToday === 100_000, 'the claim to be recorded')
+    await waitFor(() => claimedOnBackend(s, 100_000), 'the claim to be recorded')
     const yesterday = frame(s)
     await s.host.vote({ caseId: yesterday.activeCase.id, voteType: 'up', requestId: 'req-e2e-day1-01' })
 
