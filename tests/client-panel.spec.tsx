@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { LiangAvatar } from '../src/client/LiangAvatar.tsx'
+import { RING_SIZE } from '../src/client/LiangQiRing.tsx'
 import { Panel } from '../src/client/Panel.tsx'
 import { createMockLiangbiaoStore } from '../src/client/store.ts'
 import type { LiangbiaoViewState } from '../src/client/store.ts'
@@ -14,6 +15,8 @@ import {
   LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
   PANEL_TITLE,
+  VOTE_DOWN_LABEL,
+  VOTE_UP_LABEL,
   VOTER_STAT_ICON,
 } from '../src/shared/index.ts'
 import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedNode } from './helpers/render.ts'
@@ -119,7 +122,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(before && textContent([before])).not.toBe(after && textContent([after]))
   })
 
-  it('keeps the layout fixed as the numbers change (the 梁子 must not shift)', () => {
+  it('keeps the 梁子 on the panel centerline as the numbers change', () => {
     const small = createMockLiangbiaoStore({ effectiveTokensToday: 397_000, usedIncenseToday: 2 })
     const large = createMockLiangbiaoStore({
       upVotes: 1_000_000,
@@ -130,17 +133,25 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     })
     for (const state of [small.getSnapshot(), large.getSnapshot()]) {
       const tree = renderPanel(state)
+      const core = styleOf(findByAttr(tree, 'data-liangbiao-region', 'core')[0])
+      const anchor = styleOf(findByAttr(tree, 'data-liangbiao-core-anchor')[0])
       const incense = styleOf(findByAttr(tree, 'data-liangbiao-personal', 'incense')[0])
       const next = styleOf(findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0])
       const pill = styleOf(findByAttr(tree, 'data-liangbiao-liang-position')[0])
       const social = findByAttr(tree, 'data-liangbiao-stat')
-      // Fixed boxes, not min-widths: a wider value must not re-centre the row.
-      expect(incense.width).toBe('74px')
-      expect(next.width).toBe('74px')
+      // In-flow column is the ring only; flanks overlay and cannot shove it.
+      expect(core.position).toBe('relative')
+      expect(anchor.justifyContent).toBe('center')
+      expect(incense.position).toBe('absolute')
+      expect(next.position).toBe('absolute')
+      expect(incense.left).toBe('0px')
+      expect(next.right).toBe('0px')
+      expect(incense.width).toBe(next.width)
+      expect(incense.height).toBe(`${RING_SIZE}px`)
+      expect(next.height).toBe(`${RING_SIZE}px`)
       expect(pill.width).toBe('176px')
       expect(social.map((node) => styleOf(node).width)).toEqual(['132px', '132px'])
     }
-    // Digits are tabular, so even same-length values cannot jitter.
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
     expect(value.fontVariantNumeric).toBe('tabular-nums')
   })
@@ -194,12 +205,20 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
 })
 
 describe('region 3: exactly two vote buttons', () => {
-  it('renders 夯！ and 拉！ and nothing else', () => {
+  it('renders 夯：升梁！ and 拉：降梁！ aligned, and nothing else', () => {
     const tree = renderPanel(demoState())
+    const row = findByAttr(tree, 'data-liangbiao-region', 'vote')[0]
     const votes = findByAttr(tree, 'data-liangbiao-vote')
     expect(votes.map((node) => node.props['data-liangbiao-vote'])).toEqual(['up', 'down'])
-    expect(votes[0] && textContent([votes[0]])).toBe('夯！')
-    expect(votes[1] && textContent([votes[1]])).toBe('拉！')
+    expect(votes[0] && textContent([votes[0]])).toBe(VOTE_UP_LABEL)
+    expect(votes[1] && textContent([votes[1]])).toBe(VOTE_DOWN_LABEL)
+    expect(VOTE_UP_LABEL).toBe('夯：升梁！')
+    expect(VOTE_DOWN_LABEL).toBe('拉：降梁！')
+    expect(styleOf(row).gridTemplateColumns).toBe('1fr 1fr')
+    expect(styleOf(votes[0]).width).toBe('100%')
+    expect(styleOf(votes[1]).width).toBe('100%')
+    expect(styleOf(votes[0]).textAlign).toBe('center')
+    expect(styleOf(votes[1]).textAlign).toBe('center')
   })
 
   it('disables both with an accessible reason when remaining incense is 0', () => {

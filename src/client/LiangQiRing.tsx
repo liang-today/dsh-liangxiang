@@ -27,7 +27,8 @@ export interface LiangQiRingProps {
   children: ReactNode
 }
 
-const RING_SIZE = 168
+/** Geometry of the central ring. The panel overlays personal flanks around this box. */
+export const RING_SIZE = 168
 const RING_RADIUS = 76
 const RING_STROKE = 7
 

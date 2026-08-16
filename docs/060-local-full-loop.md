@@ -8,7 +8,7 @@
 1. 真实 DSH 用量 → tokenUsage 投影 → 水位差分 → daily_usage（050/051）
 2. fake 服务派生 earned/remainder/fill/toNext;used/remaining 由其投票账目维护
 3. Client（每 tab 一条 SSE）渲染四区;梁气环 = 真实 token 进度 + 剩余香火
-4. 用户点 夯！/拉！ → POST /liangbiao/api/vote {caseId, voteType, requestId}
+4. 用户点 夯：升梁！/拉：降梁！ → POST /liangbiao/api/vote {caseId, voteType, requestId}
 5. accepted（同步事务）:
    used +1;remaining -1;up/down +1;total +1;首票 unique_voters +1
    → 响应立即携带新 personal（梁气变弱、ring fill 不动）+ 旧 published 快照

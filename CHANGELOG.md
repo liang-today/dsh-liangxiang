@@ -2,6 +2,13 @@
 
 ## 0.1.0 — 未发布
 
+### 居中修复 + 投票文案还原 + git push 站立指令
+
+- **梁子必须正中**：Region 2 不再用 flex `space-between`。环、头像、环上香火点是唯一占文档流宽度的列，水平居中；「我的香火 / 下一炷」绝对定位 overlay，文案长短不能把梁子挤偏。
+- **投票按钮**：`夯：升梁！` / `拉：降梁！`，`1fr / 1fr` 等宽标齐。投票类型仍只有 `up`/`down`。
+- **Git**：`AGENTS.md` §15 覆盖 Prompt 4/11「禁止 git push」——每次改完提交并立即 push。仍禁止 npm publish / GitHub Release / 公网部署 / 改真实 DSH profile。
+- 禁令差异表：`docs/110-prohibition-refresh.md`（等你一键决定是否回写 MASTER / PRODUCT_FREEZE）。
+
 ### v0.1 Release Candidate（本地加固与终审）
 
 - **布局稳定性**：两翼与统计项改为固定宽度 + `tabular-nums`，数值变化（`5 炷`→`12 炷`、`3,000`→`46,935`）不再把中央梁子挤偏;梁位药丸固定宽度。

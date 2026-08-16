@@ -19,6 +19,12 @@ compat/dsh/  唯一允许直接触碰 DSH API 的层，每个适配函数注明�
 
 `../deepseek-harness` 是**只读参考**，不改。用 DSH API 前先读钉住的源码，不要凭记忆猜。
 
+## 提交后立刻 push
+
+每次完成的改动：`git commit` 之后立刻 `git push` 到已跟踪的 remote。不要等用户再吩咐一声。这覆盖了原始 Prompt 4/11 的「禁止 git push」。
+
+仍然不要自动做：`npm publish`、GitHub Release、公网/production 部署、改用户真实 DSH profile、改 `../deepseek-harness`。
+
 ## 提交前
 
 ```bash
