@@ -305,6 +305,22 @@ describe('online voting', () => {
     expect(accepted).toHaveLength(1)
     expect(frame(s).personal.usedIncenseToday).toBe(1)
   })
+
+  it('flushes a pending debounced claim before the vote is evaluated', async () => {
+    const s = await startStack({}, { claimDebounceMs: 60_000 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    // The panel already paints 1 炷 from local observation, but the claim is
+    // debounced for a minute and has NOT reached the backend yet.
+    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(1)
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(0)
+
+    const caseId = frame(s).activeCase.id
+    const outcome = await s.host.vote({ caseId, voteType: 'up', requestId: 'req-e2e-flush01' })
+    expect(outcome.result.status).toBe('accepted')
+    // The vote flushed the claim first, so the backend recorded it.
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(50_000)
+  })
 })
 
 describe('online rollover', () => {
