@@ -4,7 +4,7 @@
 
 产品语义冻结于 [`AGENTS.md`](AGENTS.md) 与 [`docs/PRODUCT_FREEZE_V0.1.md`](docs/PRODUCT_FREEZE_V0.1.md);历史勘察文档中的旧模型(梁签、cache-read 10% 权重等)已废弃,见 [`docs/SEMANTIC_CORRECTION_R2.md`](docs/SEMANTIC_CORRECTION_R2.md)。
 
-当前状态:**正确 UI + 纯领域模型(Mock 数据)**。面板四区(今日梁案 / 夯比例·梁子·梁气环·拉比例 / 夯拉按钮 / 香火·香客)已实现并可在 DSH WebUI 实际挂载;全局/个人状态由 `src/domain` 纯函数驱动,数据仍为 mock 种子。真实 Token 记账与本地投票闭环在下一里程碑。
+当前状态:**真实 Token + 本地完整闭环(LOCAL_FAKE_DEV)**。真实 DSH provider-reported 用量(`tokenUsage` 投影,水位差分防重)驱动个人梁气;`FakeAuthoritativeLiangService` 在 Host 内提供本地投票闭环(幂等、并发防双花、香客计数、快照 cadence);Client 经 `/liangbiao/api`(state/SSE/vote)消费。**诚实声明**:Decision Gate A 判定为 A3(`docs/043`)——当前 DSH 不提供服务器可验证的身份与 Token 权威,生产"可信全网投票"标记 BLOCKED;本仓一切投票均为本地演示/软信任,UI 以「本地演示」标签如实标注。
 
 设计文档见 [`docs/`](docs/):`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵(含实际使用的接口)。
 

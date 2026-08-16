@@ -2,33 +2,59 @@ import { describe, expect, it, vi } from 'vitest'
 import type { DshHostContext } from '../src/compat/dsh/host-context.ts'
 import { apply, name } from '../src/host/index.ts'
 
-/** Minimal ctx.effect fake: runs the callback eagerly, collects disposers. */
-function fakeHostContext(): { ctx: DshHostContext; disposers: Array<() => void> } {
+/**
+ * Minimal ctx fake: `effect` runs eagerly and collects disposers; `inject`
+ * records the requested service keys and invokes the callback with a scoped
+ * fake that carries NO services, so every capability degrades exactly as the
+ * missing-service path prescribes (UI channel absent, accounting
+ * unavailable, memory-only persistence).
+ */
+function fakeHostContext(): {
+  ctx: DshHostContext
+  disposers: Array<() => void>
+  injectedDeps: string[][]
+} {
   const disposers: Array<() => void> = []
+  const injectedDeps: string[][] = []
   const fake = {
     effect(callback: () => () => void): void {
       disposers.push(callback())
     },
+    inject(deps: string[], callback: (scoped: unknown) => void): void {
+      injectedDeps.push([...deps])
+      callback(fake)
+    },
   }
-  // Unsafe cast, documented: the fake covers exactly the one Context member
-  // (`effect`) the skeleton host half touches; anything else throwing is the
+  // Unsafe cast, documented: the fake covers exactly the two Context members
+  // (`effect`, `inject`) the host half touches; anything else throwing is the
   // desired failure mode.
-  return { ctx: fake as unknown as DshHostContext, disposers }
+  return { ctx: fake as unknown as DshHostContext, disposers, injectedDeps }
 }
 
-describe('host half skeleton', () => {
+describe('host half wiring', () => {
   it('exports the plugin display name', () => {
     expect(name).toBe('liangbiao')
   })
 
-  it('installs exactly one lifecycle effect whose disposer runs cleanly', () => {
+  it('installs lifecycle + timers as effects and requests the DSH seams via inject', () => {
+    vi.useFakeTimers()
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-    const { ctx, disposers } = fakeHostContext()
+    const { ctx, disposers, injectedDeps } = fakeHostContext()
     apply(ctx)
-    expect(disposers).toHaveLength(1)
+
     expect(log).toHaveBeenCalledWith('[dsh-liangbiao] host half active')
-    disposers[0]?.()
+    // lifecycle marker + readiness fallback + snapshot cadence.
+    expect(disposers.length).toBe(3)
+    expect(injectedDeps).toEqual([
+      ['webServer'],
+      ['storageDomain'],
+      ['sessionProjections', 'sessions'],
+    ])
+
+    for (const dispose of disposers) dispose()
     expect(log).toHaveBeenCalledWith('[dsh-liangbiao] host half disposed')
+    expect(vi.getTimerCount()).toBe(0)
     log.mockRestore()
+    vi.useRealTimers()
   })
 })

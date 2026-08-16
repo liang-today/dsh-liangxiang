@@ -63,8 +63,12 @@
 | B1 `dsh plugin add` + `dsh.profile.bundles` 对账 | **使用中** | `scripts/dev-install.sh`、`scripts/smoke-clean-profile.sh` | 本地检出以 pnpm link 安装(dev),tarball 以 file: 安装(smoke);`--dump-config` 均出现 `# == dsh-liangbiao` 层 |
 | B2 `prepare` 自包含构建 | **已就位,git 安装未实测** | `package.json` `prepare: tsdown` | 本地 `pnpm install` 触发验证过;github: 安装 + `allowBuilds` 流程未跑 |
 | B3 HMR stat-poll | **未验证** | — | 仅开发体验,后续里程碑顺带验证 |
-| cordis `Context.effect` / 插件对象形态(`name`/`apply`/`inject`) | **使用中** | `src/host/index.ts`、`src/client/index.ts`;类型别名在 `src/compat/dsh/{host,client}-context.ts` | 公开(develop/basic 教程与全部第一方先例);Host 半 v0.1 骨架仅一个生命周期标记 effect |
-| H1–H13(用量/存储/路由等) | **未使用** | — | 属后续里程碑;上表"计划"列保持有效 |
+| cordis `Context.effect` / `Context.inject` / 插件对象形态 | **使用中** | `src/host/index.ts`、`src/client/index.ts`;类型别名在 `src/compat/dsh/{host,client}-context.ts` | 公开;Host 半以嵌套 `ctx.inject` 声明可选服务依赖(cordis 4 顶层 `inject` 只表达必需,`registry.ts:19,104-106`) |
+| H6 `ctx.sessionProjections.onChanged/snapshot`(`tokenUsage`) | **使用中**(真实 Token 里程碑) | `src/compat/dsh/usage-observer.ts` + `host-services.ts` 窄结构类型 | 变更流回调形参含 `Session.firstLiveSeq`(`core/session/src/index.ts:450-472,539`),用于新会话/借入历史判别(docs/041) |
+| H8 `ctx.sessions.list()` | **使用中** | 同上(启动补扫基线化) | — |
+| H10 `defineDomain`/`ctx.storageDomain.open` | **使用中** | `src/compat/dsh/storage.ts`(domain `liangbiao` v1;`valueSchema` 为自写窄校验对象,运行时仅调 `.parse`) | 开失败/服务缺席 → 内存态降级(响亮告警) |
+| H12 `ctx.webServer.register` | **使用中** | `src/host/routes.ts`(单条 prefix 路由 `/liangbiao/api`:state/SSE/vote) | SSE 连接与心跳由插件 disposer 显式清理 |
+| H1–H5、H7、H9、H11、H13(raw 事件/持久化历史/settings 等) | **未使用** | — | 上表"计划"列保持有效;V0.1 经 H6 投影通道即满足口径(无目标模型过滤) |
 
 版本事实(骨架实际链接的 DSH 面):
 
@@ -75,6 +79,6 @@
 ## 汇总
 
 - 运行时依赖共 **17 个 Host 行 + 7 个 Client 行**,其中实际依赖:公开 15 项、半公开 2 项(C6 bundle 包装格式、B3 仅开发);**私有 0 项**。
-- 骨架里程碑实际使用:C1、C2、C6、C7、B1、B2(部分)+ cordis 插件核心形态;H 行全部未启用(见上节)。
+- 当前实际使用:C1、C2、C6、C7、B1、B2(部分)、H6、H8、H10、H12 + cordis 插件核心形态(见上节);Host 侧 DSH 类型一律走 `compat/dsh/host-services.ts` 的窄结构类型(npm 上 host 库版本线 0.0.1-rc.x 与本地基线独立演进,不作为类型依赖)。
 - 明确排除:H14(commands 作投票通道)、H15(ApiProxy/HostFrame)、H16(树外 `@Remote`)、C4。
 - 最大风险集中在 C6 与"rc 预发布无兼容承诺"总项;缓解与观测点见 [`docs/004`](004-open-risks.md)。

@@ -26,6 +26,27 @@ export interface DshTokenUsageBuckets {
   cacheWriteTokens: number
 }
 
+/** The DSH projection key this plugin consumes (projection.ts:71). */
+export const DSH_TOKEN_USAGE_KEY = 'tokenUsage'
+
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+/**
+ * Boundary guard for projection payloads: the four cumulative buckets, all
+ * non-negative safe integers. Anything else is treated as an incompatible
+ * DSH change and skipped loudly by the caller.
+ */
+export function isDshTokenUsageBuckets(value: unknown): value is DshTokenUsageBuckets {
+  if (typeof value !== 'object' || value === null) return false
+  const record = value as Record<string, unknown>
+  return isCount(record.uncachedInputTokens)
+    && isCount(record.outputTokens)
+    && isCount(record.cacheReadTokens)
+    && isCount(record.cacheWriteTokens)
+}
+
 /** Normalize DSH buckets into the domain's `{ input, output }` vocabulary. */
 export function normalizeDshTokenUsage(buckets: DshTokenUsageBuckets): TokenUsageInput {
   return {

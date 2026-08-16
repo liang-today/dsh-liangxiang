@@ -21,10 +21,10 @@ describe('default demo seed', () => {
 })
 
 describe('vote flow', () => {
-  it('accepted vote: remaining 5->4, fill unchanged, global up +1, new sequence', () => {
+  it('accepted vote: remaining 5->4, fill unchanged, global up +1, new sequence', async () => {
     const store = createMockLiangbiaoStore()
     const before = store.getSnapshot()
-    const result = store.vote('up')
+    const result = await store.vote('up')
     expect(result.status).toBe('accepted')
     const after = store.getSnapshot()
     expect(after.personal.remainingIncense).toBe(4)
@@ -37,14 +37,14 @@ describe('vote flow', () => {
     expect(after.snapshot.upRatio).toBe(after.snapshot.upVotes / after.snapshot.totalIncense)
   })
 
-  it('five sticks allow five votes (repeated or mixed); the sixth is rejected', () => {
+  it('five sticks allow five votes (repeated or mixed); the sixth is rejected', async () => {
     const store = createMockLiangbiaoStore()
     const directions = ['up', 'down', 'up', 'up', 'down'] as const
     for (const direction of directions) {
-      expect(store.vote(direction).status).toBe('accepted')
+      expect((await store.vote(direction)).status).toBe('accepted')
     }
     const before = store.getSnapshot()
-    const sixth = store.vote('up')
+    const sixth = await store.vote('up')
     expect(sixth.status).toBe('rejected')
     if (sixth.status === 'rejected') expect(sixth.reason).toBe('insufficient_incense')
     const after = store.getSnapshot()
@@ -53,16 +53,16 @@ describe('vote flow', () => {
     expect(after.personal.remainingIncense).toBe(0)
   })
 
-  it('counts a unique voter only on the first accepted vote', () => {
+  it('counts a unique voter only on the first accepted vote', async () => {
     const store = createMockLiangbiaoStore({ usedIncenseToday: 0, effectiveTokensToday: 250_000 })
     const before = store.getSnapshot().snapshot.uniqueVoters
-    store.vote('up')
+    await store.vote('up')
     expect(store.getSnapshot().snapshot.uniqueVoters).toBe(before + 1)
-    store.vote('down')
+    await store.vote('down')
     expect(store.getSnapshot().snapshot.uniqueVoters).toBe(before + 1)
   })
 
-  it('a vote can cross a global threshold: 79.x% -> 80% flips 梁神 -> 梁圣', () => {
+  it('a vote can cross a global threshold: 79.x% -> 80% flips 梁神 -> 梁圣', async () => {
     const store = createMockLiangbiaoStore({
       upVotes: 79,
       downVotes: 20,
@@ -71,7 +71,7 @@ describe('vote flow', () => {
       usedIncenseToday: 0,
     })
     expect(store.getSnapshot().snapshot.liangziState).toBe('liang_shen')
-    store.vote('up')
+    await store.vote('up')
     const after = store.getSnapshot()
     expect(after.snapshot.upRatio).toBe(0.8)
     expect(after.snapshot.liangziState).toBe('liang_sheng')
@@ -114,16 +114,16 @@ describe('token growth (凝香)', () => {
 })
 
 describe('store subscription', () => {
-  it('notifies subscribers on every accepted transition and supports unsubscribe', () => {
+  it('notifies subscribers on every accepted transition and supports unsubscribe', async () => {
     const store = createMockLiangbiaoStore()
     let notified = 0
     const unsubscribe = store.subscribe(() => {
       notified += 1
     })
-    store.vote('up')
+    await store.vote('up')
     expect(notified).toBe(1)
     unsubscribe()
-    store.vote('down')
+    await store.vote('down')
     expect(notified).toBe(1)
   })
 })
