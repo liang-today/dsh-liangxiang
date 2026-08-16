@@ -14,7 +14,12 @@
 - Product name: **梁标**
 - 梁文锋 is referred to as **梁子** in product UI/copy.
 - DSH WebUI entry Hover / Focus text: **今日梁位**
+- The docked entry's icon IS the current central 梁子 state (one of the five, or
+  the 待开梁 placeholder) — never a letter or an abstract logo.
+- The entry is freely placeable: it can be dragged anywhere in the frame and the
+  position persists per browser (a cosmetic preference, never an authority).
 - Panel title: **今日梁案**
+- 梁位 = the single public number = global `up_ratio`, printed with decimals.
 - There is normally one Active daily case per business date.
 - Voting is strictly binary:
   - `up` -> UI: **夯**
@@ -58,17 +63,29 @@ DeepSeek Harness 是夯还是拉
 ### Region 2 — Central core
 
 ```text
-夯 83%     [梁子 + 个人梁气环]     拉 17%
+香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 Token
+                   梁位 83.0219%
 ```
 
 Rules:
 
-- left: global `up_ratio`
+- left: personal `remaining_incense` (`N 炷`)
 - center: concrete Liangzi avatar/artwork
-- right: global `down_ratio`
+- right: personal `tokens_to_next_incense`
+- under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
+  4 decimals (`LIANG_POSITION_DECIMALS`)
+- `down_ratio` gets **no** second big number: it is `1 − 梁位` and appears only in
+  the tooltip and the screen-reader summary
+- the printed 梁位 must be TRUNCATED, never rounded, so it can never read as
+  having crossed a threshold the rendered Liangzi state has not crossed
 - central Liangzi must not be replaced by a Gauge, Donut, Meter, or plain percentage card
 - Liangzi state and LiangQi are visually overlaid but semantically independent
-- left/right ratios and Liangzi state must come from the **same Global Snapshot/version**
+- 梁位 and Liangzi state must come from the **same Global Snapshot/version**
+
+Why one value with decimals: two complementary integer percentages made an
+accepted vote look like it did nothing (`90%` before, `90%` after). One value
+with decimals moves on every accepted vote, which is the point of spending
+incense.
 
 ### Region 3 — Voting
 
@@ -216,14 +233,16 @@ This means a full incense stick was just earned and accumulation for the next on
 
 Do not add a separate personal-growth row.
 
-Compact LiangQi content should be integrated into the ring/center, e.g.:
+The two LiangQi numbers flank the central 梁子 (Region 2): `remaining_incense`
+on the left, `tokens_to_next_incense` on the right. The ring itself carries fill
+and intensity; its footer slot is reserved for the global 梁位 value.
 
 ```text
-5 炷
-再 3,000 Token
+香火 5 炷   [环 + 梁子]   下一炷 3,000 Token
 ```
 
-or an equivalent compact visual treatment.
+Any equivalent compact treatment is fine as long as the numbers stay adjacent to
+the ring and never become a separate full-width growth row.
 
 ### Effects of voting vs Token accumulation
 
@@ -642,10 +661,15 @@ Global ratios and Liangzi state should be snapshot-driven.
 Rules:
 
 - a vote can update the user's authoritative remaining incense immediately
-- global public presentation may refresh at a lower cadence
-- no requirement for per-vote WebSocket broadcast in V0.1
+- the published global snapshot refreshes on a cadence, and that cadence is
+  **near real time by default (1s)**: a voter must see their own vote move 梁位
+  within about a second, otherwise the loop stops feeling like voting
+- a deployment may raise the cadence for load reasons, but a cadence slow enough
+  that a vote produces no visible feedback is a product bug, not a tuning choice
+- no requirement for per-vote WebSocket broadcast in V0.1 (poll + SSE is enough)
 - when rendering global state, `up_ratio`, `down_ratio`, and `liangzi_state` must belong to the same snapshot/version
 - never compute a new Liangzi state from newer raw counts while showing stale percentages, or vice versa
+- published snapshot history is bounded; only the newest row is ever served
 
 This prevents impossible combinations such as showing 79% while rendering 梁圣.
 

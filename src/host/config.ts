@@ -8,8 +8,12 @@ import { DEFAULT_BUSINESS_TIMEZONE } from '../shared/business-date.ts'
 import { normalizeBaseUrl } from './backend-client.ts'
 import type { LiangServiceConfig } from './fake-service.ts'
 
-export const DEFAULT_SNAPSHOT_REFRESH_SECONDS = 300
-const MIN_SNAPSHOT_REFRESH_SECONDS = 5
+/**
+ * Near-real-time cadence: the public 梁位 must visibly move right after a vote
+ * (see backend/config.ts for the same reasoning on the publishing side).
+ */
+export const DEFAULT_SNAPSHOT_REFRESH_SECONDS = 1
+const MIN_SNAPSHOT_REFRESH_SECONDS = 1
 const MAX_SNAPSHOT_REFRESH_SECONDS = 3600
 
 /** Host-side resolution of which authority the plugin should serve. */

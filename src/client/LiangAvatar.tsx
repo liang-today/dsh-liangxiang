@@ -22,6 +22,10 @@ export interface LiangAvatarProps {
   /** Play one short state-transition pulse (container decides when). */
   pulse: boolean
   reducedMotion: boolean
+  /** Rendered SVG size in px (default 92); the artwork scales with the viewBox. */
+  size?: number
+  /** Hide the Chinese state label (the docked badge has no room for it). */
+  hideLabel?: boolean
 }
 
 interface AvatarPalette {
@@ -55,7 +59,13 @@ function rays(count: number, length: number, stroke: string): ReactElement[] {
   return items
 }
 
-export function LiangAvatar({ state, pulse, reducedMotion }: LiangAvatarProps): ReactElement {
+export function LiangAvatar({
+  state,
+  pulse,
+  reducedMotion,
+  size = 92,
+  hideLabel = false,
+}: LiangAvatarProps): ReactElement {
   const palette = PALETTES[state]
   const waiting = state === 'waiting'
   const rangeText = liangziRatioRangeText(state)
@@ -73,8 +83,8 @@ export function LiangAvatar({ state, pulse, reducedMotion }: LiangAvatarProps): 
   return (
     <div style={wrapStyle} data-liangbiao-avatar={state}>
       <svg
-        width={92}
-        height={92}
+        width={size}
+        height={size}
         viewBox="0 0 96 96"
         role="img"
         aria-label={`梁子当前状态：${stateText}`}
@@ -136,18 +146,20 @@ export function LiangAvatar({ state, pulse, reducedMotion }: LiangAvatarProps): 
           <path d="M 44 58 L 48 88 L 52 58 Q 48 61 44 58 Z" fill={palette.accent} opacity={0.85} />
         )}
       </svg>
-      <span
-        title={`${LIANGZI_STATE_LABELS[state]}：${rangeText}`}
-        style={{
-          fontFamily: font.family,
-          fontSize: '13px',
-          fontWeight: 600,
-          color: waiting ? color.textTertiary : palette.label,
-          letterSpacing: '0.5px',
-        }}
-      >
-        {LIANGZI_STATE_LABELS[state]}
-      </span>
+      {!hideLabel && (
+        <span
+          title={`${LIANGZI_STATE_LABELS[state]}：${rangeText}`}
+          style={{
+            fontFamily: font.family,
+            fontSize: '13px',
+            fontWeight: 600,
+            color: waiting ? color.textTertiary : palette.label,
+            letterSpacing: '0.5px',
+          }}
+        >
+          {LIANGZI_STATE_LABELS[state]}
+        </span>
+      )}
     </div>
   )
 }

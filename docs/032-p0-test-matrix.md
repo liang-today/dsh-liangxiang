@@ -59,9 +59,17 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 四区顺序 case/core/vote/social、仅两个投票按钮（夯！/拉！）、dialog 标题今日梁案、83%/17% 与梁圣同快照、`5 炷 · 再 3,000 Token` 整合在环组件内、零票 `--`+待开梁、remaining 0 双按钮 disabled + 可访问 reason、六态头像两两视觉不同、香火 12,846 / 香客 2,841（`🪔`/`🙏` 图标 + 15px 文案）、case 区居中且无可见「本地演示」徽标（软信任标注在 `data-liangbiao-authority` + SR 摘要）。→ `client-panel.spec.tsx`、`badge.spec.tsx`
 
-## 百分比显示不越阈值
+## 梁位显示：单值、带小数、不越阈值
 
-449/52 = 89.6% ⇒ 显示 `89%` / `11%` 且头像仍梁圣（四舍五入会印出看似跨阈值的 `90%`）；1000 票全枚举证明显示值恒落在所在状态区间内；两侧恒和 100%；零票双 `--`；区间文案 `80% ≤ 夯率 < 90%` 由阈值策略推导。→ `domain-liangzi.spec.ts`、`client-panel.spec.tsx`
+449/52 = 89.6207% ⇒ 显示 `89.6207%` 且头像仍梁圣（四舍五入会印出看似跨阈值的 `90%`）；任意小数位均截断；1000 票全枚举证明显示值恒落在所在状态区间内；两侧（夯/拉）恒和 100%；零票 `--`；`10,665→10,666` 一票即改变打印值；区间文案 `80% ≤ 夯率 < 90%` 由阈值策略推导。→ `domain-liangzi.spec.ts`、`client-panel.spec.tsx`
+
+## Region 2 新布局与自由放置
+
+左翼 `5 炷`、右翼 `3,000 Token`、环底 `梁位 83.0219%`、旧的 `data-liangbiao-ratio` 上下比例块已不存在、一票后梁位打印值变化;徽章图标是六态头像（30px、无标签、`aria-hidden`）、`aria-label` 含状态名、cursor `grab`/`touch-action: none`；坐标夹回可视区、窗口缩小后仍在画内、`localStorage` 往返与损坏值回退、面板在左边缘翻转到右侧、贴近上下边缘改锚点。→ `client-panel.spec.tsx`、`badge.spec.tsx`
+
+## 近实时快照
+
+默认 1s cadence：投票后推进 1s 即发布新 sequence（`total_incense` 立刻反映）；快照历史有界（`pruneSnapshots` 只留最新 N 条且不影响最新行）；个人余额被外部改动（另一标签/另一 Host）时，Host 在 5 个 tick 内经 `/v1/me/daily-state` 收敛。→ `backend-service.spec.ts`、`host-backend.spec.ts`
 
 ## Phase 3 服务层（在线 DEV_STAGING_ONLY）
 

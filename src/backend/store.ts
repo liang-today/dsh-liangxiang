@@ -112,6 +112,8 @@ export interface BackendStore {
   applyAcceptedVoteToStats: (caseId: string, voteType: VoteType, firstVoter: boolean, now: number) => void
   latestSnapshot: (caseId: string) => SnapshotRow | undefined
   insertSnapshot: (row: SnapshotRow) => void
+  /** Drop all but the newest `keep` snapshots of one case; returns rows deleted. */
+  pruneSnapshots: (caseId: string, keep: number) => number
   close: () => void
 }
 
@@ -215,6 +217,14 @@ export function openBackendStore(databasePath: string): BackendStore {
        (case_id, sequence, business_date, up_votes, down_votes, unique_voters, policy_version, captured_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
+  // Bounded history: only the newest row is ever served (see config
+  // SNAPSHOT_HISTORY_LIMIT); sequences stay monotonic, they just start later.
+  const pruneSnapshotsStmt = db.prepare(
+    `DELETE FROM public_liang_snapshot
+      WHERE case_id = ? AND sequence <= (
+        SELECT MAX(sequence) - ? FROM public_liang_snapshot WHERE case_id = ?
+      )`,
+  )
 
   return {
     transaction<T>(body: () => T): T {
@@ -295,6 +305,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.captured_at,
       )
     },
+    pruneSnapshots: (caseId, keep) => changed(pruneSnapshotsStmt.run(caseId, keep, caseId)),
     close: () => db.close(),
   }
 }

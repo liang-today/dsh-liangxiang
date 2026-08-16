@@ -203,6 +203,20 @@ describe('online voting', () => {
     expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(0)
   })
 
+  it('picks up an out-of-band balance change on the cadence', async () => {
+    const s = await stackWithIncense(1)
+    expect(frame(s).personal.effectiveTokensToday).toBe(50_000)
+    // Someone else raised the claim for this installation (another tab/host).
+    s.backend.applyTokenClaim(INSTALLATION, {
+      claimed_effective_tokens: 200_000,
+      claim_business_date: s.backend.businessDate(),
+    })
+    // The snapshot poll alone must not leave the panel on a stale balance.
+    for (let i = 0; i < 5; i += 1) s.host.tick()
+    await waitFor(() => frame(s).personal.effectiveTokensToday === 200_000, 'the balance to converge')
+    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(4)
+  })
+
   it('converges two independent host-side callers on one authoritative pool', async () => {
     const s = await stackWithIncense(1)
     const caseId = frame(s).activeCase.id

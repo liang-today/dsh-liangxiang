@@ -2,6 +2,13 @@
 
 ## 0.1.0 — 未发布
 
+### 交互改版：近实时梁位 + 单值小数 + 自由放置徽章
+
+- **近实时**：快照 cadence 默认 300s → **1s**（backend 与 host 下限同步到 1s），投票被接受后 Host 立即再拉一次快照，投票者约 1 秒内看到梁位变化；`public_liang_snapshot` 加入 200 条保留上限（同事务裁剪）。个人余额新增每 5 tick 的 `/v1/me/daily-state` 回读，带外改动（另一标签/另一 Host）也会收敛。
+- **单值梁位**：Region 2 改为「左=剩余香火 `N 炷`｜中=梁子+梁气环｜右=距下一炷 `X Token`」，梁子下方只留一个全局数字 `梁位 83.0219%`（4 位小数，仍是截断不四舍五入，所以不会越阈值）。`拉` 不再占第二个大数字，只在 tooltip 与屏幕阅读器摘要里出现。理由：两个互补整数百分比让「投一票 90% 还是 90%」，单值+小数每票都动。
+- **自由放置徽章**：入口图标改为**当前梁子五态头像**（不再是「梁」字），可指针拖拽到画面任意位置，坐标夹回可视区并存 `localStorage`（纯外观偏好）；拖拽超过 4px 时吞掉随后的一次 click，所以拖完不会误开合面板；面板按剩余空间自动翻转左右、贴边时改垂直锚点。
+- AGENTS.md 的 Region 2 / §4 / §12 与 docs/020、032、070 已按上述新契约更新;新增/改写 20 项测试（布局、单值小数、放置数学、近实时、保留上限、余额收敛），总计 251 项全绿。
+
 ### 测试环境修复 + 安全审计
 
 - **修复 dev profile 的工具调用崩溃**：`dsh plugin add @deepseek-ai/dsh-web-app` 把 in-box 闭包装进 `<profile>/node_modules`，遮蔽了 launcher 的 `profiles/node_modules`，导致 `@deepseek-ai/dsh-tools` 在一个进程里有两个模块实例——两个 `TOOL_RUNTIME_SCHEDULER` symbol，于是 `dsh-agent-loop` 每次工具调用都拿到 `undefined`（`Cannot read properties of undefined (reading 'prepare')`），并把会话留下无结果的 `tool_calls`（后续报 "must be followed by tool messages"）。`dev-install.sh` / `smoke-clean-profile.sh` 现在只保留 bundle 行、移除该依赖，并用新增的 `scripts/assert-profile-modules.mjs` 断言单实例。

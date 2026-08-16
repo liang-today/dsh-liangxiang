@@ -10,13 +10,16 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, ReactElement } from 'react'
-import { formatRatioPercents, type VoteType } from '../domain/index.ts'
+import { LIANG_POSITION_DECIMALS, formatRatioPercents, type VoteType } from '../domain/index.ts'
 import {
   ACCOUNTING_UNAVAILABLE_HINT,
   AUTHORITY_MODE_NOTES,
   INCENSE_STAT_ICON,
   INCENSE_STAT_LABEL,
   LIANGZI_STATE_LABELS,
+  LIANG_POSITION_LABEL,
+  MY_INCENSE_LABEL,
+  NEXT_INCENSE_LABEL,
   NO_INCENSE_REASON,
   OFFLINE_REASON,
   PANEL_TITLE,
@@ -28,6 +31,7 @@ import {
   VOTE_UP_NAME,
   liangziRatioRangeText,
 } from '../shared/index.ts'
+import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangQiRing } from './LiangQiRing.tsx'
 import type { LiangbiaoViewState } from './store.ts'
@@ -40,16 +44,15 @@ export interface PanelProps {
   justCondensed: boolean
   /** Transient feedback line under the buttons (e.g. 已上香), empty = none. */
   voteFeedback: string
+  /** Where to draw relative to the (freely placeable) badge. */
+  placement?: PanelPlacement
   onVote: (voteType: VoteType) => void
   onClose: () => void
 }
 
 const panelStyle: CSSProperties = {
   position: 'absolute',
-  right: 'calc(100% + 10px)',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  width: '336px',
+  width: `${PANEL_WIDTH}px`,
   maxHeight: 'min(560px, 80vh)',
   overflowY: 'auto',
   boxSizing: 'border-box',
@@ -80,12 +83,18 @@ const statValueStyle: CSSProperties = {
   color: color.textPrimary,
 }
 
-const ratioBlockStyle: CSSProperties = {
+/** The personal LiangQi numbers flanking the central 梁子. */
+const flankStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  gap: '2px',
-  minWidth: '52px',
+  gap: '1px',
+  minWidth: '60px',
+}
+
+const flankCaptionStyle: CSSProperties = {
+  fontSize: '12px',
+  color: color.textSecondary,
 }
 
 const voteButtonBase: CSSProperties = {
@@ -97,6 +106,16 @@ const voteButtonBase: CSSProperties = {
   fontWeight: 700,
   cursor: 'pointer',
   border: `1px solid ${color.border}`,
+}
+
+/** Anchor the panel to the badge on whichever side/edge has room. */
+function placementStyle(placement: PanelPlacement): CSSProperties {
+  const horizontal: CSSProperties = placement.side === 'left'
+    ? { right: `calc(100% + ${PANEL_GAP}px)` }
+    : { left: `calc(100% + ${PANEL_GAP}px)` }
+  if (placement.vertical === 'top') return { ...horizontal, top: '0px' }
+  if (placement.vertical === 'bottom') return { ...horizontal, bottom: '0px' }
+  return { ...horizontal, top: '50%', transform: 'translateY(-50%)' }
 }
 
 /** Panel-scoped CSS that inline styles cannot express (focus ring, keyframes). */
@@ -145,6 +164,7 @@ const visuallyHidden: CSSProperties = {
 
 export function Panel(props: PanelProps): ReactElement {
   const { state, reducedMotion, avatarPulse, justCondensed, voteFeedback, onVote, onClose } = props
+  const placement = props.placement ?? { side: 'left', vertical: 'center' }
   const { snapshot, personal, activeCase } = state
   const offline = state.connection !== 'live'
   const outOfIncense = personal.remainingIncense <= 0
@@ -171,10 +191,10 @@ export function Panel(props: PanelProps): ReactElement {
 
   // Percentages come from the snapshot's own raw counts, so they can never
   // contradict the Liangzi state rendered beside them (AGENTS.md §12).
-  const percents = formatRatioPercents(snapshot.upVotes, snapshot.downVotes)
+  const percents = formatRatioPercents(snapshot.upVotes, snapshot.downVotes, LIANG_POSITION_DECIMALS)
   const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}`
     + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
-    + `${VOTE_UP_NAME}占比 ${percents.up}，${VOTE_DOWN_NAME}占比 ${percents.down}。`
+    + `${LIANG_POSITION_LABEL} ${percents.up}（即${VOTE_UP_NAME} ${percents.up}，${VOTE_DOWN_NAME} ${percents.down}）。`
     + `我的剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} Token。`
     + `${AUTHORITY_MODE_NOTES[state.authorityMode]}。`
 
@@ -185,7 +205,7 @@ export function Panel(props: PanelProps): ReactElement {
       data-liangbiao-panel=""
       data-liangbiao-authority={state.authorityMode}
       tabIndex={-1}
-      style={panelStyle}
+      style={{ ...panelStyle, ...placementStyle(placement) }}
       onKeyDown={onKeyDown}
     >
       <style>{PANEL_CSS}</style>
@@ -222,21 +242,63 @@ export function Panel(props: PanelProps): ReactElement {
         </button>
       </header>
 
-      {/* Region 2 — 夯 ratio | 梁子 + 梁气环 | 拉 ratio */}
+      {/*
+        Region 2 — personal LiangQi flanks the central 梁子, and ONE public
+        number sits under it:
+
+          香火 N 炷   [梁气环 + 梁子]   下一炷 X Token
+                      梁位 83.0219%
+
+        The 夯/拉 pair collapsed into the single 梁位 value on purpose: two
+        complementary integers made a vote look like it did nothing, while one
+        value with decimals moves visibly on every accepted vote. 拉 is
+        1 − 梁位 and stays in the tooltip / screen-reader summary.
+      */}
       <div
         data-liangbiao-region="core"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', padding: '8px 0 14px' }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', padding: '8px 0 18px' }}
       >
-        <div style={ratioBlockStyle} data-liangbiao-ratio="up">
-          <span style={{ fontSize: '13px', color: color.textSecondary }}>{VOTE_UP_NAME}</span>
-          <span style={{ fontSize: '20px', fontWeight: 700, color: color.up }}>{percents.up}</span>
+        <div style={flankStyle} data-liangbiao-personal="incense">
+          <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
+          <span style={{ fontSize: '20px', fontWeight: 700, color: color.warn }}>
+            {personal.remainingIncense}
+            <span style={{ fontSize: '13px', fontWeight: 600 }}> 炷</span>
+          </span>
         </div>
-        <LiangQiRing personal={personal} reducedMotion={reducedMotion} justCondensed={justCondensed}>
+        <LiangQiRing
+          personal={personal}
+          reducedMotion={reducedMotion}
+          justCondensed={justCondensed}
+          footer={(
+            <span
+              data-liangbiao-liang-position=""
+              title={`${VOTE_UP_NAME} ${percents.up} / ${VOTE_DOWN_NAME} ${percents.down}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: '4px',
+                padding: '2px 10px',
+                borderRadius: '999px',
+                border: `1px solid ${color.border}`,
+                background: color.bgLayer,
+                lineHeight: '18px',
+              }}
+            >
+              <span style={{ fontSize: '11px', color: color.textTertiary, letterSpacing: '0.5px' }}>
+                {LIANG_POSITION_LABEL}
+              </span>
+              <strong style={{ fontSize: '15px', fontWeight: 700, color: color.up }}>{percents.up}</strong>
+            </span>
+          )}
+        >
           <LiangAvatar state={snapshot.liangziState} pulse={avatarPulse} reducedMotion={reducedMotion} />
         </LiangQiRing>
-        <div style={ratioBlockStyle} data-liangbiao-ratio="down">
-          <span style={{ fontSize: '13px', color: color.textSecondary }}>{VOTE_DOWN_NAME}</span>
-          <span style={{ fontSize: '20px', fontWeight: 700, color: color.danger }}>{percents.down}</span>
+        <div style={flankStyle} data-liangbiao-personal="next-incense">
+          <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
+          <span style={{ fontSize: '17px', fontWeight: 700, color: color.textPrimary }}>
+            {personal.tokensToNextIncense.toLocaleString('zh-CN')}
+          </span>
+          <span style={{ fontSize: '11px', color: color.textTertiary }}>Token</span>
         </div>
       </div>
 

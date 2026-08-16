@@ -34,6 +34,16 @@ import type { DailyUsageRecord, SessionUsageWatermark } from './usage-ledger.ts'
 
 const CLAIM_DEBOUNCE_MS = 1_000
 
+/**
+ * How often (in cadence ticks) the authoritative personal balance is re-read.
+ *
+ * Votes and claims already return it, but it can also move OUT OF BAND: another
+ * tab, another host on the same installation, or a token claim submitted
+ * elsewhere. Without this the panel would keep showing a stale 香火 count until
+ * the user voted again — the opposite of "multiple tabs converge".
+ */
+const PERSONAL_REFRESH_EVERY_TICKS = 5
+
 export interface BackendLiangServiceDeps {
   client: BackendClient
   /** Host-local timezone used only to bucket observed tokens. */
@@ -66,6 +76,7 @@ export class BackendLiangService implements LiangHostService {
   private claimAgain = false
   private lastClaimSent = -1
   private bootstrapping: Promise<void> | null = null
+  private ticks = 0
   private disposed = false
 
   constructor(deps: BackendLiangServiceDeps) {
@@ -140,7 +151,26 @@ export class BackendLiangService implements LiangHostService {
 
   /** Cadence hook: pull the published snapshot (and re-bootstrap on rollover). */
   tick(): void {
+    this.ticks += 1
     void this.refreshSnapshot()
+    if (this.ticks % PERSONAL_REFRESH_EVERY_TICKS === 0) void this.refreshPersonal()
+  }
+
+  /** Re-read the authoritative personal balance (out-of-band changes). */
+  async refreshPersonal(): Promise<void> {
+    const installationId = this.installationId
+    if (this.disposed || installationId === null || this.bootstrap === null) return
+    try {
+      const response = await this.client.dailyState(installationId)
+      if (response.business_date !== this.businessDate) {
+        await this.refreshBootstrap()
+        return
+      }
+      this.personal = response.authoritative_personal_state
+      this.bump()
+    } catch (error) {
+      this.reportFailure('daily-state', error)
+    }
   }
 
   async vote(intent: WireVoteRequest): Promise<VoteOutcome> {
@@ -152,6 +182,13 @@ export class BackendLiangService implements LiangHostService {
     })
     this.personal = response.authoritative_personal_state
     this.bump()
+    if (response.result.status === 'accepted') {
+      // Pull the published snapshot right away instead of waiting for the next
+      // cadence tick: at a ~1s cadence this is what makes a voter see their own
+      // vote move the public 梁位. It is still the BACKEND's published snapshot —
+      // the host never computes a ratio of its own.
+      void this.refreshSnapshot()
+    }
     if (
       response.result.status === 'rejected'
       && (response.result.reason === 'stale_case' || response.result.reason === 'case_not_active')

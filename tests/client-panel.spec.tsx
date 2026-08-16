@@ -68,26 +68,55 @@ describe('four visual regions', () => {
   })
 })
 
-describe('region 2: ratios + concrete 梁子 + personal 梁气环', () => {
-  it('shows 83% 夯 / 17% 拉 and the 梁圣 avatar from the same snapshot', () => {
+describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
+  it('flanks the 梁子 with the personal numbers and leads with one 梁位 value', () => {
     const tree = renderPanel(demoState())
-    const up = findByAttr(tree, 'data-liangbiao-ratio', 'up')[0]
-    const down = findByAttr(tree, 'data-liangbiao-ratio', 'down')[0]
-    expect(up && textContent([up])).toContain('83%')
-    expect(down && textContent([down])).toContain('17%')
+    const incense = findByAttr(tree, 'data-liangbiao-personal', 'incense')[0]
+    const next = findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0]
+    const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
+    expect(incense && textContent([incense])).toContain('5 炷')
+    expect(next && textContent([next])).toContain('3,000')
+    expect(next && textContent([next])).toContain('Token')
+    // 10,665/12,846 = 83.0219…%, truncated to four decimals.
+    expect(position && textContent([position])).toContain('梁位')
+    expect(position && textContent([position])).toContain('83.0219%')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
     expect(textContent(tree)).toContain('梁圣')
   })
 
-  it('never rounds the 夯 percent past the threshold of the rendered state', () => {
-    // 449/501 = 89.62% -> 梁圣; a rounded 90% would look like a 梁祖 mismatch.
+  it('keeps 拉 as the complement in the tooltip instead of a second big number', () => {
+    const tree = renderPanel(demoState())
+    const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
+    expect(position?.props.title).toBe('夯 83.0219% / 拉 16.9781%')
+  })
+
+  it('pins the 梁位 value to the ring footer (one value, not a ratio pair)', () => {
+    const tree = renderPanel(demoState())
+    const ring = findByAttr(tree, 'data-liangbiao-ring')[0]
+    expect(ring).toBeDefined()
+    const footer = ring === undefined ? [] : findByAttr([ring], 'data-liangbiao-ring-footer')
+    expect(footer).toHaveLength(1)
+    expect(footer[0] && textContent([footer[0]])).toContain('83.0219%')
+    // The old up/down pair must not come back.
+    expect(findByAttr(tree, 'data-liangbiao-ratio')).toHaveLength(0)
+  })
+
+  it('never rounds 梁位 past the threshold of the rendered state', () => {
+    // 449/501 = 89.6207…% -> 梁圣; rounding up would look like a 梁祖 mismatch.
     const store = createMockLiangbiaoStore({ upVotes: 449, downVotes: 52, uniqueVoters: 40 })
     const tree = renderPanel(store.getSnapshot())
-    const up = findByAttr(tree, 'data-liangbiao-ratio', 'up')[0]
-    const down = findByAttr(tree, 'data-liangbiao-ratio', 'down')[0]
-    expect(up && textContent([up])).toContain('89%')
-    expect(down && textContent([down])).toContain('11%')
+    const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
+    expect(position && textContent([position])).toContain('89.6207%')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
+  })
+
+  it('moves the 梁位 value on a single accepted vote', async () => {
+    const store = createMockLiangbiaoStore({ upVotes: 10_665, downVotes: 2_181, uniqueVoters: 2_841 })
+    const before = findByAttr(renderPanel(store.getSnapshot()), 'data-liangbiao-liang-position')[0]
+    await store.vote('up')
+    const after = findByAttr(renderPanel(store.getSnapshot()), 'data-liangbiao-liang-position')[0]
+    // The whole point of the decimals: one vote is visible.
+    expect(before && textContent([before])).not.toBe(after && textContent([after]))
   })
 
   it('spells out the exact 夯率 band of the current state in the tooltip', () => {
@@ -96,22 +125,11 @@ describe('region 2: ratios + concrete 梁子 + personal 梁气环', () => {
     expect(tooltips.length).toBeGreaterThan(0)
   })
 
-  it('integrates “5 炷 · 再 3,000 Token” inside the LiangQi ring component', () => {
-    const tree = renderPanel(demoState())
-    const ring = findByAttr(tree, 'data-liangbiao-ring')[0]
-    expect(ring).toBeDefined()
-    const copy = ring === undefined ? [] : findByAttr([ring], 'data-liangbiao-ring-copy')
-    expect(copy).toHaveLength(1)
-    const text = copy[0] === undefined ? '' : textContent([copy[0]])
-    expect(text).toContain('5 炷')
-    expect(text).toContain('再 3,000 Token')
-  })
-
-  it('zero votes: “--” ratios and the 待开梁 placeholder', () => {
+  it('zero votes: “--” 梁位 and the 待开梁 placeholder', () => {
     const store = createMockLiangbiaoStore({ upVotes: 0, downVotes: 0, uniqueVoters: 0 })
     const tree = renderPanel(store.getSnapshot())
-    const up = findByAttr(tree, 'data-liangbiao-ratio', 'up')[0]
-    expect(up && textContent([up])).toContain('--')
+    const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
+    expect(position && textContent([position])).toContain('--')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'waiting')).toHaveLength(1)
     expect(textContent(tree)).toContain('待开梁')
   })

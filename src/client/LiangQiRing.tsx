@@ -5,8 +5,10 @@
  *  - remaining incense  -> vitality/intensity (glow + flame dots)
  *  - token remainder    -> ring fill (progress towards the next incense)
  *
- * The compact copy `N 炷 · 再 X Token` is integrated INTO the ring; there is
- * deliberately no separate personal-growth row anywhere else.
+ * The ring owns GEOMETRY only. The `footer` slot sits at the ring's bottom edge
+ * and the caller decides what goes there — the panel puts the global 梁位 value
+ * in it, which is deliberately NOT this component's data (personal vs global
+ * stay separate in the data flow even though they overlap visually).
  *
  * Presentational only: no hooks.
  */
@@ -19,6 +21,8 @@ export interface LiangQiRingProps {
   reducedMotion: boolean
   /** Transient `+1 炷` condensation feedback (container-timed). */
   justCondensed: boolean
+  /** Pinned to the ring's bottom edge; the panel passes the 梁位 value. */
+  footer?: ReactNode
   /** The LiangAvatar sits in the ring center. */
   children: ReactNode
 }
@@ -27,7 +31,13 @@ const RING_SIZE = 168
 const RING_RADIUS = 76
 const RING_STROKE = 7
 
-export function LiangQiRing({ personal, reducedMotion, justCondensed, children }: LiangQiRingProps): ReactElement {
+export function LiangQiRing({
+  personal,
+  reducedMotion,
+  justCondensed,
+  footer,
+  children,
+}: LiangQiRingProps): ReactElement {
   const intensity = liangQiIntensity(personal.remainingIncense)
   const fill = personal.liangQiFill
   const circumference = 2 * Math.PI * RING_RADIUS
@@ -101,30 +111,21 @@ export function LiangQiRing({ personal, reducedMotion, justCondensed, children }
         {flames}
       </svg>
       {children}
-      {/* Integrated compact copy: inventory + next-incense progress, one component. */}
-      <span
-        data-liangbiao-ring-copy=""
-        style={{
-          position: 'absolute',
-          bottom: '-4px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          whiteSpace: 'nowrap',
-          padding: '2px 10px',
-          borderRadius: '999px',
-          border: `1px solid ${color.border}`,
-          background: color.bgLayer,
-          color: color.textSecondary,
-          fontFamily: font.family,
-          fontSize: '12px',
-          lineHeight: '18px',
-        }}
-      >
-        <strong style={{ color: color.textPrimary, fontWeight: 600 }}>{personal.remainingIncense} 炷</strong>
-        {' · 再 '}
-        {personal.tokensToNextIncense.toLocaleString('zh-CN')}
-        {' Token'}
-      </span>
+      {footer !== undefined && (
+        <span
+          data-liangbiao-ring-footer=""
+          style={{
+            position: 'absolute',
+            bottom: '-6px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            whiteSpace: 'nowrap',
+            fontFamily: font.family,
+          }}
+        >
+          {footer}
+        </span>
+      )}
       {justCondensed && (
         <span
           data-liangbiao-condensed=""

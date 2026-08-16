@@ -43,7 +43,7 @@ import {
   type V1VoteResult,
 } from '../shared/backend-v1.ts'
 import { createBusinessDateProvider, systemClock, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
-import type { BackendConfig } from './config.ts'
+import { SNAPSHOT_HISTORY_LIMIT, type BackendConfig } from './config.ts'
 import {
   isUniqueConstraintError,
   type BackendStore,
@@ -446,7 +446,10 @@ export class LiangbiaoBackendService {
       captured_at: now,
     }
     try {
-      this.store.transaction(() => this.store.insertSnapshot(row))
+      this.store.transaction(() => {
+        this.store.insertSnapshot(row)
+        this.store.pruneSnapshots(caseRow.id, SNAPSHOT_HISTORY_LIMIT)
+      })
       return row
     } catch (error) {
       if (isUniqueConstraintError(error)) {

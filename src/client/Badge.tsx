@@ -1,74 +1,97 @@
 /**
  * 梁标 entry + panel container.
  *
- * `BadgeButton` is the presentational docked entry (hover/focus tooltip is
- * the frozen `今日梁位`). `LiangbiaoBadge` is the stateful container that the
- * overlay slot renders: it owns open/close, Escape/outside-click dismissal,
- * focus return, reduced-motion detection, and the transient avatar-pulse /
- * 凝香 / vote-feedback timers. All business state lives in the store.
+ * `BadgeButton` is the presentational docked entry: the current 梁子 state IS
+ * the icon (so the global mood is readable without opening anything), and the
+ * hover/focus tooltip stays the frozen `今日梁位`. It is freely placeable —
+ * drag it anywhere in the frame; the position is remembered per browser.
+ *
+ * `LiangbiaoBadge` is the stateful container that the overlay slot renders: it
+ * owns placement, open/close, Escape/outside-click dismissal, focus return,
+ * reduced-motion detection, and the transient avatar-pulse / 凝香 /
+ * vote-feedback timers. All business state lives in the store.
  */
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type { CSSProperties, ReactElement, RefObject } from 'react'
-import type { VoteType } from '../domain/index.ts'
-import { HOVER_TEXT, PRODUCT_NAME, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
+import type { LiangziState, VoteType } from '../domain/index.ts'
+import { HOVER_TEXT, LIANGZI_STATE_LABELS, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import {
+  BADGE_SIZE,
+  clampBadgePosition,
+  loadBadgePosition,
+  panelPlacementFor,
+  saveBadgePosition,
+  type BadgePoint,
+} from './badge-position.ts'
+import { LiangAvatar } from './LiangAvatar.tsx'
 import { createLiveLiangbiaoStore } from './live-store.ts'
 import { Panel } from './Panel.tsx'
 import { color } from './theme.ts'
 
-/**
- * The shell.overlay layer spans the frame with pointer-events:none; this
- * container opts back in and docks to the right edge, clear of the composer
- * and the sidebar.
- */
-const anchorStyle: CSSProperties = {
-  position: 'absolute',
-  right: '16px',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  pointerEvents: 'auto',
-}
-
 const buttonStyle: CSSProperties = {
-  width: '32px',
-  height: '32px',
+  width: `${BADGE_SIZE}px`,
+  height: `${BADGE_SIZE}px`,
   padding: 0,
   border: 'none',
   borderRadius: '50%',
-  cursor: 'pointer',
   background: 'rgba(90, 105, 140, 0.85)',
   color: '#ffffff',
-  fontSize: '14px',
-  lineHeight: '32px',
-  textAlign: 'center',
-  display: 'block',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  overflow: 'hidden',
   pointerEvents: 'auto',
+  touchAction: 'none',
 }
 
 export interface BadgeButtonProps {
   open: boolean
+  /** Drives the icon: the entry shows the current central 梁子 state. */
+  liangziState: LiangziState
+  reducedMotion?: boolean
+  dragging?: boolean
   onToggle: () => void
   onEscape: () => void
+  onPointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void
   buttonRef: RefObject<HTMLButtonElement> | null
 }
 
 /** Keyboard-reachable docked entry; hover and focus both surface `今日梁位`. */
-export function BadgeButton({ open, onToggle, onEscape, buttonRef }: BadgeButtonProps): ReactElement {
+export function BadgeButton({
+  open,
+  liangziState,
+  reducedMotion = false,
+  dragging = false,
+  onToggle,
+  onEscape,
+  onPointerDown,
+  buttonRef,
+}: BadgeButtonProps): ReactElement {
   return (
     <button
       type="button"
       ref={buttonRef ?? undefined}
       title={HOVER_TEXT}
-      aria-label={HOVER_TEXT}
+      aria-label={`${HOVER_TEXT}：${LIANGZI_STATE_LABELS[liangziState]}`}
       aria-haspopup="dialog"
       aria-expanded={open}
       onClick={onToggle}
+      onPointerDown={onPointerDown}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && open) onEscape()
       }}
-      style={{ ...buttonStyle, boxShadow: open ? `0 0 0 2px ${color.brand}` : undefined }}
+      style={{
+        ...buttonStyle,
+        cursor: dragging ? 'grabbing' : 'grab',
+        boxShadow: open ? `0 0 0 2px ${color.brand}` : undefined,
+      }}
       data-liangbiao-badge=""
+      data-liangbiao-badge-state={liangziState}
     >
-      {PRODUCT_NAME.charAt(0)}
+      {/* The mini 梁子 is decorative here: the button already names the state. */}
+      <span aria-hidden="true" style={{ display: 'flex', pointerEvents: 'none' }}>
+        <LiangAvatar state={liangziState} pulse={false} reducedMotion={reducedMotion} size={30} hideLabel />
+      </span>
     </button>
   )
 }
@@ -85,6 +108,22 @@ function useReducedMotion(): boolean {
     return () => media.removeEventListener('change', onChange)
   }, [])
   return reduced
+}
+
+const DRAG_THRESHOLD_PX = 4
+
+/** Viewport size, tracked so a resized window cannot hide the badge. */
+function useViewport(): { width: number, height: number } {
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === 'undefined' ? 1280 : window.innerWidth,
+    height: typeof window === 'undefined' ? 800 : window.innerHeight,
+  }))
+  useEffect(() => {
+    const onResize = (): void => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return viewport
 }
 
 export function LiangbiaoBadge(): ReactElement {
@@ -108,6 +147,72 @@ export function LiangbiaoBadge(): ReactElement {
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+
+  // Free placement: drag the entry anywhere; the point is clamped into the
+  // frame on load and on resize, and persisted as a cosmetic preference only.
+  const viewport = useViewport()
+  const [position, setPosition] = useState<BadgePoint>(() =>
+    loadBadgePosition(
+      { width: viewport.width, height: viewport.height },
+      typeof localStorage === 'undefined' ? null : localStorage,
+    ))
+  useEffect(() => {
+    setPosition((current) => clampBadgePosition(current, viewport))
+  }, [viewport])
+
+  const [dragging, setDragging] = useState(false)
+  // A drag must not also toggle the panel: the click that follows the release
+  // is swallowed once, and only when the pointer actually travelled.
+  const suppressClick = useRef(false)
+  const dragState = useRef<{ pointerId: number, dx: number, dy: number, moved: boolean } | null>(null)
+
+  const onPointerDown = useCallback((event: ReactPointerEvent<HTMLButtonElement>): void => {
+    if (event.button !== 0) return
+    dragState.current = {
+      pointerId: event.pointerId,
+      dx: event.clientX - position.x,
+      dy: event.clientY - position.y,
+      moved: false,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }, [position.x, position.y])
+
+  useEffect(() => {
+    const onMove = (event: PointerEvent): void => {
+      const drag = dragState.current
+      if (drag === null || drag.pointerId !== event.pointerId) return
+      const next = { x: event.clientX - drag.dx, y: event.clientY - drag.dy }
+      if (!drag.moved) {
+        const travelled = Math.abs(next.x - position.x) + Math.abs(next.y - position.y)
+        if (travelled < DRAG_THRESHOLD_PX) return
+        drag.moved = true
+        setDragging(true)
+      }
+      setPosition(clampBadgePosition(next, viewport))
+    }
+    const onUp = (event: PointerEvent): void => {
+      const drag = dragState.current
+      if (drag === null || drag.pointerId !== event.pointerId) return
+      dragState.current = null
+      if (drag.moved) {
+        suppressClick.current = true
+        setDragging(false)
+        setPosition((current) => {
+          const clamped = clampBadgePosition(current, viewport)
+          saveBadgePosition(clamped, typeof localStorage === 'undefined' ? null : localStorage)
+          return clamped
+        })
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+  }, [position.x, position.y, viewport])
 
   // One short avatar pulse when the GLOBAL Liangzi state crosses a threshold.
   const [avatarPulse, setAvatarPulse] = useState(false)
@@ -184,11 +289,32 @@ export function LiangbiaoBadge(): ReactElement {
   }
 
   return (
-    <div ref={anchorRef} style={anchorStyle} data-liangbiao-root="">
+    <div
+      ref={anchorRef}
+      // The shell.overlay layer spans the frame with pointer-events:none; this
+      // container opts back in at the badge's own coordinates.
+      style={{
+        position: 'absolute',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        pointerEvents: 'auto',
+      }}
+      data-liangbiao-root=""
+    >
       <BadgeButton
         open={open}
-        onToggle={() => setOpen((value) => !value)}
+        liangziState={state.snapshot.liangziState}
+        reducedMotion={reducedMotion}
+        dragging={dragging}
+        onToggle={() => {
+          if (suppressClick.current) {
+            suppressClick.current = false
+            return
+          }
+          setOpen((value) => !value)
+        }}
         onEscape={() => setOpen(false)}
+        onPointerDown={onPointerDown}
         buttonRef={buttonRef}
       />
       {open && (
@@ -198,6 +324,7 @@ export function LiangbiaoBadge(): ReactElement {
           avatarPulse={avatarPulse}
           justCondensed={justCondensed}
           voteFeedback={voteFeedback}
+          placement={panelPlacementFor(position, viewport)}
           onVote={onVote}
           onClose={() => setOpen(false)}
         />
