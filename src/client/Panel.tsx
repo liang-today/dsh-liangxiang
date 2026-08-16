@@ -48,10 +48,13 @@ import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangQiRing, AVATAR_SLOT, RING_SIZE } from './LiangQiRing.tsx'
 import type { LiangbiaoViewState } from './store.ts'
 import { color, font } from './theme.ts'
+import type { ThrottledProgress } from './use-throttle-fill.ts'
 
 export interface PanelProps {
   state: LiangbiaoViewState
   reducedMotion: boolean
+  /** Smoothed + rate-extrapolated fill for the 油门 animation (optional). */
+  throttle?: ThrottledProgress
   avatarPulse: boolean
   justCondensed: boolean
   /** Transient feedback line under the buttons (e.g. 已上香), empty = none. */
@@ -368,13 +371,18 @@ const visuallyHidden: CSSProperties = {
 
 export function Panel(props: PanelProps): ReactElement {
   const {
-    state, reducedMotion, avatarPulse, justCondensed, voteFeedback,
+    state, reducedMotion, throttle, avatarPulse, justCondensed, voteFeedback,
     onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, onDevCredit,
   } = props
   const placement = props.placement ?? { side: 'left', vertical: 'center' }
   const positionPulse = props.positionPulse ?? false
   const { snapshot, personal, activeCase } = state
+  // Throttled (smoothed/extrapolated) display values — presentation only. The
+  // authoritative remaining incense / vote availability stay on `personal`.
+  const displayFill = throttle?.fill ?? personal.liangQiFill
+  const displayTokensToNext = throttle?.tokensToNext ?? personal.tokensToNextIncense
+  const displayEstimated = throttle?.isEstimated ?? false
   const offline = state.connection !== 'live'
   const outOfIncense = personal.remainingIncense <= 0
   const votingDisabled = outOfIncense || offline
@@ -405,7 +413,6 @@ export function Panel(props: PanelProps): ReactElement {
   const remainingExact = personal.remainingIncense.toLocaleString('zh-CN')
   const toNextExact = personal.tokensToNextIncense.toLocaleString('zh-CN')
   const remainingCompact = formatCompactCount(personal.remainingIncense)
-  const toNextCompact = formatCompactCount(personal.tokensToNextIncense)
   const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}`
     + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
     + `${LIANG_POSITION_LABEL} ${percents.up}（即${VOTE_UP_NAME} ${percents.up}，${VOTE_DOWN_NAME} ${percents.down}）。`
@@ -482,6 +489,7 @@ export function Panel(props: PanelProps): ReactElement {
             personal={personal}
             reducedMotion={reducedMotion}
             justCondensed={justCondensed}
+            fillOverride={displayFill}
             footer={(
               <span
                 data-liangbiao-liang-position=""
@@ -532,7 +540,7 @@ export function Panel(props: PanelProps): ReactElement {
               reducedMotion={reducedMotion}
               size={AVATAR_SLOT}
               hideLabel
-              liangQiFill={personal.liangQiFill}
+              liangQiFill={displayFill}
             />
           </LiangQiRing>
         </div>
@@ -558,7 +566,7 @@ export function Panel(props: PanelProps): ReactElement {
             title={`${toNextExact} ${NEXT_INCENSE_UNIT}`}
             style={{ ...numericStyle, fontSize: '11px', fontWeight: 600, color: color.textPrimary, lineHeight: '16px' }}
           >
-            {toNextCompact}
+            {displayEstimated ? '≈ ' : ''}{formatCompactCount(displayTokensToNext)}
           </span>
           <span style={{ fontSize: '10px', color: color.textTertiary }}>{NEXT_INCENSE_UNIT}</span>
           <div data-liangbiao-weight-hint="" role="tooltip">
