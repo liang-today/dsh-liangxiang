@@ -3,7 +3,7 @@
  * derived from remaining incense — deliberately NOT a named tier (frozen
  * contract: LiangQi has no personal tiers).
  */
-import { assertCount } from './errors.ts'
+import { DomainError, assertCount } from './errors.ts'
 
 /**
  * Map remaining incense to a bounded visual intensity in [0,1].
@@ -14,6 +14,33 @@ export function liangQiIntensity(remainingIncense: number): number {
   assertCount(remainingIncense, 'invalid_incense_count', 'remainingIncense')
   if (remainingIncense === 0) return 0
   return Math.min(1, Math.sqrt(remainingIncense / 12))
+}
+
+/** Bob period when the next-incense ring is empty: still (just earned / no progress). */
+export const LIANG_QI_FLOAT_PERIOD_STILL = null
+/** Slowest bob, just after a new stick starts accumulating. */
+export const LIANG_QI_FLOAT_PERIOD_SLOW_MS = 4_800
+/** Fastest bob, when the ring is almost full. */
+export const LIANG_QI_FLOAT_PERIOD_FAST_MS = 1_100
+
+/**
+ * Map next-incense fill (`token_remainder / token_per_incense`) to the
+ * figure-only bob period. This is personal Token progress — not remaining
+ * incense, not the global 梁位.
+ *
+ *   fill === 0  → still
+ *   fill → 1    → 4.8s … 1.1s
+ */
+export function liangQiFloatPeriodMs(fill: number): number | null {
+  if (typeof fill !== 'number' || !Number.isFinite(fill) || fill < 0) {
+    throw new DomainError('invalid_token_count', `liangQiFill must be a finite non-negative number, got ${String(fill)}`)
+  }
+  const t = Math.min(1, fill)
+  if (t === 0) return LIANG_QI_FLOAT_PERIOD_STILL
+  return Math.round(
+    LIANG_QI_FLOAT_PERIOD_SLOW_MS
+    - (LIANG_QI_FLOAT_PERIOD_SLOW_MS - LIANG_QI_FLOAT_PERIOD_FAST_MS) * t,
+  )
 }
 
 /**

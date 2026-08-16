@@ -1,2 +1,7 @@
-# Sticker sources for 梁子 (256px JPEG). Inlined at build via liangzi-art.ts.
-# Regenerate: sips -Z 256 -s format jpeg -s formatOptions 78 <src.png> --out <name>.jpg
+# Sticker sources for 梁子 (256px).
+
+JPEG originals keep the light-gray checkerboard plate. Punch that plate
+out to PNG (flood-fill from the edges, stop at the black outline) and
+inline the PNG into liangzi-art.ts:
+
+  python3 scripts/punch-liangzi-art.py

@@ -83,6 +83,10 @@ Rules:
   next-incense progress; the 炷/月/日 marks are remaining incense. The two
   flanks are small captions of those same two facts — they must not compete
   with the ring as a second copy of the same information.
+- the panel 梁子 and the docked logo bob together. Only the figure layer
+  translates; chrome / ring / page stay still. Cadence follows personal
+  `liang_qi_fill` (0 = still, approaching 1 = faster), never remaining
+  incense or the global 梁位. Respect `prefers-reduced-motion`.
 - right overlay: personal `tokens_to_next_incense` in **Pro 当量** (not raw
   Flash Token). Hover/focus on 下一炷 shows the model-weight table
   (Pro ×1 / Flash ×0.5 / 其它 ×1).

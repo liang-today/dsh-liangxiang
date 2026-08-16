@@ -14,7 +14,7 @@
  * Presentational only: no hooks, driven entirely by props.
  */
 import type { CSSProperties, ReactElement } from 'react'
-import type { LiangziState } from '../domain/index.ts'
+import { liangQiFloatPeriodMs, type LiangziState } from '../domain/index.ts'
 import { LIANGZI_STATE_LABELS, liangziRatioRangeText } from '../shared/index.ts'
 import { color, font } from './theme.ts'
 import { LIANGZI_ART } from './liangzi-art.ts'
@@ -35,10 +35,11 @@ export interface LiangAvatarProps {
    */
   chrome?: 'plate' | 'none'
   /**
-   * When set, overrides the default 梁神/梁圣/梁祖 levitation. The motion
-   * always lands on the figure, never on a wrapping plate.
+   * Next-incense fill (`liang_qi_fill`). Drives bob cadence for every
+   * Liangzi state: 0 = still, approaching 1 = faster. The motion always
+   * lands on the figure, never on a wrapping plate.
    */
-  levitate?: boolean
+  liangQiFill?: number
 }
 
 /** GPU-composited bob: integer-pixel ends, no filter, figure layer only. */
@@ -76,13 +77,13 @@ export function LiangAvatar({
   size = 92,
   hideLabel = false,
   chrome = 'plate',
-  levitate,
+  liangQiFill = 1,
 }: LiangAvatarProps): ReactElement {
   const waiting = state === 'waiting'
   const rangeText = liangziRatioRangeText(state)
   const stateText = `${LIANGZI_STATE_LABELS[state]}（${rangeText}）`
-  const floating = (levitate ?? (state === 'liang_shen' || state === 'liang_sheng' || state === 'liang_zu'))
-    && !reducedMotion
+  const floatMs = reducedMotion ? null : liangQiFloatPeriodMs(liangQiFill)
+  const floating = floatMs !== null
 
   const wrapStyle: CSSProperties = {
     display: 'flex',
@@ -103,7 +104,7 @@ export function LiangAvatar({
     background: 'transparent',
     transform: 'translateZ(0)',
     backfaceVisibility: 'hidden',
-    animation: floating ? 'liangbiao-avatar-figure-float 3.2s ease-in-out infinite' : undefined,
+    animation: floating ? `liangbiao-avatar-figure-float ${floatMs}ms ease-in-out infinite` : undefined,
     willChange: floating ? 'transform' : undefined,
   }
 
@@ -125,7 +126,11 @@ export function LiangAvatar({
   return (
     <div style={wrapStyle} data-liangbiao-avatar={state} data-liangbiao-avatar-chrome={chrome}>
       <style>{AVATAR_MOTION_CSS}</style>
-      <span data-liangbiao-avatar-figure="" style={figureStyle}>
+      <span
+        data-liangbiao-avatar-figure=""
+        data-liangbiao-float-ms={floatMs ?? 0}
+        style={figureStyle}
+      >
         <img
           src={LIANGZI_ART[state]}
           alt={`梁子当前状态：${stateText}`}
