@@ -29,9 +29,9 @@ export const PANEL_TITLE = '今日梁案'
 /** V0.1 default daily case title (the mock/local case). */
 export const DEFAULT_CASE_TITLE = 'DeepSeek Harness 是夯还是拉'
 
-/** Vote button labels (Region 3) — exactly two, never a third. */
-export const VOTE_UP_LABEL = '夯！'
-export const VOTE_DOWN_LABEL = '拉！'
+/** Vote button labels (Region 3) — exactly two, never a third. Equal-width pair. */
+export const VOTE_UP_LABEL = '夯：升梁！'
+export const VOTE_DOWN_LABEL = '拉：降梁！'
 
 /** Short direction names used in tooltips and the accessible summary. */
 export const VOTE_UP_NAME = '夯'

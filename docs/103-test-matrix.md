@@ -62,7 +62,7 @@
 |---|---|---|
 | 实机工具调用（DSH profile 模块图修复） | WebUI 真实模型回合跑 bash 工具 | 通过，无 `prepare` 错误 |
 | 新 Region 2 视觉与拖拽 | 浏览器实测（CDP 读值 + 截图） | 通过（含 localStorage 往返、面板翻转） |
-| 投票即时反馈 | 浏览器点「夯！」→ 梁位与香火同步变化 | 通过 |
+| 投票即时反馈 | 浏览器点「夯：升梁！」→ 梁位与香火同步变化 | 通过 |
 | 干净 profile 装 tarball | `smoke:clean-profile` | SMOKE OK |
 | 在线全链路 | `smoke:online` | OK（50 并发只 1 票） |
 | 并发/安全即席审计 60 项 | `/tmp/liangbiao-audit.mjs`（一次性脚本） | 60/60 |

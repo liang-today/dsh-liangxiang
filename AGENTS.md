@@ -63,17 +63,22 @@ DeepSeek Harness 是夯还是拉
 ### Region 2 — Central core
 
 ```text
-香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 Token
-                   梁位 83.0219%
+我的香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 Token
+                       梁位 83.021952%
 ```
 
 Rules:
 
-- left: personal `remaining_incense` (`N 炷`)
-- center: concrete Liangzi avatar/artwork
-- right: personal `tokens_to_next_incense`
+- left overlay: personal `remaining_incense` (`N 炷`)
+- center (in-flow, geometrically centered in the panel): concrete Liangzi
+  avatar, the 梁气 ring, and the incense-dot overlay. These three MUST share
+  the panel's horizontal centerline. Personal flanks are absolutely positioned
+  and MUST NOT participate in in-flow width (`space-between` / unequal flex
+  columns are forbidden here — 「我的香火」 being wider than 「下一炷」 must
+  never shove 梁子 sideways).
+- right overlay: personal `tokens_to_next_incense`
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
-  4 decimals (`LIANG_POSITION_DECIMALS`)
+  6 decimals (`LIANG_POSITION_DECIMALS`)
 - `down_ratio` gets **no** second big number: it is `1 − 梁位` and appears only in
   the tooltip and the screen-reader summary
 - the printed 梁位 must be TRUNCATED, never rounded, so it can never read as
@@ -90,10 +95,14 @@ incense.
 ### Region 3 — Voting
 
 ```text
-[ 夯！ ]     [ 拉！ ]
+[ 夯：升梁！ ]     [ 拉：降梁！ ]
 ```
 
 - exactly two buttons
+- labels are `夯：升梁！` / `拉：降梁！` (direction + action); the two buttons
+  are equal-width and visually aligned (`1fr / 1fr` grid)
+- vote type remains strictly `up` / `down` — the extra 升梁/降梁 copy is not a
+  third option
 - vote availability depends only on authoritative `remaining_incense > 0`
 - do not add a third placeholder or neutral action
 - do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside LiangQi
@@ -238,11 +247,11 @@ on the left, `tokens_to_next_incense` on the right. The ring itself carries fill
 and intensity; its footer slot is reserved for the global 梁位 value.
 
 ```text
-香火 5 炷   [环 + 梁子]   下一炷 3,000 Token
+我的香火 5 炷   [环 + 梁子]   下一炷 3,000 Token
 ```
 
-Any equivalent compact treatment is fine as long as the numbers stay adjacent to
-the ring and never become a separate full-width growth row.
+The ring/avatar/incense-dots stay on the panel centerline; the two numbers are
+overlays and must never become a separate full-width growth row.
 
 ### Effects of voting vs Token accumulation
 
@@ -833,6 +842,24 @@ For substantial work:
 7. fix failures before considering the phase complete
 8. update docs when contracts/integration seams change
 
+### Git (standing, overrides Prompt 4)
+
+After every completed change in this repository:
+
+1. commit with a descriptive message
+2. `git push` to the tracked remote immediately
+
+Do not wait for the user to ask. The original Prompt 4 / Prompt 11 line
+「禁止 git push」is **overridden** by this standing instruction.
+
+Still never, unless the user explicitly orders it:
+
+- `npm publish`
+- GitHub Release
+- production / public deploy
+- modifying the user's real DSH profile
+- patching `../deepseek-harness`
+
 Do not:
 
 - patch `../deepseek-harness` without explicit instruction
@@ -905,7 +932,9 @@ Before completing any major Liangbiao change, be able to answer **yes** to all o
 - Does remaining incense control LiangQi intensity?
 - Does Token remainder control LiangQi ring fill?
 - Can spending incense reduce LiangQi intensity without rewinding Token progress?
-- Are “5 炷 / 再 3,000 Token” integrated into LiangQi rather than a separate personal tier section?
+- Are “5 炷 / 再 3,000 Token” shown as LiangQi overlays rather than a separate personal tier section?
+- Does the ring/avatar/incense-dot cluster sit on the panel centerline, unmoved by flank copy width?
+- Are the two vote buttons labelled `夯：升梁！` / `拉：降梁！` and equal-width?
 - Are global ratios and Liangzi state from the same snapshot/version?
 - Is Effective Token still Input + Output?
 - Are cache-read and cache-write both counted as Input under the verified current DSH mapping?

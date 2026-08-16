@@ -2,8 +2,8 @@
  * The expanded 梁标 panel — exactly four visual regions (frozen UI contract):
  *
  *   1. 今日梁案 (single active case)
- *   2. 夯 ratio | central 梁子 + personal 梁气环 | 拉 ratio
- *   3. two vote buttons 夯！/ 拉！
+ *   2. overlay flanks | centered 梁子 + 梁气环 | 梁位
+ *   3. two equal-width vote buttons 夯：升梁！ / 拉：降梁！
  *   4. global 香火 + 香客
  *
  * No personal-growth section, no ranking, no third option.
@@ -33,7 +33,7 @@ import {
 } from '../shared/index.ts'
 import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { LiangAvatar } from './LiangAvatar.tsx'
-import { LiangQiRing } from './LiangQiRing.tsx'
+import { LiangQiRing, RING_SIZE } from './LiangQiRing.tsx'
 import type { LiangbiaoViewState } from './store.ts'
 import { color, font } from './theme.ts'
 
@@ -102,31 +102,62 @@ const numericStyle: CSSProperties = {
   fontFeatureSettings: '"tnum"',
 }
 
-const FLANK_WIDTH = 74
+/**
+ * Personal flanks overlay the core; they never take in-flow width. Otherwise
+ * 「我的香火」(wider copy) vs 「下一炷」 pulls `space-between` off-center and
+ * the 梁子, ring, and incense dots drift sideways.
+ */
+const FLANK_WIDTH = 64
+const CORE_PAD_Y = 8
+
+const coreStyle: CSSProperties = {
+  position: 'relative',
+  padding: `${CORE_PAD_Y}px 0 18px`,
+}
+
+const coreAnchorStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'center',
+}
 
 const flankStyle: CSSProperties = {
+  position: 'absolute',
+  top: `${CORE_PAD_Y}px`,
+  height: `${RING_SIZE}px`,
+  width: `${FLANK_WIDTH}px`,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
+  justifyContent: 'center',
   gap: '1px',
-  width: `${FLANK_WIDTH}px`,
-  flex: '0 0 auto',
   overflow: 'hidden',
   whiteSpace: 'nowrap',
+  pointerEvents: 'none',
 }
 
 const flankCaptionStyle: CSSProperties = {
-  fontSize: '12px',
+  fontSize: '11px',
   color: color.textSecondary,
 }
 
+const voteRowStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '10px',
+  marginTop: '6px',
+}
+
 const voteButtonBase: CSSProperties = {
-  flex: 1,
+  width: '100%',
+  boxSizing: 'border-box',
   padding: '9px 0',
   borderRadius: '10px',
   fontFamily: font.family,
   fontSize: '15px',
   fontWeight: 700,
+  lineHeight: '22px',
+  textAlign: 'center',
+  whiteSpace: 'nowrap',
   cursor: 'pointer',
   border: `1px solid ${color.border}`,
 }
@@ -272,86 +303,78 @@ export function Panel(props: PanelProps): ReactElement {
       </header>
 
       {/*
-        Region 2 — personal LiangQi flanks the central 梁子, and ONE public
-        number sits under it:
+        Region 2 — the ring/avatar/incense-dots occupy the only in-flow column
+        and are therefore always the panel's horizontal center. Personal
+        numbers overlay left/right and cannot shove that column.
 
-          香火 N 炷   [梁气环 + 梁子]   下一炷 X Token
-                      梁位 83.0219%
-
-        The 夯/拉 pair collapsed into the single 梁位 value on purpose: two
-        complementary integers made a vote look like it did nothing, while one
-        value with decimals moves visibly on every accepted vote. 拉 is
-        1 − 梁位 and stays in the tooltip / screen-reader summary.
+          我的香火 N 炷   [梁气环 + 梁子]   下一炷 X Token
+                          梁位 83.021952%
       */}
-      <div
-        data-liangbiao-region="core"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', padding: '8px 0 18px' }}
-      >
-        <div style={flankStyle} data-liangbiao-personal="incense">
-          <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
-          <span style={{ ...numericStyle, fontSize: '20px', fontWeight: 700, color: color.warn }}>
-            {personal.remainingIncense}
-            <span style={{ fontSize: '13px', fontWeight: 600 }}> 炷</span>
-          </span>
-        </div>
-        <LiangQiRing
-          personal={personal}
-          reducedMotion={reducedMotion}
-          justCondensed={justCondensed}
-          footer={(
-            <span
-              data-liangbiao-liang-position=""
-              title={`${VOTE_UP_NAME} ${percents.up} / ${VOTE_DOWN_NAME} ${percents.down}`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'baseline',
-                justifyContent: 'center',
-                gap: '4px',
-                // Fixed box: the value must not resize the pill as it changes.
-                width: '176px',
-                boxSizing: 'border-box',
-                padding: '2px 8px',
-                borderRadius: '999px',
-                border: `1px solid ${color.border}`,
-                background: color.bgLayer,
-                lineHeight: '18px',
-              }}
-            >
-              <span style={{ fontSize: '11px', color: color.textTertiary, letterSpacing: '0.5px' }}>
-                {LIANG_POSITION_LABEL}
-              </span>
-              <strong
-                data-liangbiao-liang-position-value=""
+      <div data-liangbiao-region="core" style={coreStyle}>
+        <div data-liangbiao-core-anchor="" style={coreAnchorStyle}>
+          <LiangQiRing
+            personal={personal}
+            reducedMotion={reducedMotion}
+            justCondensed={justCondensed}
+            footer={(
+              <span
+                data-liangbiao-liang-position=""
+                title={`${VOTE_UP_NAME} ${percents.up} / ${VOTE_DOWN_NAME} ${percents.down}`}
                 style={{
-                  ...numericStyle,
-                  fontSize: '15px',
-                  fontWeight: 700,
-                  color: color.up,
-                  // One short pop when the value moves: the point of the
-                  // decimals is that a vote is visible, so it should be felt.
-                  animation: positionPulse && !reducedMotion
-                    ? 'liangbiao-position-pop 0.5s ease-out 1'
-                    : undefined,
+                  display: 'inline-flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  width: '176px',
+                  boxSizing: 'border-box',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  border: `1px solid ${color.border}`,
+                  background: color.bgLayer,
+                  lineHeight: '18px',
                 }}
               >
-                {percents.up}
-              </strong>
-            </span>
-          )}
-        >
-          <LiangAvatar state={snapshot.liangziState} pulse={avatarPulse} reducedMotion={reducedMotion} />
-        </LiangQiRing>
-        <div style={flankStyle} data-liangbiao-personal="next-incense">
+                <span style={{ fontSize: '11px', color: color.textTertiary, letterSpacing: '0.5px' }}>
+                  {LIANG_POSITION_LABEL}
+                </span>
+                <strong
+                  data-liangbiao-liang-position-value=""
+                  style={{
+                    ...numericStyle,
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: color.up,
+                    animation: positionPulse && !reducedMotion
+                      ? 'liangbiao-position-pop 0.5s ease-out 1'
+                      : undefined,
+                  }}
+                >
+                  {percents.up}
+                </strong>
+              </span>
+            )}
+          >
+            <LiangAvatar state={snapshot.liangziState} pulse={avatarPulse} reducedMotion={reducedMotion} />
+          </LiangQiRing>
+        </div>
+        <div style={{ ...flankStyle, left: '0px' }} data-liangbiao-personal="incense">
+          <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
+          <span style={{ ...numericStyle, fontSize: '18px', fontWeight: 700, color: color.warn }}>
+            {personal.remainingIncense}
+            <span style={{ fontSize: '12px', fontWeight: 600 }}> 炷</span>
+          </span>
+        </div>
+        <div style={{ ...flankStyle, right: '0px' }} data-liangbiao-personal="next-incense">
           <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
-          <span style={{ ...numericStyle, fontSize: '17px', fontWeight: 700, color: color.textPrimary }}>
+          <span style={{ ...numericStyle, fontSize: '15px', fontWeight: 700, color: color.textPrimary }}>
             {personal.tokensToNextIncense.toLocaleString('zh-CN')}
           </span>
           <span style={{ fontSize: '11px', color: color.textTertiary }}>Token</span>
         </div>
       </div>
 
-      {/* Region 3 — exactly two vote buttons */}
-      <div data-liangbiao-region="vote" style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+      {/* Region 3 — exactly two equal-width vote buttons */}
+      <div data-liangbiao-region="vote" style={voteRowStyle}>
         <button
           type="button"
           data-liangbiao-vote="up"
