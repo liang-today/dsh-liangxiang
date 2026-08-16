@@ -4,8 +4,8 @@
  * Artwork is a six-sticker comedy progression of ONE engineer being 夯
  * into an ancestor. Pixels are swappable; state semantics are frozen:
  *
- *   waiting     待开梁  gray unlit placeholder, closed-eye incense
- *   liang_gong  梁工    hard hat + work badge + coffee, still overtime
+ *   waiting     待开梁  gray unlit placeholder; plaque in art reads 牢梁
+ *   liang_gong  梁工    hard hat + coffee; chest badge reads 老梁
  *   liang_zong  梁总    navy suit + red tie, fake executive smirk
  *   liang_shen  梁神    crooked halo, levitation, smile going feral
  *   liang_sheng 梁圣    holy robes + rays, still holding a keyboard
