@@ -68,24 +68,6 @@ describe('bootstrap and token claims', () => {
     expect(response.authoritative_personal_state.remaining_incense).toBe(earned)
   })
 
-  it('caps claimed tokens to one incense per minute of identity age', () => {
-    const f = boot({ LIANGBIAO_MAX_TOKENS_PER_MINUTE: '50000' })
-    const immediate = f.service.applyTokenClaim(INSTALLATION, {
-      claimed_effective_tokens: 150_000,
-      claim_business_date: '2026-08-16',
-    })
-    expect(immediate.authoritative_personal_state.earned_incense).toBe(0)
-    expect(immediate.authoritative_personal_state.claimed_effective_tokens).toBe(0)
-    expect(immediate.claim_applied).toBe(false)
-    f.clock.advance(60_000)
-    const later = f.service.applyTokenClaim(INSTALLATION, {
-      claimed_effective_tokens: 150_000,
-      claim_business_date: '2026-08-16',
-    })
-    expect(later.authoritative_personal_state.claimed_effective_tokens).toBe(50_000)
-    expect(later.authoritative_personal_state.earned_incense).toBe(1)
-  })
-
   it('ratchets the claim monotonically: a smaller claim cannot rewind a balance', () => {
     const f = boot()
     f.service.applyTokenClaim(INSTALLATION, {

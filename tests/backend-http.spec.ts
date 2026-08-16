@@ -350,7 +350,6 @@ describe('authority mode guard', () => {
     const config = resolveBackendConfig({}, () => undefined)
     expect(config.authorityMode).toBe('DEV_STAGING_ONLY')
     expect(config.allowUnsigned).toBe(false)
-    expect(config.maxTokensPerMinute).toBe(50_000)
     expect(config.communityKey).toBeNull()
   })
 })

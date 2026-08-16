@@ -73,7 +73,7 @@
 单调 ratchet：更小的值不生效（`claim_applied: false`）；`claim_business_date` 与服务器业务日不符则忽略。
 名字里的 “claim” 是契约的一部分：这是声明，不是证明。
 
-默认还有一层 **drip**：按身份 `created_at` 与服务器时钟，每分钟最多接受 `LIANGBIAO_MAX_TOKENS_PER_MINUTE`（默认 50,000 = 1 炷）的增长。这防的是瞬间自报天文数字，**不能**证明 DSH 真的跑过。`0` 关闭（单测 / smoke）。
+（早期曾按身份年龄 drip 限速 `LIANGBIAO_MAX_TOKENS_PER_MINUTE`，现已移除：真实 Token 产生速率远高于固定每分钟上限，drip 只会误伤诚实用户。防滥用改在 vote 侧限流，见下方「限流」。）
 
 ## POST /v1/votes
 
@@ -137,5 +137,3 @@
 
 `POST /v1/votes` 按 installation 每分钟 `LIANGBIAO_VOTE_RATE_LIMIT` 次（默认 600，0 关闭），超出 429。
 这是防误用/防抖，不是安全边界——没有 DSH 身份，限流可以被换密钥对绕过（设备指纹只挡住同一 MAC 集合上的第二次安装）。
-
-香火增长另有 `LIANGBIAO_MAX_TOKENS_PER_MINUTE`（默认 50k/分钟）。详见 [`121`](121-vps-deploy.md)。
