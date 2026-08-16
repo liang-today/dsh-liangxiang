@@ -86,7 +86,7 @@ export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {
 }
 
 /** Disabled-vote reason surfaced when the personal incense pool is empty. */
-export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷香后即可投票'
+export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷香后即可打梁'
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
 export const OFFLINE_REASON = '未连接本地服务：显示最近状态，重新打开面板可重试'
@@ -99,7 +99,7 @@ export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合�
  * the server incense ledger. Not a fifth region, not a third vote option.
  */
 export const RECONCILE_LABEL = '上达天听'
-export const RECONCILE_HINT = '和服务器重新对账香火数据'
+export const RECONCILE_HINT = '和天庭重新对账香火数据'
 export const RECONCILE_DONE = '已上达天听'
 export const RECONCILE_CONFIRM_PROMPT = '向服务器重新对账香火？'
 export const RECONCILE_CONFIRM_OK = '确认'

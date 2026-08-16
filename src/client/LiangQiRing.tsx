@@ -33,7 +33,8 @@ export interface LiangQiRingProps {
 export const RING_SIZE = 126
 const RING_RADIUS = 54
 const RING_STROKE = 5
-const AVATAR_SLOT = 68
+/** Inner clear diameter is ~103px; fill the circle (was 68, +~2/5). */
+export const AVATAR_SLOT = 96
 /** Leave the south arc empty so 炷/月 do not sit on the 梁位 pill. */
 const BOTTOM_GAP = 1.2
 const ONES_ORBIT = RING_RADIUS + 9
@@ -218,8 +219,9 @@ export function LiangQiRing({
           data-liangbiao-ring-footer=""
           style={{
             position: 'absolute',
-            bottom: '-4px',
+            top: '100%',
             left: '50%',
+            marginTop: '8px',
             transform: 'translateX(-50%)',
             whiteSpace: 'nowrap',
             fontFamily: font.family,

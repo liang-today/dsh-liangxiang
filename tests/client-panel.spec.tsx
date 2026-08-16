@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { LiangAvatar } from '../src/client/LiangAvatar.tsx'
-import { RING_SIZE } from '../src/client/LiangQiRing.tsx'
+import { AVATAR_SLOT, RING_SIZE } from '../src/client/LiangQiRing.tsx'
 import { Panel } from '../src/client/Panel.tsx'
 import { createMockLiangbiaoStore } from '../src/client/store.ts'
 import type { LiangbiaoViewState } from '../src/client/store.ts'
@@ -93,6 +93,10 @@ describe('four visual regions', () => {
     // Local soft-trust stays honest via the attribute + screen-reader summary,
     // not a visible badge next to the title.
     expect(header === undefined ? '' : textContent([header])).not.toContain('本地演示')
+    const caseTitle = findByAttr(tree, 'data-liangbiao-case-title')[0]
+    expect(styleOf(findAll(header === undefined ? [] : [header], (node) => node.type === 'h2')[0]).fontSize).toBe('13px')
+    expect(styleOf(caseTitle).fontSize).toBe('15px')
+    expect(styleOf(caseTitle).whiteSpace).toBe('nowrap')
     const dialog = findAll(tree, (node) => node.props.role === 'dialog')[0]
     expect(dialog?.props['data-liangbiao-authority']).toBe('LOCAL_FAKE_DEV')
     const summary = findAll(tree, (node) => node.props['aria-live'] === 'polite')[0]
@@ -196,7 +200,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(incense.height).toBe(`${RING_SIZE}px`)
       expect(next.height).toBe(`${RING_SIZE}px`)
       expect(pill.width).toBe('132px')
-      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('252px')
+      expect(styleOf(findByAttr(tree, 'data-liangbiao-ring-footer')[0]).top).toBe('100%')
+      expect(styleOf(findByAttr(tree, 'data-liangbiao-ring-footer')[0]).marginTop).toBe('8px')
+      expect(styleOf(findByAttr(tree, 'data-liangbiao-avatar')[0]).width).toBe(AVATAR_SLOT)
+      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('312px')
       expect(social.map((node) => styleOf(node).flex)).toEqual(['1 1 0', '1 1 0'])
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
@@ -410,6 +417,8 @@ describe('region 3: exactly two vote buttons', () => {
       expect(vote.props.title).toBe(NO_INCENSE_REASON)
     }
     expect(textContent(tree)).toContain(NO_INCENSE_REASON)
+    expect(NO_INCENSE_REASON).toContain('打梁')
+    expect(NO_INCENSE_REASON).not.toContain('投票')
   })
 
   it('shows the transient 已上香 feedback line', () => {
@@ -464,6 +473,7 @@ describe('上达天听', () => {
     expect(findByAttr(tree, 'data-liangbiao-heaven-icon')).toHaveLength(1)
     const hint = findByAttr(tree, 'data-liangbiao-hint')[0]
     expect(hint && textContent([hint])).toBe(RECONCILE_HINT)
+    expect(RECONCILE_HINT).toBe('和天庭重新对账香火数据')
     expect(findByAttr(tree, 'data-liangbiao-reconcile-confirm')).toHaveLength(0)
   })
 

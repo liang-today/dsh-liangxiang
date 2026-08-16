@@ -86,9 +86,12 @@ export function LiangAvatar({
   const floating = floatMs !== null
 
   const wrapStyle: CSSProperties = {
+    position: 'relative',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+    width: size,
+    height: hideLabel ? undefined : size,
     gap: '2px',
     overflow: 'visible',
     background: 'transparent',
@@ -144,11 +147,18 @@ export function LiangAvatar({
         <span
           title={`${LIANGZI_STATE_LABELS[state]}：${rangeText}`}
           style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: '8px',
             fontFamily: font.family,
             fontSize: size < 80 ? '11px' : '13px',
-            fontWeight: 600,
+            fontWeight: 700,
             color: waiting ? color.textTertiary : LABEL_COLOR[state],
             letterSpacing: '0.5px',
+            textAlign: 'center',
+            textShadow: '0 1px 2px rgba(255,255,255,0.92), 0 0 8px rgba(255,255,255,0.75)',
+            pointerEvents: 'none',
           }}
         >
           {LIANGZI_STATE_LABELS[state]}

@@ -45,7 +45,7 @@ import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
-import { LiangQiRing, RING_SIZE } from './LiangQiRing.tsx'
+import { LiangQiRing, AVATAR_SLOT, RING_SIZE } from './LiangQiRing.tsx'
 import type { LiangbiaoViewState } from './store.ts'
 import { color, font } from './theme.ts'
 
@@ -139,7 +139,7 @@ const CORE_PAD_Y = 6
 
 const coreStyle: CSSProperties = {
   position: 'relative',
-  padding: `${CORE_PAD_Y}px 0 18px`,
+  padding: `${CORE_PAD_Y}px 0 34px`,
   overflow: 'visible',
 }
 
@@ -408,12 +408,24 @@ export function Panel(props: PanelProps): ReactElement {
       {/* Region 1 — 今日梁案 */}
       <header
         data-liangbiao-region="case"
-        style={{ position: 'relative', marginBottom: '8px', padding: '0 20px', textAlign: 'center' }}
+        style={{ position: 'relative', marginBottom: '8px', padding: '0 22px', textAlign: 'center' }}
       >
-        <h2 style={{ margin: 0, fontSize: '11px', fontWeight: 600, color: color.textTertiary, letterSpacing: '1px' }}>
+        <h2 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: color.textTertiary, letterSpacing: '1px' }}>
           {PANEL_TITLE}
         </h2>
-        <p style={{ margin: '3px 0 0', fontSize: '13px', fontWeight: 600, color: color.textPrimary }}>
+        <p
+          data-liangbiao-case-title=""
+          title={activeCase.title}
+          style={{
+            margin: '4px 0 0',
+            fontSize: '15px',
+            fontWeight: 600,
+            color: color.textPrimary,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
           {activeCase.title}
         </p>
         <button
@@ -493,7 +505,7 @@ export function Panel(props: PanelProps): ReactElement {
               state={snapshot.liangziState}
               pulse={avatarPulse}
               reducedMotion={reducedMotion}
-              size={68}
+              size={AVATAR_SLOT}
               liangQiFill={personal.liangQiFill}
             />
           </LiangQiRing>
