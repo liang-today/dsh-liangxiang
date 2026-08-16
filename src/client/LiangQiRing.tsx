@@ -41,16 +41,20 @@ export const AVATAR_SLOT = 96
 const BOTTOM_GAP = 1.2
 const ONES_ORBIT = RING_RADIUS + 9
 const TENS_ORBIT = RING_RADIUS + 17
-const HUNDREDS_ORBIT = RING_RADIUS - 12
+const HUNDREDS_ORBIT = RING_RADIUS + 25
+/** Angular phase per orbit so a 月/日 never lands on a 炷's exact angle. */
+const PHASE_ONE = 0
+const PHASE_TEN = 0.21
+const PHASE_HUNDRED = 0.42
 
-function orbitAngle(index: number, count: number): number {
+function orbitAngle(index: number, count: number, phase: number): number {
   const span = 2 * Math.PI - BOTTOM_GAP
   const t = (index + 0.5) / Math.max(count, 1)
-  return Math.PI / 2 + BOTTOM_GAP / 2 + t * span
+  return Math.PI / 2 + BOTTOM_GAP / 2 + t * span + phase
 }
 
-function orbitPoint(index: number, count: number, radius: number): { angle: number, cx: number, cy: number } {
-  const angle = orbitAngle(index, count)
+function orbitPoint(index: number, count: number, radius: number, phase: number): { angle: number, cx: number, cy: number } {
+  const angle = orbitAngle(index, count, phase)
   return {
     angle,
     cx: RING_SIZE / 2 + Math.cos(angle) * radius,
@@ -59,7 +63,7 @@ function orbitPoint(index: number, count: number, radius: number): { angle: numb
 }
 
 function StickMark({ index, count, opacity }: { index: number, count: number, opacity: number }): ReactElement {
-  const { angle, cx, cy } = orbitPoint(index, count, ONES_ORBIT)
+  const { angle, cx, cy } = orbitPoint(index, count, ONES_ORBIT, PHASE_ONE)
   const deg = (angle * 180) / Math.PI + 90
   return (
     <g
@@ -75,7 +79,7 @@ function StickMark({ index, count, opacity }: { index: number, count: number, op
 }
 
 function MoonMark({ index, count, opacity }: { index: number, count: number, opacity: number }): ReactElement {
-  const { cx, cy } = orbitPoint(index, count, TENS_ORBIT)
+  const { cx, cy } = orbitPoint(index, count, TENS_ORBIT, PHASE_TEN)
   return (
     <g
       data-liangbiao-incense-mark="ten"
@@ -83,16 +87,18 @@ function MoonMark({ index, count, opacity }: { index: number, count: number, opa
       transform={`translate(${cx} ${cy})`}
       opacity={opacity}
     >
+      {/* Fuller crescent: a disc minus an offset disc (evenodd), not a thin sliver. */}
       <path
         fill={color.warn}
-        d="M 1.5 -4.3 A 4.4 4.4 0 1 0 1.5 4.3 A 3.4 3.4 0 1 1 1.5 -4.3 Z"
+        fillRule="evenodd"
+        d="M 0 -4.5 A 4.5 4.5 0 1 1 0 4.5 A 4.5 4.5 0 1 1 0 -4.5 Z M 1.8 -3.2 A 3.2 3.2 0 1 0 1.8 3.2 A 3.2 3.2 0 1 0 1.8 -3.2 Z"
       />
     </g>
   )
 }
 
 function SunMark({ index, count, opacity }: { index: number, count: number, opacity: number }): ReactElement {
-  const { cx, cy } = orbitPoint(index, count, HUNDREDS_ORBIT)
+  const { cx, cy } = orbitPoint(index, count, HUNDREDS_ORBIT, PHASE_HUNDRED)
   return (
     <g
       data-liangbiao-incense-mark="hundred"
@@ -241,15 +247,16 @@ export function LiangQiRing({
             position: 'absolute',
             top: '-6px',
             left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '1px 8px',
+            transform: 'translate(-50%, 0)',
+            padding: '1px 9px',
             borderRadius: '999px',
             background: color.warn,
             color: '#ffffff',
             fontFamily: font.family,
             fontSize: '11px',
             fontWeight: 600,
-            animation: reducedMotion ? undefined : 'liangbiao-condense 1.2s ease-out 1',
+            whiteSpace: 'nowrap',
+            animation: reducedMotion ? undefined : 'liangbiao-condense 1.4s ease-out 1',
           }}
         >
           凝香 +1 炷
