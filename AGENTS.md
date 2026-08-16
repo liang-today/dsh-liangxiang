@@ -78,7 +78,9 @@ Rules:
   columns are forbidden here — 「我的香火」 being wider than 「下一炷」 must
   never shove 梁子 sideways).
 - remaining incense on the ring is pictorial place-value on **separate orbits**
-  (炷=个位, 月=十位, 日=百位, each 0–9). A moon never occupies a stick slot.
+  (炷=stick ones, 月=moon tens, 日=sun hundreds, each 0–9). Glyphs sit on
+  almost-full orbits with a bottom gap for the 梁位 pill — not 2px dots on a
+  cramped top arc. A moon never occupies a stick slot.
   ≥1000 炷 falls back to a compact numeral on the ring. The ring fill is
   next-incense progress; the 炷/月/日 marks are remaining incense. The two
   flanks are small captions of those same two facts — they must not compete
@@ -268,7 +270,7 @@ and intensity; its footer slot is reserved for the global 梁位 value.
 我的香火 5 炷   [环 + 梁子]   下一炷 3,000 当量
 ```
 
-The ring/avatar/incense-dots stay on the panel centerline; the two numbers are
+The ring/avatar/incense glyphs stay on the panel centerline; the two numbers are
 overlays and must never become a separate full-width growth row.
 
 ### Effects of voting vs Token accumulation

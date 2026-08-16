@@ -71,7 +71,7 @@ const panelStyle: CSSProperties = {
   position: 'absolute',
   width: `${PANEL_WIDTH}px`,
   maxHeight: 'min(420px, 80vh)',
-  overflowY: 'auto',
+  overflow: 'visible',
   boxSizing: 'border-box',
   padding: '12px',
   borderRadius: '12px',
@@ -136,6 +136,7 @@ const CORE_PAD_Y = 6
 const coreStyle: CSSProperties = {
   position: 'relative',
   padding: `${CORE_PAD_Y}px 0 18px`,
+  overflow: 'visible',
 }
 
 const coreAnchorStyle: CSSProperties = {
@@ -159,7 +160,7 @@ const flankStyle: CSSProperties = {
 }
 
 const flankCaptionStyle: CSSProperties = {
-  fontSize: '10px',
+  fontSize: '9px',
   color: color.textSecondary,
 }
 
@@ -497,7 +498,7 @@ export function Panel(props: PanelProps): ReactElement {
           <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
           <span
             title={`${remainingExact} 炷`}
-            style={{ ...numericStyle, fontSize: '13px', fontWeight: 700, color: color.warn, lineHeight: '18px' }}
+            style={{ ...numericStyle, fontSize: '11px', fontWeight: 600, color: color.warn, lineHeight: '16px' }}
           >
             <span data-liangbiao-compact="incense">{remainingCompact}</span>
             <span style={{ fontSize: '10px', fontWeight: 600 }}> 炷</span>
@@ -513,7 +514,7 @@ export function Panel(props: PanelProps): ReactElement {
           <span
             data-liangbiao-compact="next-incense"
             title={`${toNextExact} ${NEXT_INCENSE_UNIT}`}
-            style={{ ...numericStyle, fontSize: '13px', fontWeight: 700, color: color.textPrimary, lineHeight: '18px' }}
+            style={{ ...numericStyle, fontSize: '11px', fontWeight: 600, color: color.textPrimary, lineHeight: '16px' }}
           >
             {toNextCompact}
           </span>

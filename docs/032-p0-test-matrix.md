@@ -65,7 +65,7 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 ## Region 2 新布局与自由放置
 
-左翼 `5 炷`、右翼可见 `3K 当量`（精确值 3,000 在 SR；悬停权重表含 Pro ×1 / Flash ×0.5）、环底 `梁位 83.021952%`、旧的 `data-liangbiao-ratio` 上下比例块已不存在、一票后梁位打印值变化;高库存 `1,234 炷` / `50,000 当量` 可见为 `1.2K` / `50K`。9 炷画 9 个个位点；23 炷 = 3 炷 + 2 月分轨；≥1000 用环上 compact chip。徽章图标是六态头像（30px、无标签、`aria-hidden`）、`aria-label` 含状态名、cursor `grab`/`touch-action: none`；坐标夹回可视区、窗口缩小后仍在画内、`localStorage` 往返与损坏值回退、面板在左边缘翻转到右侧、贴近上下边缘改锚点。→ `client-panel.spec.tsx`、`badge.spec.tsx`、`domain-compact-count.spec.ts`
+左翼 `5 炷`、右翼可见 `3K 当量`（精确值 3,000 在 SR；悬停权重表含 Pro ×1 / Flash ×0.5）、环底 `梁位 83.021952%`、旧的 `data-liangbiao-ratio` 上下比例块已不存在、一票后梁位打印值变化;高库存 `1,234 炷` / `50,000 当量` 可见为 `1.2K` / `50K`。9 炷画 9 根香柱字形；23 炷 = 3 炷 + 2 月牙分轨；105 = 5 炷 + 1 日轮；≥1000 用环上 compact chip。徽章图标是六态头像（30px、无标签、`aria-hidden`）、`aria-label` 含状态名、cursor `grab`/`touch-action: none`；坐标夹回可视区、窗口缩小后仍在画内、`localStorage` 往返与损坏值回退、面板在左边缘翻转到右侧、贴近上下边缘改锚点。→ `client-panel.spec.tsx`、`badge.spec.tsx`、`domain-compact-count.spec.ts`
 
 ## 近实时快照
 

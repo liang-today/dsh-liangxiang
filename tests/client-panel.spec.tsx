@@ -313,29 +313,32 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(tooltips.length).toBeGreaterThan(0)
   })
 
-  it('draws 9 炷 marks instead of capping at 8', () => {
+  it('draws 9 stick glyphs around the ring instead of 8 uncountable dots', () => {
     const store = createMockLiangbiaoStore({ effectiveTokensToday: 9 * 50_000, usedIncenseToday: 0 })
     expect(store.getSnapshot().personal.remainingIncense).toBe(9)
     const tree = renderPanel(store.getSnapshot())
     expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'one')).toHaveLength(9)
+    expect(findByAttr(tree, 'data-liangbiao-incense-glyph', 'stick')).toHaveLength(9)
     expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'ten')).toHaveLength(0)
+    const ring = findByAttr(tree, 'data-liangbiao-ring')[0]
+    expect(styleOf(ring).overflow).toBe('visible')
   })
 
-  it('puts tens on a separate orbit so a moon never steals a stick slot', () => {
+  it('puts moons on a separate orbit so a moon never steals a stick slot', () => {
     const store = createMockLiangbiaoStore({ effectiveTokensToday: 23 * 50_000, usedIncenseToday: 0 })
     expect(store.getSnapshot().personal.remainingIncense).toBe(23)
     const tree = renderPanel(store.getSnapshot())
-    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'one')).toHaveLength(3)
-    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'ten')).toHaveLength(2)
+    expect(findByAttr(tree, 'data-liangbiao-incense-glyph', 'stick')).toHaveLength(3)
+    expect(findByAttr(tree, 'data-liangbiao-incense-glyph', 'moon')).toHaveLength(2)
   })
 
-  it('puts hundreds on an inner orbit so 105 is 5 炷 + 1 日', () => {
+  it('puts suns on an inner orbit so 105 is 5 炷 + 1 日', () => {
     const store = createMockLiangbiaoStore({ effectiveTokensToday: 105 * 50_000, usedIncenseToday: 0 })
     expect(store.getSnapshot().personal.remainingIncense).toBe(105)
     const tree = renderPanel(store.getSnapshot())
-    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'one')).toHaveLength(5)
-    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'ten')).toHaveLength(0)
-    expect(findByAttr(tree, 'data-liangbiao-incense-mark', 'hundred')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangbiao-incense-glyph', 'stick')).toHaveLength(5)
+    expect(findByAttr(tree, 'data-liangbiao-incense-glyph', 'moon')).toHaveLength(0)
+    expect(findByAttr(tree, 'data-liangbiao-incense-glyph', 'sun')).toHaveLength(1)
   })
 
   it('drops glyphs at 1000+ and shows a compact chip instead of ten moons', () => {
