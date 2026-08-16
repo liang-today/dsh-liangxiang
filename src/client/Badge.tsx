@@ -16,6 +16,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, Re
 import type { LiangziState, VoteType } from '../domain/index.ts'
 import { HOVER_TEXT, LIANGZI_STATE_LABELS, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
 import {
+  BADGE_ICON_SIZE,
   BADGE_SIZE,
   clampBadgePosition,
   loadBadgePosition,
@@ -33,16 +34,26 @@ const buttonStyle: CSSProperties = {
   height: `${BADGE_SIZE}px`,
   padding: 0,
   border: 'none',
-  borderRadius: '50%',
-  background: 'rgba(90, 105, 140, 0.85)',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
   color: '#ffffff',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  overflow: 'hidden',
+  overflow: 'visible',
   pointerEvents: 'auto',
   touchAction: 'none',
+  WebkitTapHighlightColor: 'transparent',
 }
+
+const BADGE_CSS = `
+[data-liangbiao-badge]:focus-visible,
+[data-liangbiao-badge][aria-expanded="true"]:focus-visible {
+  outline: 2px solid ${color.brand};
+  outline-offset: 2px;
+}
+`
 
 export interface BadgeButtonProps {
   open: boolean
@@ -88,14 +99,21 @@ export function BadgeButton({
       style={{
         ...buttonStyle,
         cursor: dragging ? 'grabbing' : 'grab',
-        boxShadow: open ? `0 0 0 2px ${color.brand}` : undefined,
       }}
       data-liangbiao-badge=""
       data-liangbiao-badge-state={liangziState}
     >
+      <style>{BADGE_CSS}</style>
       {/* The mini 梁子 is decorative here: the button already names the state. */}
-      <span aria-hidden="true" style={{ display: 'flex', pointerEvents: 'none' }}>
-        <LiangAvatar state={liangziState} pulse={false} reducedMotion={reducedMotion} size={30} hideLabel />
+      <span aria-hidden="true" style={{ display: 'flex', pointerEvents: 'none', overflow: 'visible', background: 'transparent' }}>
+        <LiangAvatar
+          state={liangziState}
+          pulse={false}
+          reducedMotion={reducedMotion}
+          size={BADGE_ICON_SIZE}
+          hideLabel
+          chrome="none"
+        />
       </span>
     </button>
   )
