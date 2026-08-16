@@ -142,7 +142,6 @@ describe('online bootstrap', () => {
     s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     expect(frame(s).personal.effectiveTokensToday).toBe(50_000)
-    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(1)
     await waitFor(() => claimedOnBackend(s, 50_000), 'the claim to land on the backend date')
   })
 
@@ -154,9 +153,10 @@ describe('online bootstrap', () => {
     expect(wire.personal.effectiveTokensToday).toBe(50_000)
     expect(wire.accounting.inputTokensToday).toBe(35_000)
     const view = wireToViewState(wire, 'live')
-    expect(view.personal.earnedIncenseToday).toBe(1)
-    expect(view.personal.remainingIncense).toBe(1)
+    // Ring progress is optimistic (painted immediately); spendable incense is
+    // authoritative and stays 0 until the debounced claim lands.
     expect(view.personal.tokensToNextIncense).toBe(50_000)
+    expect(view.personal.remainingIncense).toBe(0)
   })
 
   it('lowers tokensToNextIncense as live usage arrives, without waiting for the claim', async () => {
@@ -312,7 +312,7 @@ describe('online voting', () => {
     s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     // The panel already paints 1 炷 from local observation, but the claim is
     // debounced for a minute and has NOT reached the backend yet.
-    expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(1)
+    expect(wireToViewState(frame(s), 'live').personal.effectiveTokensToday).toBe(50_000)
     expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(0)
 
     const caseId = frame(s).activeCase.id

@@ -52,6 +52,8 @@ export interface WireGlobalCounts {
 export interface WirePersonalCounts {
   effectiveTokensToday: number
   usedIncenseToday: number
+  /** Authoritative spendable incense (server ledger), for the vote button. */
+  remainingIncense: number
   tokenPerIncense: number
 }
 
@@ -192,6 +194,7 @@ export function parseWireState(raw: unknown): LiangbiaoWireState {
   const personal: WirePersonalCounts = {
     effectiveTokensToday: requireCount(personalRecord.effectiveTokensToday, 'state.personal.effectiveTokensToday'),
     usedIncenseToday: requireCount(personalRecord.usedIncenseToday, 'state.personal.usedIncenseToday'),
+    remainingIncense: requireCount(personalRecord.remainingIncense, 'state.personal.remainingIncense'),
     tokenPerIncense: requireCount(personalRecord.tokenPerIncense, 'state.personal.tokenPerIncense'),
   }
   if (personal.tokenPerIncense <= 0) {
