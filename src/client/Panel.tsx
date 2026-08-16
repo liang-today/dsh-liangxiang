@@ -56,6 +56,9 @@ export interface PanelProps {
   reducedMotion: boolean
   /** Smoothed + rate-extrapolated fill for the 油门 animation (optional). */
   throttle?: ThrottledProgress
+  /** Whether sound cues are on (speaker toggle). */
+  soundOn: boolean
+  onToggleSound: () => void
   avatarPulse: boolean
   justCondensed: boolean
   /** Transient feedback line under the buttons (e.g. 已上香), empty = none. */
@@ -371,9 +374,30 @@ const visuallyHidden: CSSProperties = {
   border: 0,
 }
 
+function SoundIcon({ on }: { on: boolean }): ReactElement {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
+      {on
+        ? (
+          <>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+            <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+          </>
+        )
+        : (
+          <>
+            <line x1="16" y1="9" x2="22" y2="15" />
+            <line x1="22" y1="9" x2="16" y2="15" />
+          </>
+        )}
+    </svg>
+  )
+}
+
 export function Panel(props: PanelProps): ReactElement {
   const {
-    state, reducedMotion, throttle, avatarPulse, justCondensed, voteFeedback,
+    state, reducedMotion, throttle, soundOn, onToggleSound, avatarPulse, justCondensed, voteFeedback,
     onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, onDevCredit,
   } = props
@@ -415,13 +439,14 @@ export function Panel(props: PanelProps): ReactElement {
   // Percentages come from the snapshot's own raw counts, so they can never
   // contradict the Liangzi state rendered beside them (AGENTS.md §12).
   const percents = formatRatioPercents(snapshot.upVotes, snapshot.downVotes, LIANG_POSITION_DECIMALS)
+  const earnedExact = personal.earnedIncenseToday.toLocaleString('zh-CN')
   const remainingExact = personal.remainingIncense.toLocaleString('zh-CN')
   const toNextExact = personal.tokensToNextIncense.toLocaleString('zh-CN')
-  const remainingCompact = formatCompactCount(personal.remainingIncense)
+  const earnedCompact = formatCompactCount(personal.earnedIncenseToday)
   const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}`
     + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
     + `${LIANG_POSITION_LABEL} ${percents.up}（即${VOTE_UP_NAME} ${percents.up}，${VOTE_DOWN_NAME} ${percents.down}）。`
-    + `我的剩余香火 ${remainingExact} 炷，距下一炷还差 ${toNextExact} 当量（Pro 口径）。`
+    + `今日生成香火 ${earnedExact} 炷，剩余 ${remainingExact} 炷，距下一炷还差 ${toNextExact} 当量（Pro 口径）。`
     + `${AUTHORITY_MODE_NOTES[state.authorityMode]}。`
 
   return (
@@ -459,6 +484,27 @@ export function Panel(props: PanelProps): ReactElement {
         >
           {activeCase.title}
         </p>
+        <button
+          type="button"
+          aria-label={soundOn ? '关闭声音' : '打开声音'}
+          aria-pressed={soundOn}
+          onClick={onToggleSound}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            border: 'none',
+            background: 'transparent',
+            color: soundOn ? color.textSecondary : color.textTertiary,
+            padding: '4px',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <SoundIcon on={soundOn} />
+        </button>
         <button
           type="button"
           aria-label="关闭面板"
@@ -552,10 +598,10 @@ export function Panel(props: PanelProps): ReactElement {
         <div style={{ ...flankStyle, left: '0px' }} data-liangbiao-personal="incense">
           <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
           <span
-            title={`${remainingExact} 炷`}
+            title={`今日生成 ${earnedExact} 炷`}
             style={{ ...numericStyle, fontSize: '11px', fontWeight: 600, color: color.warn, lineHeight: '16px' }}
           >
-            <span data-liangbiao-compact="incense">{remainingCompact}</span>
+            <span data-liangbiao-compact="incense">{earnedCompact}</span>
             <span style={{ fontSize: '10px', fontWeight: 600 }}> 炷</span>
           </span>
         </div>

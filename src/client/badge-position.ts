@@ -16,7 +16,7 @@ export const BADGE_SIZE = 40
 /** Portrait inside the entry. Was 30px; same 4/3 step as `BADGE_SIZE`. */
 export const BADGE_ICON_SIZE = 40
 export const BADGE_MARGIN = 12
-export const PANEL_WIDTH = 344
+export const PANEL_WIDTH = 260
 export const PANEL_GAP = 10
 /** Room the panel needs above/below its vertical centre before it must re-anchor. */
 const PANEL_HALF_HEIGHT = 158

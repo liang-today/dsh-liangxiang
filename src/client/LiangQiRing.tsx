@@ -85,10 +85,10 @@ function MoonMark({ index, count, opacity }: { index: number, count: number, opa
       transform={`translate(${cx} ${cy})`}
       opacity={opacity}
     >
+      {/* Open crescent (two horns), scaled from the standard "moon" icon path. */}
       <path
         fill={color.warn}
-        fillRule="evenodd"
-        d="M 0 -4.3 A 4.3 4.3 0 1 1 0 4.3 A 4.3 4.3 0 1 1 0 -4.3 Z M 1.9 -3 A 3 3 0 1 0 1.9 3 A 3 3 0 1 0 1.9 -3 Z"
+        d="M 2.1 0.3 A 3.8 3.8 0 1 1 -2 -3.8 A 2.9 2.9 0 0 0 2.1 0.3 Z"
       />
     </g>
   )
