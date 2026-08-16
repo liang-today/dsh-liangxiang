@@ -30,6 +30,12 @@ export interface LiangHostService {
   markReadyMemoryOnly: (reason: string) => void
   /** Cadence hook (snapshot publication / refresh). */
   tick: () => void
+  /**
+   * Force a backend re-read now (hover / panel open). Online: re-bootstrap so
+   * the expanded panel does not wait for the next 1s snapshot poll. Local:
+   * rotate to the current business date. Optional so older fakes stay valid.
+   */
+  refreshNow?: () => void | Promise<void>
   /** Release timers, in-flight requests and subscriptions. */
   dispose?: () => void
 }

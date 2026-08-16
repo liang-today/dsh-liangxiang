@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { deriveLiangziState } from '../src/domain/index.ts'
-import { parseV1Bootstrap, parseV1Snapshot, parseV1VoteResponse } from '../src/shared/backend-v1.ts'
+import { parseV1Bootstrap, parseV1PublishCaseResponse, parseV1Snapshot, parseV1VoteResponse } from '../src/shared/backend-v1.ts'
 import { createBackendFixture, DAY_MS, FIXED_NOW, type BackendFixture } from './helpers/backend.ts'
 
 const INSTALLATION = 'install-aaaa-0001'
@@ -378,5 +378,67 @@ describe('business date rollover', () => {
     } finally {
       utc.close()
     }
+  })
+})
+
+describe('same-day publish', () => {
+  it('archives the active case, opens a zero-vote successor, and restores remaining incense', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 5, 47_000)
+    const firstId = f.service.ensureActiveCase().id
+    vote(f, INSTALLATION, 'up', 'req-pub-000001')
+    vote(f, INSTALLATION, 'down', 'req-pub-000002')
+    const before = f.service.dailyState(INSTALLATION).authoritative_personal_state
+    expect(before.used_incense).toBe(2)
+    expect(before.remaining_incense).toBe(3)
+    expect(before.token_remainder).toBe(47_000)
+    const oldStats = f.store.statsFor(firstId)
+    expect(oldStats).toMatchObject({ up_votes: 1, down_votes: 1, unique_voters: 1 })
+
+    const published = parseV1PublishCaseResponse(f.service.publishCase('测试新梁案是夯还是拉'))
+    expect(published.archived_case?.id).toBe(firstId)
+    expect(published.archived_case?.status).toBe('closed')
+    expect(published.active_case.id).not.toBe(firstId)
+    expect(published.active_case.id).toMatch(/^case-2026-08-16-[0-9a-f]{8}$/)
+    expect(published.active_case.title).toBe('测试新梁案是夯还是拉')
+    expect(published.active_case.status).toBe('active')
+    expect(published.global_snapshot.case_id).toBe(published.active_case.id)
+    expect(published.global_snapshot.sequence).toBe(1)
+    expect(published.global_snapshot.total_incense).toBe(0)
+    expect(published.global_snapshot.liangzi_state).toBe('waiting')
+    expect(published.global_snapshot.up_ratio).toBeNull()
+
+    expect(f.store.caseById(firstId)?.status).toBe('closed')
+    expect(f.store.statsFor(firstId)).toMatchObject({ up_votes: 1, down_votes: 1, unique_voters: 1 })
+    expect(f.store.activeCaseFor('2026-08-16')?.id).toBe(published.active_case.id)
+
+    const after = f.service.dailyState(INSTALLATION).authoritative_personal_state
+    expect(after.claimed_effective_tokens).toBe(before.claimed_effective_tokens)
+    expect(after.used_incense).toBe(0)
+    expect(after.remaining_incense).toBe(5)
+    expect(after.token_remainder).toBe(47_000)
+
+    const stale = f.service.vote(INSTALLATION, {
+      case_id: firstId,
+      vote_type: 'up',
+      request_id: 'req-pub-stale001',
+    })
+    expect(stale.result).toMatchObject({ status: 'rejected', reason: 'case_not_active' })
+
+    const fresh = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-pub-new-0001'))
+    expect(fresh.result.status).toBe('accepted')
+    expect(fresh.global_snapshot.case_id).toBe(published.active_case.id)
+    expect(fresh.global_snapshot.total_incense).toBe(1)
+    expect(fresh.authoritative_personal_state.remaining_incense).toBe(4)
+  })
+
+  it('allows a second same-day publish and never leaves two actives', () => {
+    const f = boot()
+    f.service.ensureActiveCase()
+    const first = f.service.publishCase('第一案是夯还是拉')
+    const second = f.service.publishCase('第二案是夯还是拉')
+    expect(second.archived_case?.id).toBe(first.active_case.id)
+    expect(f.store.activeCaseFor('2026-08-16')?.id).toBe(second.active_case.id)
+    expect(f.store.caseById(first.active_case.id)?.status).toBe('closed')
   })
 })

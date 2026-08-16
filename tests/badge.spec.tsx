@@ -51,6 +51,29 @@ describe('LiangbiaoBadge entry', () => {
     expect(button.props['aria-label']).toBe(`${HOVER_TEXT}：${LIANGZI_STATE_LABELS.liang_sheng}`)
   })
 
+  it('probes for a newer 梁案 on hover and keyboard focus', () => {
+    let probes = 0
+    const tree = renderDeep(
+      <BadgeButton
+        open={false}
+        liangziState="liang_sheng"
+        onToggle={() => undefined}
+        onEscape={() => undefined}
+        onProbeLatest={() => {
+          probes += 1
+        }}
+        buttonRef={null}
+      />,
+    )
+    const button = findAll(tree, (node) => node.type === 'button')[0]
+    if (button === undefined) throw new Error('badge button missing')
+    const enter = button.props.onPointerEnter as ((event: unknown) => void) | undefined
+    const focus = button.props.onFocus as ((event: unknown) => void) | undefined
+    enter?.({})
+    focus?.({})
+    expect(probes).toBe(2)
+  })
+
   it('uses the current 梁子 state as its icon, not a letter', () => {
     for (const state of LIANGZI_STATES) {
       const tree = renderDeep(

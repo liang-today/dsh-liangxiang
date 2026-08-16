@@ -7,6 +7,7 @@
  *   GET  /v1/snapshot        the published global snapshot
  *   GET  /v1/me/daily-state  cheap personal refresh
  *   GET  /v1/health          liveness + authority mode
+ *   POST /v1/admin/cases     operator publish (community key; no installation)
  *
  * Boundary rules: every body is size-bounded and schema-validated, signed
  * community identity is required unless `allowUnsigned` is on (localhost
@@ -27,6 +28,7 @@ import {
   SIGNATURE_HEADER,
   TIMESTAMP_HEADER,
   parseInstallationId,
+  parseV1PublishCaseRequest,
   parseV1TokenClaimRequest,
   parseV1VoteRequest,
   type V1ErrorBody,
@@ -218,6 +220,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       [`${BACKEND_API_PREFIX}/me/daily-state`]: 'GET',
       [`${BACKEND_API_PREFIX}/token-claims`]: 'POST',
       [`${BACKEND_API_PREFIX}/votes`]: 'POST',
+      [`${BACKEND_API_PREFIX}/admin/cases`]: 'POST',
     }
     const expected = routes[path]
     if (expected === undefined) {
@@ -257,6 +260,37 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         writeError(res, 400, 'invalid_request', `invalid request body: ${message}`)
         return
       }
+    }
+
+    if (path === `${BACKEND_API_PREFIX}/admin/cases`) {
+      if (communityKey === null) {
+        writeError(res, 401, 'invalid_signature', 'publishing a case requires LIANGBIAO_COMMUNITY_KEY')
+        return
+      }
+      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
+        writeError(res, 401, 'invalid_signature', 'community key required')
+        if (presented !== undefined) {
+          log(`[liangbiao-backend] deny 401 invalid_signature ip=${peerAddress(req)} POST /v1/admin/cases`)
+        }
+        return
+      }
+      try {
+        const body = rawBody === '' ? {} : (JSON.parse(rawBody) as unknown)
+        const intent = parseV1PublishCaseRequest(body)
+        const published = service.publishCase(intent.title)
+        writeJson(res, 200, published)
+        const title = published.active_case.title.length <= 40
+          ? published.active_case.title
+          : `${published.active_case.title.slice(0, 40)}…`
+        log(
+          `[liangbiao-backend] publish archived=${published.archived_case?.id ?? '-'} `
+          + `opened=${published.active_case.id} title=${title} ip=${peerAddress(req)}`,
+        )
+      } catch (error) {
+        writeValidationError(res, error)
+      }
+      return
     }
 
     let installationId: string

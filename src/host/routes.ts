@@ -1,9 +1,10 @@
 /**
  * `/liangbiao/api/*` handlers over the DSH web server seam (docs/044):
  *
- *   GET  /liangbiao/api/state   full wire state
- *   GET  /liangbiao/api/events  SSE push (one frame per revision + heartbeat)
- *   POST /liangbiao/api/vote    minimal vote intent -> result + fresh state
+ *   GET  /liangbiao/api/state    full wire state
+ *   GET  /liangbiao/api/events   SSE push (one frame per revision + heartbeat)
+ *   POST /liangbiao/api/vote     minimal vote intent -> result + fresh state
+ *   POST /liangbiao/api/refresh  force host re-read (hover / panel open)
  *
  * The handler validates every request body at the boundary, bounds body
  * size, and owns SSE connection cleanup (`closeAllConnections` runs on
@@ -152,6 +153,7 @@ export function createLiangbiaoApi(
       '/liangbiao/api/state': 'GET',
       '/liangbiao/api/events': 'GET',
       '/liangbiao/api/vote': 'POST',
+      '/liangbiao/api/refresh': 'POST',
     }
     const expected = methods[pathname]
     if (expected === undefined) {
@@ -168,6 +170,11 @@ export function createLiangbiaoApi(
     }
     if (pathname === '/liangbiao/api/events') {
       handleEvents(req, res)
+      return
+    }
+    if (pathname === '/liangbiao/api/refresh') {
+      await service.refreshNow?.()
+      writeJson(res, 200, service.getWireState())
       return
     }
     await handleVote(req, res)

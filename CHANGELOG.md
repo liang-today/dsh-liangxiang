@@ -6,6 +6,11 @@
 
 - 在线模式下，「我的香火 / 下一炷 / 梁气环」改为跟本机 Token 观测走：DSH 用量一到，面板立刻动，不再等 1s claim 防抖 + 公网往返。投票扣香仍以服务端账本为准。
 
+### 运营发布梁案
+
+- `POST /v1/admin/cases`（社区口令）：归档当前 active 案、开新案、全网从待开梁计、清当日已用香火（Token 声明保留）。同日可多次发布；任意时刻仍只有一个 active。
+- 香客发现新案走现有 1s `GET /v1/snapshot`（响应含 `active_case`；id 变则 Host re-bootstrap + 本机 SSE）。不是 VPS→Host WebSocket。悬停/打开面板可 force refresh。VPS curl 见 [`docs/121-vps-deploy.md`](docs/121-vps-deploy.md)。
+
 ### 后端安静访问日志
 
 - 只打 hello / 新攒香火 / 投票结果 / 鉴权失败。不打 health、snapshot、daily-state 轮询。`journalctl -u liangbiao-backend -f`。

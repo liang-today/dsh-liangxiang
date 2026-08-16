@@ -125,10 +125,41 @@ sudo journalctl -u liangbiao-backend -f
 - `incense +N炷 … remaining=… tokens=…` — 真的多攒出了香火（普通 Token 申报不打）
 - `vote 夯/拉 accepted … 梁位=… 香火=… 香客=…` — 有人投了
 - `vote … rejected …` / `deny 401 …` — 票被拒或鉴权失败
+- `publish archived=… opened=… title=…` — 运营发布了新梁案
 
 不会刷：`/v1/health`、`/v1/snapshot`、`/v1/me/daily-state`。身份只打前 12 字符，不打私钥/社区口令。
 
-## 8. 不要做的事
+## 8. 测试发布新梁案
+
+暂时**不**限制一日一案：发布会归档当前 active 案、开新案、全网票从零开始（待开梁），并清掉当日 `used_incense`（Token 声明保留，香火还能投新案）。旧票留在旧 `case_id` 上，不整库 wipe。
+
+在 **VPS 本机**（走回环，社区口令不出网）：
+
+```bash
+set -a; source /etc/liangbiao.env; set +a
+curl -fsS -X POST "http://127.0.0.1:${LIANGBIAO_BACKEND_PORT}/v1/admin/cases" \
+  -H "content-type: application/json" \
+  -H "x-liangbiao-community-key: $LIANGBIAO_COMMUNITY_KEY" \
+  -d '{"title":"测试发布：梁标是夯还是拉"}'
+echo
+```
+
+成功响应里会有新的 `active_case.id`（形如 `case-YYYY-MM-DD-<hex>`）和零票 `global_snapshot`。journal 一行 `publish archived=… opened=…`。
+
+香客怎么看到新案（**不是** VPS→Host 的 WebSocket 推送）：
+
+1. Host 已有约 **1 秒**一次的 `GET /v1/snapshot`（公共读，和香火/香客同一条通道）。快照里带 `active_case`；`id` 一变，Host 会 `refreshBootstrap()`，再经本机 SSE 推给浏览器。
+2. 鼠标悬停入口 / 打开面板会额外 `POST /liangbiao/api/refresh`，让展开后不必干等到下一秒。
+
+没有单独的「每分钟查梁案」轮询。
+
+仓库脚本（本机 `.env` 已有 `LIANGBIAO_BACKEND_URL` + `LIANGBIAO_COMMUNITY_KEY` 时）：
+
+```bash
+pnpm run publish:case -- "测试发布：梁标是夯还是拉"
+```
+
+## 9. 不要做的事
 
 - 不要 `npm publish`
 - 不要声称 verified / 可信全网 / 一人一票

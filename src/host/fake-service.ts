@@ -294,6 +294,11 @@ export class FakeAuthoritativeLiangService {
     }
   }
 
+  refreshNow(): void {
+    this.rotateToCurrentDate()
+    this.bump()
+  }
+
   getWireState(): LiangbiaoWireState {
     this.rotateToCurrentDate()
     const usage = this.dailyUsage.get(this.currentDate) ?? EMPTY_DAILY_USAGE

@@ -21,6 +21,7 @@
  * still enforced strictly — an unverifiable budget is not an excuse for a
  * sloppy ledger.
  */
+import { randomBytes } from 'node:crypto'
 import {
   DEFAULT_LIANGZI_THRESHOLDS,
   derivePersonalLiangQiState,
@@ -31,10 +32,12 @@ import {
   BACKEND_SCHEMA_VERSION,
   CLAIM_SOURCE_HOST_OBSERVED,
   LIANGZI_POLICY_VERSION,
+  parseV1PublishCaseRequest,
   type V1Bootstrap,
   type V1Case,
   type V1PersonalState,
   type V1PersonalStateResponse,
+  type V1PublishCaseResponse,
   type V1Snapshot,
   type V1SnapshotResponse,
   type V1TokenClaimRequest,
@@ -127,6 +130,58 @@ export class LiangbiaoBackendService {
       const created = this.store.activeCaseFor(businessDate)
       if (created === undefined) throw new Error('failed to open the daily case')
       return created
+    })
+  }
+
+  /**
+   * Operator publish: archive today's active case (if any), open a new one,
+   * publish a zero-vote snapshot, and clear spent incense for the business
+   * date. Claimed tokens stay, so remaining incense can be spent on the new
+   * case. Old votes/stats/snapshots remain on the archived `case_id`.
+   *
+   * Temporarily allows more than one case per day; the DB still enforces at
+   * most one *active* case at a time.
+   */
+  publishCase(title: string, now = this.clock.now()): V1PublishCaseResponse {
+    const { title: normalized } = parseV1PublishCaseRequest({ title })
+    return this.store.transaction(() => {
+      const businessDate = this.businessDate(now)
+      this.store.closeCasesBefore(businessDate, now)
+      const previous = this.store.activeCaseFor(businessDate)
+      if (previous !== undefined) {
+        this.store.closeActiveCaseFor(businessDate, now)
+      }
+      this.store.resetUsedIncenseForDate(businessDate, now)
+      const id = `case-${businessDate}-${randomBytes(4).toString('hex')}`
+      this.store.insertCase({
+        id,
+        businessDate,
+        title: normalized,
+        tokenPerIncense: this.config.tokenPerIncense,
+        liangziPolicyVersion: LIANGZI_POLICY_VERSION,
+        now,
+      })
+      this.store.insertSnapshot({
+        case_id: id,
+        sequence: 1,
+        business_date: businessDate,
+        up_votes: 0,
+        down_votes: 0,
+        unique_voters: 0,
+        policy_version: LIANGZI_POLICY_VERSION,
+        captured_at: now,
+      })
+      const created = this.store.activeCaseFor(businessDate)
+      if (created === undefined) throw new Error('failed to open the published case')
+      const archived = previous === undefined ? null : this.store.caseById(previous.id) ?? previous
+      return {
+        schema_version: BACKEND_SCHEMA_VERSION,
+        business_date: businessDate,
+        server_time: now,
+        archived_case: archived === null ? null : toV1Case(archived),
+        active_case: toV1Case(created),
+        global_snapshot: this.publishedSnapshot(created, now, { publish: false }),
+      }
     })
   }
 

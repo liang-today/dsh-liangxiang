@@ -40,7 +40,8 @@
     "backend:dev": "pnpm run build && node lib/backend.js",
     "smoke:clean-profile": "bash scripts/smoke-clean-profile.sh",
     "smoke:online": "bash scripts/smoke-online.sh",
-    "reset:staging": "bash scripts/reset-staging.sh"
+    "reset:staging": "bash scripts/reset-staging.sh",
+    "publish:case": "bash scripts/publish-case.sh"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
