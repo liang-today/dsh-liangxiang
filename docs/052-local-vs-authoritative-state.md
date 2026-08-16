@@ -14,7 +14,7 @@ Decision Gate A = **A3**（docs/043）：本地一切 Token/身份数据都不�
 
 ## 强制标注
 
-- wire `authorityMode: 'LOCAL_FAKE_DEV'` 是唯一合法值;客户端据此渲染「本地演示」标签（面板头部，title 说明软信任语义）。
+- wire `authorityMode: 'LOCAL_FAKE_DEV'` 是唯一合法值;客户端据此在面板 dialog 上标注 `data-liangbiao-authority="LOCAL_FAKE_DEV"`，并把 `LOCAL_MODE_NOTE`（"本地演示模式：香火与投票均在本机，不代表可信全网结果"）写入 `aria-live` 摘要。产品要求头部只保留居中的梁案标题，因此不再渲染可见的「本地演示」徽标;README/docs/发布说明仍必须如实标注。
 - 服务类名 `FakeAuthoritativeLiangService` 不改名、不包装、不重导出为中性名称。
 - README/文档描述本地闭环时必须带"本地/演示/软信任"限定词;禁止 verified/secure/可信全网 等表述。
 

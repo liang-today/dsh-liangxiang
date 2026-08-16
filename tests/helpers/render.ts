@@ -78,6 +78,12 @@ export function findByAttr(nodes: RenderedNode[], attr: string, value?: unknown)
     attr in node.props && (value === undefined || node.props[attr] === value))
 }
 
+/** Inline style of a rendered element as a plain lookup. */
+export function styleOf(node: RenderedElement | undefined): Record<string, unknown> {
+  const style = node?.props.style
+  return typeof style === 'object' && style !== null ? (style as Record<string, unknown>) : {}
+}
+
 /** Concatenated text content of a subtree. */
 export function textContent(nodes: RenderedNode[]): string {
   let text = ''

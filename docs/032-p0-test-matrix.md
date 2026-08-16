@@ -57,7 +57,11 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 ## UI 结构（Prompt 1 §B 验收）
 
-四区顺序 case/core/vote/social、仅两个投票按钮（夯！/拉！）、dialog 标题今日梁案、83%/17% 与梁圣同快照、`5 炷 · 再 3,000 Token` 整合在环组件内、零票 `--`+待开梁、remaining 0 双按钮 disabled + 可访问 reason、六态头像两两视觉不同、香火 12,846 / 香客 2,841。→ `client-panel.spec.tsx`、`badge.spec.tsx`
+四区顺序 case/core/vote/social、仅两个投票按钮（夯！/拉！）、dialog 标题今日梁案、83%/17% 与梁圣同快照、`5 炷 · 再 3,000 Token` 整合在环组件内、零票 `--`+待开梁、remaining 0 双按钮 disabled + 可访问 reason、六态头像两两视觉不同、香火 12,846 / 香客 2,841（`🪔`/`🙏` 图标 + 15px 文案）、case 区居中且无可见「本地演示」徽标（软信任标注在 `data-liangbiao-authority` + SR 摘要）。→ `client-panel.spec.tsx`、`badge.spec.tsx`
+
+## 百分比显示不越阈值
+
+449/52 = 89.6% ⇒ 显示 `89%` / `11%` 且头像仍梁圣（四舍五入会印出看似跨阈值的 `90%`）；1000 票全枚举证明显示值恒落在所在状态区间内；两侧恒和 100%；零票双 `--`；区间文案 `80% ≤ 夯率 < 90%` 由阈值策略推导。→ `domain-liangzi.spec.ts`、`client-panel.spec.tsx`
 
 ## 留待 P2（本矩阵中尚未覆盖）
 

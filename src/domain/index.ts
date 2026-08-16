@@ -27,9 +27,11 @@ export {
   assertValidThresholdPolicy,
   deriveLiangziState,
   liangziStateForUpRatio,
+  liangziUpRatioBand,
   type ActiveLiangziState,
   type LiangziState,
   type LiangziThresholdPolicy,
+  type LiangziUpRatioBand,
 } from './liangzi.ts'
 export {
   EMPTY_GLOBAL_AGGREGATE,
@@ -60,4 +62,9 @@ export {
   type CaseStatus,
   type DailyLiangCase,
 } from './case.ts'
-export { liangQiIntensity } from './presentation.ts'
+export {
+  WAITING_PERCENT_TEXT,
+  formatRatioPercents,
+  liangQiIntensity,
+  type RatioPercentPair,
+} from './presentation.ts'
