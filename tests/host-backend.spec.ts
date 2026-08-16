@@ -232,6 +232,24 @@ describe('online bootstrap', () => {
     expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.remaining_incense).toBe(0)
   })
 
+  it('does not re-add the local daily total when the server ledger is already ahead', async () => {
+    const s = await startStack({}, { claimDebounceMs: 0 })
+    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => claimedOnBackend(s, 50_000), 'the first stick to be claimed')
+    // Another host (or tab) raised the shared ledger to 200k out of band.
+    s.backend.applyTokenClaim(INSTALLATION, {
+      claimed_effective_tokens: 200_000,
+      claim_business_date: s.backend.dailyState(INSTALLATION).business_date,
+    })
+    // Re-bootstrap re-reads the ledger and re-baselines the local daily total.
+    // The local 50k is already inside the 200k ledger and must not be added
+    // on top (that would double-count it to 250k).
+    await s.host.refreshBootstrap()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(200_000)
+  })
+
   it('does not re-claim a catch-up session after a stale persist hydrate', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
     const alreadyThere = usage(2_000_000, 0, 0, 150_000)
