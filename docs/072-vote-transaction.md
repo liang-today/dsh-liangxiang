@@ -23,7 +23,7 @@ UPDATE daily_incense_state
    `changes() == 0` ⇒ `insufficient_incense`。没有“先读后写”的窗口，因此不依赖运行时是否单线程。
 7. `INSERT INTO liang_vote …`；若撞上 `UNIQUE (installation_id, request_id)`（并发同 id）→ 抛 `DuplicateRequestSignal`，事务**回滚**（撤销刚才的扣香），事务外按赢家的记录返回 `replayed: true`。
 8. `daily_liang_stats` 增量：`up/down +1`，首票 `unique_voters +1`，`version +1`。
-9. COMMIT。响应带 `authoritative_personal_state` 与 `snapshot_version`（**不带新的全网比例**：公共快照等 cadence）。
+9. 若 accepted 且非重放，在同一事务内 `publishInTransaction` 追加新 sequence（同事务裁剪历史），随后 COMMIT。响应带 `authoritative_personal_state`、`snapshot_version` 与 `global_snapshot`——比例与梁子状态由该快照行派生，投票者点击即看到梁位变化，无需等 cadence 或多一次往返。
 
 ## 并发：remaining = 1，100 个不同 request_id
 

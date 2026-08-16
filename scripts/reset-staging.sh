@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Reset Liangbiao staging ledgers to "never voted today".
+#
+# Online (DEV_STAGING_ONLY): wipes the Raspberry Pi SQLite (global 香火/香客/票).
+# Local Host: clears votes / ledgers / aggregates in $DSH_HOME/storages/liangbiao.json
+#             but KEEPS identity + token watermarks + daily_usage so existing
+#             DSH usage is re-claimed as incense after WebUI restart.
+#
+# Usage:
+#   pnpm run reset:staging              # Pi + local Host
+#   pnpm run reset:staging -- --local   # only this machine's JSON
+#   pnpm run reset:staging -- --pi      # only the Pi database
+#
+# After running: stop and restart `pnpm run dev:web` (in-memory state would
+# otherwise write the old ledger back).
+. "$(dirname "$0")/env.sh"
+
+PI_HOST="${LIANGBIAO_STAGING_SSH:-bean@192.0.2.21}"
+PI_DB='${HOME}/liangbiao-backend/data/liangbiao.sqlite'
+STORAGE="${DSH_HOME}/storages/liangbiao.json"
+LOCAL_BACKEND_DIR="${REPO_ROOT}/.liangbiao-backend"
+
+do_pi=1
+do_local=1
+for arg in "$@"; do
+  case "$arg" in
+    --local) do_pi=0; do_local=1 ;;
+    --pi) do_pi=1; do_local=0 ;;
+    -h|--help)
+      sed -n '2,16p' "$0"
+      exit 0
+      ;;
+  esac
+done
+
+reset_local_json() {
+  if [ ! -f "$STORAGE" ]; then
+    echo "OK: no Host ledger at $STORAGE"
+    return
+  fi
+  python3 - "$STORAGE" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path, encoding='utf-8') as fh:
+    data = json.load(fh)
+tables = data.setdefault('tables', {})
+# Keep identity (same 香客) and token observation (same 香火库存 after re-claim).
+tables['ledgers'] = {}
+tables['aggregates'] = {}
+tables['votes'] = {}
+with open(path, 'w', encoding='utf-8') as fh:
+    json.dump(data, fh, ensure_ascii=False, indent=2)
+    fh.write('\n')
+print(f'OK: cleared votes/ledgers/aggregates in {path}')
+print('    kept identity, watermarks, daily_usage')
+PY
+}
+
+reset_pi() {
+  echo "== reset Pi sqlite on $PI_HOST =="
+  ssh -o BatchMode=yes -o ConnectTimeout=10 "$PI_HOST" "bash -s" <<'REMOTE'
+set -euo pipefail
+systemctl --user stop liangbiao-backend
+rm -f "$HOME/liangbiao-backend/data/liangbiao.sqlite" \
+      "$HOME/liangbiao-backend/data/liangbiao.sqlite-wal" \
+      "$HOME/liangbiao-backend/data/liangbiao.sqlite-shm"
+systemctl --user start liangbiao-backend
+sleep 1
+systemctl --user is-active liangbiao-backend
+REMOTE
+  curl -fsS "http://192.0.2.21:4180/v1/health"
+  echo
+}
+
+if [ "$do_pi" = 1 ]; then
+  reset_pi
+fi
+
+if [ "$do_local" = 1 ]; then
+  echo "== reset local Host ledger =="
+  reset_local_json
+  if [ -d "$LOCAL_BACKEND_DIR" ]; then
+    rm -f "$LOCAL_BACKEND_DIR"/*.sqlite "$LOCAL_BACKEND_DIR"/*.sqlite-wal "$LOCAL_BACKEND_DIR"/*.sqlite-shm
+    echo "OK: cleared local .liangbiao-backend sqlite (if any)"
+  fi
+fi
+
+echo
+echo "Next: restart WebUI so the Host re-bootstraps an empty case (待开梁)."
+echo "  Ctrl+C the current \`pnpm run dev:web\`, then run it again."
+echo "Do not hand-edit storages/liangbiao.json — use this script."

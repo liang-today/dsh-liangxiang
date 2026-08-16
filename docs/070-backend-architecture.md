@@ -46,14 +46,14 @@ SQLite  (daily_liang_case / daily_incense_state / liang_vote /
 启动          Host → GET  /v1/bootstrap        ← policy + case + personal + snapshot
 观测到 Token   Host → POST /v1/token-claims     ← 单调 ratchet（debounce 1s 合并）
 用户投票      Host → POST /v1/votes            ← {case_id, vote_type, request_id}
-                    ← result + authoritative_personal_state + snapshot_version
+                    ← result + authoritative_personal_state + global_snapshot（accepted 票事务内发布）
 快照 cadence   Host → GET  /v1/snapshot         ← 已发布的 PublicLiangSnapshot
 业务日切换    /v1/snapshot 的 business_date 变化 → Host 自动重新 bootstrap
 ```
 
-个人余额随投票**立即**变化；全局比例与梁子状态只在快照 cadence 变化，且永远来自同一 sequence。Host 不会在本地伪造新的全网比例。
+个人余额随投票**立即**变化；accepted 投票在**自己的事务内发布新快照**并随响应带回，投票者点击即看到梁位变化；其余情况（被拒票、无票期间）全局比例与梁子状态只在快照 cadence 变化。无论哪条路径，比例与状态永远来自同一 sequence，Host 不会在本地伪造新的全网比例。
 
-cadence 默认 **1 秒**（近实时）：投票被接受后 Host 立刻再拉一次 `/v1/snapshot`，所以投票者约 1 秒内就能看到自己那一票把梁位推动。为避免 1s 节奏把 `public_liang_snapshot` 撑爆，发布时同事务内按 `SNAPSHOT_HISTORY_LIMIT`（200）裁剪历史——只有最新一行会被读取。
+cadence 默认 **1 秒**（近实时）：Host 按 cadence 轮询 `/v1/snapshot` 以覆盖带外变化；投票者点击那一下的梁位变化已由投票响应里的 `global_snapshot` 直接给出，无需多一次往返。为避免 1s 节奏把 `public_liang_snapshot` 撑爆，发布时同事务内按 `SNAPSHOT_HISTORY_LIMIT`（200）裁剪历史——只有最新一行会被读取。
 
 个人余额也可能被**带外**改动（另一个标签、另一台 Host、别处提交的 claim），所以 Host 每 5 个 tick（≈5s）额外拉一次 `/v1/me/daily-state`，否则面板会一直显示旧的香火数——那与「多标签收敛」正好相反。
 
