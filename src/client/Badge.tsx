@@ -306,18 +306,8 @@ export function LiangbiaoBadge(): ReactElement {
     if (!open) setReconcilePending(false)
   }, [open])
 
-  // Outside click closes the panel.
-  useEffect(() => {
-    if (!open) return undefined
-    const onPointerDown = (event: MouseEvent): void => {
-      const anchor = anchorRef.current
-      if (anchor !== null && event.target instanceof Node && !anchor.contains(event.target)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onPointerDown)
-    return () => document.removeEventListener('mousedown', onPointerDown)
-  }, [open])
+  // The panel stays open until the × (onClose) or Escape (Panel onKeyDown).
+  // No outside-click close: an expanded panel is a deliberate view, not a popover.
 
   // Focus management: focus the dialog on open, return to the entry on close.
   const wasOpen = useRef(false)
