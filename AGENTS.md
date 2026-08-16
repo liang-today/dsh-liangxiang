@@ -888,6 +888,14 @@ After every completed change in this repository:
 Do not wait for the user to ask. The original Prompt 4 / Prompt 11 line
 「禁止 git push」is **overridden** by this standing instruction.
 
+### Staging deploy (hard rule)
+
+The community staging backend is deployed ONLY through `scripts/deploy.sh`, which
+stamps `<prefix>/VERSION` with the deployed `git rev-parse --short HEAD`. Never
+rsync/build/restart the backend by hand. After (or before) any server update,
+run `scripts/deploy-check.sh` to confirm the server VERSION matches local HEAD;
+if it does not, the server is stale and must be redeployed.
+
 Still never, unless the user explicitly orders it:
 
 - `npm publish`
