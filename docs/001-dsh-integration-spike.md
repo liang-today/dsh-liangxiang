@@ -2,6 +2,8 @@
 
 依据基线:见 [`docs/000-dsh-reference.md`](000-dsh-reference.md)(deepseek-harness `47f94385`,`0.1.0-rc.5`)。所有路径相对 `../deepseek-harness`。分级含义(公开/半公开/私有)见 000。每问给出:结论、证据、分级、对梁标的含义。
 
+> **R2 语义提示(2026-08-16)**:本文的 DSH 技术事实仍然有效;个别"对梁标"注解使用了已废弃的旧业务词汇(梁签/铸造/方案 A 目标模型口径)。现行业务语义以 [`PRODUCT_FREEZE_V0.1.md`](PRODUCT_FREEZE_V0.1.md) 为准:Token→香火(50K = 1 炷)、无目标模型过滤、投票 1 票 = 1 炷。
+
 ---
 
 ## Q1 — 树外插件如何同时提供 Host 与 Web Client 部分?

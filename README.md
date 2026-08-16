@@ -1,10 +1,12 @@
 # dsh-liangbiao(梁标)
 
-梁标是一个 DeepSeek Harness(DSH)WebUI 插件:把符合口径的 token 用量折算为梁气、铸造梁签,对唯一活跃梁案投「夯/拉」。悬停文案恒为 `今日梁位`。
+梁标是一个 DeepSeek Harness(DSH)WebUI 插件:用 DSH 的 Input+Output Token 攒个人香火(默认 50,000 Token = 1 炷),对当天唯一的二元梁案投「夯/拉」;全网夯率决定中央「梁子」的状态(待开梁 / 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖),个人剩余香火与距下一炷的 Token 进度构成「梁气」。悬停文案恒为 `今日梁位`。
 
-当前状态:**最小可安装骨架**。Host 半只有生命周期标记,Client 半只在 WebUI 右缘渲染一个占位圆点,证明双半注册成功。梁气、梁签、token 记账与网络均未实现。
+产品语义冻结于 [`AGENTS.md`](AGENTS.md) 与 [`docs/PRODUCT_FREEZE_V0.1.md`](docs/PRODUCT_FREEZE_V0.1.md);历史勘察文档中的旧模型(梁签、cache-read 10% 权重等)已废弃,见 [`docs/SEMANTIC_CORRECTION_R2.md`](docs/SEMANTIC_CORRECTION_R2.md)。
 
-设计文档见 [`docs/`](docs/):`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵(含本骨架实际使用的接口)。
+当前状态:**正确 UI + 纯领域模型(Mock 数据)**。面板四区(今日梁案 / 夯比例·梁子·梁气环·拉比例 / 夯拉按钮 / 香火·香客)已实现并可在 DSH WebUI 实际挂载;全局/个人状态由 `src/domain` 纯函数驱动,数据仍为 mock 种子。真实 Token 记账与本地投票闭环在下一里程碑。
+
+设计文档见 [`docs/`](docs/):`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵(含实际使用的接口)。
 
 ## 结构
 

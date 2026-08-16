@@ -2,6 +2,8 @@
 
 基线与分级见 [`docs/000`](000-dsh-reference.md);触点编号(H*/C*/B*)见 [`docs/003`](003-compatibility-matrix.md)。每项:影响、现状判断、缓解、观测点/触发条件。
 
+> **R2 语义提示(2026-08-16)**:文中出现的旧词汇按 [`PRODUCT_FREEZE_V0.1.md`](PRODUCT_FREEZE_V0.1.md) 换读:「梁签」→ 香火(1 票 = 1 炷)、「tokensPerBallot」→ `tokenPerIncense`(默认 50,000)、「方案 A/目标路由集/cap」→ 已废弃(V0.1 无目标模型过滤、无 per-request cap)。风险分析本身仍有效。
+
 ## R-1 DSH 预发布,无兼容承诺(总项)
 
 - **影响**:全部触点。DSH 根 AGENTS.md 明文首个 tagged release 前自由重命名/重打包、盘上格式可拒旧。

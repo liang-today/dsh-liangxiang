@@ -1,7 +1,7 @@
 /**
- * Client half (exports["./client"] entry): register the placeholder badge
- * into shell.overlay. All DSH touchpoints go through compat/dsh; this module
- * itself imports no DSH symbols.
+ * Client half (exports["./client"] entry): register the 梁标 entry (badge +
+ * panel container) into shell.overlay. All DSH touchpoints go through
+ * compat/dsh; this module itself imports no DSH symbols.
  */
 import type { DshClientContext } from '../compat/dsh/client-context.ts'
 import { registerOverlayEntry } from '../compat/dsh/overlay-slot.ts'
