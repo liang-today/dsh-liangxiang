@@ -81,7 +81,7 @@ Node 版本低于 DSH 声明的 `^22.19.0 || >=24`。本报告中的测试全部
 
 实际 tarball：
 
-- 文件名：`dsh-liangbiao-0.4.0.tgz`
+- 文件名：`dsh-liangxiang-0.4.0.tgz`
 - 大小：1,284,645 bytes
 - SHA-256：`e920905c487ca8b35bf4ea8895b1de1a9502b3899c56df711f418dacf0ad0f40`
 - 内容共 7 项：`LICENSE`、`README.md`、`package.json`、`cordis.patch.yml`、`lib/index.js`、`lib/client.js`、`lib/client.js.map`

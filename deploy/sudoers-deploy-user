@@ -1,0 +1,4 @@
+# The only interactive administrator. SSH is key-only and direct root login is
+# disabled; sudo remains auditable through the system journal.
+Defaults:deploy-user !requiretty
+deploy-user ALL=(ALL:ALL) NOPASSWD: ALL

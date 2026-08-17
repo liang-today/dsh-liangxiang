@@ -30,8 +30,6 @@ const PANEL_STACK_HEIGHT = 316
 
 export const BADGE_POSITION_STORAGE_KEY = 'liangxiang:badge-position:v2'
 export const PANEL_OPEN_STORAGE_KEY = 'liangxiang:panel-open:v1'
-const LEGACY_BADGE_POSITION_STORAGE_KEY = 'liangbiao:badge-position:v2'
-const LEGACY_PANEL_OPEN_STORAGE_KEY = 'liangbiao:panel-open:v1'
 
 export interface BadgePoint {
   /** Distance from the frame's left edge, in px, of the badge's top-left. */
@@ -83,7 +81,6 @@ export function loadBadgePosition(
   if (storage === null) return defaultBadgePosition(viewport)
   try {
     const raw = storage.getItem(BADGE_POSITION_STORAGE_KEY)
-      ?? storage.getItem(LEGACY_BADGE_POSITION_STORAGE_KEY)
     if (raw === null) return defaultBadgePosition(viewport)
     const parsed = JSON.parse(raw) as unknown
     if (!isPoint(parsed)) return defaultBadgePosition(viewport)
@@ -128,7 +125,6 @@ export function loadPanelOpen(storage: Pick<Storage, 'getItem'> | null): boolean
   if (storage === null) return true
   try {
     const raw = storage.getItem(PANEL_OPEN_STORAGE_KEY)
-      ?? storage.getItem(LEGACY_PANEL_OPEN_STORAGE_KEY)
     if (raw === '0') return false
     if (raw === '1') return true
   } catch {

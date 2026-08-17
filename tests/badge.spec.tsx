@@ -206,12 +206,6 @@ describe('free placement', () => {
     expect(() => saveBadgePosition({ x: 1, y: 2 }, null)).not.toThrow()
   })
 
-  it('reads the former badge position during the v0.5 migration', () => {
-    const store = new Map([['liangbiao:badge-position:v2', '{"x":44,"y":66}']])
-    const storage = { getItem: (key: string) => store.get(key) ?? null }
-    expect(loadBadgePosition(viewport, storage)).toEqual({ x: 44, y: 66 })
-  })
-
   it('clamps a stored point that no longer fits a shrunken window', () => {
     const store = new Map([[BADGE_POSITION_STORAGE_KEY, '{"x":1150,"y":760}']])
     const storage = { getItem: (key: string) => store.get(key) ?? null }

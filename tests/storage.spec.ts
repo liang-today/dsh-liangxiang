@@ -6,7 +6,6 @@ import type {
   DshStorageDomainFacility,
 } from '../src/compat/dsh/host-services.ts'
 import {
-  LEGACY_LIANGBIAO_DOMAIN_NAME,
   LIANGXIANG_DOMAIN_NAME,
   openLiangxiangPersistence,
 } from '../src/compat/dsh/storage.ts'
@@ -47,45 +46,8 @@ class MemoryFacility implements DshStorageDomainFacility {
   }
 }
 
-describe('liangxiang storage migration', () => {
-  it('copies the legacy identity and accounting records into the new domain', async () => {
-    const facility = new MemoryFacility()
-    const legacy = await facility.open({
-      name: LEGACY_LIANGBIAO_DOMAIN_NAME,
-      version: 1,
-      tables: Object.fromEntries(
-        ['watermarks', 'daily_usage', 'ledgers', 'aggregates', 'votes', 'identity']
-          .map(name => [name, { valueSchema: { parse: (raw: unknown) => raw } }]),
-      ),
-    })
-    await legacy.table('daily_usage').put('2026-08-18', {
-      inputTokens: 50_000,
-      outputTokens: 0,
-      weightCarry: 0,
-      observedAt: 1,
-    })
-    await legacy.table('identity').put('installation', {
-      installationId: 'legacy-install-01',
-      publicKey: 'legacy-public',
-      privateKeyPem: 'legacy-private',
-      deviceFingerprint: 'legacy-device',
-    })
-
-    const warnings: string[] = []
-    const handle = await openLiangxiangPersistence(facility, message => warnings.push(message))
-    const identity = await handle.identity.resolve()
-    const persisted = await handle.port.load()
-
-    expect(identity.installationId).toBe('legacy-install-01')
-    expect(persisted.dailyUsage.get('2026-08-18')?.inputTokens).toBe(50_000)
-    expect(facility.domains.get(LIANGXIANG_DOMAIN_NAME)?.table('identity').get('installation')).toEqual(
-      expect.objectContaining({ installationId: 'legacy-install-01' }),
-    )
-    expect(warnings.join('\n')).toContain('migrated 2 persisted records')
-    await handle.close()
-  })
-
-  it('never overwrites an identity already written in the new domain', async () => {
+describe('liangxiang storage', () => {
+  it('loads existing identity and accounting records from the canonical domain', async () => {
     const facility = new MemoryFacility()
     const current = await facility.open({
       name: LIANGXIANG_DOMAIN_NAME,
@@ -95,16 +57,26 @@ describe('liangxiang storage migration', () => {
           .map(name => [name, { valueSchema: { parse: (raw: unknown) => raw } }]),
       ),
     })
+    await current.table('daily_usage').put('2026-08-18', {
+      inputTokens: 50_000,
+      outputTokens: 0,
+      weightCarry: 0,
+      observedAt: 1,
+    })
     await current.table('identity').put('installation', {
-      installationId: 'current-install-01',
+      installationId: 'liangxiang-install-01',
       publicKey: 'current-public',
       privateKeyPem: 'current-private',
       deviceFingerprint: 'current-device',
     })
 
     const handle = await openLiangxiangPersistence(facility, () => undefined)
-    expect((await handle.identity.resolve()).installationId).toBe('current-install-01')
-    expect(facility.domains.has(LEGACY_LIANGBIAO_DOMAIN_NAME)).toBe(false)
+    const identity = await handle.identity.resolve()
+    const persisted = await handle.port.load()
+
+    expect(identity.installationId).toBe('liangxiang-install-01')
+    expect(persisted.dailyUsage.get('2026-08-18')?.inputTokens).toBe(50_000)
+    expect([...facility.domains.keys()]).toEqual([LIANGXIANG_DOMAIN_NAME])
     await handle.close()
   })
 })

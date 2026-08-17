@@ -230,7 +230,7 @@ export function LiangxiangBadge(): ReactElement {
   // the DSH composer. × / the badge persist the preference per browser.
   const [open, setOpen] = useState<boolean>(() => {
     if (typeof location !== 'undefined'
-      && (location.hash.includes('liangxiang-open') || location.hash.includes('liangbiao-open'))) return true
+      && location.hash.includes('liangxiang-open')) return true
     return loadPanelOpen(typeof localStorage === 'undefined' ? null : localStorage)
   })
   const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())

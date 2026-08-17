@@ -5,8 +5,6 @@
  */
 const WELCOME_KEY = 'liangxiang:welcome:v2'
 const AUTHORITY_KEY = 'liangxiang:authority:v1'
-const LEGACY_WELCOME_KEY = 'liangbiao:welcome:v2'
-const LEGACY_AUTHORITY_KEY = 'liangbiao:authority:v1'
 
 export const WELCOME_TIMEOUT_SECONDS = 10
 
@@ -16,7 +14,6 @@ export function hasSeenWelcome(): boolean {
   try {
     return typeof localStorage === 'undefined'
       || localStorage.getItem(WELCOME_KEY) === 'seen'
-      || localStorage.getItem(LEGACY_WELCOME_KEY) === 'seen'
   } catch {
     return true
   }
@@ -34,7 +31,6 @@ export function loadAuthorityPreference(): StoredAuthorityPreference | null {
   try {
     if (typeof localStorage === 'undefined') return null
     const raw = localStorage.getItem(AUTHORITY_KEY)
-      ?? localStorage.getItem(LEGACY_AUTHORITY_KEY)
     if (raw === 'online' || raw === 'local') return raw
     return null
   } catch {

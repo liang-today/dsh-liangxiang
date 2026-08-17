@@ -13,12 +13,10 @@
 ### Product identity
 
 - Product name: **梁相**
-- New technical identifiers are `dsh-liangxiang`, `liangxiang`,
-  `/liangxiang/api`, `LIANGXIANG_*`, and `liangxiang-backend`. The v0.5
-  migration may recognize legacy `liangbiao` identifiers only at explicit
-  compatibility boundaries so existing identity, preferences, and ledgers are
-  preserved. New writes, installs, logs, routes, and deployments use
-  `liangxiang`; do not add new legacy identifiers outside those boundaries.
+- Technical identifiers are exclusively `dsh-liangxiang`, `liangxiang`,
+  `/liangxiang/api`, `LIANGXIANG_*`, and `liangxiang-backend`. Do not add
+  alternate brand namespaces to code, configuration, storage, routes, logs,
+  deployments, tests, or documentation.
 - 梁文锋 is referred to as **梁子** in product UI/copy.
 - DSH WebUI entry Hover / Focus text: **今日梁相**
 - The docked entry's icon IS the current central 梁子 state (one of the five, or

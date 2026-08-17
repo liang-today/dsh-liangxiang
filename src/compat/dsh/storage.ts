@@ -29,8 +29,6 @@ import type { DshKvTable, DshOpenDomain, DshStorageDomainFacility, DshValueSchem
 
 export const LIANGXIANG_DOMAIN_NAME = 'liangxiang'
 export const LIANGXIANG_DOMAIN_VERSION = 1
-/** Read-only migration source used only when the new domain has no identity. */
-export const LEGACY_LIANGBIAO_DOMAIN_NAME = 'liangbiao'
 
 class RecordShapeError extends Error {}
 
@@ -145,7 +143,6 @@ function domainSpec(name: string) {
 }
 
 const LIANGXIANG_DOMAIN_SPEC = domainSpec(LIANGXIANG_DOMAIN_NAME)
-const LEGACY_LIANGBIAO_DOMAIN_SPEC = domainSpec(LEGACY_LIANGBIAO_DOMAIN_NAME)
 
 /** Single row key of the identity table. */
 const IDENTITY_KEY = 'installation'
@@ -175,50 +172,6 @@ function loadTable<V>(table: DshKvTable, parse: (raw: unknown) => V): Map<string
   return out
 }
 
-const MIGRATED_TABLES = ['watermarks', 'daily_usage', 'ledgers', 'aggregates', 'votes'] as const
-
-/**
- * Copy the former storage domain before the new identity is resolved. Writes
- * are idempotent and the identity row lands last, so an interrupted migration
- * is retried on the next start instead of minting a second community identity.
- */
-async function migrateLegacyDomain(
-  facility: DshStorageDomainFacility,
-  target: DshOpenDomain,
-  warn: (message: string) => void,
-): Promise<void> {
-  const targetIdentity = target.table('identity')
-  if (targetIdentity.get(IDENTITY_KEY) !== undefined) return
-
-  let legacy: DshOpenDomain | null = null
-  try {
-    legacy = await facility.open(LEGACY_LIANGBIAO_DOMAIN_SPEC)
-    let migrated = 0
-    for (const tableName of MIGRATED_TABLES) {
-      const from = legacy.table(tableName)
-      const to = target.table(tableName)
-      for (const [key, value] of from.entries()) {
-        await to.put(key, value)
-        migrated += 1
-      }
-    }
-    const legacyIdentity = legacy.table('identity').get(IDENTITY_KEY)
-    if (legacyIdentity !== undefined) {
-      await targetIdentity.put(IDENTITY_KEY, legacyIdentity)
-      migrated += 1
-    }
-    if (migrated > 0) {
-      warn(`[dsh-liangxiang] migrated ${migrated} persisted records from the legacy storage domain`)
-    }
-  } catch (error) {
-    warn(
-      `[dsh-liangxiang] legacy storage migration unavailable: ${error instanceof Error ? error.message : String(error)}`,
-    )
-  } finally {
-    await legacy?.close()
-  }
-}
-
 /**
  * Open the liangxiang domain and wrap it as the service's persistence port.
  * @param facility - the DSH storage-domain facility.
@@ -230,7 +183,6 @@ export async function openLiangxiangPersistence(
   warn: (message: string) => void,
 ): Promise<LiangxiangPersistenceHandle> {
   const domain: DshOpenDomain = await facility.open(LIANGXIANG_DOMAIN_SPEC)
-  await migrateLegacyDomain(facility, domain, warn)
   const watermarks = domain.table('watermarks')
   const dailyUsage = domain.table('daily_usage')
   const ledgers = domain.table('ledgers')

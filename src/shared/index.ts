@@ -29,7 +29,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by the sound-icon long-press easter egg. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.5.0'
+export const PLUGIN_VERSION = '0.6.0'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'

@@ -4,19 +4,19 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-REMOTE="${LIANGXIANG_DEPLOY_SSH:-root@203.0.113.11}"
+REMOTE="${LIANGXIANG_DEPLOY_SSH:-deploy-user@203.0.113.10}"
 PREFIX="${LIANGXIANG_PREFIX:-/opt/liangxiang}"
 
 cd "$ROOT"
 LOCAL="$(git rev-parse --short HEAD)"
-REMOTE_VERSION="$(ssh "$REMOTE" "cat '$PREFIX/VERSION' 2>/dev/null" || true)"
+REMOTE_VERSION="$(ssh "$REMOTE" "sudo -n cat '$PREFIX/VERSION' 2>/dev/null" || true)"
 
 echo "local : ${LOCAL}"
 echo "server: ${REMOTE_VERSION:-<missing>}"
 
 case "$REMOTE_VERSION" in
   "$LOCAL"*)
-    ssh "$REMOTE" "systemctl is-active --quiet liangxiang-backend"
+    ssh "$REMOTE" "sudo -n systemctl is-active --quiet liangxiang-backend"
     echo "OK: server matches local checkout and liangxiang-backend is active."
     exit 0
     ;;
