@@ -50,7 +50,7 @@ import {
   WELCOME_TITLE,
   liangziRatioRangeText,
 } from '../shared/index.ts'
-import { PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
+import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
@@ -84,6 +84,8 @@ export interface PanelProps {
   /** Where to draw relative to the (freely placeable) badge. */
   placement?: PanelPlacement
   onVote: (voteType: VoteType) => void
+  /** Empty-pool click: never sends a vote; plays the playful local cue. */
+  onInsufficientVote: (voteType: VoteType) => void
   onClose: () => void
   /** First click: open the confirm chip. Confirm is the expensive sync. */
   onReconcileAsk: () => void
@@ -97,24 +99,26 @@ export interface PanelProps {
 const panelStyle: CSSProperties = {
   position: 'absolute',
   width: `${PANEL_WIDTH}px`,
-  maxHeight: 'min(420px, 80vh)',
+  maxHeight: 'min(440px, calc(100vh - 24px))',
   overflow: 'visible',
   boxSizing: 'border-box',
-  padding: '12px',
-  borderRadius: '12px',
+  padding: '14px',
+  borderRadius: '18px',
   border: `1px solid ${color.border}`,
-  background: color.bgLayer,
+  background: `radial-gradient(circle at 50% 34%, color-mix(in srgb, ${color.ritualGold} 10%, transparent), transparent 38%), linear-gradient(180deg, color-mix(in srgb, ${color.ritualEmber} 5%, ${color.bgLayer}) 0%, ${color.bgLayer} 40%)`,
   color: color.textPrimary,
   fontFamily: font.family,
-  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
+  boxShadow: '0 18px 48px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
   pointerEvents: 'auto',
+  isolation: 'isolate',
+  outline: 'none',
 }
 
 const statStyle: CSSProperties = {
   position: 'relative',
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '5px',
+  gap: '6px',
   flex: '1 1 0',
   minWidth: 0,
   whiteSpace: 'nowrap',
@@ -179,12 +183,12 @@ const positionFactStyle: CSSProperties = {
  * 「我的香火」(wider copy) vs 「下一炷」 pulls `space-between` off-center and
  * the 梁子, ring, and incense dots drift sideways.
  */
-const FLANK_WIDTH = 48
-const CORE_PAD_Y = 18
+const FLANK_WIDTH = 54
+const CORE_PAD_Y = 20
 
 const coreStyle: CSSProperties = {
   position: 'relative',
-  padding: `${CORE_PAD_Y}px 0 40px`,
+  padding: `${CORE_PAD_Y}px 0 42px`,
   overflow: 'visible',
 }
 
@@ -202,30 +206,30 @@ const flankStyle: CSSProperties = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: '1px',
+  gap: '2px',
   overflow: 'visible',
   whiteSpace: 'nowrap',
   pointerEvents: 'auto',
 }
 
 const flankCaptionStyle: CSSProperties = {
-  fontSize: '9px',
-  lineHeight: '12px',
+  fontSize: '10px',
+  lineHeight: '14px',
   color: color.textSecondary,
 }
 
 /** Shared by 今日香火 and 下一炷 so the two numbers are one voice. */
 const flankValueStyle: CSSProperties = {
   ...numericStyle,
-  fontSize: '11px',
-  fontWeight: 600,
-  color: color.warn,
-  lineHeight: '16px',
+  fontSize: '13px',
+  fontWeight: 700,
+  color: color.ritualEmber,
+  lineHeight: '18px',
 }
 
 const flankUnitStyle: CSSProperties = {
-  fontSize: '10px',
-  fontWeight: 600,
+  fontSize: '9px',
+  fontWeight: 500,
   color: color.textTertiary,
   lineHeight: '14px',
 }
@@ -234,14 +238,15 @@ const voteRowStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: '8px',
-  marginTop: '12px',
+  marginTop: '10px',
 }
 
 const voteButtonBase: CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  padding: '7px 0',
-  borderRadius: '8px',
+  minHeight: '44px',
+  padding: '10px 0',
+  borderRadius: '11px',
   fontFamily: font.family,
   fontSize: '13px',
   fontWeight: 700,
@@ -250,6 +255,7 @@ const voteButtonBase: CSSProperties = {
   whiteSpace: 'nowrap',
   cursor: 'pointer',
   border: `1px solid ${color.border}`,
+  transition: 'transform 100ms ease, box-shadow 120ms ease, filter 120ms ease, border-color 120ms ease',
 }
 
 /** Anchor the panel above or below the badge — never beside it. */
@@ -257,11 +263,17 @@ function placementStyle(placement: PanelPlacement): CSSProperties {
   const stack = placement.stack === 'below'
     ? { top: `calc(100% + ${PANEL_GAP}px)` }
     : { bottom: `calc(100% + ${PANEL_GAP}px)` }
-  return { left: '0px', ...stack }
+  const horizontal = placement.align === 'end'
+    ? { left: `calc(${BADGE_SIZE}px - ${PANEL_WIDTH}px)` }
+    : { left: '0px' }
+  return { ...horizontal, ...stack }
 }
 
 /** Panel-scoped CSS that inline styles cannot express (focus ring, keyframes). */
 const PANEL_CSS = `
+[data-liangbiao-panel] {
+  animation: liangbiao-panel-enter 150ms cubic-bezier(.2,.8,.2,1) both;
+}
 [data-liangbiao-panel] button:focus-visible {
   outline: 2px solid ${color.brand};
   outline-offset: 2px;
@@ -270,14 +282,22 @@ const PANEL_CSS = `
   opacity: 0.55;
   cursor: not-allowed;
 }
-@keyframes liangbiao-avatar-pulse {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.12); }
-  100% { transform: scale(1); }
+[data-liangbiao-panel] button[aria-disabled="true"]:not([disabled]) {
+  opacity: 0.72;
+  cursor: pointer;
 }
-@keyframes liangbiao-avatar-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+[data-liangbiao-vote]:hover:not([disabled]) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+}
+[data-liangbiao-vote]:active:not([disabled]) {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.14);
+}
+@keyframes liangbiao-panel-enter {
+  from { opacity: 0; transform: translateY(4px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes liangbiao-position-pop {
   0% { transform: translateY(3px); opacity: 0.35; }
@@ -293,7 +313,7 @@ const PANEL_CSS = `
   background: ${color.bgSubtle};
   padding: 3px 6px;
   margin: 0;
-  border-radius: 6px;
+  border-radius: 9px;
   cursor: pointer;
   font-family: inherit;
   font-size: 10px;
@@ -317,7 +337,7 @@ const PANEL_CSS = `
   bottom: calc(100% + 6px);
   z-index: 2;
   padding: 5px 8px;
-  border-radius: 6px;
+  border-radius: 9px;
   border: 1px solid ${color.border};
   background: ${color.bgLayer};
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
@@ -348,7 +368,7 @@ const PANEL_CSS = `
   z-index: 3;
   min-width: 168px;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: 10px;
   border: 1px solid ${color.border};
   background: ${color.bgLayer};
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
@@ -373,7 +393,7 @@ const PANEL_CSS = `
   z-index: 3;
   min-width: 128px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid ${color.border};
   background: ${color.bgLayer};
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
@@ -433,14 +453,6 @@ const PANEL_CSS = `
   font-weight: 700;
   padding-bottom: 4px;
 }
-@keyframes liangbiao-overflow-glow {
-  0%, 100% {
-    box-shadow: 0 0 12px 5px rgba(216, 135, 58, 0.55), 0 0 28px 10px rgba(243, 193, 82, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 20px 9px rgba(216, 135, 58, 0.9), 0 0 40px 16px rgba(243, 193, 82, 0.55);
-  }
-}
 @keyframes liangbiao-condense {
   0% { opacity: 0; transform: translate(-50%, 12px) scale(0.85); }
   22% { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -492,10 +504,10 @@ export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionReveal, onSoundPressStart, onSoundPressEnd,
     welcomeVisible, onDismissWelcome, avatarPulse, justCondensed, voteFeedback,
-    onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
+    onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, onCycleLocalCase,
   } = props
-  const placement = props.placement ?? { stack: 'above' }
+  const placement = props.placement ?? { stack: 'above', align: 'start' }
   const positionPulse = props.positionPulse ?? false
   const { snapshot, personal, activeCase, lifetimeIncense, lifetimeVoters } = state
   // Throttled (smoothed/extrapolated) display values — presentation only. The
@@ -517,9 +529,11 @@ export function Panel(props: PanelProps): ReactElement {
       ? ACCOUNTING_UNAVAILABLE_HINT
       : absurdNotice
         ? ABSURD_CLAIM_NOTICE
-        : outOfIncense
-          ? NO_INCENSE_REASON
-          : voteFeedback
+        : voteFeedback !== ''
+          ? voteFeedback
+          : outOfIncense
+            ? NO_INCENSE_REASON
+            : ''
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
@@ -570,9 +584,12 @@ export function Panel(props: PanelProps): ReactElement {
             justifyContent: 'center',
             alignItems: 'center',
             gap: '10px',
-            padding: '20px',
-            borderRadius: '12px',
-            background: color.bgLayer,
+            padding: '18px',
+            borderRadius: '18px',
+            border: `1px solid color-mix(in srgb, ${color.ritualGold} 24%, ${color.border})`,
+            background: `linear-gradient(180deg, color-mix(in srgb, ${color.ritualGold} 9%, ${color.bgLayer}), color-mix(in srgb, ${color.bgLayer} 94%, transparent))`,
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.10)',
+            backdropFilter: 'blur(7px)',
             boxSizing: 'border-box',
           }}
         >
@@ -588,10 +605,10 @@ export function Panel(props: PanelProps): ReactElement {
             style={{
               marginTop: '4px',
               border: 'none',
-              borderRadius: '8px',
-              padding: '6px 16px',
-              background: color.buttonPrimaryFill,
-              color: color.buttonPrimaryText,
+              borderRadius: '10px',
+              padding: '8px 18px',
+              background: `linear-gradient(135deg, ${color.ritualEmber}, color-mix(in srgb, ${color.ritualEmber} 74%, #7f2f25))`,
+              color: '#ffffff',
               fontFamily: font.family,
               fontSize: '13px',
               fontWeight: 600,
@@ -606,20 +623,24 @@ export function Panel(props: PanelProps): ReactElement {
       {/* Region 1 — 今日梁案 */}
       <header
         data-liangbiao-region="case"
-        style={{ position: 'relative', marginBottom: '8px', padding: '0 22px', textAlign: 'center' }}
+        style={{ position: 'relative', marginBottom: '6px', padding: '0 24px', textAlign: 'center' }}
       >
-        <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: color.textPrimary, letterSpacing: '0.5px' }}>
+        <h2 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: color.textTertiary, letterSpacing: '1.6px' }}>
           {panelTitle}
         </h2>
         <p
           data-liangbiao-case-title=""
           title={activeCase.title}
           style={{
-            margin: '5px 0 0',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: color.textSecondary,
-            whiteSpace: 'nowrap',
+            margin: '6px -12px 0',
+            fontSize: '14px',
+            lineHeight: '20px',
+            fontWeight: 650,
+            color: color.textPrimary,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            whiteSpace: 'normal',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
@@ -736,12 +757,13 @@ export function Panel(props: PanelProps): ReactElement {
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px',
+                  gap: '4px',
                   boxSizing: 'border-box',
-                  padding: '3px 10px',
+                  padding: '4px 9px',
                   borderRadius: '999px',
-                  border: `1px solid ${color.border}`,
-                  background: color.bgLayer,
+                  border: `1px solid color-mix(in srgb, ${color.ritualGold} 20%, ${color.border})`,
+                  background: `color-mix(in srgb, ${color.bgLayer} 90%, ${color.ritualGold})`,
+                  boxShadow: '0 5px 16px rgba(0, 0, 0, 0.10)',
                   whiteSpace: 'nowrap',
                   ...positionLineStyle,
                 }}
@@ -761,11 +783,11 @@ export function Panel(props: PanelProps): ReactElement {
                 >
                   {percents.up}
                 </strong>
-                <span aria-hidden="true" data-liangbiao-liang-position-causal="" style={{ ...positionGlueStyle, color: color.textTertiary }}>故称</span>
+                <span aria-hidden="true" data-liangbiao-liang-position-causal="" style={{ ...positionGlueStyle, color: color.textTertiary }}>→</span>
                 <span
                   data-liangbiao-liangzi-title=""
                   title={`${LIANGZI_STATE_LABELS[snapshot.liangziState]}：${liangziRatioRangeText(snapshot.liangziState)}`}
-                  style={{ ...positionFactStyle, color: color.brand }}
+                  style={{ ...positionFactStyle, color: color.ritualEmber }}
                 >
                   {LIANGZI_STATE_LABELS[snapshot.liangziState]}
                 </span>
@@ -833,22 +855,34 @@ export function Panel(props: PanelProps): ReactElement {
         <button
           type="button"
           data-liangbiao-vote="up"
-          disabled={votingDisabled}
+          disabled={offline}
           aria-disabled={votingDisabled}
           title={votingDisabled ? disabledReason : `${VOTE_UP_NAME}一炷香`}
-          onClick={() => onVote('up')}
-          style={{ ...voteButtonBase, background: color.buttonPrimaryFill, borderColor: color.buttonPrimaryFill, color: color.buttonPrimaryText }}
+          onClick={() => outOfIncense ? onInsufficientVote('up') : onVote('up')}
+          style={{
+            ...voteButtonBase,
+            background: `linear-gradient(135deg, ${color.ritualEmber}, color-mix(in srgb, ${color.ritualEmber} 74%, #7f2f25))`,
+            borderColor: `color-mix(in srgb, ${color.ritualEmber} 84%, ${color.border})`,
+            color: '#ffffff',
+            boxShadow: `0 5px 14px color-mix(in srgb, ${color.ritualEmber} 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
+          }}
         >
           {VOTE_UP_LABEL}
         </button>
         <button
           type="button"
           data-liangbiao-vote="down"
-          disabled={votingDisabled}
+          disabled={offline}
           aria-disabled={votingDisabled}
           title={votingDisabled ? disabledReason : `${VOTE_DOWN_NAME}一炷香`}
-          onClick={() => onVote('down')}
-          style={{ ...voteButtonBase, background: color.bgSubtle, color: color.textPrimary }}
+          onClick={() => outOfIncense ? onInsufficientVote('down') : onVote('down')}
+          style={{
+            ...voteButtonBase,
+            background: `color-mix(in srgb, ${color.ritualCool} 13%, ${color.bgSubtle})`,
+            borderColor: `color-mix(in srgb, ${color.ritualCool} 42%, ${color.border})`,
+            color: color.textPrimary,
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+          }}
         >
           {VOTE_DOWN_LABEL}
         </button>
@@ -856,7 +890,7 @@ export function Panel(props: PanelProps): ReactElement {
       <p
         role="status"
         data-liangbiao-vote-feedback=""
-        style={{ margin: '4px 0 0', height: '14px', lineHeight: '14px', overflow: 'hidden', whiteSpace: 'nowrap', fontSize: '11px', color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary, textAlign: 'center' }}
+        style={{ margin: '5px 0 0', minHeight: '15px', lineHeight: '15px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontSize: '10px', color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary, textAlign: 'center' }}
       >
         {statusLine}
       </p>
@@ -867,9 +901,9 @@ export function Panel(props: PanelProps): ReactElement {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          marginTop: '8px',
-          paddingTop: '8px',
+          gap: '6px',
+          marginTop: '9px',
+          paddingTop: '10px',
           borderTop: `1px solid ${color.border}`,
           color: color.textSecondary,
         }}

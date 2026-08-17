@@ -49,6 +49,7 @@ function renderPanel(
     onReconcileConfirm?: () => void
     onReconcileCancel?: () => void
     versionReveal?: boolean
+    onInsufficientVote?: (voteType: 'up' | 'down') => void
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -66,6 +67,7 @@ function renderPanel(
       justCondensed={false}
       voteFeedback={voteFeedback}
       onVote={() => undefined}
+      onInsufficientVote={extra.onInsufficientVote ?? (() => undefined)}
       onClose={() => undefined}
       reconcilePending={extra.reconcilePending ?? false}
       onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
@@ -106,9 +108,10 @@ describe('four visual regions', () => {
     expect(header === undefined ? '' : textContent([header])).toContain('今日梁案（本地）')
     expect(header === undefined ? '' : textContent([header])).not.toContain('本地演示')
     const caseTitle = findByAttr(tree, 'data-liangbiao-case-title')[0]
-    expect(styleOf(findAll(header === undefined ? [] : [header], (node) => node.type === 'h2')[0]).fontSize).toBe('16px')
-    expect(styleOf(caseTitle).fontSize).toBe('13px')
-    expect(styleOf(caseTitle).whiteSpace).toBe('nowrap')
+    expect(styleOf(findAll(header === undefined ? [] : [header], (node) => node.type === 'h2')[0]).fontSize).toBe('12px')
+    expect(styleOf(caseTitle).fontSize).toBe('14px')
+    expect(styleOf(caseTitle).whiteSpace).toBe('normal')
+    expect(styleOf(caseTitle).WebkitLineClamp).toBe(2)
     const dialog = findAll(tree, (node) => node.props.role === 'dialog')[0]
     expect(dialog?.props['data-liangbiao-authority']).toBe('LOCAL_FAKE_DEV')
     const summary = findAll(tree, (node) => node.props['aria-live'] === 'polite')[0]
@@ -134,7 +137,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     // 10,665/12,846 = 83.0219…%, truncated to six decimals.
     expect(position && textContent([position])).toContain('梁位')
     expect(position && textContent([position])).toContain('83.021952%')
-    expect(position && textContent([position])).toContain('故称')
+    expect(position && textContent([position])).toContain('→')
     expect(position && textContent([position])).toContain('梁神')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_shen')).toHaveLength(1)
     expect(textContent(findByAttr(tree, 'data-liangbiao-avatar'))).not.toContain('梁神')
@@ -183,7 +186,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const footer = ring === undefined ? [] : findByAttr([ring], 'data-liangbiao-ring-footer')
     expect(footer).toHaveLength(1)
     expect(footer[0] && textContent([footer[0]])).toContain('83.021952%')
-    expect(footer[0] && textContent([footer[0]])).toContain('故称')
+    expect(footer[0] && textContent([footer[0]])).toContain('→')
     expect(footer[0] && textContent([footer[0]])).toContain('梁神')
     // The old up/down pair must not come back.
     expect(findByAttr(tree, 'data-liangbiao-ratio')).toHaveLength(0)
@@ -239,7 +242,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(styleOf(findByAttr(tree, 'data-liangbiao-ring-footer')[0]).top).toBe('100%')
       expect(styleOf(findByAttr(tree, 'data-liangbiao-ring-footer')[0]).marginTop).toBe('8px')
       expect(styleOf(findByAttr(tree, 'data-liangbiao-avatar')[0]).width).toBe(AVATAR_SLOT)
-      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('260px')
+      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('256px')
       expect(social.map((node) => styleOf(node).flex)).toEqual(['1 1 0', '1 1 0'])
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangbiao-liang-position-value')[0])
@@ -253,15 +256,15 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(styleOf(incenseWrap).gap).toBe(styleOf(nextWrap).gap)
     const valueRow = (wrap: RenderedElement | undefined): RenderedElement | undefined =>
       wrap?.children.find((child): child is RenderedElement =>
-        child.kind === 'element' && styleOf(child).fontSize === '11px')
+        child.kind === 'element' && styleOf(child).fontSize === '13px')
     const incenseValueRow = valueRow(incenseWrap)
     const nextValueRow = valueRow(nextWrap)
-    expect(styleOf(incenseValueRow).color).toBe(color.warn)
-    expect(styleOf(nextValueRow).color).toBe(color.warn)
-    expect(styleOf(incenseValueRow).lineHeight).toBe('16px')
-    expect(styleOf(nextValueRow).lineHeight).toBe('16px')
-    expect(styleOf(incenseValueRow).fontWeight).toBe(600)
-    expect(styleOf(nextValueRow).fontWeight).toBe(600)
+    expect(styleOf(incenseValueRow).color).toBe(color.ritualEmber)
+    expect(styleOf(nextValueRow).color).toBe(color.ritualEmber)
+    expect(styleOf(incenseValueRow).lineHeight).toBe('18px')
+    expect(styleOf(nextValueRow).lineHeight).toBe('18px')
+    expect(styleOf(incenseValueRow).fontWeight).toBe(700)
+    expect(styleOf(nextValueRow).fontWeight).toBe(700)
   })
 
   it('shows 余 N 炷 (not 可打梁) so the left flank stays narrow', () => {
@@ -364,6 +367,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         voteFeedback=""
         positionPulse
         onVote={() => undefined}
+        onInsufficientVote={() => undefined}
         onClose={() => undefined}
         reconcilePending={false}
         onReconcileAsk={() => undefined}
@@ -390,6 +394,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         voteFeedback=""
         positionPulse
         onVote={() => undefined}
+        onInsufficientVote={() => undefined}
         onClose={() => undefined}
         reconcilePending={false}
         onReconcileAsk={() => undefined}
@@ -470,7 +475,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const tree = renderPanel(store.getSnapshot())
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
     expect(position && textContent([position])).toContain('--')
-    expect(position && textContent([position])).toContain('故称')
+    expect(position && textContent([position])).toContain('→')
     expect(position && textContent([position])).toContain('待开梁')
     expect(findByAttr(tree, 'data-liangbiao-avatar', 'waiting')).toHaveLength(1)
     expect(textContent(tree)).toContain('待开梁')
@@ -494,13 +499,20 @@ describe('region 3: exactly two vote buttons', () => {
     expect(styleOf(votes[1]).textAlign).toBe('center')
   })
 
-  it('disables both with an accessible reason when remaining incense is 0', () => {
+  it('keeps empty-pool buttons clickable for the gag cue without sending a vote', () => {
     const store = createMockLiangbiaoStore({ effectiveTokensToday: 47_000, usedIncenseToday: 0 })
-    const tree = renderPanel(store.getSnapshot())
+    const blocked: string[] = []
+    const tree = renderPanel(store.getSnapshot(), '', {
+      onInsufficientVote: (voteType) => blocked.push(voteType),
+    })
     for (const vote of findByAttr(tree, 'data-liangbiao-vote')) {
-      expect(vote.props.disabled).toBe(true)
+      expect(vote.props.disabled).toBe(false)
+      expect(vote.props['aria-disabled']).toBe(true)
       expect(vote.props.title).toBe(NO_INCENSE_REASON)
+      const click = vote.props.onClick as (() => void) | undefined
+      click?.()
     }
+    expect(blocked).toEqual(['up', 'down'])
     expect(textContent(tree)).toContain(NO_INCENSE_REASON)
     expect(NO_INCENSE_REASON).toContain('打梁')
     expect(NO_INCENSE_REASON).not.toContain('投票')

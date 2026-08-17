@@ -1,8 +1,8 @@
 /**
- * Style vocabulary for the client half. Every color goes through a DSH
- * `--dsw-*` semantic token (packages/client/ui-theme/src/styles/
- * design-platform.css @ 47f94385) with a static fallback, so the panel
- * follows the active light/dark theme without JS theme detection.
+ * Style vocabulary for the client half. Structural colors go through DSH
+ * semantic tokens so the panel follows light/dark mode. Three restrained
+ * 梁祠 accents provide a coherent product identity without recoloring the
+ * whole DSH shell.
  */
 
 export const color = {
@@ -21,6 +21,9 @@ export const color = {
   buttonPrimaryText: 'var(--dsw-alias-label-primary-foreground, #ffffff)',
   danger: 'var(--dsw-alias-state-error-primary, #d5484f)',
   warn: 'var(--dsw-alias-state-warn-primary, #d8873a)',
+  ritualGold: 'var(--liangbiao-gold, #e2ae54)',
+  ritualEmber: 'var(--liangbiao-ember, #c95f38)',
+  ritualCool: 'var(--liangbiao-cool, #74839f)',
 } as const
 
 /** LiangQi ring stroke color by fill stage: cool -> warm -> vermilion. */

@@ -15,7 +15,7 @@ import type { AuthorityMode } from './wire.ts'
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangbiao'
 
 /** Installed package version, surfaced by the sound-icon long-press easter egg. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.2.4'
+export const PLUGIN_VERSION = '0.3.0'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangbiao'
@@ -71,7 +71,7 @@ export const NEXT_INCENSE_WEIGHT_TITLE = '攒香按 Pro 当量'
 export const NEXT_INCENSE_WEIGHT_ROWS: ReadonlyArray<{ model: string, weight: string, stick: string }> = [
   { model: 'V4-Pro', weight: '×1', stick: '5 万当量 = 1 炷' },
   { model: 'V4-Flash', weight: '×0.5', stick: '约 10 万原始用量 = 1 炷' },
-  { model: '其它', weight: '×1', stick: '同 Pro' },
+  { model: '其它', weight: '×0.5', stick: '同 V4-Flash' },
 ]
 
 /** Region 4 stat labels (西游口吻：三界香火 / 取经五众). */
@@ -101,6 +101,9 @@ export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {
 
 /** Disabled-vote reason surfaced when the personal incense pool is empty. */
 export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷香后即可打梁'
+
+/** Playful visible feedback for an intentional click on an empty incense pool. */
+export const NO_INCENSE_GAG = '咣当——香炉空了，梁子催你先去攒香'
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
 export const OFFLINE_REASON = '未连接本地服务：显示最近状态，重新打开面板可重试'
@@ -149,7 +152,7 @@ function percentText(ratio: number): string {
 
 /**
  * The exact global 夯-ratio interval that keeps 梁子 in `state`, e.g.
- * `60% ≤ 夯率 < 80%` for 梁圣. Derived from the threshold policy so the copy
+ * `85% ≤ 夯率 < 95%` for 梁圣. Derived from the threshold policy so the copy
  * can never drift from `liangziStateForUpRatio`.
  */
 export function liangziRatioRangeText(

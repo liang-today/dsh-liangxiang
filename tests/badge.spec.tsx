@@ -92,23 +92,27 @@ describe('LiangbiaoBadge entry', () => {
       // The mini avatar carries no state label (no room) and is decorative.
       const portrait = findAll(tree, (node) => node.type === 'img')[0]
       expect(portrait?.props.width).toBe(BADGE_ICON_SIZE)
-      expect(portrait?.props.width).toBe(40)
+      expect(portrait?.props.width).toBe(42)
       expect(portrait?.props.src).toEqual(expect.stringMatching(/^data:image\/png;base64,/))
     }
     const { button } = renderButton(false)
     expect(button.props['data-liangbiao-badge-state']).toBe('liang_sheng')
   })
 
-  it('has no filled plate: only the figure bobs, chrome stays gone', () => {
+  it('uses a stationary interaction halo while only the figure bobs', () => {
     const { button, tree } = renderButton(false, 'liang_gong')
     const style = styleOf(button)
-    expect(style.background).toBe('transparent')
+    expect(String(style.background)).toContain('radial-gradient')
     expect(style.overflow).toBe('visible')
-    expect(style.boxShadow).toBe('none')
-    expect(style.borderRadius).toBe(0)
+    expect(String(style.boxShadow)).toContain('rgba')
+    expect(style.borderRadius).toBe('50%')
     expect(style.width).toBe(`${BADGE_SIZE}px`)
     expect(style.height).toBe(`${BADGE_SIZE}px`)
     expect(style.animation).toBeUndefined()
+
+    const halo = findByAttr(tree, 'data-liangbiao-badge-halo')[0]
+    expect(halo).toBeDefined()
+    expect(styleOf(halo).animation).toBeUndefined()
 
     const figure = findByAttr(tree, 'data-liangbiao-avatar-figure')[0]
     if (figure === undefined) throw new Error('avatar figure missing')
@@ -204,8 +208,9 @@ describe('free placement', () => {
     expect(point.y).toBeLessThanOrEqual(small.height - BADGE_SIZE - BADGE_MARGIN)
   })
 
-  it('stacks the panel above or below the badge, never beside it', () => {
-    expect(panelPlacementFor({ x: BADGE_MARGIN, y: viewport.height - 96 }, viewport).stack).toBe('above')
-    expect(panelPlacementFor({ x: BADGE_MARGIN, y: BADGE_MARGIN }, viewport).stack).toBe('below')
+  it('stacks vertically and flips horizontal alignment before leaving the viewport', () => {
+    expect(panelPlacementFor({ x: BADGE_MARGIN, y: viewport.height - 96 }, viewport)).toEqual({ stack: 'above', align: 'start' })
+    expect(panelPlacementFor({ x: BADGE_MARGIN, y: BADGE_MARGIN }, viewport)).toEqual({ stack: 'below', align: 'start' })
+    expect(panelPlacementFor({ x: viewport.width - BADGE_SIZE - BADGE_MARGIN, y: BADGE_MARGIN }, viewport)).toEqual({ stack: 'below', align: 'end' })
   })
 })

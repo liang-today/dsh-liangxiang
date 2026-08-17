@@ -91,7 +91,7 @@ Rules:
   incense or the global 梁位. Respect `prefers-reduced-motion`.
 - right overlay: personal `tokens_to_next_incense` in **Pro 当量** (not raw
   Flash Token). Hover/focus on 下一炷 shows the model-weight table
-  (Pro ×1 / Flash ×0.5 / 其它 ×1).
+  (Pro ×1 / Flash ×0.5 / 其它 ×0.5).
 - visible 下一炷 当量 uses integer compact (`33K`, never `≈ 33.4K`) so the
   flank does not overlap 梁子. Hover title and the screen-reader summary keep
   the exact integer. 今日香火 / 环上 overflow 仍可用一位小数。
@@ -372,11 +372,11 @@ by the DSH route model id (exact id, never a display name):
 ```text
 deepseek-v4-pro    → 1
 deepseek-v4-flash  → 0.5
-missing / unknown  → 1   (the unit is Pro-equivalent)
+missing / unknown / other model ids → 0.5
 ```
 
-1 炷 is still `50,000` **Pro-equivalent** tokens. Flash needs ~100k raw
-tokens for one stick. Vote power is unchanged (1 炷 = 1 vote). The daily
+1 炷 is still `50,000` **Pro-equivalent** tokens. Flash and every non-Pro
+route need ~100k raw tokens for one stick. Vote power is unchanged (1 炷 = 1 vote). The daily
 claim sent to the backend is already weighted; do not send model names.
 
 ### Personal accounting
@@ -987,7 +987,7 @@ Before completing any major Liangbiao change, be able to answer **yes** to all o
 - Are global ratios and Liangzi state from the same snapshot/version?
 - Is Effective Token still Input + Output?
 - Are cache-read and cache-write both counted as Input under the verified current DSH mapping?
-- Is Flash earning incense at half Pro rate locally (Pro-equivalent claim), without sending model names to the server?
+- Are Flash, missing/unknown, and all other non-Pro routes earning incense at half Pro rate locally (Pro-equivalent claim), without sending model names to the server?
 - Is the client prevented from self-authorizing production vote capacity?
 - Are concurrency and idempotency enforced by the authoritative layer?
 - Are obsolete ranking/winner/third-option/personal-avatar concepts absent?

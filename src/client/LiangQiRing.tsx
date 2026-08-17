@@ -156,7 +156,7 @@ export function LiangQiRing({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    filter: intensity > 0 ? `drop-shadow(0 0 ${Math.round(3 + intensity * 8)}px rgba(216, 135, 58, ${(0.15 + intensity * 0.45).toFixed(2)}))` : undefined,
+    filter: intensity > 0 ? `drop-shadow(0 0 ${Math.round(3 + intensity * 5)}px rgba(216, 135, 58, ${(0.10 + intensity * 0.24).toFixed(2)}))` : undefined,
   }
 
   const ringLabel = `梁气：剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} 当量`
@@ -207,9 +207,8 @@ export function LiangQiRing({
             inset: '18px',
             borderRadius: '50%',
             pointerEvents: 'none',
-            background: 'radial-gradient(circle, rgba(243, 193, 82, 0.45) 0%, rgba(216, 135, 58, 0.18) 55%, transparent 70%)',
-            animation: reducedMotion ? undefined : 'liangbiao-overflow-glow 2.4s ease-in-out infinite',
-            boxShadow: '0 0 16px 8px rgba(216, 135, 58, 0.55), 0 0 32px 14px rgba(243, 193, 82, 0.35)',
+            background: 'radial-gradient(circle, rgba(243, 193, 82, 0.20) 0%, rgba(216, 135, 58, 0.08) 56%, transparent 72%)',
+            boxShadow: '0 0 14px 6px rgba(216, 135, 58, 0.18)',
           }}
         />
       )}
@@ -224,15 +223,14 @@ export function LiangQiRing({
             transform: 'translateX(-50%)',
             padding: '1px 7px',
             borderRadius: '999px',
-            background: color.warn,
+            background: `linear-gradient(135deg, ${color.ritualGold}, ${color.ritualEmber})`,
             color: '#ffffff',
             fontFamily: font.family,
             fontSize: '11px',
             fontWeight: 700,
             lineHeight: '18px',
             letterSpacing: '0.02em',
-            boxShadow: '0 0 10px 3px rgba(216, 135, 58, 0.85), 0 0 18px 6px rgba(243, 193, 82, 0.45)',
-            animation: reducedMotion ? undefined : 'liangbiao-overflow-glow 2.4s ease-in-out infinite',
+            boxShadow: '0 5px 14px rgba(121, 63, 30, 0.26)',
             zIndex: 1,
           }}
         >

@@ -341,6 +341,7 @@ export class FakeAuthoritativeLiangService {
       previous === undefined
         ? { kind: 'live', firstLiveSeq: 0 }
         : { kind: 'live', firstLiveSeq: 1 },
+      'deepseek-v4-pro',
     )
   }
 

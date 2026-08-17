@@ -104,7 +104,7 @@ describe('UsageProjection.hydrate merge', () => {
       new Map(),
       memorySink(),
     )
-    usage.observe('s1', buckets(150_000, 0), { kind: 'catchup' })
+    usage.observe('s1', buckets(150_000, 0), { kind: 'catchup' }, 'deepseek-v4-pro')
     expect(usage.effectiveTokensFor(BUSINESS_DATE)).toBe(50_000)
   })
 

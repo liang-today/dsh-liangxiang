@@ -37,6 +37,16 @@ function usage(uncachedInput: number, cacheRead: number, cacheWrite: number, out
   }
 }
 
+/** Most integration cases exercise transport/accounting, not fallback rates. */
+function observePro(
+  host: BackendLiangService,
+  sessionId: string,
+  value: unknown,
+  origin: Parameters<BackendLiangService['observeUsage']>[2],
+): void {
+  host.observeUsage(sessionId, value, origin, 'deepseek-v4-pro')
+}
+
 async function startStack(
   env: Record<string, string | undefined> = {},
   hostOptions: { claimDebounceMs?: number, timezone?: string, start?: number } = {},
@@ -139,16 +149,16 @@ describe('online bootstrap', () => {
       start: Date.UTC(2026, 7, 16, 22, 0, 0),
     })
     expect(s.backend.businessDate()).toBe('2026-08-17')
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     expect(frame(s).personal.effectiveTokensToday).toBe(50_000)
     await waitFor(() => claimedOnBackend(s, 50_000), 'the claim to land on the backend date')
   })
 
   it('paints local incense immediately, without waiting for the remote claim', async () => {
     const s = await startStack({}, { claimDebounceMs: 60_000 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(10_000, 20_000, 5_000, 15_000), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(10_000, 20_000, 5_000, 15_000), { kind: 'live', firstLiveSeq: 0 })
     const wire = frame(s)
     expect(wire.personal.effectiveTokensToday).toBe(50_000)
     expect(wire.accounting.inputTokensToday).toBe(35_000)
@@ -161,12 +171,12 @@ describe('online bootstrap', () => {
 
   it('lowers tokensToNextIncense as live usage arrives, without waiting for the claim', async () => {
     const s = await startStack({}, { claimDebounceMs: 60_000 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(10_000, 0, 0, 6_600), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(10_000, 0, 0, 6_600), { kind: 'live', firstLiveSeq: 0 })
     const before = wireToViewState(frame(s), 'live').personal
     expect(before.effectiveTokensToday).toBe(16_600)
     expect(before.tokensToNextIncense).toBe(33_400)
-    s.host.observeUsage(SESSION, usage(10_000, 0, 0, 6_900), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(10_000, 0, 0, 6_900), { kind: 'live', firstLiveSeq: 0 })
     const after = wireToViewState(frame(s), 'live').personal
     expect(after.effectiveTokensToday).toBe(16_900)
     expect(after.tokensToNextIncense).toBe(33_100)
@@ -175,8 +185,8 @@ describe('online bootstrap', () => {
 
   it('上达天听 drops inflated local observation so the panel follows the server ledger', async () => {
     const s = await startStack({}, { claimDebounceMs: 60_000 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(200_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(200_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     expect(frame(s).personal.effectiveTokensToday).toBe(200_000)
     expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(0)
     await s.host.reconcileNow()
@@ -186,12 +196,12 @@ describe('online bootstrap', () => {
 
   it('keeps painting new tokens after 上达天听 when the server claim is ahead', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 50_000), 'the first stick to be claimed')
     await s.host.reconcileNow()
     expect(frame(s).personal.effectiveTokensToday).toBe(50_000)
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 3_000), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 3_000), { kind: 'live', firstLiveSeq: 0 })
     const view = wireToViewState(frame(s), 'live')
     expect(view.personal.effectiveTokensToday).toBe(53_000)
     expect(view.personal.tokensToNextIncense).toBe(47_000)
@@ -200,29 +210,29 @@ describe('online bootstrap', () => {
 
   it('claims the local suffix on top of the server ledger after 上达天听', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 50_000), 'the first stick to be claimed')
     await s.host.reconcileNow()
     expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(50_000)
     // Same session: watermarks keep the original 50k from being dumped again.
     // New output is a suffix that must raise the ledger, not replace it.
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 50_000), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 50_000), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 100_000), 'the post-reconcile suffix to raise the ledger')
     expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(2)
   })
 
   it('can vote with incense earned after 上达天听 reset the local daily total', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 50_000), 'the first stick to be claimed')
     const caseId = frame(s).activeCase.id
     const spent = await s.host.vote({ caseId, voteType: 'up', requestId: 'req-e2e-spent01' })
     expect(spent.result.status).toBe('accepted')
     expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.remaining_incense).toBe(0)
     await s.host.reconcileNow()
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 50_000), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 50_000), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(
       () => s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens === 100_000,
       'the new stick to land after 上达天听',
@@ -234,8 +244,8 @@ describe('online bootstrap', () => {
 
   it('does not re-add the local daily total when the server ledger is already ahead', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 50_000), 'the first stick to be claimed')
     // Another host (or tab) raised the shared ledger to 200k out of band.
     s.backend.applyTokenClaim(INSTALLATION, {
@@ -253,13 +263,13 @@ describe('online bootstrap', () => {
   it('does not re-claim a catch-up session after a stale persist hydrate', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
     const alreadyThere = usage(2_000_000, 0, 0, 150_000)
-    s.host.observeUsage(SESSION, alreadyThere, { kind: 'catchup' })
+    observePro(s.host, SESSION, alreadyThere, { kind: 'catchup' })
     s.host.hydrateUsage(
       new Map([[SESSION, { inputHwm: 50_000, outputHwm: 0 }]]),
       new Map(),
       { putWatermark: () => undefined, putDailyUsage: () => undefined, deleteDailyUsage: () => undefined },
     )
-    s.host.observeUsage(SESSION, alreadyThere, { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, alreadyThere, { kind: 'live', firstLiveSeq: 0 })
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(0)
     expect(frame(s).personal.effectiveTokensToday).toBe(0)
@@ -268,8 +278,8 @@ describe('online bootstrap', () => {
   it('turns observed DSH usage into an authoritative claim (input+output, all buckets)', async () => {
     const s = await startStack()
     // 10k uncached + 20k cacheRead + 5k cacheWrite = 35k input; +15k output = 50k.
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(10_000, 20_000, 5_000, 15_000), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(10_000, 20_000, 5_000, 15_000), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 50_000), 'the claim to be recorded')
 
     const wire = frame(s)
@@ -284,8 +294,8 @@ describe('online bootstrap', () => {
 describe('online voting', () => {
   async function stackWithIncense(count: number, extraTokens = 0): Promise<Stack> {
     const s = await startStack()
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(count * 50_000 + extraTokens, 0, 0, 0), {
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(count * 50_000 + extraTokens, 0, 0, 0), {
       kind: 'live',
       firstLiveSeq: 0,
     })
@@ -375,8 +385,8 @@ describe('online voting', () => {
 
   it('flushes a pending debounced claim before the vote is evaluated', async () => {
     const s = await startStack({}, { claimDebounceMs: 60_000 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     // The panel already paints 1 炷 from local observation, but the claim is
     // debounced for a minute and has NOT reached the backend yet.
     expect(wireToViewState(frame(s), 'live').personal.effectiveTokensToday).toBe(50_000)
@@ -393,8 +403,8 @@ describe('online voting', () => {
 describe('online rollover', () => {
   it('adopts the backend business date and starts the new day clean', async () => {
     const s = await startStack()
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(100_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(100_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 100_000), 'the claim to be recorded')
     const yesterday = frame(s)
     await s.host.vote({ caseId: yesterday.activeCase.id, voteType: 'up', requestId: 'req-e2e-day1-01' })
@@ -421,8 +431,8 @@ describe('online rollover', () => {
 
   it('resets the claim watermark on rollover so a small new-day claim is not skipped', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
-    s.host.observeUsage(SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
-    s.host.observeUsage(SESSION, usage(6_000_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(6_000_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 6_000_000), 'day-1 claim to land')
 
     // Roll over. The host still holds day-1's watermark (6M) and business date.
@@ -430,11 +440,11 @@ describe('online rollover', () => {
 
     // First new-day observation: the host submits for the stale day, the
     // backend reports the new day, and the host must reset its watermark.
-    s.host.observeUsage(SESSION, usage(6_001_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(6_001_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => frame(s).businessDate === '2026-08-17', 'host to adopt day 2')
 
     // A second small delta must NOT be skipped by day-1's 6M watermark.
-    s.host.observeUsage(SESSION, usage(6_002_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(6_002_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(() => claimedOnBackend(s, 1_000), 'day-2 claim to land')
   })
 

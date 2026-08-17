@@ -44,6 +44,7 @@
 | 安全控制清单 / 威胁模型 | [`docs/SECURITY.md`](docs/SECURITY.md)、[`docs/101-threat-model.md`](docs/101-threat-model.md) |
 | 信任模型为什么是软信任 | [`docs/075-backend-decision.md`](docs/075-backend-decision.md) |
 | 已知限制 | [`docs/102-known-limitations.md`](docs/102-known-limitations.md) |
+| 待修问题 / 随时提醒 | [`docs/BUGFIX.md`](docs/BUGFIX.md) |
 | 测试覆盖 | [`docs/103-test-matrix.md`](docs/103-test-matrix.md) |
 | DSH 版本基线与升级清单 | [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) |
 | RC 结论 | [`docs/100-release-readiness.md`](docs/100-release-readiness.md) |

@@ -102,6 +102,13 @@ export function playVoteDown(): void {
   tone(640, 320, 180, 'triangle', 0.09)
 }
 
+/** Empty incense pool: a short cartoon "wah-wah" instead of a silent click. */
+export function playNoIncense(): void {
+  tone(260, 185, 120, 'square', 0.055)
+  window.setTimeout(() => tone(175, 92, 230, 'sawtooth', 0.045), 95)
+  window.setTimeout(() => tone(110, 82, 160, 'triangle', 0.055), 250)
+}
+
 /** 香火增长 / 凝香: a soft two-note chime. */
 export function playIncenseEarn(): void {
   tone(660, 660, 90, 'sine', 0.08)

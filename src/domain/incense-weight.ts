@@ -5,7 +5,7 @@
  *
  * Exact DSH route ids, never display names (docs/001 Q11, docs/041).
  */
-export const INCENSE_WEIGHT_POLICY_VERSION = 'incense-weight-v1-pro1-flash0.5'
+export const INCENSE_WEIGHT_POLICY_VERSION = 'incense-weight-v2-pro1-others0.5'
 
 /** Integer scale so Flash 0.5 never needs floating point in the ledger. */
 export const INCENSE_WEIGHT_SCALE = 10_000
@@ -27,15 +27,16 @@ export function canonicalModelId(modelId: string): string {
 
 /**
  * Earning weight for one usage delta.
- * Missing / unknown ids use Pro (= 1): the unit of 1 炷 is Pro-equivalent.
- * Flash is the discounted exception.
+ * Only the exact V4-Pro route earns at ×1. Flash, every other model, and a
+ * missing / unknown id all earn at ×0.5. The conservative fallback prevents
+ * an unrecognised route from silently receiving the premium Pro rate.
  */
 export function incenseWeightBpsForModel(modelId: string | null | undefined): number {
   if (modelId === undefined || modelId === null || modelId.trim() === '') {
-    return INCENSE_WEIGHT_SCALE
+    return INCENSE_WEIGHT_SCALE / 2
   }
   const canonical = canonicalModelId(modelId)
-  return MODEL_WEIGHT_BPS[canonical] ?? INCENSE_WEIGHT_SCALE
+  return MODEL_WEIGHT_BPS[canonical] ?? INCENSE_WEIGHT_SCALE / 2
 }
 
 /**

@@ -4,6 +4,7 @@
 > 本文件前半部分是产品/技术事实源，后半部分是 4 个最终执行 Phase。
 > **活契约是仓库根目录 `AGENTS.md`。** 本文 PART A 已按 2026-08-16 的实现回写；若再冲突，以 `AGENTS.md` 为准。
 > `../deepseek-harness` 仅作为只读 API/运行时事实源。
+> **v0.3.0 硬限制更新（2026-08-17）**：梁子门槛统一为 50/70/85/95；仅 V4-Pro ×1，V4-Flash、其它、缺失/未知模型统一 ×0.5。本文其余执行段均服从这两条与根目录 `AGENTS.md`。
 > Git：每次改完必须 commit + push。仍禁止 npm publish / GitHub Release / 公网部署 / 改真实 DSH profile / 改 DSH 核心。
 
 ---
@@ -150,13 +151,13 @@ LIANG_ZU     -> 梁祖
 ```text
 if total_votes == 0:
     liangzi_state = WAITING
-else if up_ratio < 0.60:
+else if up_ratio < 0.50:
     liangzi_state = LIANG_GONG
 else if up_ratio < 0.70:
     liangzi_state = LIANG_ZONG
-else if up_ratio < 0.80:
+else if up_ratio < 0.85:
     liangzi_state = LIANG_SHEN
-else if up_ratio < 0.90:
+else if up_ratio < 0.95:
     liangzi_state = LIANG_SHENG
 else:
     liangzi_state = LIANG_ZU
@@ -167,11 +168,11 @@ else:
 | 全网夯占比 | 梁子状态 |
 |---|---|
 | 0 票 | 待开梁 |
-| `< 60%` | 梁工 |
-| `60% <= x < 70%` | 梁总 |
-| `70% <= x < 80%` | 梁神 |
-| `80% <= x < 90%` | 梁圣 |
-| `>= 90%` | 梁祖 |
+| `< 50%` | 梁工 |
+| `50% <= x < 70%` | 梁总 |
+| `70% <= x < 85%` | 梁神 |
+| `85% <= x < 95%` | 梁圣 |
+| `>= 95%` | 梁祖 |
 
 ### 五态视觉方向
 
@@ -534,7 +535,7 @@ up_ratio ~= 83%
 
 拉是梁位的补数，不占第二个大数字。
 
-当全网投票把夯率推过 90% 后：
+当全网投票把夯率推过 95% 后：
 
 ```text
 梁圣 -> 梁祖
@@ -888,11 +889,11 @@ UI:
 
 GLOBAL LIANGZI STATE:
 - total_votes=0 -> WAITING / 待开梁
-- up_ratio < 60% -> 梁工
-- 60% <= up_ratio < 70% -> 梁总
-- 70% <= up_ratio < 80% -> 梁神
-- 80% <= up_ratio < 90% -> 梁圣
-- up_ratio >= 90% -> 梁祖
+- up_ratio < 50% -> 梁工
+- 50% <= up_ratio < 70% -> 梁总
+- 70% <= up_ratio < 85% -> 梁神
+- 85% <= up_ratio < 95% -> 梁圣
+- up_ratio >= 95% -> 梁祖
 - 五态只由全网 up_ratio 驱动。
 - WAITING 不是第六 Tier，只是 0 票占位。
 - 个人 Token、earned、remaining、LiangQi 不得直接选择梁子状态。
@@ -1151,11 +1152,11 @@ mock global state：
 状态规则必须在 mock domain helper 中实现，而不是手写“83% => 梁圣”在组件里：
 
 - 0 votes => WAITING / 待开梁
-- <60% => 梁工
-- 60–<70 => 梁总
-- 70–<80 => 梁神
-- 80–<90 => 梁圣
-- >=90 => 梁祖
+- <50% => 梁工
+- 50–<70 => 梁总
+- 70–<85 => 梁神
+- 85–<95 => 梁圣
+- >=95 => 梁祖
 
 ### 梁气必须围绕梁子，但只属于当前用户
 
@@ -1260,15 +1261,15 @@ mock personal state 采用：
 至少提供：
 
 1. 0 votes => 待开梁
-2. 59% => 梁工
-3. 60% => 梁总
+2. 49.999% => 梁工
+3. 50% => 梁总
 4. 70% => 梁神
-5. 80% => 梁圣
-6. 90% => 梁祖
+5. 85% => 梁圣
+6. 95% => 梁祖
 
 验证个人状态不影响这些结果：
 
-- personal remaining=0, global=92% => 梁祖
+- personal remaining=0, global=96% => 梁祖
 - personal remaining=100, global=65% => 梁总
 
 ## LiangQi UI test/demo
@@ -1527,11 +1528,11 @@ downRatio = downVotes / totalIncense
 
 LiangziStatePolicy：
 
-- upRatio < 0.60 => LIANG_GONG
-- 0.60 <= upRatio < 0.70 => LIANG_ZONG
-- 0.70 <= upRatio < 0.80 => LIANG_SHEN
-- 0.80 <= upRatio < 0.90 => LIANG_SHENG
-- upRatio >= 0.90 => LIANG_ZU
+- upRatio < 0.50 => LIANG_GONG
+- 0.50 <= upRatio < 0.70 => LIANG_ZONG
+- 0.70 <= upRatio < 0.85 => LIANG_SHEN
+- 0.85 <= upRatio < 0.95 => LIANG_SHENG
+- upRatio >= 0.95 => LIANG_ZU
 
 阈值必须 policy 配置化并验证：
 - 单调
@@ -1611,21 +1612,21 @@ used=3。
 
 有票时：
 - 0% -> 梁工
-- 59.999% -> 梁工
-- 60% -> 梁总
+- 49.999% -> 梁工
+- 50% -> 梁总
 - 69.999% -> 梁总
 - 70% -> 梁神
-- 79.999% -> 梁神
-- 80% -> 梁圣
-- 89.999% -> 梁圣
-- 90% -> 梁祖
+- 84.999% -> 梁神
+- 85% -> 梁圣
+- 94.999% -> 梁圣
+- 95% -> 梁祖
 - 100% -> 梁祖
 
 ### Personal/global independence
 
 Case A:
 personal remaining=0
-global upRatio=92%
+global upRatio=96%
 => 梁祖
 
 Case B:
@@ -1641,7 +1642,7 @@ personal effectiveTokens 增长但 global votes 不变
 
 构造一个 threshold-crossing case：
 
-例如某个 accepted UP vote 使 upRatio 从 <80% 变为 >=80%。
+例如某个 accepted UP vote 使 upRatio 从 <85% 变为 >=85%。
 验证：
 - personal remaining -1
 - token fill 不变
@@ -1922,7 +1923,7 @@ Acceptance Criteria:
 - Input + Output Token 每 50K 获得 1 炷香
 - 一炷香 = 一次 Vote
 - 中央“梁子”状态由全网 up_ratio 决定：
-  0票待开梁；<60 梁工；60–70 梁总；70–80 梁神；80–90 梁圣；>=90 梁祖
+  0票待开梁；<50 梁工；50–70 梁总；70–85 梁神；85–95 梁圣；>=95 梁祖
 - 个人 remaining incense 决定梁气旺盛程度
 - 距下一炷的 Token progress 决定梁气环 fill
 - production backend 不允许相信前端自报 user_id/token/incense
@@ -2181,7 +2182,7 @@ Day rollover 新日从 0 开始。
 如果 global up/down 不变：
 中央梁子状态必须完全不变。
 
-global ratio 从 79% -> 80%：
+global ratio 从 84.x% -> 85%：
 即使个人 Token 不变，中央梁子必须梁神 -> 梁圣。
 
 ## Deliverables
@@ -2224,11 +2225,11 @@ Personal LiangQi：
 
 Global Liangzi：
 - 0票待开梁
-- <60 梁工
-- 60–70 梁总
-- 70–80 梁神
-- 80–90 梁圣
-- >=90 梁祖
+- <50 梁工
+- 50–70 梁总
+- 70–85 梁神
+- 85–95 梁圣
+- >=95 梁祖
 - 只由 global up_ratio 决定
 
 重点检查：
@@ -2372,13 +2373,13 @@ public snapshot：
 - liangziState WAITING
 
 阈值：
-- <60 梁工
-- 60–<70 梁总
-- 70–<80 梁神
-- 80–<90 梁圣
-- >=90 梁祖
+- <50 梁工
+- 50–<70 梁总
+- 70–<85 梁神
+- 85–<95 梁圣
+- >=95 梁祖
 
-必须提供 threshold-crossing test，证明 snapshot 从 79.x% 到 80% 后：
+必须提供 threshold-crossing test，证明 snapshot 从 84.x% 到 85% 后：
 梁神 -> 梁圣。
 
 ## Snapshot behavior
@@ -2398,7 +2399,7 @@ public snapshot：
 A. zero votes
 => 待开梁
 
-B. global 59%
+B. global 49%
 => 梁工
 
 C. global 65%
@@ -2410,7 +2411,7 @@ D. global 75%
 E. global 85%
 => 梁圣
 
-F. global 92%
+F. global 96%
 => 梁祖
 
 G. personal remaining=5, fill=94%
@@ -2427,7 +2428,7 @@ I. 再获得3000 Token
 => fill 94%->0
 => +1炷短反馈
 
-J. personal remaining=0, global=92%
+J. personal remaining=0, global=96%
 => 中央仍梁祖
 => 梁气库存为0
 
@@ -2485,11 +2486,11 @@ Frozen product contract:
 - central Liangzi state is GLOBAL, not personal
 - zero accepted votes => WAITING / 待开梁
 - global up ratio thresholds:
-  <60 梁工
-  60–<70 梁总
-  70–<80 梁神
-  80–<90 梁圣
-  >=90 梁祖
+  <50 梁工
+  50–<70 梁总
+  70–<85 梁神
+  85–<95 梁圣
+  >=95 梁祖
 - personal remaining incense controls LiangQi intensity
 - personal token remainder controls LiangQi ring fill
 - spending incense may reduce LiangQi intensity
@@ -2508,7 +2509,7 @@ Review priorities:
 7. UP/DOWN shared incense pool.
 8. GlobalLiangState / PersonalLiangQiState separation.
 9. zero-vote WAITING state.
-10. exact 60/70/80/90 threshold boundaries.
+10. exact 50/70/85/95 threshold boundaries.
 11. repeated same-direction voting.
 12. mixed-direction voting.
 13. concurrent overspend.
@@ -2752,7 +2753,7 @@ public snapshot 可低频生成：
 
 禁止出现：
 - UI 显示 79% 但 state 已是梁圣
-- UI 显示 83% 但 state 仍梁神
+- UI 显示 88% 但 state 仍梁神
 
 即 ratio 与 state 不能来自不同 snapshot version。
 
@@ -2772,10 +2773,10 @@ token_per_incense=50000
 由 server config/case policy 控制，client 只读。
 
 Liangzi threshold policy 默认：
-- <0.60 工
+- <0.50 工
 - <0.70 总
-- <0.80 神
-- <0.90 圣
+- <0.85 神
+- <0.95 圣
 - else 祖
 
 阈值配置必须版本化，避免 client/server drift。
@@ -2826,7 +2827,7 @@ Acceptance Criteria:
 11. Personal state 不含个人 Avatar Tier。
 12. Global snapshot 同时拥有一致的 ratio + LiangziState。
 13. 0 votes => WAITING。
-14. exact 60/70/80/90 boundaries 正确。
+14. exact 50/70/85/95 boundaries 正确。
 15. 若 authority 不可实现，production endpoint 明确 blocked。
 
 完成后停止。
@@ -2949,8 +2950,8 @@ same user + same request_id + different payload -> structured conflict
 ## Global Liangzi policy backend tests
 
 0 votes => WAITING
-59.x => 梁工
-60 => 梁总
+49.x => 梁工
+50 => 梁总
 70 => 梁神
 80 => 梁圣
 90 => 梁祖
@@ -3236,7 +3237,7 @@ Review:
 14. Is business date client-controlled?
 15. Are global ratios raw UP/DOWN only?
 16. Is zero vote state WAITING instead of fake 50/50?
-17. Are 60/70/80/90 boundaries exact?
+17. Are 50/70/85/95 boundaries exact?
 18. Do displayed ratios and LiangziState share one snapshot sequence?
 19. Can personal token/remaining directly change LiangziState?
 20. Does spending incense incorrectly change ring fill?
@@ -3329,8 +3330,8 @@ Vote transaction/ledger
 测试：
 - personal token 增长而 global ratio 不变 -> 梁子状态不变
 - personal remaining 从 5->0 而 global ratio 不变 -> 梁子状态不变
-- global ratio 79.x->80 -> 梁神->梁圣
-- global ratio 89.x->90 -> 梁圣->梁祖
+- global ratio 84.x->85 -> 梁神->梁圣
+- global ratio 94.x->95 -> 梁圣->梁祖
 - 0 votes -> WAITING
 - vote spend -> LiangQi intensity 下降
 - vote spend -> ring fill 不变
@@ -3363,7 +3364,7 @@ uncached input + cache read + cache write + output
 - idempotency
 - unique voter
 - 0 vote WAITING
-- 59/60/70/80/90 ratio boundaries
+- 49.999/50/70/85/95 ratio boundaries
 - snapshot ratio/state consistency
 - day rollover
 
@@ -3606,7 +3607,7 @@ Acceptance Criteria:
 1. RC package 可在 clean DSH profile 安装。
 2. UI 四区正确。
 3. 0票待开梁。
-4. 60/70/80/90 五态边界正确。
+4. 50/70/85/95 五态边界正确。
 5. Token 50K 边界与 next-incense progress 正确。
 6. LiangQi inventory/intensity 正确。
 7. repeated vote 正确。
@@ -3636,7 +3637,7 @@ Verify frozen product contract:
 4. Active central Liangzi states are exactly:
    梁工 / 梁总 / 梁神 / 梁圣 / 梁祖.
 5. Liangzi state depends only on global up ratio thresholds:
-   <60 / 60–<70 / 70–<80 / 80–<90 / >=90.
+   <50 / 50–<70 / 70–<85 / 85–<95 / >=95.
 6. Personal token/earned/remaining never directly selects Liangzi state.
 7. Global displayed ratio and Liangzi state come from the same snapshot version.
 8. Effective tokens = Input + Output.
@@ -3879,24 +3880,24 @@ toNext -> 50,000
 
 ```text
 0 votes      => 待开梁
-up < 60%     => 梁工
-60%–<70%     => 梁总
-70%–<80%     => 梁神
-80%–<90%     => 梁圣
->=90%        => 梁祖
+up < 50%     => 梁工
+50%–<70%     => 梁总
+70%–<85%     => 梁神
+85%–<95%     => 梁圣
+>=95%        => 梁祖
 ```
 
 精确边界：
 
 ```text
-59.999% -> 梁工
-60.000% -> 梁总
+49.999% -> 梁工
+50.000% -> 梁总
 69.999% -> 梁总
 70.000% -> 梁神
-79.999% -> 梁神
-80.000% -> 梁圣
-89.999% -> 梁圣
-90.000% -> 梁祖
+84.999% -> 梁神
+85.000% -> 梁圣
+94.999% -> 梁圣
+95.000% -> 梁祖
 100.00% -> 梁祖
 ```
 
@@ -3904,7 +3905,7 @@ up < 60%     => 梁工
 
 ```text
 personal remaining=0
-global up=92%
+global up=96%
 => 梁祖
 ```
 
@@ -3925,7 +3926,7 @@ global vote ratio unchanged
 构造某次 global snapshot：
 
 ```text
-up_ratio: 79.x% -> 80.0%+
+up_ratio: 84.x% -> 85.0%+
 ```
 
 结果：
@@ -3939,7 +3940,7 @@ up_ratio: 79.x% -> 80.0%+
 同理：
 
 ```text
-89.x% -> 90%+
+94.x% -> 95%+
 梁圣 -> 梁祖
 ```
 
@@ -4017,7 +4018,7 @@ liangzi_state=梁总
 
 ```text
 显示 79% + 梁圣
-显示 83% + 梁神
+显示 88% + 梁神
 ```
 
 除非 policy version 明确不同；同一页面同一 snapshot 不得 drift。
@@ -4223,11 +4224,11 @@ Prompt 01B R2 已完成，下面是 Cursor 的执行结果。
 中央梁子只由同一份 Global Snapshot 的全网夯比例决定：
 
 - total_votes = 0 -> `WAITING / 待开梁`
-- up_ratio < 60% -> `梁工`
-- 60% <= up_ratio < 70% -> `梁总`
-- 70% <= up_ratio < 80% -> `梁神`
-- 80% <= up_ratio < 90% -> `梁圣`
-- up_ratio >= 90% -> `梁祖`
+- up_ratio < 50% -> `梁工`
+- 50% <= up_ratio < 70% -> `梁总`
+- 70% <= up_ratio < 85% -> `梁神`
+- 85% <= up_ratio < 95% -> `梁圣`
+- up_ratio >= 95% -> `梁祖`
 
 `待开梁` 不是第六 Tier，只是零票占位态。
 
@@ -4432,14 +4433,14 @@ Domain 必须无 React/DSH/network/DB 依赖。
 精确边界：
 
 - 0/0 => WAITING
-- 59.999% => LIANG_GONG
-- 60% => LIANG_ZONG
+- 49.999% => LIANG_GONG
+- 50% => LIANG_ZONG
 - 69.999% => LIANG_ZONG
 - 70% => LIANG_SHEN
-- 79.999% => LIANG_SHEN
-- 80% => LIANG_SHENG
-- 89.999% => LIANG_SHENG
-- 90% => LIANG_ZU
+- 84.999% => LIANG_SHEN
+- 85% => LIANG_SHENG
+- 94.999% => LIANG_SHENG
+- 95% => LIANG_ZU
 - 100% => LIANG_ZU
 
 Global Snapshot 必须保证：
@@ -4521,7 +4522,7 @@ earned=5, used=3, remaining=2
 
 ### Liangzi threshold
 
-精确覆盖 0 票和 60/70/80/90 边界。
+精确覆盖 0 票和 50/70/85/95 边界。
 
 ### Independence
 
@@ -5393,7 +5394,7 @@ remaining=1，两 tab 同时不同方向：
 12. client clock cannot alter eligibility
 13. global ratio accuracy
 14. zero vote WAITING
-15. exact 60/70/80/90 Liangzi thresholds
+15. exact 50/70/85/95 Liangzi thresholds
 16. ratio/Liangzi same snapshot version
 17. changing personal LiangQi cannot change Liangzi
 18. changing global snapshot cannot change personal incense/token progress
@@ -5576,11 +5577,11 @@ P0 boundary：
 精确验证：
 
 - no vote -> WAITING
-- <60 -> 梁工
-- [60,70) -> 梁总
-- [70,80) -> 梁神
-- [80,90) -> 梁圣
-- >=90 -> 梁祖
+- <50 -> 梁工
+- [50,70) -> 梁总
+- [70,85) -> 梁神
+- [85,95) -> 梁圣
+- >=95 -> 梁祖
 
 所有 UI percentage + Liangzi state 必须来自同一 PublicLiangSnapshot version。
 
