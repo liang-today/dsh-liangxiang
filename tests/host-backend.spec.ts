@@ -14,6 +14,7 @@ import { BackendLiangService } from '../src/host/backend-service.ts'
 import { wireToViewState } from '../src/client/store.ts'
 import { parseWireState } from '../src/shared/wire.ts'
 import { createMutableClock, DAY_MS, FIXED_NOW } from './helpers/backend.ts'
+import { parseV1HistoryResponse } from '../src/shared/index.ts'
 
 const INSTALLATION = 'inst-e2e-000001'
 const SESSION = 'session-e2e-1'
@@ -401,6 +402,29 @@ describe('online voting', () => {
 })
 
 describe('online rollover', () => {
+  it('caches one full 梁祠 archive and switches to immutable deltas after rollover', async () => {
+    const s = await startStack()
+    const initial = parseV1HistoryResponse(await s.host.history())
+    expect(initial).toMatchObject({ full: true, archiveVersion: 0, days: [] })
+
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => claimedOnBackend(s, 50_000), 'history test claim')
+    const caseId = frame(s).activeCase.id
+    await s.host.vote({ caseId, voteType: 'up', requestId: 'req-history-e2e1' })
+
+    s.clock.advance(DAY_MS)
+    await s.host.refreshSnapshot()
+    const delta = parseV1HistoryResponse(await s.host.history(0))
+    expect(delta).toMatchObject({ full: false, archiveVersion: 1 })
+    expect(delta.days[0]).toMatchObject({
+      businessDate: '2026-08-16',
+      upVotes: 1,
+      downVotes: 0,
+      liangziState: 'liang_zu',
+    })
+    expect(frame(s).archiveVersion).toBe(1)
+  })
+
   it('adopts the backend business date and starts the new day clean', async () => {
     const s = await startStack()
     observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })

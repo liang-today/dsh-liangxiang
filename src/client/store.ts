@@ -26,6 +26,10 @@ export type ConnectionState = 'connecting' | 'live' | 'offline'
 /** Everything the panel renders, in one immutable snapshot. */
 export interface LiangbiaoViewState {
   connection: ConnectionState
+  /** Server-authoritative current business date; never browser local time. */
+  businessDate: string
+  /** Scalar 梁祠 change cursor; archive arrays are fetched separately. */
+  archiveVersion: number
   /** False when the host reports the DSH accounting seams are absent. */
   accountingAvailable: boolean
   /** Backend guard notice (e.g. absurd claim clamped); null normally. */
@@ -57,6 +61,8 @@ export interface LiangbiaoStore {
 export function wireToViewState(wire: LiangbiaoWireState, connection: ConnectionState): LiangbiaoViewState {
   return {
     connection,
+    businessDate: wire.businessDate,
+    archiveVersion: wire.archiveVersion,
     accountingAvailable: wire.accounting.available,
     accountingNotice: wire.accounting.notice,
     authorityMode: wire.authorityMode,
@@ -99,6 +105,8 @@ export function wireToViewState(wire: LiangbiaoWireState, connection: Connection
 export function createOfflineViewState(connection: ConnectionState): LiangbiaoViewState {
   return {
     connection,
+    businessDate: new Date().toISOString().slice(0, 10),
+    archiveVersion: 0,
     accountingAvailable: false,
     accountingNotice: null,
     authorityMode: 'LOCAL_FAKE_DEV',
@@ -183,6 +191,8 @@ export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbia
   let sequence = 1
   const buildState = (): LiangbiaoViewState => ({
     connection: 'live',
+    businessDate: activeCase.businessDate,
+    archiveVersion: 0,
     accountingAvailable: true,
     accountingNotice: null,
     authorityMode: 'LOCAL_FAKE_DEV',

@@ -16,8 +16,8 @@ const CONFIG: LiangServiceConfig = {
   caseTitle: 'DeepSeek Harness 是夯还是拉',
 }
 
-function makeService(): FakeAuthoritativeLiangService {
-  const service = new FakeAuthoritativeLiangService(CONFIG, { now: () => Date.UTC(2026, 7, 16, 4) }, () => undefined)
+function makeService(clock: { now(): number } = { now: () => Date.UTC(2026, 7, 16, 4) }): FakeAuthoritativeLiangService {
+  const service = new FakeAuthoritativeLiangService(CONFIG, clock, () => undefined)
   service.markReadyMemoryOnly('test')
   service.observeUsage('s1', {
     uncachedInputTokens: 397_000,
@@ -62,6 +62,13 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
           service.reconcileNow()
           return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
         }
+        if (path === '/liangbiao/api/history') {
+          return Promise.resolve(JSON.parse(JSON.stringify(service.history())) as unknown)
+        }
+        if (path.startsWith('/liangbiao/api/history?after_version=')) {
+          const cursor = Number(new URL(path, 'http://local').searchParams.get('after_version'))
+          return Promise.resolve(JSON.parse(JSON.stringify(service.history(cursor))) as unknown)
+        }
         if (path === '/liangbiao/api/vote') {
           const intent = JSON.parse(init?.body ?? '{}') as { caseId: string, voteType: 'up' | 'down', requestId: string }
           const outcome = service.vote(intent)
@@ -101,6 +108,46 @@ async function settled(): Promise<void> {
 }
 
 describe('live store', () => {
+  it('loads history once, then requests only an archive-version delta after rollover', async () => {
+    let now = Date.UTC(2026, 7, 16, 4)
+    const service = makeService({ now: () => now })
+    const controls = fakeTransport(service)
+    const store = createLiveLiangbiaoStore(controls.transport)
+    store.start()
+    await settled()
+    expect(store.getHistorySnapshot()).toMatchObject({ status: 'ready', archive: { archiveVersion: 0 } })
+    expect(controls.requests.filter(request => request.path === '/liangbiao/api/history')).toHaveLength(1)
+
+    now = Date.UTC(2026, 7, 17, 4)
+    controls.pushFrame(service.getWireState())
+    await settled()
+    const history = store.getHistorySnapshot()
+    expect(history).toMatchObject({ status: 'ready', archive: { archiveVersion: 1 } })
+    expect(history.archive?.days[0]).toMatchObject({ businessDate: '2026-08-16' })
+    expect(controls.requests.some(request => request.path === '/liangbiao/api/history?after_version=0')).toBe(true)
+    store.dispose()
+  })
+
+  it('keeps last-known-good history and marks it stale on a failed delta', async () => {
+    let now = Date.UTC(2026, 7, 16, 4)
+    const service = makeService({ now: () => now })
+    const controls = fakeTransport(service)
+    const store = createLiveLiangbiaoStore(controls.transport)
+    store.start()
+    await settled()
+    now = Date.UTC(2026, 7, 17, 4)
+    controls.failNextFetches(1)
+    controls.pushFrame(service.getWireState())
+    await settled()
+    expect(store.getHistorySnapshot()).toMatchObject({
+      status: 'stale',
+      archive: { archiveVersion: 0, stale: true },
+    })
+    // Today's hot state remains live and has already rolled over.
+    expect(store.getSnapshot()).toMatchObject({ connection: 'live', businessDate: '2026-08-17' })
+    store.dispose()
+  })
+
   it('bootstraps from /state and derives the demo view', async () => {
     const service = makeService()
     const controls = fakeTransport(service)

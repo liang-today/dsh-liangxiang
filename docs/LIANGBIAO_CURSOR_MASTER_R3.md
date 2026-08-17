@@ -5,6 +5,7 @@
 > **活契约是仓库根目录 `AGENTS.md`。** 本文 PART A 已按 2026-08-16 的实现回写；若再冲突，以 `AGENTS.md` 为准。
 > `../deepseek-harness` 仅作为只读 API/运行时事实源。
 > **v0.3.0 硬限制更新（2026-08-17）**：梁子门槛统一为 50/70/85/95；仅 V4-Pro ×1，V4-Flash、其它、缺失/未知模型统一 ×0.5。本文其余执行段均服从这两条与根目录 `AGENTS.md`。
+> **v0.4.0 梁祠更新（2026-08-17）**：日/周/月永久档案、今日进行中、截至昨日暂梁与独立 history 冷通道已经实现；完整契约见 [`130-liangci-design.md`](130-liangci-design.md)。本手册内任何“无历史接口”或未实施表述均已失效。
 > Git：每次改完必须 commit + push。仍禁止 npm publish / GitHub Release / 公网部署 / 改真实 DSH profile / 改 DSH 核心。
 
 ---

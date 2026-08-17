@@ -4,7 +4,7 @@
  * Posture:
  *  - every request is timeout-bounded and abortable; `dispose()` cancels
  *    everything in flight (plugin unload / HMR must not leak sockets);
- *  - reads (bootstrap / snapshot / daily-state) get one bounded retry;
+ *  - reads (bootstrap / snapshot / daily-state / history) get one bounded retry;
  *  - a vote is NEVER retried here — retrying a vote is the caller's decision and
  *    must reuse the same `request_id` (AGENTS.md §15);
  *  - a 409 vote response is a business outcome, not a transport failure: it is
@@ -33,6 +33,7 @@ import {
   type V1VoteResponse,
 } from '../shared/backend-v1.ts'
 import { signRequest, type CommunityKeypair } from './community-keys.ts'
+import { parseV1HistoryResponse, type ParsedHistoryArchive } from '../shared/history-v1.ts'
 
 const DEFAULT_TIMEOUT_MS = 6_000
 const READ_RETRY_DELAY_MS = 300
@@ -69,6 +70,7 @@ export interface BackendClient {
   ) => Promise<V1PersonalStateResponse>
   dailyState: (installationId: string) => Promise<V1PersonalStateResponse>
   snapshot: () => Promise<V1SnapshotResponse>
+  history: (afterVersion?: number) => Promise<ParsedHistoryArchive>
   vote: (installationId: string, intent: V1VoteRequest) => Promise<V1VoteResponse>
   dispose: () => void
 }
@@ -183,6 +185,10 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     },
     async snapshot() {
       return parseV1SnapshotResponse(await read('/snapshot'))
+    },
+    async history(afterVersion) {
+      const suffix = afterVersion === undefined ? '' : `?after_version=${afterVersion}`
+      return parseV1HistoryResponse(await read(`/history${suffix}`))
     },
     async vote(installationId, intent) {
       const payload = await request('/votes', {

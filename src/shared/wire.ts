@@ -86,6 +86,8 @@ export interface LiangbiaoWireState {
   authorityMode: AuthorityMode
   snapshotRefreshSeconds: number
   businessDate: string
+  /** Scalar signal only; 梁祠 arrays use the separate `/api/history` route. */
+  archiveVersion: number
   activeCase: DailyLiangCase
   global: WireGlobalCounts
   personal: WirePersonalCounts
@@ -214,6 +216,9 @@ export function parseWireState(raw: unknown): LiangbiaoWireState {
     authorityMode,
     snapshotRefreshSeconds: requireCount(record.snapshotRefreshSeconds, 'state.snapshotRefreshSeconds'),
     businessDate: requireString(record.businessDate, 'state.businessDate'),
+    archiveVersion: record.archiveVersion === undefined
+      ? 0
+      : requireCount(record.archiveVersion, 'state.archiveVersion'),
     activeCase: parseCase(record.activeCase, 'state.activeCase'),
     global: {
       caseId: requireString(globalRecord.caseId, 'state.global.caseId'),

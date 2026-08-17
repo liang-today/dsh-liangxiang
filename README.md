@@ -11,6 +11,7 @@
 - 中央**梁子**只由**全网投票比例**决定:`待开梁`(零票)/ 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖;
 - 面板正中只有一个公开数字 **梁位**(= 全网夯率,6 位小数),每一票都看得见它在动;
 - 底部 **三界香火** = 全网已接受票数，**五行香客** = 至少成功投过一票的独立参与者。
+- 底部 **进入梁祠** 打开插件内月历：今日进行中、永久日梁、周梁、月梁，以及只统计到昨天的本周/本月暂梁。
 
 悬停文案恒为 `今日梁位`;入口图标就是当前梁子那一态,可以拖到画面任意位置。
 
@@ -23,7 +24,7 @@
 | `LOCAL_FAKE_DEV` | 不设 `LIANGBIAO_BACKEND_URL` | Host 进程内(`FakeAuthoritativeLiangService`) | 单机演示 |
 | `DEV_STAGING_ONLY` | 设 `LIANGBIAO_BACKEND_URL` | 独立 Liangbiao 后端 + SQLite(`/v1/*`) | 本地/团队内 staging |
 
-在线链路:DSH Host 观测真实 provider-reported 用量(`tokenUsage` 投影,水位差分防重)→ 作为**声明**上报 `POST /v1/token-claims` → 后端在 DB 事务里原子扣香、幂等去重、更新聚合 → 按 cadence 发布 `public_liang_snapshot` → Host 经 `/liangbiao/api`(state/SSE/vote)推给浏览器。
+在线链路:DSH Host 观测真实 provider-reported 用量(`tokenUsage` 投影,水位差分防重)→ 作为**声明**上报 `POST /v1/token-claims` → 后端在 DB 事务里原子扣香、幂等去重、更新聚合 → 按 cadence 发布 `public_liang_snapshot` → Host 经 `/liangbiao/api`(state/SSE/vote)推给浏览器。梁祠另走低频 `/v1/history` → `/liangbiao/api/history` 冷通道：首次全量、归档版本变化后仅取增量，秒级 SSE 不重复携带历史数组。
 
 **诚实声明(必读)**:Decision Gate A 判定为 **A3**([`docs/043`](docs/043-decision-gate-a.md))——DSH 不提供服务器可验证的身份与 Token 权威。因此:
 
@@ -50,6 +51,7 @@
 | RC 结论 | [`docs/100-release-readiness.md`](docs/100-release-readiness.md) |
 | 原始禁令 vs 当前实现 | [`docs/110-prohibition-refresh.md`](docs/110-prohibition-refresh.md) |
 | Demo → 社区产品 | [`docs/120-community-product.md`](docs/120-community-product.md) |
+| 梁祠产品/实现契约 | [`docs/130-liangci-design.md`](docs/130-liangci-design.md) |
 
 其余设计文档:`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵、`020` UI、`030–032` 领域模型/不变量/P0 矩阵、`040–044` authority 勘察、`050–062` 本地闭环、`070–076` 在线后端。
 

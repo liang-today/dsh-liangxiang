@@ -130,11 +130,45 @@ incense.
 
 ```text
 三界香火 12,846     五行香客 2,841     上达天听
+                                         进入梁祠
 ```
 
 - 三界香火 = accepted votes for the current case (天/人/地香火汇于一炉)
 - 五行香客 = unique users with at least one accepted vote for the current case/day (取经五众)
-- 上达天听 sits on the same row as a small ritual control (confirm before sync). Not a fifth region.
+- the right edge is one compact ritual-control column: `上达天听` above
+  `进入梁祠`; both remain inside Region 4 and neither is a fifth region
+- 上达天听 confirms before sync; 进入梁祠 opens the read-only in-plugin calendar
+- 进入梁祠 is not a vote, operator control, or external GitHub Pages link
+
+### 梁祠 — immutable history calendar
+
+梁祠 is a plugin-local, read-only calendar with day, ISO-week (Monday–Sunday),
+and calendar-month archives. It must not change the current case, personal
+incense, voting availability, or any ledger.
+
+- today always renders the dedicated `今日进行中` mark. It never renders a
+  terminal Liangzi state and is excluded from current-week/current-month totals
+- after business-date rollover, the backend combines every closed case from the
+  ended business date into one immutable day archive
+- the current week/month is a temporary projection through yesterday only. It
+  is never written as a permanent archive; Monday/month-day 1 with no completed
+  days renders `待积` and `--`
+- a completed week/month is persisted idempotently on a later business date
+- aggregation is `sum(up_votes) / sum(total_votes)`, not an unweighted average
+  of daily percentages or Liangzi enum values
+- zero-vote archive, missing archive, future date, and today are four distinct
+  states. Zero votes derive `WAITING` with null ratios, never fake 50/50
+- an archive stores raw counts and policy versions; ratio and Liangzi state are
+  derived from the same counts and policy
+- history uses an independent cold channel: first connection fetches the full
+  archive once, normal snapshot/SSE traffic carries only scalar
+  `archive_version`, and rollover fetches `after_version` deltas
+- a history failure preserves the last-known-good archive and marks it
+  `档案未更新`; it must never make today's case or voting unavailable
+- the calendar is a centered modal, reuses the existing Liangzi artwork and
+  theme tokens, supports keyboard focus trapping/Escape/focus return, narrow
+  viewport horizontal calendar scrolling, dark mode, reduced motion, and zoom
+- GitHub Pages is explicitly outside the current implementation scope
 
 ---
 
@@ -990,6 +1024,11 @@ Before completing any major Liangbiao change, be able to answer **yes** to all o
 - Are Flash, missing/unknown, and all other non-Pro routes earning incense at half Pro rate locally (Pro-equivalent claim), without sending model names to the server?
 - Is the client prevented from self-authorizing production vote capacity?
 - Are concurrency and idempotency enforced by the authoritative layer?
+- Does today render only 今日进行中 and stay out of every historical aggregate?
+- Are current week/month results temporary through yesterday and never persisted?
+- Are completed day/week/month archives immutable, idempotent, and weighted by raw vote counts?
+- Does normal snapshot/SSE traffic carry only `archive_version`, never the history arrays?
+- Does a history failure preserve last-known-good history without affecting today's voting loop?
 - Are obsolete ranking/winner/third-option/personal-avatar concepts absent?
 
 If any answer is no, the implementation is not aligned with 梁标 V0.1.

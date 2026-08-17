@@ -29,6 +29,7 @@ import {
   type BadgePoint,
 } from './badge-position.ts'
 import { LiangAvatar } from './LiangAvatar.tsx'
+import { LiangciModal } from './LiangciModal.tsx'
 import { createLiveLiangbiaoStore } from './live-store.ts'
 import { Panel } from './Panel.tsx'
 import { color, font } from './theme.ts'
@@ -219,6 +220,7 @@ export function LiangbiaoBadge(): ReactElement {
     return () => store.dispose()
   }, [store])
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  const historyState = useSyncExternalStore(store.subscribeHistory, store.getHistorySnapshot)
   // Default open so the stacked left-dock can stay visible without covering
   // the DSH composer. × / the badge persist the preference per browser.
   const [open, setOpen] = useState<boolean>(() => {
@@ -278,6 +280,8 @@ export function LiangbiaoBadge(): ReactElement {
     if (revealTimer.current !== null) window.clearTimeout(revealTimer.current)
   }, [])
   const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
+  const [liangciOpen, setLiangciOpen] = useState(false)
+  const closeLiangci = useCallback(() => setLiangciOpen(false), [])
   const onDismissWelcome = useCallback(() => {
     markWelcomeSeen()
     setWelcomeVisible(false)
@@ -548,9 +552,22 @@ export function LiangbiaoBadge(): ReactElement {
           onReconcileAsk={onReconcileAsk}
           onReconcileConfirm={onReconcileConfirm}
           onReconcileCancel={onReconcileCancel}
+          onOpenLiangci={() => {
+            setLiangciOpen(true)
+            void store.loadHistory()
+          }}
           {...(state.authorityMode === 'LOCAL_FAKE_DEV'
             ? { onCycleLocalCase: () => store.cycleLocalCase() }
             : {})}
+        />
+      )}
+      {liangciOpen && (
+        <LiangciModal
+          businessDate={state.businessDate}
+          history={historyState}
+          reducedMotion={reducedMotion}
+          onClose={closeLiangci}
+          onRetry={() => { void store.loadHistory() }}
         />
       )}
     </div>

@@ -3,6 +3,7 @@
  *
  *   GET  /liangbiao/api/state      full wire state
  *   GET  /liangbiao/api/events     SSE push (one frame per revision + heartbeat)
+ *   GET  /liangbiao/api/history    full 梁祠 archive or immutable version delta
  *   POST /liangbiao/api/vote       minimal vote intent -> result + fresh state
  *   POST /liangbiao/api/refresh    force host re-read (hover / panel open)
  *   POST /liangbiao/api/reconcile  drop local Token observation, re-read incense
@@ -178,7 +179,8 @@ export function createLiangbiaoApi(
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     /* node:http always sets url on server requests */
-    const pathname = new URL(req.url ?? '/', 'http://liangbiao.local').pathname
+    const url = new URL(req.url ?? '/', 'http://liangbiao.local')
+    const pathname = url.pathname
     if (!service.isReady) {
       writeJson(res, 503, { error: 'liangbiao host is still starting' })
       return
@@ -186,6 +188,7 @@ export function createLiangbiaoApi(
     const methods: Record<string, string> = {
       '/liangbiao/api/state': 'GET',
       '/liangbiao/api/events': 'GET',
+      '/liangbiao/api/history': 'GET',
       '/liangbiao/api/vote': 'POST',
       '/liangbiao/api/refresh': 'POST',
       '/liangbiao/api/reconcile': 'POST',
@@ -207,6 +210,25 @@ export function createLiangbiaoApi(
     }
     if (pathname === '/liangbiao/api/events') {
       handleEvents(req, res)
+      return
+    }
+    if (pathname === '/liangbiao/api/history') {
+      try {
+        const unknown = [...url.searchParams.keys()].filter(key => key !== 'after_version')
+        if (unknown.length > 0) throw new Error(`unknown query parameter ${unknown[0]}`)
+        const values = url.searchParams.getAll('after_version')
+        if (values.length > 1) throw new Error('after_version must appear at most once')
+        let afterVersion: number | undefined
+        if (values.length === 1) {
+          const raw = values[0] as string
+          if (!/^\d+$/.test(raw)) throw new Error('after_version must be a non-negative integer')
+          afterVersion = Number(raw)
+          if (!Number.isSafeInteger(afterVersion)) throw new Error('after_version exceeds safe integer range')
+        }
+        writeJson(res, 200, await service.history(afterVersion))
+      } catch (error) {
+        writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
+      }
       return
     }
     if (pathname === '/liangbiao/api/refresh') {

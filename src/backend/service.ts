@@ -24,8 +24,11 @@
 import { randomBytes } from 'node:crypto'
 import {
   DEFAULT_LIANGZI_THRESHOLDS,
+  LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
   derivePersonalLiangQiState,
   deriveLiangziState,
+  isoWeekFor,
+  monthFor,
   type LiangziThresholdPolicy,
 } from '../domain/index.ts'
 import {
@@ -54,12 +57,15 @@ import {
   isUniqueConstraintError,
   type BackendStore,
   type CaseRow,
+  type MonthArchiveRow,
   type IncenseRow,
   type QueueRow,
   type SnapshotRow,
   type StatsRow,
+  type WeekArchiveRow,
 } from './store.ts'
 import { WireError } from '../shared/wire.ts'
+import { historyArchiveToV1, type V1HistoryResponse } from '../shared/history-v1.ts'
 
 /** Thrown when a concurrent duplicate wins the idempotency race. */
 class DuplicateRequestSignal extends Error {}
@@ -78,6 +84,7 @@ export class LiangbiaoBackendService {
   private readonly dates: BusinessDateProvider
   private readonly policy: LiangziThresholdPolicy
   private readonly warn: (message: string) => void
+  private archiveCheckedBusinessDate: string | null = null
 
   constructor(deps: BackendServiceDeps) {
     this.store = deps.store
@@ -105,9 +112,10 @@ export class LiangbiaoBackendService {
   ensureActiveCase(now = this.clock.now()): CaseRow {
     const businessDate = this.businessDate(now)
     const existing = this.store.activeCaseFor(businessDate)
-    if (existing !== undefined) return existing
-    return this.store.transaction(() => {
+    if (existing !== undefined && this.archiveCheckedBusinessDate === businessDate) return existing
+    const active = this.store.transaction(() => {
       this.store.closeCasesBefore(businessDate, now)
+      this.finalizeArchivesInTransaction(businessDate, now)
       const raced = this.store.activeCaseFor(businessDate)
       if (raced !== undefined) return raced
       const queued = this.store.takeQueuedTitle(businessDate, now)
@@ -138,6 +146,92 @@ export class LiangbiaoBackendService {
       if (created === undefined) throw new Error('failed to open the daily case')
       return created
     })
+    // Mark the date checked only after COMMIT succeeds. If COMMIT throws, the
+    // next request must retry finalization instead of trusting an in-memory flag.
+    this.archiveCheckedBusinessDate = businessDate
+    return active
+  }
+
+  /**
+   * Freeze every ended day, then any newly ended ISO week/calendar month.
+   * All rows created in one rollover share one archive version. Re-running is
+   * idempotent because the source-date query and period ids exclude rows that
+   * already exist.
+   */
+  private finalizeArchivesInTransaction(businessDate: string, now: number): void {
+    const pendingDates = this.store.unarchivedCaseDatesBefore(businessDate)
+    const existingDays = this.store.dayArchives()
+    const candidateDates = [...new Set([
+      ...existingDays.map(day => day.business_date),
+      ...pendingDates,
+    ])]
+    const existingWeekIds = new Set(this.store.weekArchives().map(row => row.week_id))
+    const existingMonthIds = new Set(this.store.monthArchives().map(row => row.month_id))
+    const pendingWeeks = new Map<string, ReturnType<typeof isoWeekFor>>()
+    const pendingMonths = new Map<string, ReturnType<typeof monthFor>>()
+
+    for (const date of candidateDates) {
+      const week = isoWeekFor(date)
+      if (week.endDate < businessDate && !existingWeekIds.has(week.weekId)) {
+        pendingWeeks.set(week.weekId, week)
+      }
+      const month = monthFor(date)
+      if (month.endDate < businessDate && !existingMonthIds.has(month.monthId)) {
+        pendingMonths.set(month.monthId, month)
+      }
+    }
+
+    if (pendingDates.length === 0 && pendingWeeks.size === 0 && pendingMonths.size === 0) return
+    const archiveVersion = this.store.bumpArchiveVersion()
+    for (const date of pendingDates) {
+      const source = this.store.dayArchiveSource(date)
+      if (source === undefined) continue
+      this.store.insertDayArchive({
+        business_date: date,
+        case_count: source.caseTitles.length,
+        case_titles_json: JSON.stringify(source.caseTitles),
+        up_votes: source.upVotes,
+        down_votes: source.downVotes,
+        finalized_at: now,
+        archive_version: archiveVersion,
+        aggregation_policy_version: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+        liangzi_policy_version: LIANGZI_POLICY_VERSION,
+      })
+    }
+
+    const allDays = this.store.dayArchives()
+    for (const week of pendingWeeks.values()) {
+      const days = allDays.filter(day => day.business_date >= week.startDate && day.business_date <= week.endDate)
+      if (days.length === 0) continue
+      this.store.insertWeekArchive({
+        week_id: week.weekId,
+        start_date: week.startDate,
+        end_date: week.endDate,
+        covered_days: days.length,
+        up_votes: days.reduce((sum, day) => sum + day.up_votes, 0),
+        down_votes: days.reduce((sum, day) => sum + day.down_votes, 0),
+        finalized_at: now,
+        archive_version: archiveVersion,
+        aggregation_policy_version: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+        liangzi_policy_version: LIANGZI_POLICY_VERSION,
+      })
+    }
+    for (const month of pendingMonths.values()) {
+      const days = allDays.filter(day => day.business_date >= month.startDate && day.business_date <= month.endDate)
+      if (days.length === 0) continue
+      this.store.insertMonthArchive({
+        month_id: month.monthId,
+        start_date: month.startDate,
+        end_date: month.endDate,
+        covered_days: days.length,
+        up_votes: days.reduce((sum, day) => sum + day.up_votes, 0),
+        down_votes: days.reduce((sum, day) => sum + day.down_votes, 0),
+        finalized_at: now,
+        archive_version: archiveVersion,
+        aggregation_policy_version: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+        liangzi_policy_version: LIANGZI_POLICY_VERSION,
+      })
+    }
   }
 
   /** Enqueue a 梁案 for a calendar day, or the next unused midnight (FIFO). */
@@ -213,6 +307,7 @@ export class LiangbiaoBackendService {
       server_time: now,
       business_date: caseRow.business_date,
       business_timezone: this.dates.timezone,
+      archive_version: this.store.archiveVersion(),
       snapshot_refresh_seconds: this.config.snapshotRefreshSeconds,
       token_policy: {
         token_per_incense: caseRow.token_per_incense,
@@ -307,9 +402,57 @@ export class LiangbiaoBackendService {
       schema_version: BACKEND_SCHEMA_VERSION,
       server_time: now,
       business_date: caseRow.business_date,
+      archive_version: this.store.archiveVersion(),
       active_case: toV1Case(caseRow),
       global_snapshot: this.publishedSnapshot(caseRow, now),
     }
+  }
+
+  /** Initial full archive or immutable rows newer than one cursor. */
+  historyResponse(afterVersion?: number, now = this.clock.now()): V1HistoryResponse {
+    const activeCase = this.ensureActiveCase(now)
+    if (afterVersion !== undefined && (!Number.isSafeInteger(afterVersion) || afterVersion < 0)) {
+      throw new WireError('after_version', 'expected a non-negative safe integer')
+    }
+    const full = afterVersion === undefined
+    const cursor = afterVersion ?? -1
+    const days = this.store.dayArchives(cursor).map(row => {
+      let titles: unknown
+      try {
+        titles = JSON.parse(row.case_titles_json)
+      } catch {
+        throw new Error(`invalid archived case title JSON for ${row.business_date}`)
+      }
+      if (!Array.isArray(titles) || !titles.every(title => typeof title === 'string')) {
+        throw new Error(`invalid archived case title list for ${row.business_date}`)
+      }
+      return {
+        businessDate: row.business_date,
+        caseCount: row.case_count,
+        caseTitles: titles,
+        finalizedAt: row.finalized_at,
+        archiveVersion: row.archive_version,
+        aggregationPolicyVersion: row.aggregation_policy_version,
+        liangziPolicyVersion: row.liangzi_policy_version,
+        upVotes: row.up_votes,
+        downVotes: row.down_votes,
+        totalIncense: row.up_votes + row.down_votes,
+        upRatio: row.up_votes + row.down_votes === 0 ? null : row.up_votes / (row.up_votes + row.down_votes),
+        downRatio: row.up_votes + row.down_votes === 0 ? null : row.down_votes / (row.up_votes + row.down_votes),
+        liangziState: deriveLiangziState(row.up_votes, row.down_votes, this.policy),
+      }
+    })
+    const weeks = this.store.weekArchives(cursor).map(row => archivePeriodRow(row, 'week', this.policy))
+    const months = this.store.monthArchives(cursor).map(row => archivePeriodRow(row, 'month', this.policy))
+    return historyArchiveToV1({
+      archiveVersion: this.store.archiveVersion(),
+      businessDate: activeCase.business_date,
+      businessTimezone: this.dates.timezone,
+      stale: false,
+      days,
+      weeks,
+      months,
+    }, full)
   }
 
   /**
@@ -746,4 +889,40 @@ export function toV1Snapshot(
     lifetime_incense: lifetime?.incense ?? totalIncense,
     lifetime_voters: lifetime?.voters ?? row.unique_voters,
   }
+}
+
+function archivePeriodRow(
+  row: WeekArchiveRow,
+  kind: 'week',
+  policy: LiangziThresholdPolicy,
+): import('../domain/index.ts').LiangWeekArchive
+function archivePeriodRow(
+  row: MonthArchiveRow,
+  kind: 'month',
+  policy: LiangziThresholdPolicy,
+): import('../domain/index.ts').LiangMonthArchive
+function archivePeriodRow(
+  row: WeekArchiveRow | MonthArchiveRow,
+  kind: 'week' | 'month',
+  policy: LiangziThresholdPolicy,
+): import('../domain/index.ts').LiangWeekArchive | import('../domain/index.ts').LiangMonthArchive {
+  const totalIncense = row.up_votes + row.down_votes
+  const common = {
+    startDate: row.start_date,
+    endDate: row.end_date,
+    coveredDays: row.covered_days,
+    upVotes: row.up_votes,
+    downVotes: row.down_votes,
+    totalIncense,
+    upRatio: totalIncense === 0 ? null : row.up_votes / totalIncense,
+    downRatio: totalIncense === 0 ? null : row.down_votes / totalIncense,
+    liangziState: deriveLiangziState(row.up_votes, row.down_votes, policy),
+    finalizedAt: row.finalized_at,
+    archiveVersion: row.archive_version,
+    aggregationPolicyVersion: row.aggregation_policy_version,
+    liangziPolicyVersion: row.liangzi_policy_version,
+  }
+  return kind === 'week'
+    ? { weekId: (row as WeekArchiveRow).week_id, ...common }
+    : { monthId: (row as MonthArchiveRow).month_id, ...common }
 }

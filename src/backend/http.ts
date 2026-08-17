@@ -5,6 +5,7 @@
  *   POST /v1/token-claims    record the host's (unverifiable) Token claim
  *   POST /v1/votes           the vote transaction
  *   GET  /v1/snapshot        the published global snapshot
+ *   GET  /v1/history         immutable 梁祠 archive (full or version delta)
  *   GET  /v1/me/daily-state  cheap personal refresh
  *   GET  /v1/health          liveness + authority mode
  *   POST /v1/identity/rekey  self-serve fingerprint takeover (rate-limited)
@@ -308,6 +309,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       [`${BACKEND_API_PREFIX}/health`]: 'GET',
       [`${BACKEND_API_PREFIX}/bootstrap`]: 'GET',
       [`${BACKEND_API_PREFIX}/snapshot`]: 'GET',
+      [`${BACKEND_API_PREFIX}/history`]: 'GET',
       [`${BACKEND_API_PREFIX}/me/daily-state`]: 'GET',
       [`${BACKEND_API_PREFIX}/token-claims`]: 'POST',
       [`${BACKEND_API_PREFIX}/votes`]: 'POST',
@@ -336,6 +338,27 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     if (path === `${BACKEND_API_PREFIX}/snapshot`) {
       // Public read: no installation identity involved.
       writeJson(res, 200, service.snapshotResponse())
+      return
+    }
+    if (path === `${BACKEND_API_PREFIX}/history`) {
+      // Public read, separate from the hot snapshot channel. A client requests
+      // the full archive once, then only rows newer than its immutable cursor.
+      try {
+        const unknown = [...url.searchParams.keys()].filter(key => key !== 'after_version')
+        if (unknown.length > 0) throw new WireError(unknown[0] as string, 'unknown history query parameter')
+        const values = url.searchParams.getAll('after_version')
+        if (values.length > 1) throw new WireError('after_version', 'must appear at most once')
+        let afterVersion: number | undefined
+        if (values.length === 1) {
+          const raw = values[0] as string
+          if (!/^\d+$/.test(raw)) throw new WireError('after_version', 'expected a non-negative integer')
+          afterVersion = Number(raw)
+          if (!Number.isSafeInteger(afterVersion)) throw new WireError('after_version', 'exceeds safe integer range')
+        }
+        writeJson(res, 200, service.historyResponse(afterVersion))
+      } catch (error) {
+        writeValidationError(res, error)
+      }
       return
     }
 

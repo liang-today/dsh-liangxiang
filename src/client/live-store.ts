@@ -12,8 +12,9 @@
  *    hover / panel-open can force a host re-bootstrap instead of waiting for
  *    the next 1s snapshot poll. No extra background poll loop.
  */
-import type { VoteResult, VoteType } from '../domain/index.ts'
+import type { LiangHistoryArchive, VoteResult, VoteType } from '../domain/index.ts'
 import { parseWireState, parseWireVoteResponse } from '../shared/wire.ts'
+import { mergeHistoryArchive, parseV1HistoryResponse } from '../shared/history-v1.ts'
 import {
   createOfflineViewState,
   wireToViewState,
@@ -27,6 +28,7 @@ const VOTE_PATH = '/liangbiao/api/vote'
 const REFRESH_PATH = '/liangbiao/api/refresh'
 const RECONCILE_PATH = '/liangbiao/api/reconcile'
 const CYCLE_CASE_PATH = '/liangbiao/api/local/cycle-case'
+const HISTORY_PATH = '/liangbiao/api/history'
 const FETCH_TIMEOUT_MS = 6_000
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
@@ -84,6 +86,17 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
   dispose(): void
   /** LOCAL_FAKE_DEV: ask the host to cycle the prepared 今日梁案 list. */
   cycleLocalCase(): void
+  /** Independent cold-channel 梁祠 state. */
+  getHistorySnapshot(): LiangciHistoryState
+  subscribeHistory(listener: () => void): () => void
+  /** Initial full fetch; later calls request only rows after the cached cursor. */
+  loadHistory(): Promise<void>
+}
+
+export interface LiangciHistoryState {
+  status: 'idle' | 'loading' | 'ready' | 'stale'
+  archive: LiangHistoryArchive | null
+  error: string | null
 }
 
 export function createLiveLiangbiaoStore(
@@ -101,10 +114,52 @@ export function createLiveLiangbiaoStore(
   let reconcileInFlight = false
   let lastLiveRefreshAt = 0
   const listeners = new Set<() => void>()
+  let historyState: LiangciHistoryState = { status: 'idle', archive: null, error: null }
+  let historyInFlight: Promise<void> | null = null
+  const historyListeners = new Set<() => void>()
+
+  const setHistoryState = (next: LiangciHistoryState): void => {
+    historyState = next
+    for (const listener of historyListeners) listener()
+  }
+
+  const loadHistory = (): Promise<void> => {
+    if (disposed) return Promise.resolve()
+    if (historyInFlight !== null) return historyInFlight
+    const cursor = historyState.archive?.archiveVersion
+    const path = cursor === undefined ? HISTORY_PATH : `${HISTORY_PATH}?after_version=${cursor}`
+    if (historyState.archive === null) setHistoryState({ status: 'loading', archive: null, error: null })
+    const run = transport.fetchJson(path)
+      .then((raw) => {
+        if (disposed) return
+        const incoming = parseV1HistoryResponse(raw)
+        const archive = mergeHistoryArchive(historyState.archive, incoming)
+        setHistoryState({
+          status: archive.stale ? 'stale' : 'ready',
+          archive,
+          error: archive.stale ? '档案未更新' : null,
+        })
+      })
+      .catch((error: unknown) => {
+        if (disposed) return
+        const message = error instanceof Error ? error.message : String(error)
+        const archive = historyState.archive === null ? null : { ...historyState.archive, stale: true }
+        setHistoryState({ status: 'stale', archive, error: `档案未更新：${message}` })
+      })
+      .finally(() => {
+        historyInFlight = null
+      })
+    historyInFlight = run
+    return run
+  }
 
   const publishWire = (view: LiangbiaoViewState): void => {
     lastWire = view
     setState(view)
+    if (
+      historyState.archive !== null
+      && view.archiveVersion > historyState.archive.archiveVersion
+    ) void loadHistory()
   }
 
   const notify = (): void => {
@@ -171,6 +226,8 @@ export function createLiveLiangbiaoStore(
         if (disposed) return
         applyWire(raw)
         openStream()
+        // One full archive per Host connection; subsequent updates are deltas.
+        void loadHistory()
       })
       .catch((error: unknown) => {
         starting = false
@@ -259,6 +316,12 @@ export function createLiveLiangbiaoStore(
           console.warn(`[dsh-liangbiao] local case cycle failed: ${error instanceof Error ? error.message : String(error)}`)
         })
     },
+    getHistorySnapshot: () => historyState,
+    subscribeHistory(listener) {
+      historyListeners.add(listener)
+      return () => historyListeners.delete(listener)
+    },
+    loadHistory,
     dispose: () => {
       disposed = true
       if (stream !== null) {
@@ -266,6 +329,7 @@ export function createLiveLiangbiaoStore(
         stream = null
       }
       listeners.clear()
+      historyListeners.clear()
     },
   }
 }

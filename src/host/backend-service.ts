@@ -18,7 +18,7 @@
  * balance until the next snapshot arrives.
  */
 import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
-import type { DailyLiangCase, VoteResult } from '../domain/index.ts'
+import type { DailyLiangCase, LiangHistoryArchive, VoteResult } from '../domain/index.ts'
 import type {
   V1Bootstrap,
   V1Case,
@@ -28,6 +28,12 @@ import type {
 } from '../shared/backend-v1.ts'
 import { createBusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import { PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
+import {
+  emptyHistoryArchive,
+  historyArchiveToV1,
+  mergeHistoryArchive,
+  type V1HistoryResponse,
+} from '../shared/history-v1.ts'
 import { WIRE_SCHEMA_VERSION, type LiangbiaoWireState, type WireVoteRequest } from '../shared/wire.ts'
 import { BackendClientError, type BackendClient } from './backend-client.ts'
 import { generateCommunityKeypair, type CommunityKeypair } from './community-keys.ts'
@@ -75,6 +81,10 @@ export class BackendLiangService implements LiangHostService {
   private personal: V1PersonalState | null = null
   private snapshot: V1Snapshot | null = null
   private businessDate = ''
+  /** Latest scalar advertised by bootstrap/snapshot; arrays stay off SSE. */
+  private archiveVersion = 0
+  private historyArchive: LiangHistoryArchive | null = null
+  private historyInFlight: Promise<void> | null = null
 
   private accountingAvailable = false
   private revision = 0
@@ -265,6 +275,7 @@ export class BackendLiangService implements LiangHostService {
       authorityMode: 'DEV_STAGING_ONLY',
       snapshotRefreshSeconds: bootstrap.snapshot_refresh_seconds,
       businessDate: this.businessDate,
+      archiveVersion: this.archiveVersion,
       activeCase: toDomainCase(activeCase),
       global: {
         caseId: snapshot.case_id,
@@ -298,6 +309,25 @@ export class BackendLiangService implements LiangHostService {
         notice: this.claimNotice,
       },
     }
+  }
+
+  /** Serve the Host's last-known-good archive, refreshing only when needed. */
+  async history(afterVersion?: number): Promise<V1HistoryResponse> {
+    if (afterVersion !== undefined && (!Number.isSafeInteger(afterVersion) || afterVersion < 0)) {
+      throw new BackendClientError('history cursor must be a non-negative safe integer')
+    }
+    await this.refreshHistory()
+    const archive = this.historyArchive ?? emptyHistoryArchive(
+      this.businessDate,
+      this.bootstrap?.business_timezone ?? 'UTC',
+    )
+    const filtered = afterVersion === undefined ? archive : {
+      ...archive,
+      days: archive.days.filter(day => day.archiveVersion > afterVersion),
+      weeks: archive.weeks.filter(week => week.archiveVersion > afterVersion),
+      months: archive.months.filter(month => month.archiveVersion > afterVersion),
+    }
+    return historyArchiveToV1(filtered, afterVersion === undefined)
   }
 
   /** Fetch policy + case + personal state + snapshot in one round trip. */
@@ -337,7 +367,10 @@ export class BackendLiangService implements LiangHostService {
       }
       this.snapshot = response.global_snapshot
       this.activeCase = response.active_case
+      const archiveMoved = response.archive_version > this.archiveVersion
+      this.archiveVersion = response.archive_version
       this.bump()
+      if (archiveMoved) void this.refreshHistory()
     } catch (error) {
       this.reportFailure('snapshot', error)
     }
@@ -359,9 +392,45 @@ export class BackendLiangService implements LiangHostService {
     this.personal = bootstrap.authoritative_personal_state
     this.snapshot = bootstrap.global_snapshot
     this.businessDate = bootstrap.business_date
+    const archiveMoved = bootstrap.archive_version > this.archiveVersion
+    this.archiveVersion = bootstrap.archive_version
     this.usage.alignDailyBucket(this.businessDate)
     this.syncDisplayBaselineFromLedger()
     this.bump()
+    if (archiveMoved && this.historyArchive !== null) void this.refreshHistory()
+  }
+
+  /** Full once; afterwards only immutable rows newer than the cache cursor. */
+  private async refreshHistory(): Promise<void> {
+    if (this.disposed || this.bootstrap === null) return
+    if (this.historyInFlight !== null) return this.historyInFlight
+    const cachedVersion = this.historyArchive?.archiveVersion
+    if (
+      cachedVersion !== undefined
+      && cachedVersion >= this.archiveVersion
+      && this.historyArchive?.stale === false
+    ) return
+    const run = (async (): Promise<void> => {
+      try {
+        const incoming = await this.client.history(cachedVersion)
+        this.historyArchive = mergeHistoryArchive(this.historyArchive, incoming)
+        this.archiveVersion = Math.max(this.archiveVersion, incoming.archiveVersion)
+      } catch (error) {
+        if (this.historyArchive === null) {
+          this.historyArchive = {
+            ...emptyHistoryArchive(this.businessDate, this.bootstrap?.business_timezone ?? 'UTC'),
+            stale: true,
+          }
+        } else {
+          this.historyArchive = { ...this.historyArchive, stale: true }
+        }
+        this.reportFailure('history', error)
+      } finally {
+        this.historyInFlight = null
+      }
+    })()
+    this.historyInFlight = run
+    return run
   }
 
   /**

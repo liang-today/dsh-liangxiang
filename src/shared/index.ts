@@ -11,11 +11,23 @@ import {
 } from '../domain/index.ts'
 import type { AuthorityMode } from './wire.ts'
 
+export {
+  emptyHistoryArchive,
+  historyArchiveToV1,
+  mergeHistoryArchive,
+  parseV1HistoryResponse,
+  type ParsedHistoryArchive,
+  type V1HistoryDay,
+  type V1HistoryMonth,
+  type V1HistoryResponse,
+  type V1HistoryWeek,
+} from './history-v1.ts'
+
 /** npm package name: the loader row `name`, the client bundle id, and the `/plugins/<id>/client.js` route segment. */
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangbiao'
 
 /** Installed package version, surfaced by the sound-icon long-press easter egg. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.3.0'
+export const PLUGIN_VERSION = '0.4.0'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangbiao'
@@ -133,6 +145,14 @@ export const RECONCILE_DONE = '已上达天听'
 export const RECONCILE_CONFIRM_PROMPT = '向服务器重新对账香火？'
 export const RECONCILE_CONFIRM_OK = '确认'
 export const RECONCILE_CONFIRM_CANCEL = '取消'
+
+/** Region 4's second quiet ritual control: opens the read-only archive. */
+export const LIANGCI_ENTRY_LABEL = '进入梁祠'
+export const LIANGCI_ENTRY_HINT = '查看日梁、周梁与月梁档案'
+export const LIANGCI_TITLE = '梁祠'
+export const LIANGCI_TODAY_LABEL = '今日进行中'
+export const LIANGCI_MISSING_LABEL = '无存档'
+export const LIANGCI_STALE_LABEL = '档案未更新'
 
 /** Display names of the central Liangzi states (WAITING is the zero-vote placeholder, not a tier). */
 export const LIANGZI_STATE_LABELS: Readonly<Record<LiangziState, string>> = {

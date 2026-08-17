@@ -6,7 +6,7 @@ DSH 处于 **Developer Preview**：首个 tagged release 前不承诺兼容。�
 
 | 项 | 值 |
 |---|---|
-| 梁标版本 | 0.1.0 |
+| 梁标版本 | 0.4.0 |
 | DSH npm（类型/CLI devDeps） | `@deepseek-ai/dsh@0.1.0-rc.6` |
 | DSH 源码勘察基线 | `47f943859bef60e4160492346772ded9b24f765a`（本地检出 `0.1.0-rc.5`，rc.6 的直接前驱） |
 | Web 界面层 bundle | `@deepseek-ai/dsh-web-app@0.1.0-rc.6` |

@@ -1,6 +1,7 @@
 import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
 import type { LiangbiaoWireState, WireVoteRequest } from '../shared/wire.ts'
 import type { LiangHostService, VoteOutcome } from './service.ts'
+import type { V1HistoryResponse } from '../shared/history-v1.ts'
 
 /**
  * Swappable host authority. Online is the default; a failed health probe
@@ -51,6 +52,10 @@ export class AuthoritySlot implements LiangHostService {
 
   getWireState(): LiangbiaoWireState {
     return this.inner.getWireState()
+  }
+
+  history(afterVersion?: number): V1HistoryResponse | Promise<V1HistoryResponse> {
+    return this.inner.history(afterVersion)
   }
 
   vote(intent: WireVoteRequest): VoteOutcome | Promise<VoteOutcome> {

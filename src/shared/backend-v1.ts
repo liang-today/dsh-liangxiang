@@ -155,6 +155,8 @@ export interface V1Bootstrap {
   server_time: number
   business_date: string
   business_timezone: string
+  /** Monotonic immutable 梁祠 cursor; history arrays travel on `/v1/history`. */
+  archive_version: number
   snapshot_refresh_seconds: number
   token_policy: V1TokenPolicy
   liangzi_policy: V1LiangziPolicy
@@ -230,6 +232,7 @@ export interface V1SnapshotResponse {
   schema_version: typeof BACKEND_SCHEMA_VERSION
   server_time: number
   business_date: string
+  archive_version: number
   active_case: V1Case
   global_snapshot: V1Snapshot
 }
@@ -544,6 +547,9 @@ export function parseV1Bootstrap(raw: unknown): V1Bootstrap {
     server_time: requireFinite(record.server_time, 'bootstrap.server_time'),
     business_date: requireBusinessDate(record.business_date, 'bootstrap.business_date'),
     business_timezone: requireString(record.business_timezone, 'bootstrap.business_timezone'),
+    archive_version: record.archive_version === undefined
+      ? 0
+      : requireCount(record.archive_version, 'bootstrap.archive_version'),
     snapshot_refresh_seconds: refresh,
     token_policy: parseTokenPolicy(record.token_policy, 'bootstrap.token_policy'),
     liangzi_policy: liangziPolicy,
@@ -697,6 +703,9 @@ export function parseV1SnapshotResponse(raw: unknown): V1SnapshotResponse {
     schema_version: BACKEND_SCHEMA_VERSION,
     server_time: requireFinite(record.server_time, 'snapshotResponse.server_time'),
     business_date: requireBusinessDate(record.business_date, 'snapshotResponse.business_date'),
+    archive_version: record.archive_version === undefined
+      ? 0
+      : requireCount(record.archive_version, 'snapshotResponse.archive_version'),
     active_case: parseCase(record.active_case, 'snapshotResponse.active_case'),
     global_snapshot: parseV1Snapshot(record.global_snapshot, 'snapshotResponse.global_snapshot'),
   }
