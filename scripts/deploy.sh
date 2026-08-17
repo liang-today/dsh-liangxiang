@@ -42,7 +42,10 @@ STAMP="$3"
 ENV_FILE="/etc/liangbiao.env"
 
 cd "$PREFIX"
-pnpm install --frozen-lockfile
+# A remote node_modules created by another pnpm/store version triggers an
+# interactive replacement prompt. CI mode makes the frozen reinstall explicit
+# and non-interactive; a lock mismatch still fails closed.
+CI=1 pnpm install --frozen-lockfile
 pnpm run build
 
 # Online SQLite backup: node:sqlite's backup API includes WAL state without
