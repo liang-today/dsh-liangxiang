@@ -4,7 +4,7 @@
  *   1. 今日梁案 (single active case)
  *   2. overlay flanks | centered 梁子 + 梁气环 | 梁位
  *   3. two equal-width vote buttons 夯：升梁！ / 拉：降梁！
- *   4. 三界香火 + 五行香客 + 上达天听（同一行）
+ *   4. 三界香火 + 五行香客 + 右侧礼仪控制列（上达天听 / 进入梁祠）
  *
  * No personal-growth section, no ranking, no third option.
  * Presentational only (no hooks); the container wires state and callbacks.
@@ -19,6 +19,8 @@ import {
   INCENSE_STAT_LABEL,
   LIANGZI_STATE_LABELS,
   LIANG_POSITION_LABEL,
+  LIANGCI_ENTRY_HINT,
+  LIANGCI_ENTRY_LABEL,
   MY_INCENSE_LABEL,
   NEXT_INCENSE_LABEL,
   NEXT_INCENSE_PROGRESS_LABEL,
@@ -54,6 +56,7 @@ import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
+import { LiangciIcon } from './LiangciIcon.tsx'
 import { LiangQiRing, AVATAR_SLOT, RING_SIZE } from './LiangQiRing.tsx'
 import { SoundIcon } from './SoundIcon.tsx'
 import type { LiangbiaoViewState } from './store.ts'
@@ -92,6 +95,8 @@ export interface PanelProps {
   onReconcileConfirm: () => void
   onReconcileCancel: () => void
   reconcilePending: boolean
+  /** Open the read-only 梁祠 calendar; remains inside Region 4. */
+  onOpenLiangci: () => void
   /** LOCAL_FAKE_DEV only: cycle the prepared 今日梁案 list. */
   onCycleLocalCase?: () => void
 }
@@ -304,7 +309,7 @@ const PANEL_CSS = `
   45% { transform: translateY(0); opacity: 1; filter: brightness(1.5); }
   100% { transform: translateY(0); opacity: 1; }
 }
-[data-liangbiao-reconcile] {
+[data-liangbiao-ritual] {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -324,14 +329,14 @@ const PANEL_CSS = `
   transform: translateY(0);
   transition: color 60ms ease, background-color 60ms ease, box-shadow 60ms ease, transform 60ms ease;
 }
-[data-liangbiao-reconcile]:hover:not(:disabled),
-[data-liangbiao-reconcile]:focus-visible {
+[data-liangbiao-ritual]:hover:not(:disabled),
+[data-liangbiao-ritual]:focus-visible {
   color: ${color.textPrimary};
   background: ${color.bgLayer};
   box-shadow: inset 0 0 0 1px ${color.brand}, 0 4px 10px rgba(0, 0, 0, 0.12);
   transform: translateY(-1px);
 }
-[data-liangbiao-reconcile] [data-liangbiao-hint] {
+[data-liangbiao-ritual] [data-liangbiao-hint] {
   position: absolute;
   right: 0;
   bottom: calc(100% + 6px);
@@ -352,8 +357,8 @@ const PANEL_CSS = `
   transition: opacity 40ms ease, transform 40ms ease;
   transition-delay: 0s;
 }
-[data-liangbiao-reconcile]:hover:not(:disabled) [data-liangbiao-hint],
-[data-liangbiao-reconcile]:focus-visible [data-liangbiao-hint] {
+[data-liangbiao-ritual]:hover:not(:disabled) [data-liangbiao-hint],
+[data-liangbiao-ritual]:focus-visible [data-liangbiao-hint] {
   opacity: 1;
   transform: translateY(0);
 }
@@ -505,7 +510,7 @@ export function Panel(props: PanelProps): ReactElement {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionReveal, onSoundPressStart, onSoundPressEnd,
     welcomeVisible, onDismissWelcome, avatarPulse, justCondensed, voteFeedback,
     onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
-    reconcilePending, onCycleLocalCase,
+    reconcilePending, onOpenLiangci, onCycleLocalCase,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
   const positionPulse = props.positionPulse ?? false
@@ -895,7 +900,7 @@ export function Panel(props: PanelProps): ReactElement {
         {statusLine}
       </p>
 
-      {/* Region 4 — 三界香火 / 五行香客 / 上达天听 share one row. */}
+      {/* Region 4 — stats + the compact ritual-control column. */}
       <footer
         data-liangbiao-region="social"
         style={{
@@ -946,11 +951,12 @@ export function Panel(props: PanelProps): ReactElement {
         </span>
         <div
           data-liangbiao-reconcile-slot=""
-          style={{ position: 'relative', flex: '0 0 auto', marginLeft: 'auto' }}
+          style={{ position: 'relative', flex: '0 0 auto', marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}
         >
           <button
             type="button"
             data-liangbiao-reconcile=""
+            data-liangbiao-ritual=""
             aria-label={`${RECONCILE_LABEL}：${RECONCILE_HINT}`}
             aria-hidden={reconcilePending || undefined}
             disabled={offline || reconcilePending}
@@ -960,6 +966,17 @@ export function Panel(props: PanelProps): ReactElement {
             <HeavenHearIcon size={14} />
             {RECONCILE_LABEL}
             <span data-liangbiao-hint="" aria-hidden="true">{RECONCILE_HINT}</span>
+          </button>
+          <button
+            type="button"
+            data-liangbiao-liangci-entry=""
+            data-liangbiao-ritual=""
+            aria-label={`${LIANGCI_ENTRY_LABEL}：${LIANGCI_ENTRY_HINT}`}
+            onClick={onOpenLiangci}
+          >
+            <LiangciIcon size={14} />
+            {LIANGCI_ENTRY_LABEL}
+            <span data-liangbiao-hint="" aria-hidden="true">{LIANGCI_ENTRY_HINT}</span>
           </button>
           {reconcilePending
             ? (

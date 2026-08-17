@@ -2,6 +2,7 @@
 
 > 本文是产品语义的仓库内快照。**活契约是根目录 [`AGENTS.md`](../AGENTS.md)**。完整执行手册：[`LIANGBIAO_CURSOR_MASTER_R3.md`](LIANGBIAO_CURSOR_MASTER_R3.md)。冲突时以 `AGENTS.md` 为准。
 > 2026-08-17：门槛与模型权重按 v0.3.0 再冻结；与当前实现对齐。
+> 2026-08-17：v0.4.0 新增只读梁祠；今日进行中、截至昨日暂梁、永久日/周/月档与冷通道契约见 [`130-liangci-design.md`](130-liangci-design.md)。
 
 ## 一句话
 

@@ -36,12 +36,13 @@ daily_incense_state.{claimed_effective_tokens, used_incense}
 | `used_incense` / `remaining` | Backend（DB 事务 + CAS） | 唯一可花余额 |
 | 幂等 | Backend（`UNIQUE(installation_id, request_id)`） | 只记 accepted |
 | 全局聚合与已发布快照 | Backend | 比例与状态同一行派生 |
+| 梁祠日/周/月永久档案 | Backend | 已结束业务日按原始票数幂等封存；今日不入档 |
 | `claimed_effective_tokens` | **无人可验证**（Host 声明） | A3 的核心缺口 |
 | 投票者身份 | **无人可验证**（假名安装标识） | A3 的核心缺口 |
 | 徽章位置 | 浏览器 `localStorage` | 纯外观偏好 |
 
 ## 出网与隐私
 
-Host 只向配置的 `LIANGBIAO_BACKEND_URL` 发四类请求：bootstrap、token-claims、votes、snapshot/daily-state。载荷里只有 `case_id` / `vote_type` / `request_id` / 一个整数 token 计数 / 业务日 / 假名安装标识。
+Host 只向配置的 `LIANGBIAO_BACKEND_URL` 发启动/声明/打梁/今日快照与个人状态/梁祠历史请求：bootstrap、token-claims、votes、snapshot、daily-state、history。写载荷里只有 `case_id` / `vote_type` / `request_id` / 一个整数 token 计数 / 业务日 / 假名安装标识；history 是公共只读原始计数，不含 prompt、回复或个人账本。
 
 **永不出网**：prompt、模型回复、文件路径、代码、会话内容、API key。详见 [`PRIVACY.md`](PRIVACY.md)。

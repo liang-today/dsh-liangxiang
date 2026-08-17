@@ -12,7 +12,15 @@ export type BusinessDate = string
 const BUSINESS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 export function isBusinessDate(value: unknown): value is BusinessDate {
-  return typeof value === 'string' && BUSINESS_DATE_PATTERN.test(value)
+  if (typeof value !== 'string' || !BUSINESS_DATE_PATTERN.test(value)) return false
+  const [yearText, monthText, dayText] = value.split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+  const instant = new Date(Date.UTC(year, month - 1, day))
+  return instant.getUTCFullYear() === year
+    && instant.getUTCMonth() === month - 1
+    && instant.getUTCDate() === day
 }
 
 export function assertBusinessDate(value: unknown): asserts value is BusinessDate {

@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v2) for the Liangbiao backend.
+ * SQLite schema (v4) for the Liangbiao backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -28,7 +28,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 
-export const BACKEND_SCHEMA_USER_VERSION = 3
+export const BACKEND_SCHEMA_USER_VERSION = 4
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -123,6 +123,62 @@ CREATE INDEX IF NOT EXISTS ix_case_queue_pending
   ON case_queue (consumed_at, publish_on, sort_order);
 `
 
+const DDL_V4 = `
+CREATE TABLE IF NOT EXISTS liang_archive_meta (
+  singleton        INTEGER PRIMARY KEY CHECK (singleton = 1),
+  archive_version  INTEGER NOT NULL DEFAULT 0 CHECK (archive_version >= 0)
+);
+INSERT INTO liang_archive_meta (singleton, archive_version)
+VALUES (1, 0)
+ON CONFLICT (singleton) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS liang_day_archive (
+  business_date               TEXT    PRIMARY KEY,
+  case_count                   INTEGER NOT NULL CHECK (case_count > 0),
+  case_titles_json             TEXT    NOT NULL,
+  up_votes                     INTEGER NOT NULL CHECK (up_votes >= 0),
+  down_votes                   INTEGER NOT NULL CHECK (down_votes >= 0),
+  finalized_at                 INTEGER NOT NULL,
+  archive_version              INTEGER NOT NULL CHECK (archive_version > 0),
+  aggregation_policy_version   TEXT    NOT NULL,
+  liangzi_policy_version       TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_day_archive_version
+  ON liang_day_archive (archive_version, business_date);
+
+CREATE TABLE IF NOT EXISTS liang_week_archive (
+  week_id                      TEXT    PRIMARY KEY,
+  start_date                   TEXT    NOT NULL,
+  end_date                     TEXT    NOT NULL,
+  covered_days                 INTEGER NOT NULL CHECK (covered_days > 0),
+  up_votes                     INTEGER NOT NULL CHECK (up_votes >= 0),
+  down_votes                   INTEGER NOT NULL CHECK (down_votes >= 0),
+  finalized_at                 INTEGER NOT NULL,
+  archive_version              INTEGER NOT NULL CHECK (archive_version > 0),
+  aggregation_policy_version   TEXT    NOT NULL,
+  liangzi_policy_version       TEXT    NOT NULL,
+  UNIQUE (start_date, end_date)
+);
+CREATE INDEX IF NOT EXISTS ix_week_archive_version
+  ON liang_week_archive (archive_version, start_date);
+
+CREATE TABLE IF NOT EXISTS liang_month_archive (
+  month_id                     TEXT    PRIMARY KEY,
+  start_date                   TEXT    NOT NULL,
+  end_date                     TEXT    NOT NULL,
+  covered_days                 INTEGER NOT NULL CHECK (covered_days > 0),
+  up_votes                     INTEGER NOT NULL CHECK (up_votes >= 0),
+  down_votes                   INTEGER NOT NULL CHECK (down_votes >= 0),
+  finalized_at                 INTEGER NOT NULL,
+  archive_version              INTEGER NOT NULL CHECK (archive_version > 0),
+  aggregation_policy_version   TEXT    NOT NULL,
+  liangzi_policy_version       TEXT    NOT NULL,
+  UNIQUE (start_date, end_date)
+);
+CREATE INDEX IF NOT EXISTS ix_month_archive_version
+  ON liang_month_archive (archive_version, start_date);
+`
+
 /** Apply the schema and record its user_version (idempotent). */
 export function migrate(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON')
@@ -136,6 +192,7 @@ export function migrate(db: DatabaseSync): void {
   }
   if (current < 2) db.exec(DDL_V2)
   if (current < 3) db.exec(DDL_V3)
+  if (current < 4) db.exec(DDL_V4)
   if (current !== BACKEND_SCHEMA_USER_VERSION) {
     db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
   }

@@ -13,6 +13,7 @@ import {
   parseV1Bootstrap,
   parseV1VoteResponse,
 } from '../src/shared/backend-v1.ts'
+import { parseV1HistoryResponse } from '../src/shared/index.ts'
 
 const INSTALLATION = 'install-http-0001'
 
@@ -99,6 +100,25 @@ afterEach(async () => {
 })
 
 describe('routing and boundary validation', () => {
+  it('serves the public 梁祠 archive separately and validates its delta cursor', async () => {
+    const h = await start()
+    const response = await fetch(`${h.baseUrl}/v1/history`)
+    expect(response.status).toBe(200)
+    expect(parseV1HistoryResponse(await response.json())).toMatchObject({
+      full: true,
+      archiveVersion: 0,
+      days: [],
+      weeks: [],
+      months: [],
+    })
+    const delta = await fetch(`${h.baseUrl}/v1/history?after_version=0`)
+    expect(delta.status).toBe(200)
+    expect(parseV1HistoryResponse(await delta.json()).full).toBe(false)
+    const malformed = await fetch(`${h.baseUrl}/v1/history?after_version=-1`)
+    expect(malformed.status).toBe(400)
+    expect(await malformed.json()).toMatchObject({ error: { field: 'after_version' } })
+  })
+
   it('serves health without an identity and reports the authority mode', async () => {
     const h = await start()
     const response = await fetch(`${h.baseUrl}/v1/health`)

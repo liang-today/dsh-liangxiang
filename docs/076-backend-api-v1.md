@@ -6,7 +6,7 @@
 ## 通用
 
 - 错误体：`{ "error": { "code", "message", "field?" } }`，含 `identity_rate_limited`、`rekey_cooldown`、`device_conflict` 等（见 `V1_ERROR_CODES`）。
-- 鉴权（`/health` 与 `/snapshot` 除外）：
+- 鉴权（公共只读的 `/health`、`/snapshot`、`/history` 除外）：
   - 默认要求 Ed25519 签名头：`x-liangbiao-installation`、`x-liangbiao-public-key`、`x-liangbiao-signature`、`x-liangbiao-timestamp`；可选 `x-liangbiao-device`（MAC 集合哈希）。
   - 若服务器设了 `LIANGBIAO_COMMUNITY_KEY`，还要带 `x-liangbiao-community-key`。
   - `LIANGBIAO_ALLOW_UNSIGNED=1` 才接受旧的「只有 installation 头」请求，仅供 localhost smoke。
@@ -29,7 +29,8 @@
   "server_time": 1786873669490,
   "business_date": "2026-08-16",
   "business_timezone": "Asia/Shanghai",
-  "snapshot_refresh_seconds": 300,
+  "snapshot_refresh_seconds": 1,
+  "archive_version": 12,
   "token_policy": { "token_per_incense": 50000, "effective_token_formula": "input_plus_output" },
   "liangzi_policy": { "version": "liangzi-v0.1-50-70-85-95", "boundaries": [0.5, 0.7, 0.85, 0.95] },
   "active_case": { "id": "case-2026-08-16", "business_date": "…", "title": "…", "status": "active",
@@ -97,8 +98,49 @@
 
 ## GET /v1/snapshot
 
-无需身份（公共读）。`{ schema_version, server_time, business_date, active_case, global_snapshot }`。
+无需身份（公共读）。`{ schema_version, server_time, business_date, archive_version, active_case, global_snapshot }`。
 按需发布：若原始聚合已变化且距上次发布 ≥ cadence，则先追加新 sequence 再返回。
+
+`archive_version` 只是单调冷数据信号；响应中绝不携带历史数组。旧后端缺该字段时 Host 兼容为 0。
+
+## GET /v1/history
+
+无需身份（公共只读）。梁祠使用与秒级 snapshot 分离的冷通道：
+
+```jsonc
+// 首次：GET /v1/history
+{
+  "schema_version": 1,
+  "archive_schema_version": 1,
+  "archive_version": 12,
+  "business_date": "2026-08-17",
+  "business_timezone": "Asia/Shanghai",
+  "full": true,
+  "stale": false,
+  "days": [{
+    "business_date": "2026-08-16",
+    "case_count": 2,
+    "case_titles": ["早梁案", "晚梁案"],
+    "up_votes": 8,
+    "down_votes": 4,
+    "finalized_at": 1786873669490,
+    "archive_version": 12,
+    "aggregation_policy_version": "liang-archive-v1-weighted-counts",
+    "liangzi_policy_version": "liangzi-v0.1-50-70-85-95"
+  }],
+  "weeks": [],
+  "months": []
+}
+
+// 后续：GET /v1/history?after_version=12
+// 同一 envelope，full=false，数组只含版本更大的不可变新增行。
+```
+
+- `after_version` 只能出现一次，必须是非负 safe integer；未知 query 参数拒绝。
+- 日/周/月只传原始票数和策略版本，比例与梁子状态由共享 parser 在严格校验后派生。
+- parser 拒绝负数、NaN/Infinity、非真实日期、错误 ISO 周/月边界、重复主键、标题数与案数不符、未知策略版本或行版本超过 envelope 版本。
+- Host 缓存首次全量并合并后续 delta；若后端失败，保留 last-known-good、设置 `stale=true`，不影响今日链路。
+- 浏览器只向本机 Host 的 `/liangbiao/api/history` 请求同形状数据；当前周/月暂梁由共享纯函数从日档推导，不在该 API 中持久化。
 
 ## GET /v1/me/daily-state
 

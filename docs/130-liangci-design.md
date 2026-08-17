@@ -1,9 +1,22 @@
 # 130 — 梁祠（日梁 / 周梁 / 月梁）设计方案
 
-> 状态：实施设计稿，供 Cursor 后续实施；本文不代表功能已经实现。
+> 状态：**已于 v0.4.0 实现**。本文既是产品契约，也是实现验收基线。
 >
 > 本方案延续 `AGENTS.md` 的二元投票、梁位、梁子五态、业务日、快照一致性与软信任边界。
 > 梁祠只读，不改变今日梁案、个人香火、投票资格或权威账本。
+
+实现落点：
+
+- 领域归档与暂梁派生：`src/domain/archive.ts`
+- 严格历史 wire：`src/shared/history-v1.ts`
+- SQLite v4 归档表与幂等封存：`src/backend/schema.ts`、`src/backend/service.ts`
+- 独立后端/Host 历史路由：`GET /v1/history`、`GET /liangbiao/api/history`
+- 浏览器冷数据缓存：`src/client/live-store.ts`
+- 月历浮层与三层图标：`src/client/LiangciModal.tsx`、`src/client/LiangciIcon.tsx`
+
+社区 staging 是否可用取决于后端是否已通过 `scripts/deploy.sh` 部署到包含
+SQLite v4 与 `/v1/history` 的版本；客户端在旧后端上会诚实显示 `档案未更新`，
+而今日梁案与投票照常工作。
 
 ## 1. 产品目标
 
@@ -354,13 +367,13 @@ Host 发现 business_date / archive_version 变化
 
 远期若需要公共分享，可复用同一永久档案契约生成只读镜像；这不进入本阶段代码、测试、文档验收或发布阻塞项。
 
-## 10. Cursor 实施顺序
+## 10. 已完成的实施顺序
 
 1. 先修订产品契约：梁祠入口、今日进行中、暂梁截至昨日、周/月封存时机。
 2. 增加纯领域聚合：日合并、周/月加权、周/月边界、零票与无档案语义。
 3. 增加幂等日切归档与 `archive_version`。
 4. 增加独立历史 API、Host 缓存和增量同步；保持今日 SSE 不携带历史。
-5. 严格按视觉母版实现梁祠浮层、三层图标、底部详情栏与无障碍；复用现有头像和主题 token。
+5. 按视觉规范实现梁祠浮层、三层图标、底部详情栏与无障碍；复用现有头像和主题 token。
 6. 做 light/dark、100%/125%/150% zoom、键盘、reduced-motion 与资源生命周期验收。
 7. 不实现或评估 GitHub Pages；任何相关想法只保留为远期备注。
 
@@ -382,7 +395,7 @@ Host 发现 business_date / archive_version 变化
 - 历史服务失败不影响今日梁案、香火或投票。
 - Light/Dark 下不出现硬编码白底、黑字或低对比印章。
 - 125%/150% zoom 下七日列与周梁列不互相覆盖；必要时浮层主体横向滚动，不压缩到不可读。
-- Cursor 实现与视觉母版的外框、列宽、密度、图标轮廓和色彩角色一致，不退化为通用 Dashboard。
+- 实现与视觉规范的外框、列宽、密度、图标轮廓和色彩角色一致，不退化为通用 Dashboard。
 
 ## 12. 最终设计决策
 

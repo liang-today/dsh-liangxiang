@@ -1,32 +1,19 @@
 # 103 — Test Matrix（RC）
 
-`pnpm test`：**22 个文件 / 271 项，全绿**。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
+`pnpm test`：**31 个文件 / 391 项，全绿**（2026-08-17，v0.4.0）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
 
 ## 覆盖分布
 
-| 文件 | 项数 | 覆盖面 |
+| 分组 | 文件 | 覆盖面 |
 |---|---|---|
-| `domain-liangzi.spec.ts` | 39 | 五态阈值、区间、梁位小数与截断、显示不越阈值 |
-| `backend-service.spec.ts` | 36 | claim 折算/ratchet、扣香事务、幂等、香客、日切、快照发布与保留 |
-| `domain-token.spec.ts` | 20 | Effective Token 口径与边界、非法输入 |
-| `domain-compact-count.spec.ts` | 5 | 两翼计数 0–999 原样、K/M/B 四舍五入、长度上限 |
-| `domain-vote.spec.ts` | 20 | 仅 up/down、requestId 格式、结果判别 |
-| `client-panel.spec.tsx` | 20 | 四区结构、新 Region 2、两翼 K/M 缩写、布局稳定、动效、可访问性文案 |
-| `host-service.spec.ts` | 19 | 本地权威服务（LOCAL_FAKE_DEV）事务矩阵 |
-| `backend-http.spec.ts` | 17 | `/v1` 路由、边界校验、并发、限流、413、限流表清扫 |
-| `wire.spec.ts` | 16 | Host↔Client 帧校验、拒收非法帧 |
-| `badge.spec.tsx` | 10 | 徽章图标（六态）、放置数学、存储往返、面板翻转 |
-| `domain-incense.spec.ts` | 9 | 个人账务恒等式、花香不回退进度 |
-| `client-store.spec.ts` | 9 | 视图状态派生、阈值穿越 |
-| `host-backend.spec.ts` | 9 | Host↔Backend E2E（含即时梁位、余额收敛、日切） |
-| `manifest.spec.ts` | 7 | 双清单/bundle patch/entry 形态 |
-| `domain-global.spec.ts` | 5 | 聚合与快照自洽、零票 null |
-| `domain-independence.spec.ts` | 5 | 个人/全局解耦双向 |
-| `host-usage.spec.ts` | 5 | 水位差分（replay/restart/fork 不重复） |
-| `live-store.spec.ts` | 5 | SSE/重试/离线保留、同 requestId 重试 |
-| `shared.spec.ts` | 3 | 冻结文案常量 |
-| `client-apply.spec.ts` | 2 | 客户端注册与卸载 |
-| `host-apply.spec.ts` | 2 | Host effect/inject 装配与清理 |
+| 梁祠领域/wire | `domain-archive`、`history-v1` | Gregorian 日期、ISO 周/月边界、票数加权、今日排除、暂梁、零票；严格历史解析与 delta 合并 |
+| 梁祠后端 | `backend-history`、`backend-http` | 同日多案合并、日/周/月幂等封存、版本增量、零票档、`/v1/history` query 校验 |
+| 梁祠 Host/client | `host-backend`、`live-store`、`client-panel` | 上游全量→增量、last-known-good stale、SSE 无历史数组、第四区入口与 UI 契约 |
+| 领域核心 | `domain-token`、`domain-incense`、`domain-incense-weight`、`domain-vote`、`domain-global`、`domain-liangzi`、`domain-independence`、`domain-compact-count` | Token/香火/投票/梁位/五态/个人与全局隔离 |
+| 后端与安全 | `backend-service`、`backend-client`、`backend-http`、`community-auth`、`identity-recovery`、`operator-identity` | 事务、幂等、并发、签名、身份恢复、运营边界、错误契约 |
+| Host | `host-service`、`host-backend`、`host-usage`、`host-dev-credit`、`host-apply` | 两种权威模式、用量水位、后端集成、生命周期 |
+| Client | `client-store`、`client-panel`、`badge`、`live-store`、`throttle-fill`、`client-apply` | 状态派生、四区、拖拽、动效、请求重试、注册与清理 |
+| 契约/打包 | `wire`、`shared`、`manifest` | Host↔Browser fail-closed、冻结文案、双清单与版本一致性 |
 
 ## PROMPT 4 逐条对照
 
@@ -40,6 +27,12 @@
 | 首票才 +1 香客 | `backend-service` |
 | 旧梁案被拒 | `backend-service`、`host-backend` |
 | 午夜日切安全 | `backend-service`、`host-backend` |
+| 日梁封存 + 同日多案合并 + 重复日切幂等 | `backend-history` |
+| 周/月按原始票数加权；今日不参加暂梁 | `domain-archive`、`backend-history` |
+| 零票档 / 无档 / 未来 / 今日语义分离 | `domain-archive`、`backend-history`、梁祠实机 |
+| 历史首次全量，版本变化后只取 delta | `history-v1`、`host-backend`、`live-store` |
+| 历史失败保留 last-known-good，不中断今日 | `live-store`、`host-backend` |
+| 今日 SSE 只带 archiveVersion 标量 | `wire`、`live-store` |
 | 多标签安全 | `backend-http`、`host-backend` |
 | 网络重试安全 | `live-store`、`backend-http` |
 | 服务器时钟/业务日权威 | `backend-service`（UTC vs Asia/Shanghai） |
@@ -64,6 +57,8 @@
 | 实机工具调用（DSH profile 模块图修复） | WebUI 真实模型回合跑 bash 工具 | 通过，无 `prepare` 错误 |
 | 新 Region 2 视觉与拖拽 | 浏览器实测（CDP 读值 + 截图） | 通过（含 localStorage 往返、面板翻转） |
 | 投票即时反馈 | 浏览器点「夯：升梁！」→ 梁位与香火同步变化 | 通过 |
+| 梁祠桌面月历 | 本地种入 8 月日/周/月档，逐格核对六态、暂梁与原始票数 | 通过 |
+| 梁祠窄屏与键盘 | 720×800；横向月历、Tab/Shift+Tab trap、Escape + 焦点归还 | 通过 |
 | 干净 profile 装 tarball | `smoke:clean-profile` | SMOKE OK |
 | 在线全链路 | `smoke:online` | OK（50 并发只 1 票） |
 | 并发/安全即席审计 60 项 | `/tmp/liangbiao-audit.mjs`（一次性脚本） | 60/60 |
@@ -72,4 +67,4 @@
 
 ## 已知缺口
 
-见 [`102`](102-known-limitations.md) 第 16–19 条：跨进程并发未压测、真实 DSH 多会话长跑未做、仅 Chromium、无 a11y 自动化审计。
+见 [`102`](102-known-limitations.md) 第 17–20 条：跨进程并发未压测、真实 DSH 多会话长跑未做、仅 Chromium、无 a11y 自动化审计。

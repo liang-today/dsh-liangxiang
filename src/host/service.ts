@@ -11,6 +11,7 @@
 import type { VoteResult } from '../domain/index.ts'
 import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
 import type { LiangbiaoWireState, WireVoteRequest } from '../shared/wire.ts'
+import type { V1HistoryResponse } from '../shared/history-v1.ts'
 
 export interface VoteOutcome {
   result: VoteResult
@@ -22,6 +23,8 @@ export interface LiangHostService {
   readonly isReady: boolean
   subscribe: (listener: () => void) => () => void
   getWireState: () => LiangbiaoWireState
+  /** Separate cold archive channel; never embedded into the hot SSE frame. */
+  history: (afterVersion?: number) => V1HistoryResponse | Promise<V1HistoryResponse>
   vote: (intent: WireVoteRequest) => VoteOutcome | Promise<VoteOutcome>
   /** Feed one cumulative DSH `tokenUsage` projection value (optional route model id). */
   observeUsage: (

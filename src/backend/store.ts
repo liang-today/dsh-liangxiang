@@ -65,6 +65,51 @@ export interface SnapshotRow {
   captured_at: number
 }
 
+export interface DayArchiveRow {
+  business_date: string
+  case_count: number
+  case_titles_json: string
+  up_votes: number
+  down_votes: number
+  finalized_at: number
+  archive_version: number
+  aggregation_policy_version: string
+  liangzi_policy_version: string
+}
+
+export interface WeekArchiveRow {
+  week_id: string
+  start_date: string
+  end_date: string
+  covered_days: number
+  up_votes: number
+  down_votes: number
+  finalized_at: number
+  archive_version: number
+  aggregation_policy_version: string
+  liangzi_policy_version: string
+}
+
+export interface MonthArchiveRow {
+  month_id: string
+  start_date: string
+  end_date: string
+  covered_days: number
+  up_votes: number
+  down_votes: number
+  finalized_at: number
+  archive_version: number
+  aggregation_policy_version: string
+  liangzi_policy_version: string
+}
+
+export interface DayArchiveSource {
+  businessDate: string
+  caseTitles: string[]
+  upVotes: number
+  downVotes: number
+}
+
 export interface CommunityIdentityRow {
   installation_id: string
   public_key: string
@@ -126,6 +171,18 @@ export interface BackendStore {
   insertSnapshot: (row: SnapshotRow) => void
   /** Drop all but the newest `keep` snapshots of one case; returns rows deleted. */
   pruneSnapshots: (caseId: string, keep: number) => number
+  /** Monotonic cursor shared by immutable day/week/month archive rows. */
+  archiveVersion: () => number
+  /** Increment and return the archive cursor. Caller must own a transaction. */
+  bumpArchiveVersion: () => number
+  unarchivedCaseDatesBefore: (businessDate: string) => string[]
+  dayArchiveSource: (businessDate: string) => DayArchiveSource | undefined
+  insertDayArchive: (row: DayArchiveRow) => void
+  insertWeekArchive: (row: WeekArchiveRow) => void
+  insertMonthArchive: (row: MonthArchiveRow) => void
+  dayArchives: (afterVersion?: number) => DayArchiveRow[]
+  weekArchives: (afterVersion?: number) => WeekArchiveRow[]
+  monthArchives: (afterVersion?: number) => MonthArchiveRow[]
   identityByInstallation: (installationId: string) => CommunityIdentityRow | undefined
   identityByPublicKey: (publicKey: string) => CommunityIdentityRow | undefined
   identityByFingerprint: (fingerprint: string) => CommunityIdentityRow | undefined
@@ -272,6 +329,55 @@ export function openBackendStore(databasePath: string): BackendStore {
         SELECT MAX(sequence) - ? FROM public_liang_snapshot WHERE case_id = ?
       )`,
   )
+  const selectArchiveVersion = db.prepare(
+    'SELECT archive_version FROM liang_archive_meta WHERE singleton = 1',
+  )
+  const bumpArchiveVersionStmt = db.prepare(
+    'UPDATE liang_archive_meta SET archive_version = archive_version + 1 WHERE singleton = 1',
+  )
+  const selectUnarchivedCaseDates = db.prepare(
+    `SELECT DISTINCT c.business_date AS business_date
+       FROM daily_liang_case c
+       LEFT JOIN liang_day_archive a ON a.business_date = c.business_date
+      WHERE c.business_date < ? AND a.business_date IS NULL
+      ORDER BY c.business_date`,
+  )
+  const selectArchiveCasesForDate = db.prepare(
+    `SELECT c.title AS title,
+            COALESCE(s.up_votes, 0) AS up_votes,
+            COALESCE(s.down_votes, 0) AS down_votes
+       FROM daily_liang_case c
+       LEFT JOIN daily_liang_stats s ON s.case_id = c.id
+      WHERE c.business_date = ?
+      ORDER BY c.opened_at, c.id`,
+  )
+  const insertDayArchiveStmt = db.prepare(
+    `INSERT INTO liang_day_archive
+       (business_date, case_count, case_titles_json, up_votes, down_votes, finalized_at,
+        archive_version, aggregation_policy_version, liangzi_policy_version)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const insertWeekArchiveStmt = db.prepare(
+    `INSERT INTO liang_week_archive
+       (week_id, start_date, end_date, covered_days, up_votes, down_votes, finalized_at,
+        archive_version, aggregation_policy_version, liangzi_policy_version)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const insertMonthArchiveStmt = db.prepare(
+    `INSERT INTO liang_month_archive
+       (month_id, start_date, end_date, covered_days, up_votes, down_votes, finalized_at,
+        archive_version, aggregation_policy_version, liangzi_policy_version)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const selectDayArchives = db.prepare(
+    'SELECT * FROM liang_day_archive WHERE archive_version > ? ORDER BY business_date',
+  )
+  const selectWeekArchives = db.prepare(
+    'SELECT * FROM liang_week_archive WHERE archive_version > ? ORDER BY start_date',
+  )
+  const selectMonthArchives = db.prepare(
+    'SELECT * FROM liang_month_archive WHERE archive_version > ? ORDER BY start_date',
+  )
   const selectLatestBefore = db.prepare(
     `SELECT * FROM daily_liang_case
       WHERE business_date < ?
@@ -411,6 +517,81 @@ export function openBackendStore(databasePath: string): BackendStore {
       )
     },
     pruneSnapshots: (caseId, keep) => changed(pruneSnapshotsStmt.run(caseId, keep, caseId)),
+    archiveVersion() {
+      const row = selectArchiveVersion.get() as { archive_version: number | bigint } | undefined
+      return Number(row?.archive_version ?? 0)
+    },
+    bumpArchiveVersion() {
+      bumpArchiveVersionStmt.run()
+      const row = selectArchiveVersion.get() as { archive_version: number | bigint } | undefined
+      if (row === undefined) throw new Error('archive metadata row is missing')
+      return Number(row.archive_version)
+    },
+    unarchivedCaseDatesBefore(businessDate) {
+      const rows = selectUnarchivedCaseDates.all(businessDate) as unknown as Array<{ business_date: string }>
+      return rows.map(row => row.business_date)
+    },
+    dayArchiveSource(businessDate) {
+      const rows = selectArchiveCasesForDate.all(businessDate) as unknown as Array<{
+        title: string
+        up_votes: number | bigint
+        down_votes: number | bigint
+      }>
+      if (rows.length === 0) return undefined
+      return {
+        businessDate,
+        caseTitles: rows.map(row => row.title),
+        upVotes: rows.reduce((sum, row) => sum + Number(row.up_votes), 0),
+        downVotes: rows.reduce((sum, row) => sum + Number(row.down_votes), 0),
+      }
+    },
+    insertDayArchive(row) {
+      insertDayArchiveStmt.run(
+        row.business_date,
+        row.case_count,
+        row.case_titles_json,
+        row.up_votes,
+        row.down_votes,
+        row.finalized_at,
+        row.archive_version,
+        row.aggregation_policy_version,
+        row.liangzi_policy_version,
+      )
+    },
+    insertWeekArchive(row) {
+      insertWeekArchiveStmt.run(
+        row.week_id,
+        row.start_date,
+        row.end_date,
+        row.covered_days,
+        row.up_votes,
+        row.down_votes,
+        row.finalized_at,
+        row.archive_version,
+        row.aggregation_policy_version,
+        row.liangzi_policy_version,
+      )
+    },
+    insertMonthArchive(row) {
+      insertMonthArchiveStmt.run(
+        row.month_id,
+        row.start_date,
+        row.end_date,
+        row.covered_days,
+        row.up_votes,
+        row.down_votes,
+        row.finalized_at,
+        row.archive_version,
+        row.aggregation_policy_version,
+        row.liangzi_policy_version,
+      )
+    },
+    dayArchives: (afterVersion = -1) =>
+      selectDayArchives.all(afterVersion) as unknown as DayArchiveRow[],
+    weekArchives: (afterVersion = -1) =>
+      selectWeekArchives.all(afterVersion) as unknown as WeekArchiveRow[],
+    monthArchives: (afterVersion = -1) =>
+      selectMonthArchives.all(afterVersion) as unknown as MonthArchiveRow[],
     identityByInstallation: (installationId) =>
       selectIdentity.get(installationId) as CommunityIdentityRow | undefined,
     identityByPublicKey: (publicKey) =>

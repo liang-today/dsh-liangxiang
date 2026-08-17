@@ -13,7 +13,7 @@
  *     pseudonymous installation id, and serves the browser channel.
  *
  * Wiring (all DSH touchpoints via compat/dsh; docs/044):
- *  - `webServer` inject      -> /liangbiao/api routes (state / SSE / vote)
+ *  - `webServer` inject      -> /liangbiao/api routes (state / SSE / vote / history)
  *  - `storageDomain` inject  -> hydrate + write-behind persistence + identity
  *  - `sessionProjections`+`sessions` inject -> tokenUsage observation
  *

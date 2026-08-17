@@ -27,11 +27,19 @@ import {
   applyAcceptedVote,
   canSpendIncense,
   computeEffectiveTokens,
+  deriveArchiveResult,
   derivePersonalLiangQiState,
   EMPTY_GLOBAL_AGGREGATE,
+  isoWeekFor,
+  LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+  monthFor,
+  sumDayArchives,
   type DailyLiangCase,
   type GlobalVoteAggregate,
+  type LiangDayArchive,
+  type LiangMonthArchive,
   type PersonalLiangQiState,
+  type LiangWeekArchive,
   type VoteResult,
 } from '../domain/index.ts'
 import type { LiangbiaoWireState, WireGlobalCounts, WireVoteRequest } from '../shared/wire.ts'
@@ -39,6 +47,8 @@ import { WIRE_SCHEMA_VERSION } from '../shared/wire.ts'
 import { createBusinessDateProvider, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import { DEV_CREDIT_SESSION_ID } from './dev-credit.ts'
 import { localCaseId, LOCAL_CASE_TITLES, nextLocalCaseIndex } from './local-cases.ts'
+import { LIANGZI_POLICY_VERSION } from '../shared/backend-v1.ts'
+import { historyArchiveToV1, type V1HistoryResponse } from '../shared/history-v1.ts'
 import {
   creditObservedUsage,
   EMPTY_DAILY_USAGE,
@@ -110,6 +120,10 @@ export class FakeAuthoritativeLiangService {
   private ledgers = new Map<string, { usedIncense: number }>()
   private aggregates = new Map<string, GlobalVoteAggregate>()
   private votes = new Map<string, PersistedVoteRecord>()
+  private dayArchives = new Map<string, LiangDayArchive>()
+  private weekArchives = new Map<string, LiangWeekArchive>()
+  private monthArchives = new Map<string, LiangMonthArchive>()
+  private archiveVersion = 0
 
   private currentDate = ''
   private activeCase!: DailyLiangCase
@@ -366,6 +380,7 @@ export class FakeAuthoritativeLiangService {
       authorityMode: 'LOCAL_FAKE_DEV',
       snapshotRefreshSeconds: this.config.snapshotRefreshSeconds,
       businessDate: this.currentDate,
+      archiveVersion: this.archiveVersion,
       activeCase: this.activeCase,
       global: this.published,
       personal: {
@@ -382,6 +397,23 @@ export class FakeAuthoritativeLiangService {
         notice: null,
       },
     }
+  }
+
+  history(afterVersion?: number): V1HistoryResponse {
+    this.rotateToCurrentDate()
+    if (afterVersion !== undefined && (!Number.isSafeInteger(afterVersion) || afterVersion < 0)) {
+      throw new Error('history cursor must be a non-negative safe integer')
+    }
+    const cursor = afterVersion ?? -1
+    return historyArchiveToV1({
+      archiveVersion: this.archiveVersion,
+      businessDate: this.currentDate,
+      businessTimezone: this.config.timezone,
+      stale: false,
+      days: [...this.dayArchives.values()].filter(row => row.archiveVersion > cursor),
+      weeks: [...this.weekArchives.values()].filter(row => row.archiveVersion > cursor),
+      months: [...this.monthArchives.values()].filter(row => row.archiveVersion > cursor),
+    }, afterVersion === undefined)
   }
 
   private derivePersonal(): PersonalLiangQiState {
@@ -401,6 +433,10 @@ export class FakeAuthoritativeLiangService {
   private rotateToCurrentDate(): void {
     const date = this.dates.businessDateOf(this.clock.now())
     if (date === this.currentDate) return
+    if (this.currentDate !== '' && this.currentDate < date) {
+      this.aggregates.set(this.activeCase.id, this.aggregate)
+      this.finalizeLocalArchives(this.currentDate, date)
+    }
     this.currentDate = date
     this.localCaseIndex = 0
     this.openLocalCase()
@@ -425,6 +461,65 @@ export class FakeAuthoritativeLiangService {
       }
     }
     this.publishSnapshot()
+  }
+
+  /** Memory-only mirror of the production rollover contract for local UI QA. */
+  private finalizeLocalArchives(endedDate: string, nextDate: string): void {
+    if (this.dayArchives.has(endedDate)) return
+    const cases = LOCAL_CASE_TITLES.flatMap((title, index) => {
+      const aggregate = this.aggregates.get(localCaseId(endedDate, index))
+      return aggregate === undefined ? [] : [{ title, aggregate }]
+    })
+    if (cases.length === 0) return
+
+    const version = this.archiveVersion + 1
+    const upVotes = cases.reduce((sum, entry) => sum + entry.aggregate.upVotes, 0)
+    const downVotes = cases.reduce((sum, entry) => sum + entry.aggregate.downVotes, 0)
+    this.dayArchives.set(endedDate, {
+      businessDate: endedDate,
+      caseCount: cases.length,
+      caseTitles: cases.map(entry => entry.title),
+      finalizedAt: this.clock.now(),
+      archiveVersion: version,
+      aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+      liangziPolicyVersion: LIANGZI_POLICY_VERSION,
+      ...deriveArchiveResult(upVotes, downVotes),
+    })
+
+    const allDays = [...this.dayArchives.values()]
+    for (const day of allDays) {
+      const week = isoWeekFor(day.businessDate)
+      if (week.endDate < nextDate && !this.weekArchives.has(week.weekId)) {
+        const covered = allDays.filter(item => item.businessDate >= week.startDate && item.businessDate <= week.endDate)
+        this.weekArchives.set(week.weekId, {
+          weekId: week.weekId,
+          startDate: week.startDate,
+          endDate: week.endDate,
+          coveredDays: covered.length,
+          finalizedAt: this.clock.now(),
+          archiveVersion: version,
+          aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+          liangziPolicyVersion: LIANGZI_POLICY_VERSION,
+          ...sumDayArchives(covered),
+        })
+      }
+      const month = monthFor(day.businessDate)
+      if (month.endDate < nextDate && !this.monthArchives.has(month.monthId)) {
+        const covered = allDays.filter(item => item.businessDate >= month.startDate && item.businessDate <= month.endDate)
+        this.monthArchives.set(month.monthId, {
+          monthId: month.monthId,
+          startDate: month.startDate,
+          endDate: month.endDate,
+          coveredDays: covered.length,
+          finalizedAt: this.clock.now(),
+          archiveVersion: version,
+          aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+          liangziPolicyVersion: LIANGZI_POLICY_VERSION,
+          ...sumDayArchives(covered),
+        })
+      }
+    }
+    this.archiveVersion = version
   }
 
   private openLocalCase(): void {

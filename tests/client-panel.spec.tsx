@@ -73,6 +73,7 @@ function renderPanel(
       onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
       onReconcileConfirm={extra.onReconcileConfirm ?? (() => undefined)}
       onReconcileCancel={extra.onReconcileCancel ?? (() => undefined)}
+      onOpenLiangci={() => undefined}
     />,
   )
 }
@@ -80,6 +81,19 @@ function renderPanel(
 const demoState = (): LiangbiaoViewState => createMockLiangbiaoStore().getSnapshot()
 
 describe('four visual regions', () => {
+  it('places the four-character 梁祠 entry beneath 上达天听 inside Region 4', () => {
+    const tree = renderPanel(demoState())
+    const social = findByAttr(tree, 'data-liangbiao-region', 'social')[0]
+    const controls = findAll(social === undefined ? [] : [social], node =>
+      'data-liangbiao-ritual' in node.props)
+    expect(controls.map(control => textContent([control]))).toEqual([
+      expect.stringContaining(RECONCILE_LABEL),
+      expect.stringContaining('进入梁祠'),
+    ])
+    const slot = findByAttr(tree, 'data-liangbiao-reconcile-slot')[0]
+    expect(styleOf(slot).flexDirection).toBe('column')
+  })
+
   it('renders exactly case / core / vote / social, in order', () => {
     const tree = renderPanel(demoState())
     const regions = findByAttr(tree, 'data-liangbiao-region')
@@ -373,6 +387,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onReconcileAsk={() => undefined}
         onReconcileConfirm={() => undefined}
         onReconcileCancel={() => undefined}
+        onOpenLiangci={() => undefined}
       />,
     )
     const pulsingValue = styleOf(findByAttr(pulsing, 'data-liangbiao-liang-position-value')[0])
@@ -400,6 +415,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onReconcileAsk={() => undefined}
         onReconcileConfirm={() => undefined}
         onReconcileCancel={() => undefined}
+        onOpenLiangci={() => undefined}
       />,
     )
     expect(styleOf(findByAttr(reduced, 'data-liangbiao-liang-position-value')[0]).animation).toBeUndefined()

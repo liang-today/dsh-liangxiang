@@ -1,9 +1,9 @@
-# 071 — Database Schema v2（SQLite）
+# 071 — Database Schema v4（SQLite）
 
-`PRAGMA user_version = 2`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
+`PRAGMA user_version = 4`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
 比例、`liangzi_state`、`earned/remaining/fill` **一律不入库**：它们由 `domain/` 从原始计数派生，存一份就会出现第二个真相源。
 
-v1 → v2 只增加 `community_identity`。旧库启动时自动建表，不改既有账本。
+迁移轨迹：v2 增加 `community_identity`，v3 增加 `case_queue`，v4 增加梁祠日/周/月永久档案和单调 `archive_version`。旧库启动时逐级建表，不改既有投票账本。
 
 ## daily_liang_case
 
@@ -98,6 +98,38 @@ total == 0 → ratio = null/null, liangzi_state = WAITING
 | `created_at` / `last_seen_at` | INTEGER | epoch ms。`created_at` 是香火 drip 的计时原点 |
 
 这不是 DSH 认证。公钥证明「还是这把私钥」；指纹只提高同一台机器反复建号的成本，MAC 可伪造，不是反女巫。
+
+## case_queue（v3，运营梁案队列）
+
+`id`、`title`、可空 `publish_on`、`sort_order`、`created_at`、可空 `consumed_at`。
+日切懒开案时从尚未消费且日期适用的队列中取一条；没有可用项时回退默认梁案。
+
+## 梁祠永久档案（v4）
+
+### liang_archive_meta
+
+单例行 `singleton = 1` 保存单调 `archive_version`。一次日切封存批次中的日/周/月新增行共用同一个版本；若没有新增档案则版本不变。
+
+### liang_day_archive
+
+| 列 | 说明 |
+|---|---|
+| `business_date` PK | 已结束的服务器业务日 |
+| `case_count` / `case_titles_json` | 同日全部已关闭梁案数量与标题 |
+| `up_votes` / `down_votes` | 同日全部梁案原始 accepted 票数之和 |
+| `finalized_at` / `archive_version` | 封存时间与冷通道游标 |
+| `aggregation_policy_version` / `liangzi_policy_version` | 聚合与梁子阈值策略快照 |
+
+今日绝不入表；同日多次开案只形成一个日档。零票日可以是有效档案，和缺失档案不同。
+
+### liang_week_archive / liang_month_archive
+
+共同保存周期 id、`start_date` / `end_date`、`covered_days`、原始夯/拉票数、封存时间、归档版本和两项策略版本。周 id 为 ISO week（周一至周日），月 id 为 `YYYY-MM`。
+
+- 只封存已经完整结束的周期；当前周/月暂梁不入库。
+- 周/月结果由该周期日档的原始票数求和，再派生比例与梁子状态，不平均每日百分比或枚举。
+- 主键/唯一周期范围 + 事务内 `INSERT OR IGNORE` 使重复日切幂等。
+- `ix_*_archive_version` 支持 `/v1/history?after_version=N` 只读取新增不可变档案。
 
 ## 不存在的表（永不添加）
 
