@@ -7,6 +7,7 @@
  *   POST /liangbiao/api/vote       minimal vote intent -> result + fresh state
  *   POST /liangbiao/api/refresh    force host re-read (hover / panel open)
  *   POST /liangbiao/api/reconcile  drop local Token observation, re-read incense
+ *   POST /liangbiao/api/local/enter       first-run welcome: switch this Host to local
  *   POST /liangbiao/api/local/cycle-case  LOCAL_FAKE_DEV only: next prepared 梁案
  *   POST /liangbiao/api/dev/credit LOCAL_FAKE_DEV only: simulate Token credit
  *
@@ -74,9 +75,15 @@ function readBoundedBody(req: IncomingMessage): Promise<string> {
   })
 }
 
+export interface LiangbiaoApiOptions {
+  /** First-run welcome: switch this Host from online to the in-process loop. */
+  chooseLocalMode?: () => void
+}
+
 export function createLiangbiaoApi(
   service: LiangHostService,
   warn: (message: string) => void,
+  options: LiangbiaoApiOptions = {},
 ): LiangbiaoApi {
   const connections = new Set<SseConnection>()
 
@@ -192,6 +199,7 @@ export function createLiangbiaoApi(
       '/liangbiao/api/vote': 'POST',
       '/liangbiao/api/refresh': 'POST',
       '/liangbiao/api/reconcile': 'POST',
+      '/liangbiao/api/local/enter': 'POST',
       '/liangbiao/api/local/cycle-case': 'POST',
       '/liangbiao/api/dev/credit': 'POST',
     }
@@ -238,6 +246,11 @@ export function createLiangbiaoApi(
     }
     if (pathname === '/liangbiao/api/reconcile') {
       await service.reconcileNow?.()
+      writeJson(res, 200, service.getWireState())
+      return
+    }
+    if (pathname === '/liangbiao/api/local/enter') {
+      options.chooseLocalMode?.()
       writeJson(res, 200, service.getWireState())
       return
     }

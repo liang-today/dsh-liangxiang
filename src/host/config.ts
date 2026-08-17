@@ -24,7 +24,8 @@ export interface HostRuntimeConfig {
   /**
    * Backend base URL. Default is the closed-beta staging endpoint (online).
    * `LIANGBIAO_BACKEND_URL=local` (or an unparseable URL) forces LOCAL_FAKE_DEV.
-   * A later health probe may still fall back to local if the backend is down.
+   * A later welcome-gate choice may still switch to local; a dead backend
+   * is not a silent fallback.
    */
   backendUrl: string | null
   /** Shared community admission key; sent on every authenticated backend call. */

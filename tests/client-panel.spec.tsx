@@ -19,6 +19,10 @@ import {
   PLUGIN_PACKAGE_NAME,
   PLUGIN_VERSION,
   STAGING_MODE_NOTE,
+  WELCOME_LOCAL_LABEL,
+  WELCOME_ONLINE_LABEL,
+  WELCOME_PRIVACY_NOTE,
+  WELCOME_TITLE,
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
@@ -50,6 +54,8 @@ function renderPanel(
     onReconcileCancel?: () => void
     versionReveal?: boolean
     onInsufficientVote?: (voteType: 'up' | 'down') => void
+    welcomeVisible?: boolean
+    welcomeSeconds?: number
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -61,8 +67,10 @@ function renderPanel(
       versionReveal={extra.versionReveal ?? false}
       onSoundPressStart={() => undefined}
       onSoundPressEnd={() => undefined}
-      welcomeVisible={false}
+      welcomeVisible={extra.welcomeVisible ?? false}
+      welcomeSeconds={extra.welcomeSeconds ?? 10}
       onDismissWelcome={() => undefined}
+      onChooseLocal={() => undefined}
       avatarPulse={false}
       justCondensed={false}
       voteFeedback={voteFeedback}
@@ -111,6 +119,18 @@ describe('four visual regions', () => {
     expect(dialog).toHaveLength(1)
     expect(dialog[0]?.props['aria-label']).toBe(PANEL_TITLE_LOCAL)
     expect(textContent(tree)).toContain('DeepSeek Harness 是夯还是拉')
+  })
+
+  it('first-run welcome defaults to online with a local opt-out and privacy note', () => {
+    const tree = renderPanel(demoState(), '', { welcomeVisible: true, welcomeSeconds: 10 })
+    const welcome = findByAttr(tree, 'data-liangbiao-welcome')[0]
+    expect(welcome?.props['aria-label']).toBe(WELCOME_TITLE)
+    expect(textContent(findByAttr(tree, 'data-liangbiao-welcome-online'))).toContain(WELCOME_ONLINE_LABEL)
+    expect(textContent(findByAttr(tree, 'data-liangbiao-welcome-online'))).toContain('10')
+    expect(textContent(findByAttr(tree, 'data-liangbiao-welcome-local'))).toBe(WELCOME_LOCAL_LABEL)
+    expect(textContent(findByAttr(tree, 'data-liangbiao-welcome-privacy'))).toBe(WELCOME_PRIVACY_NOTE)
+    expect(WELCOME_PRIVACY_NOTE).toContain('随机安装 ID')
+    expect(WELCOME_PRIVACY_NOTE).not.toContain('投票')
   })
 
   it('centers the case region and keeps the trust mode out of the visible copy', () => {
@@ -375,7 +395,9 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onSoundPressStart={() => undefined}
         onSoundPressEnd={() => undefined}
         welcomeVisible={false}
+        welcomeSeconds={10}
         onDismissWelcome={() => undefined}
+        onChooseLocal={() => undefined}
         avatarPulse={false}
         justCondensed={false}
         voteFeedback=""
@@ -403,7 +425,9 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onSoundPressStart={() => undefined}
         onSoundPressEnd={() => undefined}
         welcomeVisible={false}
+        welcomeSeconds={10}
         onDismissWelcome={() => undefined}
+        onChooseLocal={() => undefined}
         avatarPulse={false}
         justCondensed={false}
         voteFeedback=""

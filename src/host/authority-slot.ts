@@ -4,9 +4,8 @@ import type { LiangHostService, VoteOutcome } from './service.ts'
 import type { V1HistoryResponse } from '../shared/history-v1.ts'
 
 /**
- * Swappable host authority. Online is the default; a failed health probe
- * replaces the inner service with the in-process fake so the panel can
- * honestly say 今日梁案（本地） instead of hanging on a dead backend.
+ * Swappable host authority. Online is the default. The welcome gate may ask
+ * this slot to switch to the in-process fake; a failed health probe must not.
  */
 export class AuthoritySlot implements LiangHostService {
   private inner: LiangHostService

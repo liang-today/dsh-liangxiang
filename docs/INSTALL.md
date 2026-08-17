@@ -12,16 +12,15 @@ pnpm run dev:web         # 启动 WebUI，默认 http://127.0.0.1:3080
 
 右缘会出现一个圆形入口，图标就是当前梁子状态，悬停显示 `今日梁位`；可以拖到任意位置。
 
-默认是 `LOCAL_FAKE_DEV`（进程内记账，零出网）。本地假账才走 CLI 入账（会写入本机账本，可投票）：
+默认是在线（烘焙社区后端）。欢迎页可改用本地。强制本地假账并走 CLI 入账：
 
 ```bash
-unset LIANGBIAO_BACKEND_URL   # 必须是本地假账
-pnpm run dev:web              # 终端 A
-pnpm run dev:credit           # 终端 B：+1 炷
-pnpm run dev:credit -- 9      # +9 炷
+LIANGBIAO_BACKEND_URL=local pnpm run dev:web   # 终端 A：强制本地假账
+pnpm run dev:credit                            # 终端 B：+1 炷
+pnpm run dev:credit -- 9                       # +9 炷
 ```
 
-想跑在线链路：
+想跑自建在线链路：
 
 ```bash
 # 终端 A
@@ -52,7 +51,7 @@ dsh plugin --profile <你的 profile> add ./dsh-liangbiao-0.4.0.tgz
 
 | 变量 | 作用 |
 |---|---|
-| `LIANGBIAO_BACKEND_URL` | 设了就走在线模式（`DEV_STAGING_ONLY`），不设就是本地演示 |
+| `LIANGBIAO_BACKEND_URL` | 默认烘焙社区地址（在线）。`local` 强制本地演示 |
 | `LIANGBIAO_COMMUNITY_KEY` | 与后端相同的社区口令；后端设了则 Host 必带 |
 | `LIANGBIAO_TOKEN_PER_INCENSE` | 每炷香的 Token 数（默认 50,000；调小便于演示） |
 | `LIANGBIAO_SNAPSHOT_SECONDS` | 快照/轮询节奏（默认 1s） |

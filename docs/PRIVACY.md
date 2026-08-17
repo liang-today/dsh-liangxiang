@@ -30,7 +30,7 @@
 ## 用户能做什么
 
 - 想换身份：删除 `<DSH_HOME>/storages/liangbiao.json` 的 `identity` 表项（会失去当日已投记录的关联，服务端旧记录仍在）。
-- 想完全不出网：不设 `LIANGBIAO_BACKEND_URL`，Host 走 `LOCAL_FAKE_DEV`，全程零出网请求。
+- 想完全不出网：首次欢迎页选「改用本地」，或设 `LIANGBIAO_BACKEND_URL=local`。Host 走 `LOCAL_FAKE_DEV`，全程零出网请求。
 - 想删除服务端数据：删掉后端的 SQLite 文件（`LIANGBIAO_BACKEND_DB`）。localhost 阶段这就是全部数据。
 
 ## 诚实边界

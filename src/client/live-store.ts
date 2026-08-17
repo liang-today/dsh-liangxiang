@@ -15,6 +15,7 @@
 import type { LiangHistoryArchive, VoteResult, VoteType } from '../domain/index.ts'
 import { parseWireState, parseWireVoteResponse } from '../shared/wire.ts'
 import { mergeHistoryArchive, parseV1HistoryResponse } from '../shared/history-v1.ts'
+import { loadAuthorityPreference } from './welcome.ts'
 import {
   createOfflineViewState,
   wireToViewState,
@@ -27,6 +28,7 @@ const EVENTS_PATH = '/liangbiao/api/events'
 const VOTE_PATH = '/liangbiao/api/vote'
 const REFRESH_PATH = '/liangbiao/api/refresh'
 const RECONCILE_PATH = '/liangbiao/api/reconcile'
+const ENTER_LOCAL_PATH = '/liangbiao/api/local/enter'
 const CYCLE_CASE_PATH = '/liangbiao/api/local/cycle-case'
 const HISTORY_PATH = '/liangbiao/api/history'
 const FETCH_TIMEOUT_MS = 6_000
@@ -84,6 +86,8 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
   reconcile(): Promise<void>
   /** Abort in-flight work and close the stream. */
   dispose(): void
+  /** Ask the Host to switch this process to LOCAL_FAKE_DEV. */
+  chooseLocalMode(): void
   /** LOCAL_FAKE_DEV: ask the host to cycle the prepared 今日梁案 list. */
   cycleLocalCase(): void
   /** Independent cold-channel 梁祠 state. */
@@ -228,11 +232,23 @@ export function createLiveLiangbiaoStore(
         openStream()
         // One full archive per Host connection; subsequent updates are deltas.
         void loadHistory()
+        if (loadAuthorityPreference() === 'local') enterLocalMode()
       })
       .catch((error: unknown) => {
         starting = false
         console.warn(`[dsh-liangbiao] state bootstrap failed: ${error instanceof Error ? error.message : String(error)}`)
         goOffline()
+      })
+  }
+
+  const enterLocalMode = (): void => {
+    if (disposed || starting) return
+    transport.fetchJson(ENTER_LOCAL_PATH, { method: 'POST' })
+      .then((raw) => {
+        if (!disposed) applyWire(raw)
+      })
+      .catch((error: unknown) => {
+        console.warn(`[dsh-liangbiao] enter local mode failed: ${error instanceof Error ? error.message : String(error)}`)
       })
   }
 
@@ -304,6 +320,9 @@ export function createLiveLiangbiaoStore(
         .finally(() => {
           reconcileInFlight = false
         })
+    },
+    chooseLocalMode: () => {
+      enterLocalMode()
     },
     cycleLocalCase: () => {
       if (disposed || starting) return

@@ -16,7 +16,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, Re
 import type { LiangziState, VoteType } from '../domain/index.ts'
 import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
-import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
+import { hasSeenWelcome, markWelcomeSeen, saveAuthorityPreference, WELCOME_TIMEOUT_SECONDS } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
@@ -227,11 +227,15 @@ export function LiangbiaoBadge(): ReactElement {
     if (typeof location !== 'undefined' && location.hash.includes('liangbiao-open')) return true
     return loadPanelOpen(typeof localStorage === 'undefined' ? null : localStorage)
   })
+  const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
   // Reopening the panel while offline reconnects; while live it forces a
   // host re-bootstrap so the expanded 今日梁案 is not up to ~1s stale.
   useEffect(() => {
     if (open) store.refresh({ force: true })
   }, [open, store])
+  useEffect(() => {
+    if (welcomeVisible) setOpen(true)
+  }, [welcomeVisible])
   const reducedMotion = useReducedMotion()
   // Smoothed + rate-extrapolated ring fill for the 油门 feel (presentation only).
   const throttle = useThrottleFill(state.personal, reducedMotion)
@@ -279,13 +283,35 @@ export function LiangbiaoBadge(): ReactElement {
     if (longPressTimer.current !== null) window.clearTimeout(longPressTimer.current)
     if (revealTimer.current !== null) window.clearTimeout(revealTimer.current)
   }, [])
-  const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
+  const [welcomeSeconds, setWelcomeSeconds] = useState(WELCOME_TIMEOUT_SECONDS)
   const [liangciOpen, setLiangciOpen] = useState(false)
   const closeLiangci = useCallback(() => setLiangciOpen(false), [])
   const onDismissWelcome = useCallback(() => {
+    saveAuthorityPreference('online')
     markWelcomeSeen()
     setWelcomeVisible(false)
   }, [])
+  const onChooseLocal = useCallback(() => {
+    saveAuthorityPreference('local')
+    markWelcomeSeen()
+    setWelcomeVisible(false)
+    store.chooseLocalMode()
+  }, [store])
+  useEffect(() => {
+    if (!welcomeVisible) return undefined
+    setWelcomeSeconds(WELCOME_TIMEOUT_SECONDS)
+    const startedAt = Date.now()
+    const timer = window.setInterval(() => {
+      const left = WELCOME_TIMEOUT_SECONDS - Math.floor((Date.now() - startedAt) / 1000)
+      if (left <= 0) {
+        window.clearInterval(timer)
+        onDismissWelcome()
+        return
+      }
+      setWelcomeSeconds(left)
+    }, 250)
+    return () => window.clearInterval(timer)
+  }, [welcomeVisible, onDismissWelcome])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -510,12 +536,14 @@ export function LiangbiaoBadge(): ReactElement {
             return
           }
           setOpen((value) => {
+            if (welcomeVisible && value) return value
             const next = !value
             savePanelOpen(next, typeof localStorage === 'undefined' ? null : localStorage)
             return next
           })
         }}
         onEscape={() => {
+          if (welcomeVisible) return
           savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
           setOpen(false)
         }}
@@ -536,7 +564,9 @@ export function LiangbiaoBadge(): ReactElement {
           onSoundPressStart={beginSoundLongPress}
           onSoundPressEnd={endSoundLongPress}
           welcomeVisible={welcomeVisible}
+          welcomeSeconds={welcomeSeconds}
           onDismissWelcome={onDismissWelcome}
+          onChooseLocal={onChooseLocal}
           avatarPulse={avatarPulse}
           justCondensed={justCondensed}
           voteFeedback={voteFeedback}
@@ -545,6 +575,7 @@ export function LiangbiaoBadge(): ReactElement {
           onVote={onVote}
           onInsufficientVote={onInsufficientVote}
           onClose={() => {
+            if (welcomeVisible) return
             savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
             setOpen(false)
           }}

@@ -47,8 +47,10 @@ import {
   RECONCILE_CONFIRM_PROMPT,
   RECONCILE_HINT,
   RECONCILE_LABEL,
-  WELCOME_DISMISS,
   WELCOME_LINES,
+  WELCOME_LOCAL_LABEL,
+  WELCOME_ONLINE_LABEL,
+  WELCOME_PRIVACY_NOTE,
   WELCOME_TITLE,
   liangziRatioRangeText,
 } from '../shared/index.ts'
@@ -77,7 +79,11 @@ export interface PanelProps {
   onSoundPressEnd: () => void
   /** First-run welcome overlay visibility. */
   welcomeVisible: boolean
+  /** Seconds remaining before the welcome auto-enters online. */
+  welcomeSeconds: number
   onDismissWelcome: () => void
+  /** First-run: switch this Host to the in-process local loop. */
+  onChooseLocal: () => void
   avatarPulse: boolean
   justCondensed: boolean
   /** Transient feedback line under the buttons (e.g. 已上香), empty = none. */
@@ -508,7 +514,7 @@ function SocialStatHint(props: {
 export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionReveal, onSoundPressStart, onSoundPressEnd,
-    welcomeVisible, onDismissWelcome, avatarPulse, justCondensed, voteFeedback,
+    welcomeVisible, welcomeSeconds, onDismissWelcome, onChooseLocal, avatarPulse, justCondensed, voteFeedback,
     onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, onOpenLiangci, onCycleLocalCase,
   } = props
@@ -604,24 +610,58 @@ export function Panel(props: PanelProps): ReactElement {
               {line}
             </p>
           ))}
-          <button
-            type="button"
-            onClick={onDismissWelcome}
+          <p
+            data-liangbiao-welcome-privacy=""
             style={{
-              marginTop: '4px',
-              border: 'none',
-              borderRadius: '10px',
-              padding: '8px 18px',
-              background: `linear-gradient(135deg, ${color.ritualEmber}, color-mix(in srgb, ${color.ritualEmber} 74%, #7f2f25))`,
-              color: '#ffffff',
-              fontFamily: font.family,
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
+              margin: '2px 0 0',
+              fontSize: '10px',
+              lineHeight: '1.5',
+              color: color.textTertiary,
+              textAlign: 'center',
             }}
           >
-            {WELCOME_DISMISS}
-          </button>
+            {WELCOME_PRIVACY_NOTE}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '6px', width: '100%' }}>
+            <button
+              type="button"
+              data-liangbiao-welcome-online=""
+              onClick={onDismissWelcome}
+              style={{
+                flex: 1,
+                border: 'none',
+                borderRadius: '10px',
+                padding: '8px 10px',
+                background: `linear-gradient(135deg, ${color.ritualEmber}, color-mix(in srgb, ${color.ritualEmber} 74%, #7f2f25))`,
+                color: '#ffffff',
+                fontFamily: font.family,
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {WELCOME_ONLINE_LABEL}（{welcomeSeconds}）
+            </button>
+            <button
+              type="button"
+              data-liangbiao-welcome-local=""
+              onClick={onChooseLocal}
+              style={{
+                flex: 1,
+                border: `1px solid ${color.border}`,
+                borderRadius: '10px',
+                padding: '8px 10px',
+                background: 'transparent',
+                color: color.textSecondary,
+                fontFamily: font.family,
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {WELCOME_LOCAL_LABEL}
+            </button>
+          </div>
         </div>
       )}
 
