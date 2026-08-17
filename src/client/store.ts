@@ -109,7 +109,9 @@ export function createOfflineViewState(connection: ConnectionState): LiangbiaoVi
     archiveVersion: 0,
     accountingAvailable: false,
     accountingNotice: null,
-    authorityMode: 'LOCAL_FAKE_DEV',
+    // Connecting/offline is not a mode switch. Default online so a dead
+    // backend cannot paint 今日梁案（本地） from this placeholder.
+    authorityMode: 'DEV_STAGING_ONLY',
     activeCase: {
       id: 'offline',
       businessDate: new Date().toISOString().slice(0, 10),

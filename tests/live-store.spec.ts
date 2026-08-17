@@ -156,6 +156,7 @@ describe('live store', () => {
     const controls = fakeTransport(service)
     const store = createLiveLiangbiaoStore(controls.transport)
     expect(store.getSnapshot().connection).toBe('connecting')
+    expect(store.getSnapshot().authorityMode).toBe('DEV_STAGING_ONLY')
     store.start()
     await settled()
     const state = store.getSnapshot()
