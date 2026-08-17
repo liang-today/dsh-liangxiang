@@ -1,8 +1,8 @@
 # 001 — DSH 集成勘察问答(16 问)
 
-依据基线:见 [`docs/000-dsh-reference.md`](000-dsh-reference.md)(deepseek-harness `47f94385`,`0.1.0-rc.5`)。所有路径相对 `../deepseek-harness`。分级含义(公开/半公开/私有)见 000。每问给出:结论、证据、分级、对梁标的含义。
+依据基线:见 [`docs/000-dsh-reference.md`](000-dsh-reference.md)(deepseek-harness `47f94385`,`0.1.0-rc.5`)。所有路径相对 `../deepseek-harness`。分级含义(公开/半公开/私有)见 000。每问给出:结论、证据、分级、对梁向的含义。
 
-> **R2 语义提示(2026-08-16)**:本文的 DSH 技术事实仍然有效;个别"对梁标"注解使用了已废弃的旧业务词汇(梁签/铸造/方案 A 目标模型口径)。现行业务语义以 [`PRODUCT_FREEZE_V0.1.md`](PRODUCT_FREEZE_V0.1.md) 为准:Token→香火(50K = 1 炷)、无目标模型过滤、投票 1 票 = 1 炷。
+> **R2 语义提示(2026-08-16)**:本文的 DSH 技术事实仍然有效;个别"对梁向"注解使用了已废弃的旧业务词汇(梁签/铸造/方案 A 目标模型口径)。现行业务语义以 [`PRODUCT_FREEZE_V0.1.md`](PRODUCT_FREEZE_V0.1.md) 为准:Token→香火(50K = 1 炷)、无目标模型过滤、投票 1 票 = 1 炷。
 
 ---
 
@@ -18,7 +18,7 @@
 
 **分级**:公开(`docs/subsystems/client-modules.md`、`docs/user/develop/basic/*`)。
 
-**对梁标**:单包 `dsh-liangbiao`,`src/index.ts` 为 Host 半、`src/client/index.ts` 为 Client 半;打包结构照抄 session-log-export。
+**对梁向**:单包 `dsh-liangbiao`,`src/index.ts` 为 Host 半、`src/client/index.ts` 为 Client 半;打包结构照抄 session-log-export。
 
 ---
 
@@ -39,7 +39,7 @@
 
 **分级**:`dsh.bundle`/`dsh.client`/`exports["./client"]` 消费面公开;树内 `clientBundle` preset 半公开(树外须复刻其包装格式,见 `docs/003`、`docs/004`)。
 
-**对梁标**:同时声明 `dsh.bundle` 与 `dsh.client`——只有 `dsh.client` 而无 `dsh.bundle` 时,`dsh plugin add` 只装成普通依赖、插件行不进 Loader,Client 半也就不会被扫描(扫描对象是 Loader entries)。
+**对梁向**:同时声明 `dsh.bundle` 与 `dsh.client`——只有 `dsh.client` 而无 `dsh.bundle` 时,`dsh plugin add` 只装成普通依赖、插件行不进 Loader,Client 半也就不会被扫描(扫描对象是 Loader entries)。
 
 ---
 
@@ -62,9 +62,9 @@ ctx.slots.inject('shell.overlay', () => ctx.slots.register(
 
 ---
 
-## Q4 — 当前有哪些公开 UI Slot 适合放置梁标?
+## Q4 — 当前有哪些公开 UI Slot 适合放置梁向?
 
-**结论**:shipped web 组合共 **42 个 slot**(权威枚举:生成目录 `packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`,由 `scripts/gen-client-catalog.ts` 从 SlotMap declaration merge 生成)。适合全局常驻梁标的座位是 **`shell.overlay`**;会话内备选是 `conversation.composer.dock` 与 `conversation.session.header.utilities`。
+**结论**:shipped web 组合共 **42 个 slot**(权威枚举:生成目录 `packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`,由 `scripts/gen-client-catalog.ts` 从 SlotMap declaration merge 生成)。适合全局常驻梁向的座位是 **`shell.overlay`**;会话内备选是 `conversation.composer.dock` 与 `conversation.session.header.utilities`。
 
 全量清单(kind/scope/声明者摘自 catalog):
 
@@ -117,13 +117,13 @@ ctx.slots.inject('shell.overlay', () => ctx.slots.register(
 
 **分级**:SlotMap 声明与 `shell.overlay` 契约公开(JSDoc);slot catalog 本身半公开(供 `cordis_inspect` 的生成物,但内容与 SlotMap 同源)。
 
-**对梁标**:注册 `shell.overlay`;`settings.general.item`(list/root)可用于后续在设置页放梁标偏好项(本阶段不做)。
+**对梁向**:注册 `shell.overlay`;`settings.general.item`(list/root)可用于后续在设置页放梁向偏好项(本阶段不做)。
 
 ---
 
-## Q5 — 不修改 DSH core,能否实现右侧停靠式全局梁标?
+## Q5 — 不修改 DSH core,能否实现右侧停靠式全局梁向?
 
-**结论**:**能**。`shell.overlay` 就是为此设计的加法座位:root scope、list kind、click-through、fresh `id` 与既有条目并存。**不存在**专门的"right-rail dock" slot,贴右由梁标条目自身 CSS 定位实现(overlay 层覆盖全帧,`inset: 0`,条目绝对定位到右缘、避开 composer 与滚动容器)。runtime 明文禁止注册 `root`(会替换整个 AppFrame):`packages/client/runtime/src/client/slots.ts:27-40` "DO NOT register here… For a surface of your own that floats over the whole app, register into `shell.overlay` instead"。
+**结论**:**能**。`shell.overlay` 就是为此设计的加法座位:root scope、list kind、click-through、fresh `id` 与既有条目并存。**不存在**专门的"right-rail dock" slot,贴右由梁向条目自身 CSS 定位实现(overlay 层覆盖全帧,`inset: 0`,条目绝对定位到右缘、避开 composer 与滚动容器)。runtime 明文禁止注册 `root`(会替换整个 AppFrame):`packages/client/runtime/src/client/slots.ts:27-40` "DO NOT register here… For a surface of your own that floats over the whole app, register into `shell.overlay` instead"。
 
 **分级**:公开。无需上游贡献;若未来需要"官方右栏 dock"语义(如与 `details` 栏互避),再考虑向上游提议一个 `shell.dock.right` 子 slot——当前 overlay 足够。
 
@@ -142,7 +142,7 @@ ctx.slots.inject('shell.overlay', () => ctx.slots.register(
 
 **分级**:2/3/4/6 公开;1 的否定结论依据公开文档;5 半公开(仅作"不可用"结论)。
 
-**对梁标**:全局状态快照 + 增量走自建 `GET /liangbiao/api/state` + `GET /liangbiao/api/events`(SSE);投票动作走 `POST /liangbiao/api/vote`(带幂等键)。详见 `docs/002`。
+**对梁向**:全局状态快照 + 增量走自建 `GET /liangbiao/api/state` + `GET /liangbiao/api/events`(SSE);投票动作走 `POST /liangbiao/api/vote`(带幂等键)。详见 `docs/002`。
 
 ---
 
@@ -193,7 +193,7 @@ ctx.slots.inject('shell.overlay', () => ctx.slots.register(
 
 **分级**:公开(README 成文 + 实现)。
 
-**对梁标**:方案 A 的自建折叠必须复刻此规则(实现独立编写,不复制源码);方案 B 直接消费 `tokenUsage` 累计值,自动继承该规则。
+**对梁向**:方案 A 的自建折叠必须复刻此规则(实现独立编写,不复制源码);方案 B 直接消费 `tokenUsage` 累计值,自动继承该规则。
 
 ---
 
@@ -214,13 +214,13 @@ ctx.slots.inject('shell.overlay', () => ctx.slots.register(
 
 **结论**(逐情形):
 
-| 情形 | DSH 事实 | 梁标对策 |
+| 情形 | DSH 事实 | 梁向对策 |
 |---|---|---|
 | replay/resume | seed 不上火hose(Q8);投影对未建 cell 懒惰全量重折,累计值幂等(`packages/session/session-projection/src/index.ts:388-412`);persistence append-only,crash 只追加 synthetic closer 不改写历史 | 只对火hose 上的新 append 记账;以 `(sessionId, seq)` 已计数水位持久化,重启后 `seq <= watermark` 一律丢弃 |
 | restart(DSH 进程重启) | `(sessionId, seq)` 对已提交事件跨重启稳定(append-only;第一方 telemetry 同样以 `(session.id, event.seq)` 去重,`packages/session/session-telemetry/README.md`) | 水位账本落 `ctx.storageDomain`;崩溃后从水位续算 |
 | fork | 子会话新 id,复制父前缀且**保留原 seq**(`packages/core/session/src/index.ts:1081-1138`);`header.parentSession`/`seedLength` 记录谱系 | 首次见到任何会话时把该会话水位基线设为当前日志末尾(基线化),父前缀用量不再计——同时天然满足"不追溯授予梁气"的冻结需求 |
 | compaction | 只追加(`compaction/start/summary/end` + `surfaceOp: {op:'replace'}` shadow 表面),原始用量事件仍在完整 durable log;摘要调用自身的 `compaction/summary.usage`(`packages/compaction/compaction/src/types.ts:51-52`)不进 `tokenUsage` 折叠 | 累计口径不受 compaction 影响;摘要调用用量按口径决定(v0.1 与 token-meter 对齐:不计,见 `docs/004` 风险) |
-| reconnect(浏览器) | client 投影 store 是 higher-seq-wins(`packages/client/runtime/src/client/sessions/projection-store.ts:134-137`) | 梁标 SSE 重连后全量快照重读 + 单调 revision,旧帧丢弃;投票提交带幂等键,重发不重计 |
+| reconnect(浏览器) | client 投影 store 是 higher-seq-wins(`packages/client/runtime/src/client/sessions/projection-store.ts:134-137`) | 梁向 SSE 重连后全量快照重读 + 单调 revision,旧帧丢弃;投票提交带幂等键,重发不重计 |
 
 **分级**:公开(各行证据如上)。
 
@@ -230,7 +230,7 @@ ctx.slots.inject('shell.overlay', () => ctx.slots.register(
 
 **结论**:
 
-- **账本类状态(梁气、水位、梁签、待发投票)** → `defineDomain(spec)` + `ctx.storageDomain.open(spec)`(`docs/subsystems/storage.md`;hub `ctx.storage`,后端 `json`/`sqlite`,web 组合默认 json,root 为 `dshHomePath('storages')`——`packages/bundle/web-app/cordis.patch.yml:54-62`)。第一方先例:workspace(`packages/workspace/workspace/src/index.ts:120`)、message-feedback(`packages/feedback/message-feedback/src/index.ts:174`,domain 名 `message_feedback`)、projection cache(domain `session_projcache`)。不存在按插件自动分区的通用 KV;域名自取(梁标用 `liangbiao`)。
+- **账本类状态(梁气、水位、梁签、待发投票)** → `defineDomain(spec)` + `ctx.storageDomain.open(spec)`(`docs/subsystems/storage.md`;hub `ctx.storage`,后端 `json`/`sqlite`,web 组合默认 json,root 为 `dshHomePath('storages')`——`packages/bundle/web-app/cordis.patch.yml:54-62`)。第一方先例:workspace(`packages/workspace/workspace/src/index.ts:120`)、message-feedback(`packages/feedback/message-feedback/src/index.ts:174`,domain 名 `message_feedback`)、projection cache(domain `session_projcache`)。不存在按插件自动分区的通用 KV;域名自取(梁向用 `liangbiao`)。
 - **用户偏好** → `ctx.settings.register(ns, schema, { base? })` 得 `SettingsScope`(`get`/`watch`/`update`),存 `$DSH_HOME/settings.yaml`(`packages/settings/settings/README.md`;文件提供方 `packages/settings/settings-file/src/index.ts:55-56`)。README 明确它是偏好/配置面,不是账本。
 - **裸文件(仅特殊场合)** → 路径一律经 `dshHomePath(...)`(`packages/util/home-paths/src/index.ts:98`,公开;boot 亦注入 Loader `!!js` 上下文);先例 `$DSH_HOME/.anonymous-user-id`。
 
@@ -264,7 +264,7 @@ ctx.slots.inject('shell.overlay', () => ctx.slots.register(
 
 | 参考点 | 插件 | 位置 | 学什么 |
 |---|---|---|---|
-| 产品型双面插件(与梁标形态最像) | `@deepseek-ai/dsh-session-log-export` | `packages/session-query/session-log-export` | Host 注册 command、Client 经 `slots.inject` 挂 `conversation.session.header.utilities`、inject 返回 `hooks` observable + 回调(`src/client/index.ts:40-49`)、package.json/exports/tsdown 全套骨架 |
+| 产品型双面插件(与梁向形态最像) | `@deepseek-ai/dsh-session-log-export` | `packages/session-query/session-log-export` | Host 注册 command、Client 经 `slots.inject` 挂 `conversation.session.header.utilities`、inject 返回 `hooks` observable + 回调(`src/client/index.ts:40-49`)、package.json/exports/tsdown 全套骨架 |
 | 基础设施双面插件 | `@deepseek-ai/dsh-api-gateway`、`@deepseek-ai/dsh-client-connection` | `packages/api/gateway`、`packages/client/connection` | Host 服务 + `dsh.client` `immediately: true` 的双半对齐;connection 的 Host 半注册 HTTP/WebSocket 路由 |
 | slot 声明 + store + 根注册 | `dsh-client-ui-layout` | `packages/client/ui-layout/src/client/index.ts:116-143` | `children` 声明(含 `shell.overlay`)、store 工厂、`ctx.effect` 生命周期、theme presenter |
 | 投影单元注册 | `@deepseek-ai/dsh-token-meter` | `packages/llm/token-meter/src/index.ts:87-90`、`src/usage-projection.ts` | `ctx.inject(['sessionProjections'], …)` 可选挂载模式、纯函数折叠、`(turn,step)` 去重、`stateVersion` |

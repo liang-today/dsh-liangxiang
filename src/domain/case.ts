@@ -43,7 +43,7 @@ export interface DailyLiangCase {
   tokenPerIncense: number
 }
 
-/** Validate a case (the parameter is named `value`: 梁标 has no Candidate concept). */
+/** Validate a case (the parameter is named `value`: 梁向 has no Candidate concept). */
 export function assertValidCase(value: DailyLiangCase): void {
   if (typeof value.id !== 'string' || value.id.length === 0) {
     throw new DomainError('invalid_policy', 'case id must be a non-empty string')

@@ -4,8 +4,8 @@
 # holds the database.
 #
 # Usage:
-#   pnpm run publish:case -- "测试发布：梁标是夯还是拉"
-#   bash scripts/publish-case.sh "测试发布：梁标是夯还是拉"
+#   pnpm run publish:case -- "测试发布：梁向是夯还是拉"
+#   bash scripts/publish-case.sh "测试发布：梁向是夯还是拉"
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

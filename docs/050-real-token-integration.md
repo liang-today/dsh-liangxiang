@@ -44,7 +44,7 @@ DSH tokenUsage projection（每会话累计四桶，公开 seam）
 
 ## UI（替换 mock）
 
-- 梁气环 fill / `再 N Token` / 环内 `N 炷` 全部来自真实观测 remainder（经 fake 服务的权威账目）;
+- 香火环 fill / `再 N Token` / 环内 `N 炷` 全部来自真实观测 remainder（经 fake 服务的权威账目）;
 - earned 跨 50K：SSE 帧 earned 增长 → 客户端播放一次「凝香 +1 炷」;
 - 中央梁子只读全局快照;个人 Token 增长不改变其状态（tests: `personal token growth alone never republishes…`）。
 

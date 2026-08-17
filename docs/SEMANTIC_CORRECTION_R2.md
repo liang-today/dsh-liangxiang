@@ -8,6 +8,8 @@
 
 `稳 / neutral / steady / candidate / ranking / leaderboard / winner / top-n / 大夯 / 偏夯 / 胶着 / 偏拉 / 大拉 / LiangScore / Bayesian / BallotLedger / LiangBallot / 梁签 / 小难梁 / 牢梁 / 梁哥 / 老梁 / AvatarTier / nextTier / incenseToNextTier / cacheRead * 0.1 / priorHang / priorLa / 一人一票`
 
+> 2026-08-17 品牌复核例外：这里记录的是当时对“牢梁作为业务状态”的清查。“牢梁”现在仅允许作为 `WAITING / 待开梁` 肖像内的装饰牌匾，不得进入状态枚举、可见标签或数据模型；五态肖像内与权威状态同名的胸牌同样允许。
+
 ## 发现与处置
 
 | 位置 | 发现的旧语义 | 处置 |
@@ -24,7 +26,7 @@
 | `docs/004-open-risks.md` | R-6/R-12 使用梁签、tokensPerBallot、目标路由集 | 文首加 R2 换读提示 |
 | `src/domain/index.ts` | 占位注释"梁气/梁签/ballot minting" | 被真实 domain 实现替换 |
 | `src/shared/index.ts` | （无旧语义，仅缺新文案常量） | 增补 今日梁案/夯/拉/香火/香客/五态标签 |
-| `src/client/Badge.tsx` | 注释提及"梁气环…后续里程碑"（非旧模型） | 被正式实现替换 |
+| `src/client/Badge.tsx` | 注释提及"香火环…后续里程碑"（非旧模型） | 被正式实现替换 |
 | `tests/*` | mock 数据无旧业务语义 | 按新模型全面重写/扩充 |
 
 ## 专项确认

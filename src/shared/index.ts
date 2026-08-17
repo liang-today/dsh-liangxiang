@@ -33,10 +33,10 @@ export const PLUGIN_VERSION = '0.4.0'
 export const HOST_PLUGIN_NAME = 'liangbiao'
 
 /** Frozen product copy (AGENTS.md): the product name. */
-export const PRODUCT_NAME = '梁标'
+export const PRODUCT_NAME = '梁向'
 
 /** Frozen product copy (AGENTS.md §1): the hover/focus tooltip. Must remain exactly this string. */
-export const HOVER_TEXT = '今日梁位'
+export const HOVER_TEXT = '今日梁向'
 
 /** Frozen product copy (AGENTS.md §1): the expanded panel title. */
 export const PANEL_TITLE = '今日梁案'
@@ -51,8 +51,8 @@ export const CYCLE_LOCAL_CASE_LABEL = '换一案'
 export const DEFAULT_CASE_TITLE = 'DeepSeek Harness 是夯还是拉'
 
 /** Vote button labels (Region 3) — exactly two, never a third. Equal-width pair. */
-export const VOTE_UP_LABEL = '夯：升梁！'
-export const VOTE_DOWN_LABEL = '拉：降梁！'
+export const VOTE_UP_LABEL = '夯 · 升梁'
+export const VOTE_DOWN_LABEL = '拉 · 降梁'
 
 /** Short direction names used in tooltips and the accessible summary. */
 export const VOTE_UP_NAME = '夯'
@@ -68,7 +68,7 @@ export const LIANG_POSITION_LABEL = '梁位'
  * Region 4 uses that for the GLOBAL accepted-vote count, and two different
  * numbers under one label is the fastest way to misread the panel.
  */
-export const MY_INCENSE_LABEL = '今日香火'
+export const MY_INCENSE_LABEL = '今日凝香'
 
 /** Caption of the personal "tokens to the next incense stick" flank. */
 export const NEXT_INCENSE_LABEL = '下一炷'
@@ -103,7 +103,7 @@ export const LOCAL_MODE_NOTE = '本地演示模式：香火与打梁均在本机
  * authenticate a DSH user nor verify the Token usage behind the incense.
  * Ed25519 installation keys only prove "same Host still holds this private key".
  */
-export const STAGING_MODE_NOTE = '社区软信任：打梁由梁标服务端记账；身份是本机安装密钥，Token 用量由本机声明、服务端无法核验。不是可信全网公投。'
+export const STAGING_MODE_NOTE = '社区软信任：打梁由梁向服务端记账；身份是本机安装密钥，Token 用量由本机声明、服务端无法核验。不是可信全网公投。'
 
 /** The note that must accompany each authority mode. */
 export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {
@@ -118,7 +118,7 @@ export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷�
 export const NO_INCENSE_GAG = '咣当——香炉空了，梁子催你先去攒香'
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
-export const OFFLINE_REASON = '未连上梁标服务：显示最近状态，重新打开面板可重试'
+export const OFFLINE_REASON = '未连上梁向服务：显示最近状态，重新打开面板可重试'
 
 /** Status line when the DSH accounting seams are absent in this assembly. */
 export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合缺少 token 投影能力'
@@ -127,11 +127,11 @@ export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合�
 export const ABSURD_CLAIM_NOTICE = 'Token 上报超出合理上限，已限幅（疑似异常）'
 
 /** First-run welcome: three plain-language lines (not just screen-reader copy). */
-export const WELCOME_TITLE = '欢迎来到梁标'
+export const WELCOME_TITLE = '欢迎来到梁向'
 export const WELCOME_LINES = [
-  '香火从 DSH 对话里攒：输入 + 输出每 5 万当量凝成一炷。',
-  '花一炷香投「夯」或「拉」，共同决定今日梁子。',
-  '这是社区软信任，不是加密验证的公投。',
+  '使用 DSH，输入 + 输出每 5 万当量凝成一炷香。',
+  '花一炷选择「夯」或「拉」，共同写下今日梁向。',
+  '每日结案后，结果收入梁祠；这是社区软信任玩法。',
 ]
 export const WELCOME_ONLINE_LABEL = '进入在线'
 export const WELCOME_LOCAL_LABEL = '改用本地'

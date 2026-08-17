@@ -1,5 +1,5 @@
 /**
- * Client half (exports["./client"] entry): register the 梁标 entry (badge +
+ * Client half (exports["./client"] entry): register the 梁向 entry (badge +
  * panel container) into shell.overlay. All DSH touchpoints go through
  * compat/dsh; this module itself imports no DSH symbols.
  */

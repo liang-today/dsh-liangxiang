@@ -22,7 +22,7 @@ DSH 源码检出位置(相对本仓库根):`../deepseek-harness`。本仓库任�
 
 ## 预发布警示
 
-DSH 根 `AGENTS.md` § "Pre-release stance: foundation over blast radius" 明文:首个 tagged release 之前**没有任何兼容承诺**——自由重命名/重打包、后端拒绝旧盘上格式、`SESSION_FORMAT_VERSION` 钉在 `0` 且无兼容保证。对梁标的含义:所有 DSH 触点都可能在无告警的情况下破坏,必须全部隔离在 `compat/dsh` 层并按 `docs/003` 的矩阵逐项监控。
+DSH 根 `AGENTS.md` § "Pre-release stance: foundation over blast radius" 明文:首个 tagged release 之前**没有任何兼容承诺**——自由重命名/重打包、后端拒绝旧盘上格式、`SESSION_FORMAT_VERSION` 钉在 `0` 且无兼容保证。对梁向的含义:所有 DSH 触点都可能在无告警的情况下破坏,必须全部隔离在 `compat/dsh` 层并按 `docs/003` 的矩阵逐项监控。
 
 ## API 分级定义
 
@@ -68,7 +68,7 @@ DSH 根 `AGENTS.md` § "Pre-release stance: foundation over blast radius" 明文
 
 DSH 检出更新(commit 变化)后,进入任何编码里程碑前必须重跑以下核对,并更新本文件与 `docs/003`:
 
-1. `SessionEventMap` 中梁标依赖的成员是否仍在、字段是否变化:`assistant/chunk`、`assistant/message.usage`、`request/header`、`request/context`、`session/end-seed`、`turn/*`、`step/*`(`packages/core/session/src/types.ts`)。
+1. `SessionEventMap` 中梁向依赖的成员是否仍在、字段是否变化:`assistant/chunk`、`assistant/message.usage`、`request/header`、`request/context`、`session/end-seed`、`turn/*`、`step/*`(`packages/core/session/src/types.ts`)。
 2. `TokenUsage` 桶语义(disjoint、reasoning 含于 output)是否变化(`packages/llm/llm/src/types.ts:135`)。
 3. `shell.overlay` slot 是否仍由 `ui-layout` 声明、click-through 语义是否不变(`packages/client/ui-layout/src/client/index.ts:83`;重新生成/查看 slot catalog)。
 4. `dsh.client` 清单校验与 `exports["./client"]` 要求是否变化(`packages/client/modules/src/index.ts`),浏览器 bundle 包装格式(`window.__ModuleLoader__.load` banner)是否变化(`packages/client/tsdown.client.ts:269-271`)。

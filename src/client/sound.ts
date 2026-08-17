@@ -1,5 +1,5 @@
 /**
- * Tiny synthesized sound cues for 梁标 — no audio assets, Web Audio only.
+ * Tiny synthesized sound cues for 梁向 — no audio assets, Web Audio only.
  * 升梁 / 降梁 / 香火增长 / 梁子换态 each play a short tone. Volume is a
  * 4-step cosmetic preference (0=无, 1=小 33%, 2=中 66%, 3=大 100%) persisted
  * in localStorage; it scales the synthesized gain only — it never touches

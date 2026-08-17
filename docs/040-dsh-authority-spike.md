@@ -13,7 +13,7 @@
 | 5 | 可否删除/重置？ | 可以：删除 `.anonymous-user-id` 下次启动重生成;不同 `$DSH_HOME` 互不关联 | README:7、:27-29 |
 | 6 | 是否只能作 pseudonymous identifier？ | **是**。绝不能当 Auth 用（可零成本重置=无限新身份;可复制=身份冒用） | 综合上述 |
 | 7 | DeepSeek provider 是否发送 harness user id header？ | 是：`dsh-llm-deepseek` 向其解析出的 `baseURL` 发送 `x-deepseek-harness-user-id` | `packages/llm/llm-deepseek/src/adapter.ts:288`、`src/index.ts:22` |
-| 8 | 梁标 Backend 能否合法验证该 header 真实性？ | **不能**。header 只到 DeepSeek 网关;梁标 Backend 不在链路上，也无 DSH 提供的核验 API。声称"某 UUID 用了 N Token"的只能是客户端自己 | adapter.ts（header 仅注入 provider 请求）;全仓无对第三方开放的核验端点 |
+| 8 | 梁向 Backend 能否合法验证该 header 真实性？ | **不能**。header 只到 DeepSeek 网关;梁向 Backend 不在链路上，也无 DSH 提供的核验 API。声称"某 UUID 用了 N Token"的只能是客户端自己 | adapter.ts（header 仅注入 provider 请求）;全仓无对第三方开放的核验端点 |
 
 **分级**：anonymous-user-id 公开（README + 导出）;credentials 公开但语义无关;"无 Auth"为否定性结论（穷举搜索）。
 
@@ -29,7 +29,7 @@
 - Token 数据的仅有形态：会话日志内 durable 事件（`assistant/chunk` usage / `assistant/message.usage`）与其投影 —— 均为**本地** Host 进程内数据。
 - telemetry（OTel）可上报使用数据到运营侧，但那是 DSH 官方遥测通道，不对第三方 Backend 提供查询/核验 API，且可用 `DSH_TELEMETRY_DISABLED` 关闭（`anonymous-user-id/README.md:15`）。
 
-**结论**：本地 Host 能"读到"Token ≠ 梁标云端能"验证"Token。当前 DSH 不提供任何服务器可验证的用量权威。
+**结论**：本地 Host 能"读到"Token ≠ 梁向云端能"验证"Token。当前 DSH 不提供任何服务器可验证的用量权威。
 
 ## D. DSH Backend/API conventions
 
@@ -38,7 +38,7 @@
 ## E. Business date / timezone
 
 - DSH 无业务日期/时区概念：`settings` 是通用偏好面（`packages/settings/settings/README.md`），无 timezone 用户设置;会话事件只有 Unix 毫秒 `time`（`packages/core/session/src/types.ts:404-436`）。
-- 因此梁标自行管理：本地模式用显式可配置 dev business timezone（默认 `Asia/Shanghai`，env 覆盖）;在线模式必须以未来 Backend 的 `business_date`/server time 为准（AGENTS.md §10）。浏览器本地日期永不作为票权 authority。
+- 因此梁向自行管理：本地模式用显式可配置 dev business timezone（默认 `Asia/Shanghai`，env 覆盖）;在线模式必须以未来 Backend 的 `business_date`/server time 为准（AGENTS.md §10）。浏览器本地日期永不作为票权 authority。
 
 ## 结论 → Decision Gate A
 

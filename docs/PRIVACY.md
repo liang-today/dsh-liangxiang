@@ -1,4 +1,4 @@
-# PRIVACY — 梁标处理与不处理什么
+# PRIVACY — 梁向处理与不处理什么
 
 范围：本仓 v0.1（DSH 插件 + localhost 后端）。基线 `AGENTS.md` §9。
 
@@ -8,7 +8,7 @@
 - 源码、文件内容、会话记录
 - 文件路径（诊断用途也只在本机日志出现，且不含内容）
 - API key、凭据、provider secret
-- 用户名、邮箱、IP 归属地等身份信息（梁标从不索取）
+- 用户名、邮箱、IP 归属地等身份信息（梁向从不索取）
 
 ## 实际处理的数据
 
@@ -16,7 +16,7 @@
 |---|---|---|---|
 | provider-reported token 计数（四桶求和后的两个整数） | Host 内存 + DSH storage domain (`daily_usage`) | 只作为**整数**随 claim 出网 | 不含任何内容，仅数量 |
 | 每会话高水位 (`watermarks`) | 同上 | ❌ | 只为防重复计数，`sessionId` 不出网 |
-| 假名安装标识 `inst-<uuid>` | DSH storage domain (`identity`) | ✅ 作为请求头 | 梁标自铸的随机 uuid，**不复用** DSH 的 `.anonymous-user-id`；删掉即换新身份 |
+| 假名安装标识 `inst-<uuid>` | DSH storage domain (`identity`) | ✅ 作为请求头 | 梁向自铸的随机 uuid，**不复用** DSH 的 `.anonymous-user-id`；删掉即换新身份 |
 | 业务日、`case_id`、`vote_type`、`request_id` | 后端 DB | ✅ | 投票所需的最小意图 |
 | 已消费香火数 / 声明的 token 总数 | 后端 DB | — | 服务端持有 |
 | 徽章位置 | 浏览器 `localStorage` | ❌ | 纯外观偏好 |
@@ -35,4 +35,4 @@
 
 ## 诚实边界
 
-假名安装标识**不是**匿名化保证：同一浏览器/机器的多次投票可被关联，服务端能看到「某个安装今天投了几票、声明了多少 token」。它只保证梁标不知道你是谁，不保证不可关联。
+假名安装标识**不是**匿名化保证：同一浏览器/机器的多次投票可被关联，服务端能看到「某个安装今天投了几票、声明了多少 token」。它只保证梁向不知道你是谁，不保证不可关联。
