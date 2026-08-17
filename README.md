@@ -37,8 +37,10 @@
 - 因此这**不是** secure / verified / 可信全网 usage voting。`VERIFIED_PRODUCTION` 在后端启动门禁与 wire 类型上双重禁用,UI 屏幕阅读器摘要固定播报社区软信任说明（安装密钥 + 本机声明 Token，不是公投）。详见 [`docs/075`](docs/075-backend-decision.md)、[`docs/121`](docs/121-vps-deploy.md)。
 
 当前社区后端是带 Ed25519 安装签名与共享闭测口令的公网 soft-trust
-节点；正式客户端统一连接 `https://api.liang.today`，香港节点切换完成前
-不作为正式公开服务。尚未发布 npm 或 GitHub Release。
+节点；数据与服务已经迁往香港，正式客户端统一连接
+`https://api.liang.today`。域名切换完成前可用 `hk-api.liang.today` 旁路验收，
+旧节点只保留限时透明转发，不再运行后端或持有写入权。尚未发布 npm 或
+GitHub Release。迁移实录见 [`docs/142-hk-migration-report.md`](docs/142-hk-migration-report.md)。
 
 ## 文档导航
 
