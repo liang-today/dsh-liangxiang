@@ -153,19 +153,16 @@ export function formatLiangPosition(
  *   9        -> 9
  *   999      -> 999
  *   1,000    -> 1K
- *   1,499    -> 1.5K
- *   3,000    -> 3K
+ *   1,499    -> 1.5K  (fractionDigits 1, default)
  *   33,421   -> 33.4K
- *   46,935   -> 46.9K
- *   50,000   -> 50K
- *   1,500,000 -> 1.5M
+ *   33,421   -> 33K   (fractionDigits 0 — 下一炷 当量, avoids overlapping 梁子)
  */
-export function formatCompactCount(n: number): string {
+export function formatCompactCount(n: number, fractionDigits: 0 | 1 = 1): string {
   assertCount(n, 'invalid_token_count', 'compactCount')
   if (n < 1_000) return String(n)
-  if (n < 1_000_000) return formatScaled(n, 1_000, 'K', 1_000_000, 'M')
-  if (n < 1_000_000_000) return formatScaled(n, 1_000_000, 'M', 1_000_000_000, 'B')
-  return formatScaled(n, 1_000_000_000, 'B', Number.POSITIVE_INFINITY, '')
+  if (n < 1_000_000) return formatScaled(n, 1_000, 'K', 1_000_000, 'M', fractionDigits)
+  if (n < 1_000_000_000) return formatScaled(n, 1_000_000, 'M', 1_000_000_000, 'B', fractionDigits)
+  return formatScaled(n, 1_000_000_000, 'B', Number.POSITIVE_INFINITY, '', fractionDigits)
 }
 
 /**
@@ -175,9 +172,9 @@ export function formatCompactCount(n: number): string {
 export function formatZhCompactCount(n: number): string {
   assertCount(n, 'invalid_token_count', 'zhCompactCount')
   if (n < 10_000) return n.toLocaleString('zh-CN')
-  if (n < 1_000_000) return formatScaled(n, 10_000, '万', 1_000_000, '百万')
-  if (n < 100_000_000) return formatScaled(n, 1_000_000, '百万', 100_000_000, '亿')
-  return formatScaled(n, 100_000_000, '亿', Number.POSITIVE_INFINITY, '')
+  if (n < 1_000_000) return formatScaled(n, 10_000, '万', 1_000_000, '百万', 1)
+  if (n < 100_000_000) return formatScaled(n, 1_000_000, '百万', 100_000_000, '亿', 1)
+  return formatScaled(n, 100_000_000, '亿', Number.POSITIVE_INFINITY, '', 1)
 }
 
 function formatScaled(
@@ -186,8 +183,10 @@ function formatScaled(
   suffix: string,
   nextUnit: number,
   nextSuffix: string,
+  fractionDigits: 0 | 1,
 ): string {
-  const rounded = Math.round((n / unit) * 10) / 10
+  const factor = 10 ** fractionDigits
+  const rounded = Math.round((n / unit) * factor) / factor
   if (nextSuffix !== '' && rounded * unit >= nextUnit) return `1${nextSuffix}`
   return `${trimDecimal(rounded)}${suffix}`
 }

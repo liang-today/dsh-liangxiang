@@ -14,8 +14,8 @@
  *
  * Presentation only. It never feeds vote authority: the vote button still
  * reads the authoritative `remainingIncense`, and the left flank / 凝香 /
- * glyphs all keep the authoritative counts. `isEstimated` lets the caller
- * prefix the visible 下一炷 with `≈` while the number is a projection.
+ * glyphs all keep the authoritative counts. The visible 下一炷 number is an
+ * integer compact count (no `≈`, no decimal) so it does not overlap 梁子.
  */
 import { useEffect, useReducer, useRef } from 'react'
 import type { PersonalLiangQiState } from '../domain/index.ts'

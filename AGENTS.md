@@ -92,10 +92,9 @@ Rules:
 - right overlay: personal `tokens_to_next_incense` in **Pro 当量** (not raw
   Flash Token). Hover/focus on 下一炷 shows the model-weight table
   (Pro ×1 / Flash ×0.5 / 其它 ×1).
-- visible flank counts use `formatCompactCount` (`0–999` exact, then one-decimal
-  `K`/`M`/`B`) so `46,935 当量` stays short (`46.9K`) without freezing the
-  typical 下一炷 band as a stuck `33K`. Hover title and the screen-reader
-  summary keep the exact integer.
+- visible 下一炷 当量 uses integer compact (`33K`, never `≈ 33.4K`) so the
+  flank does not overlap 梁子. Hover title and the screen-reader summary keep
+  the exact integer. 今日香火 / 环上 overflow 仍可用一位小数。
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
   6 decimals (`LIANG_POSITION_DECIMALS`) — then a causal arrow to the 称呼
   (`梁位 83.021952% → 梁神`). The 称呼 is not painted on the portrait.

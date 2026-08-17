@@ -362,12 +362,12 @@ export function LiangbiaoBadge(): ReactElement {
           setVoteFeedback(NO_INCENSE_REASON)
           void store.reconcile().catch(() => undefined)
         } else {
-          setVoteFeedback(`投票被拒绝：${result.reason}`)
+          setVoteFeedback(`打梁被拒绝：${result.reason}`)
         }
       },
       (error: unknown) => {
-        console.warn(`[dsh-liangbiao] vote failed: ${error instanceof Error ? error.message : String(error)}`)
-        setVoteFeedback('投票失败，请稍后重试')
+        console.warn(`[dsh-liangbiao] 打梁失败: ${error instanceof Error ? error.message : String(error)}`)
+        setVoteFeedback('打梁失败，请稍后重试')
       },
     )
   }
