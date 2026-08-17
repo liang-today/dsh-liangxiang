@@ -52,6 +52,16 @@ read_config() {
   awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1); exit }' "$ENV_FILE"
 }
 
+print_effective_config() {
+  local suffix="$1" fallback="$2" raw
+  raw="$(read_config "LIANGXIANG_${suffix}")"
+  if [[ -n "$raw" ]]; then
+    printf '%-26s %s\n' "$suffix" "$raw"
+  else
+    printf '%-26s %s（默认）\n' "$suffix" "$fallback"
+  fi
+}
+
 run_backend_cli() {
   cd "$PREFIX"
   node lib/backend-cli.js "$@"
@@ -163,9 +173,13 @@ case "$1" in
   config)
     case "${2:-}" in
       list)
-        for suffix in BUSINESS_TZ SNAPSHOT_SECONDS TOKEN_PER_INCENSE VOTE_RATE_LIMIT VOTE_RATE_LIMIT_MAX_KEYS ABSURD_CLAIM_TOKENS REKEY_COOLDOWN_MS; do
-          printf '%-26s %s\n' "${suffix}" "$(read_config "LIANGXIANG_${suffix}")"
-        done
+        print_effective_config BUSINESS_TZ Asia/Shanghai
+        print_effective_config SNAPSHOT_SECONDS 1
+        print_effective_config TOKEN_PER_INCENSE 50000
+        print_effective_config VOTE_RATE_LIMIT 600
+        print_effective_config VOTE_RATE_LIMIT_MAX_KEYS 4096
+        print_effective_config ABSURD_CLAIM_TOKENS 25000000
+        print_effective_config REKEY_COOLDOWN_MS 86400000
         if [[ -n "$(read_config LIANGXIANG_COMMUNITY_KEY)" ]]; then
           echo "COMMUNITY_KEY              已设置（已隐藏）"
         else
