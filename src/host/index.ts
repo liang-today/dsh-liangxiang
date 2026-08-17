@@ -2,10 +2,11 @@
  * Host half: real DSH token observation plus the voting loop, in one of two
  * honestly-labelled authority modes.
  *
- *   LIANGBIAO_BACKEND_URL unset -> LOCAL_FAKE_DEV
+ *   LIANGBIAO_BACKEND_URL=local -> LOCAL_FAKE_DEV
  *     `FakeAuthoritativeLiangService`: everything in this process.
  *
- *   LIANGBIAO_BACKEND_URL set    -> DEV_STAGING_ONLY
+ *   LIANGBIAO_BACKEND_URL unset  -> try baked staging URL (DEV_STAGING_ONLY);
+ *     health probe miss falls back to LOCAL_FAKE_DEV.
  *     `BackendLiangService`: the online Liangbiao backend owns the spend
  *     ledger, idempotency, the aggregate and the business date; this half
  *     observes tokens (a claim, not a proof), holds the self-minted
@@ -27,10 +28,12 @@ import { attachUsageObservation } from '../compat/dsh/usage-observer.ts'
 import { systemClock } from '../shared/business-date.ts'
 import { HOST_PLUGIN_NAME, PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
 import { createBackendClient } from './backend-client.ts'
+import { probeBackendHealth } from './backend-health.ts'
 import { BackendLiangService } from './backend-service.ts'
 import { type CommunityKeypair } from './community-keys.ts'
 import { resolveHostRuntimeConfig } from './config.ts'
 import { FakeAuthoritativeLiangService } from './fake-service.ts'
+import { AuthoritySlot } from './authority-slot.ts'
 import { createLiangbiaoApi } from './routes.ts'
 import type { LiangHostService } from './service.ts'
 
@@ -56,6 +59,7 @@ export function apply(ctx: DshHostContext): void {
 
   const { service: serviceConfig, backendUrl, communityKey } = resolveHostRuntimeConfig(process.env, warn)
   const identityRef: { current: CommunityKeypair | null } = { current: null }
+  const local = new FakeAuthoritativeLiangService(serviceConfig, systemClock, warn)
   const online = backendUrl !== null
     ? new BackendLiangService({
       client: createBackendClient({
@@ -69,17 +73,34 @@ export function apply(ctx: DshHostContext): void {
       identityRef,
     })
     : null
-  const local = online === null
-    ? new FakeAuthoritativeLiangService(serviceConfig, systemClock, warn)
-    : null
-  const service: LiangHostService = online ?? (local as FakeAuthoritativeLiangService)
+  const slot = new AuthoritySlot(online ?? local)
+  const service: LiangHostService = slot
+  let persistHandle: LiangbiaoPersistenceHandle | null = null
 
   console.log(
     `[${PLUGIN_PACKAGE_NAME}] authority mode: ${online === null ? 'LOCAL_FAKE_DEV (in-process)' : `DEV_STAGING_ONLY (${backendUrl as string})`}`
     + ' — community soft trust: Ed25519 installation key, unverifiable Token claims',
   )
 
-  ctx.effect(() => () => service.dispose?.(), 'liangbiao: service lifecycle')
+  const probeAbort = new AbortController()
+  if (online !== null && backendUrl !== null) {
+    void probeBackendHealth(backendUrl, 2_500, fetch, probeAbort.signal).then((ok) => {
+      if (ok || probeAbort.signal.aborted) return
+      warn(
+        `[${PLUGIN_PACKAGE_NAME}] staging backend unreachable (${backendUrl}); `
+        + 'falling back to LOCAL_FAKE_DEV — panel title will show 今日梁案（本地）',
+      )
+      slot.use(local)
+      if (persistHandle !== null) {
+        void local.attachPersistence(persistHandle.port)
+      }
+    })
+  }
+
+  ctx.effect(() => () => {
+    probeAbort.abort()
+    service.dispose?.()
+  }, 'liangbiao: service lifecycle')
 
   // Bounded readiness fallback: if no storage domain hydrates us in time, run
   // memory-only (local mode) / with an ephemeral installation id (online mode)
@@ -133,7 +154,8 @@ export function apply(ctx: DshHostContext): void {
             return
           }
           handle = opened
-          if (online !== null) {
+          persistHandle = opened
+          if (slot.current === online && online !== null) {
             // Online mode: persistence carries the local token projection and
             // the pseudonymous installation id; the spend ledger is the
             // backend's, never this file's.
@@ -141,7 +163,7 @@ export function apply(ctx: DshHostContext): void {
             online.hydrateUsage(persisted.watermarks, persisted.dailyUsage, opened.port)
             online.attachCommunityIdentity(await opened.identity.resolve())
           } else {
-            await local?.attachPersistence(opened.port)
+            await local.attachPersistence(opened.port)
           }
         })
         .catch((error: unknown) => {
@@ -150,6 +172,7 @@ export function apply(ctx: DshHostContext): void {
         })
       return () => {
         disposed = true
+        persistHandle = null
         const open = handle
         handle = null
         if (open !== null) {

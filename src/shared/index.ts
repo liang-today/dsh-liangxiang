@@ -26,6 +26,12 @@ export const HOVER_TEXT = '今日梁位'
 /** Frozen product copy (AGENTS.md §1): the expanded panel title. */
 export const PANEL_TITLE = '今日梁案'
 
+/** Region 1 title when the Host fell back to the in-process local loop. */
+export const PANEL_TITLE_LOCAL = '今日梁案（本地）'
+
+/** Local-only control: cycle the prepared 今日梁案 list. Not a fifth region. */
+export const CYCLE_LOCAL_CASE_LABEL = '换一案'
+
 /** V0.1 default daily case title (the mock/local case). */
 export const DEFAULT_CASE_TITLE = 'DeepSeek Harness 是夯还是拉'
 
@@ -51,6 +57,9 @@ export const MY_INCENSE_LABEL = '今日香火'
 
 /** Caption of the personal "tokens to the next incense stick" flank. */
 export const NEXT_INCENSE_LABEL = '下一炷'
+
+/** Third-row caption under 下一炷, mirroring 可投 N 炷 on the left. */
+export const NEXT_INCENSE_PROGRESS_LABEL = '已攒'
 
 /** Visible unit under 下一炷: Pro-equivalent tokens, not raw Flash tokens. */
 export const NEXT_INCENSE_UNIT = '当量'

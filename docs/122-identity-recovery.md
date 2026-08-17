@@ -1,72 +1,70 @@
-# 122 — 安装标识恢复（换新设备 / 重铸密钥 / 复制了 `.dsh-home`）
+# 122 — 安装标识与密钥（自助删钥 / 指纹接管 / 运营 CLI）
 
 ## 问题
 
-安装标识是一个 Ed25519 密钥对，首次安装时铸一次，存进 DSH 存储域
-（`$DSH_HOME/storages/liangbiao.json` → `tables.identity.installation`）。
-后端把 `device_fingerprint`（本机 MAC 的 SHA-256）**唯一绑定**到这一个标识：
+安装标识是一个 Ed25519 密钥对，首次安装时铸一次。后端把
+`device_fingerprint`（本机 MAC 的 SHA-256）唯一绑定到这一个标识。
 
-- 同一台机器、同一个指纹，重新铸密钥 → 后端 `409 device_conflict`；
-- 把 `.dsh-home`（或那个 JSON）拷到第二台机器 → 第二台机器连私钥带指纹一起
-  骑了原标识，表现成同一个香客。
+运营改梁案如果走 HTTP，就要对公网开一个带社区口令的端口。口令会随
+请求离开机器。改为：**梁案与运营解绑只在 VPS 本机用 CLI 写 SQLite**，
+HTTP 不再提供 `/v1/admin/*`。
 
-早期实现里这个绑定**永久生效、无解**。本方案加了两种「有代价」的恢复路径。
+用户自己的私钥只有自己有，可以随时删自己的标识；但必须限频，避免被
+拿来当扫描器。
 
-## 代价
+## 方案
 
-无论哪种恢复，旧标识的**香火/投票都不转移**：它留在死掉的旧 id 上，新 id 从 0
-开始。这是恢复的固有代价——重铸密钥 = 放弃旧香客身份。
+### 1. 运营：CLI only（不开端口）
 
-## 两条恢复路径
-
-### A. 自助 re-key（有冷却）
-
-`POST /v1/identity/rekey`，由**新密钥**签名（跳过指纹绑定校验）。只有当旧标识
-已静默超过 `LIANGBIAO_REKEY_COOLDOWN_MS`（默认 **24h**）时才允许接管指纹；
-否则返回 `409 rekey_cooldown`（提示还需等多久）。
+在放数据库的那台机器上：
 
 ```bash
-curl -X POST "$BACKEND/v1/identity/rekey" \
-  -H 'x-liangbiao-community-key: <社区口令>' \
-  -H 'x-liangbiao-installation: <新 lk_ id>' \
-  -H 'x-liangbiao-public-key: <新公钥 base64url>' \
-  -H 'x-liangbiao-device: <本机指纹>' \
-  -H 'x-liangbiao-timestamp: <毫秒>' \
-  -H 'x-liangbiao-signature: <签名>' \
-  -H 'content-type: application/json' -d '{}'
+pnpm run build
+node lib/backend-cli.js case publish "新题是夯还是拉"
+node lib/backend-cli.js case queue list
+node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "明日题是夯还是拉"
+node lib/backend-cli.js identity unbind lk_旧id
 ```
 
-签名规范与其它 `/v1` 一致（`communityAuthMessage`，见 `backend-v1.ts`）。
+脚本 `scripts/publish-case.sh` / `scripts/queue-case.sh` 也改走这条 CLI。
+`POST /v1/admin/cases`、`/v1/admin/queue`、`/v1/admin/identity/unbind` 一律 404。
 
-### B. 运营强制解绑（立即，社区口令）
+### 2. 用户自助删钥 `POST /v1/identity/revoke`
 
-`POST /v1/admin/identity/unbind`，社区口令认证，删掉绑定行、立刻释放指纹。
-用于**误删密钥等紧急情况**（不用等 24h）。
+用**自己的私钥**签名。命中已登记公钥则删掉该 identity 行（香火弃号，不转移）。
 
-```bash
-curl -X POST "$BACKEND/v1/admin/identity/unbind" \
-  -H 'x-liangbiao-community-key: <社区口令>' \
-  -H 'content-type: application/json' \
-  -d '{"installation_id": "lk_旧id"}'
-```
+### 3. 指纹接管 `POST /v1/identity/rekey`（保留）
 
-解绑后设备重新注册：若仍持旧私钥 → 恢复旧 id（香火保留）；若已重铸 → 新 id（从 0）。
+同机重铸密钥后，等旧标识静默超过 `LIANGBIAO_REKEY_COOLDOWN_MS`（默认 24h）
+才能接管指纹。旧香火仍不转移。
+
+### 4. 频率限制（两条路径共用）
+
+| 判定 | 窗口 | 键 |
+|---|---|---|
+| **命中**（公钥或指纹已在 `community_identity`） | 10 分钟 | 同一 IP + installation |
+| **未命中**（怀疑扫描/攻击） | 30 分钟 | 同一 IP |
+
+每次尝试（成功或拒绝）都打日志：`revoke` / `rekey` + `kind=hit|miss` + install 前缀 + ip。
+超限返回 `429 identity_rate_limited`。
+
+计时：命中只在**成功**时刷新 10 分钟窗（误点不会把冷却再推后）；未命中每次尝试都刷新 30 分钟窗（扫钥会把自己锁得更久）。
 
 ## 各类情况怎么走
 
-| 情况 | 后端表现 | 处理 |
+| 情况 | 表现 | 处理 |
 |---|---|---|
-| 干净新设备首次装 | 自动铸新 id，绑定新指纹 | 无需处理 |
-| 复制了 `.dsh-home`（骑了别人 id） | 与源机器同 id、同香客 | 目标机 `pnpm run reset:identity` + 重启 → 铸新 id + 本机指纹 |
-| 同机重铸密钥（误删/故意） | `409 device_conflict` | 等 24h 后 re-key，或运营 `unbind` 立即放行 |
-| 无 MAC 指纹（VM/WSL/容器） | 指纹为 null，不绑定 | 天然可重铸，无 409 |
+| 干净新设备首次装 | bootstrap 铸新 id | 无需处理 |
+| 用户想扔掉自己的密钥 | `POST /v1/identity/revoke`（自己签） | 10 分钟一次；香火弃号 |
+| 同机重铸密钥 | 指纹仍绑旧 id → `409 device_conflict` | 等 24h 后 re-key，或 VPS 上 CLI `identity unbind` |
+| 随机钥打 revoke/rekey | 公钥未命中 | 该 IP 30 分钟一次，打可疑日志 |
+| 复制了 `.dsh-home` | 与源机器同 id | 目标机 `pnpm run reset:identity` |
 
 ## 配置
 
-- `LIANGBIAO_REKEY_COOLDOWN_MS`：re-key 冷却（毫秒，默认 `86400000`）。`0`
-  关闭冷却（仅测试/运营自用）。
+- `LIANGBIAO_REKEY_COOLDOWN_MS`：指纹接管冷却（默认 86400000）。`0` 仅测试。
 
 ## 测试
 
-`tests/identity-recovery.spec.ts`（re-key 冷却/接管/弃号、运营解绑）、
-`tests/community-auth.spec.ts`（`skipFingerprintEnforcement` 只校验签名不绑定）。
+`tests/identity-recovery.spec.ts`、`tests/operator-identity.spec.ts`、
+`tests/community-auth.spec.ts`、`tests/backend-http.spec.ts`（admin 路由 404）。

@@ -1,5 +1,5 @@
 /**
- * P0 Liangzi threshold matrix: WAITING at zero votes, exact 20/40/60/80
+ * P0 Liangzi threshold matrix: WAITING at zero votes, exact 50/70/85/95
  * boundaries, policy validation (monotonic, in (0,1), no overlap/gap).
  */
 import { describe, expect, it } from 'vitest'
@@ -24,14 +24,14 @@ describe('zero votes', () => {
 describe('exact threshold boundaries from integer counts', () => {
   const cases: Array<[up: number, down: number, expected: LiangziState]> = [
     [0, 100, 'liang_gong'], //   0%
-    [19_999, 80_001, 'liang_gong'], // 19.999%
-    [20_000, 80_000, 'liang_zong'], // 20%
-    [39_999, 60_001, 'liang_zong'], // 39.999%
-    [40_000, 60_000, 'liang_shen'], // 40%
-    [59_999, 40_001, 'liang_shen'], // 59.999%
-    [60_000, 40_000, 'liang_sheng'], // 60%
-    [79_999, 20_001, 'liang_sheng'], // 79.999%
-    [80_000, 20_000, 'liang_zu'], // 80%
+    [49_999, 50_001, 'liang_gong'], // 49.999%
+    [50_000, 50_000, 'liang_zong'], // 50%
+    [69_999, 30_001, 'liang_zong'], // 69.999%
+    [70_000, 30_000, 'liang_shen'], // 70%
+    [84_999, 15_001, 'liang_shen'], // 84.999%
+    [85_000, 15_000, 'liang_sheng'], // 85%
+    [94_999, 5_001, 'liang_sheng'], // 94.999%
+    [95_000, 5_000, 'liang_zu'], // 95%
     [100_000, 0, 'liang_zu'], // 100%
   ]
 
@@ -43,14 +43,14 @@ describe('exact threshold boundaries from integer counts', () => {
 describe('ratio-level boundaries', () => {
   const cases: Array<[ratio: number, expected: LiangziState]> = [
     [0, 'liang_gong'],
-    [0.19999, 'liang_gong'],
-    [0.2, 'liang_zong'],
-    [0.39999, 'liang_zong'],
-    [0.4, 'liang_shen'],
-    [0.59999, 'liang_shen'],
-    [0.6, 'liang_sheng'],
-    [0.79999, 'liang_sheng'],
-    [0.8, 'liang_zu'],
+    [0.49999, 'liang_gong'],
+    [0.5, 'liang_zong'],
+    [0.69999, 'liang_zong'],
+    [0.7, 'liang_shen'],
+    [0.84999, 'liang_shen'],
+    [0.85, 'liang_sheng'],
+    [0.94999, 'liang_sheng'],
+    [0.95, 'liang_zu'],
     [1, 'liang_zu'],
   ]
 
@@ -62,24 +62,24 @@ describe('ratio-level boundaries', () => {
 describe('state bands and their displayed percentages', () => {
   it('exposes the frozen band of every state', () => {
     expect(liangziUpRatioBand('waiting')).toEqual({ minInclusive: null, maxExclusive: null })
-    expect(liangziUpRatioBand('liang_gong')).toEqual({ minInclusive: null, maxExclusive: 0.2 })
-    expect(liangziUpRatioBand('liang_zong')).toEqual({ minInclusive: 0.2, maxExclusive: 0.4 })
-    expect(liangziUpRatioBand('liang_shen')).toEqual({ minInclusive: 0.4, maxExclusive: 0.6 })
-    expect(liangziUpRatioBand('liang_sheng')).toEqual({ minInclusive: 0.6, maxExclusive: 0.8 })
-    expect(liangziUpRatioBand('liang_zu')).toEqual({ minInclusive: 0.8, maxExclusive: null })
+    expect(liangziUpRatioBand('liang_gong')).toEqual({ minInclusive: null, maxExclusive: 0.5 })
+    expect(liangziUpRatioBand('liang_zong')).toEqual({ minInclusive: 0.5, maxExclusive: 0.7 })
+    expect(liangziUpRatioBand('liang_shen')).toEqual({ minInclusive: 0.7, maxExclusive: 0.85 })
+    expect(liangziUpRatioBand('liang_sheng')).toEqual({ minInclusive: 0.85, maxExclusive: 0.95 })
+    expect(liangziUpRatioBand('liang_zu')).toEqual({ minInclusive: 0.95, maxExclusive: null })
   })
 
   it('renders the band as user-facing copy', () => {
     expect(liangziRatioRangeText('waiting')).toBe('尚无投票')
-    expect(liangziRatioRangeText('liang_gong')).toBe('夯率 < 20%')
-    expect(liangziRatioRangeText('liang_sheng')).toBe('60% ≤ 夯率 < 80%')
-    expect(liangziRatioRangeText('liang_zu')).toBe('夯率 ≥ 80%')
+    expect(liangziRatioRangeText('liang_gong')).toBe('夯率 < 50%')
+    expect(liangziRatioRangeText('liang_sheng')).toBe('85% ≤ 夯率 < 95%')
+    expect(liangziRatioRangeText('liang_zu')).toBe('夯率 ≥ 95%')
   })
 
   it('truncates the displayed 夯 percent instead of rounding over a boundary', () => {
-    // 399/501 = 79.64% is still 梁圣; rounding would print a 梁祖-looking 80%.
-    expect(deriveLiangziState(399, 102)).toBe('liang_sheng')
-    expect(formatRatioPercents(399, 102)).toEqual({ up: '79%', down: '21%' })
+    // 474/501 = 94.61% is still 梁圣; rounding would print a 梁祖-looking 95%.
+    expect(deriveLiangziState(474, 27)).toBe('liang_sheng')
+    expect(formatRatioPercents(474, 27)).toEqual({ up: '94%', down: '6%' })
   })
 
   it('zero votes render `--` on both sides', () => {
@@ -107,14 +107,14 @@ describe('state bands and their displayed percentages', () => {
   })
 
   it('truncates 梁位 at six decimals too (never crosses a threshold)', () => {
-    // 399/501 = 79.640718…% stays 梁圣 and must not print a rounded value that
-    // reads as having crossed 80%.
-    expect(formatLiangPosition(399, 102)).toBe('79.640718%')
-    expect(deriveLiangziState(399, 102)).toBe('liang_sheng')
-    const nearly = formatLiangPosition(799_999, 200_001)
-    expect(nearly).toBe('79.999900%')
-    expect(Number(nearly.replace('%', ''))).toBeLessThan(80)
-    expect(deriveLiangziState(799_999, 200_001)).toBe('liang_sheng')
+    // 474/501 = 94.610778…% stays 梁圣 and must not print a rounded value that
+    // reads as having crossed 95%.
+    expect(formatLiangPosition(474, 27)).toBe('94.610778%')
+    expect(deriveLiangziState(474, 27)).toBe('liang_sheng')
+    const nearly = formatLiangPosition(949_999, 50_001)
+    expect(nearly).toBe('94.999900%')
+    expect(Number(nearly.replace('%', ''))).toBeLessThan(95)
+    expect(deriveLiangziState(949_999, 50_001)).toBe('liang_sheng')
   })
 
   it('keeps the decimal pair summing to exactly 100%', () => {
@@ -147,7 +147,7 @@ describe('state bands and their displayed percentages', () => {
 
 describe('threshold policy validation', () => {
   it('accepts the frozen default', () => {
-    expect(() => assertValidThresholdPolicy({ boundaries: [0.2, 0.4, 0.6, 0.8] })).not.toThrow()
+    expect(() => assertValidThresholdPolicy({ boundaries: [0.5, 0.7, 0.85, 0.95] })).not.toThrow()
   })
 
   it.each([

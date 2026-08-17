@@ -65,7 +65,7 @@ DeepSeek Harness 是夯还是拉
 
 ```text
 今日香火 7 炷     [梁子 + 个人梁气环]     下一炷 3,000 当量
-                  梁位 83.021952% → 梁祖
+                  梁位 83.021952% → 梁神
 ```
 
 Rules:
@@ -98,7 +98,7 @@ Rules:
   summary keep the exact integer.
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
   6 decimals (`LIANG_POSITION_DECIMALS`) — then a causal arrow to the 称呼
-  (`梁位 83.021952% → 梁祖`). The 称呼 is not painted on the portrait.
+  (`梁位 83.021952% → 梁神`). The 称呼 is not painted on the portrait.
 - `down_ratio` gets **no** second big number: it is `1 − 梁位` and appears only in
   the tooltip and the screen-reader summary
 - the printed 梁位 must be TRUNCATED, never rounded, so it can never read as
@@ -159,28 +159,28 @@ LIANG_ZU     -> 梁祖
 ```text
 if total_votes == 0:
     liangzi_state = WAITING
-else if up_ratio < 0.20:
+else if up_ratio < 0.50:
     liangzi_state = LIANG_GONG
-else if up_ratio < 0.40:
+else if up_ratio < 0.70:
     liangzi_state = LIANG_ZONG
-else if up_ratio < 0.60:
+else if up_ratio < 0.85:
     liangzi_state = LIANG_SHEN
-else if up_ratio < 0.80:
+else if up_ratio < 0.95:
     liangzi_state = LIANG_SHENG
 else:
     liangzi_state = LIANG_ZU
 ```
 
-Frozen thresholds — five equal 20% bands from 0% to 100% (升梁 / 降梁 same step):
+Frozen thresholds — the lower half is 梁工; the upper half gets harder toward 梁祖:
 
 | Global up ratio | Liangzi state |
 |---|---|
 | 0 votes | 待开梁 |
-| `< 20%` | 梁工 |
-| `20% <= x < 40%` | 梁总 |
-| `40% <= x < 60%` | 梁神 |
-| `60% <= x < 80%` | 梁圣 |
-| `>= 80%` | 梁祖 |
+| `< 50%` | 梁工 |
+| `50% <= x < 70%` | 梁总 |
+| `70% <= x < 85%` | 梁神 |
+| `85% <= x < 95%` | 梁圣 |
+| `>= 95%` | 梁祖 |
 
 ### Visual direction
 
@@ -755,14 +755,14 @@ earned    = 1
 
 ```text
 0 total votes       -> 待开梁
-19.999% up          -> 梁工
-20% up              -> 梁总
-39.999% up          -> 梁总
-40% up              -> 梁神
-59.999% up          -> 梁神
-60% up              -> 梁圣
-79.999% up          -> 梁圣
-80% up              -> 梁祖
+49.999% up          -> 梁工
+50% up              -> 梁总
+69.999% up          -> 梁总
+70% up              -> 梁神
+84.999% up          -> 梁神
+85% up              -> 梁圣
+94.999% up          -> 梁圣
+95% up              -> 梁祖
 100% up             -> 梁祖
 ```
 

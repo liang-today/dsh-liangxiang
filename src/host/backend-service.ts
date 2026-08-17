@@ -489,14 +489,15 @@ export class BackendLiangService implements LiangHostService {
           + `another installation (the key was re-generated, or the DSH profile was copied from `
           + `another machine). Recover: mint a fresh key (delete the identity in `
           + `$DSH_HOME/storages/liangbiao.json / pnpm run reset:identity, then restart) and POST `
-          + `/v1/identity/rekey, or ask the operator to POST /v1/admin/identity/unbind.`,
+          + `/v1/identity/rekey, or ask the operator to run `
+          + `node lib/backend-cli.js identity unbind.`,
         )
         return
       }
       if (error.code === 'rekey_cooldown') {
         this.warn(
           `[${PLUGIN_PACKAGE_NAME}] REKEY COOLDOWN: ${error.message}. `
-          + `Wait, or ask the operator to POST /v1/admin/identity/unbind to force it.`,
+          + `Wait, or ask the operator to run node lib/backend-cli.js identity unbind to force it.`,
         )
         return
       }

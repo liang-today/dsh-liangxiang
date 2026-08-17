@@ -6,7 +6,9 @@ import { DEFAULT_TOKEN_PER_INCENSE } from '../domain/index.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
 import { DEFAULT_BUSINESS_TIMEZONE } from '../shared/business-date.ts'
 import { normalizeBaseUrl } from './backend-client.ts'
+import { STAGING_BACKEND_URL } from './community-endpoint.ts'
 import type { LiangServiceConfig } from './fake-service.ts'
+import { STAGING_COMMUNITY_KEY } from './staging-defaults.ts'
 
 /**
  * Near-real-time cadence: the public 梁位 must visibly move right after a vote
@@ -20,9 +22,9 @@ const MAX_SNAPSHOT_REFRESH_SECONDS = 3600
 export interface HostRuntimeConfig {
   service: LiangServiceConfig
   /**
-   * Backend base URL from `LIANGBIAO_BACKEND_URL`. When present the host runs
-   * DEV_STAGING_ONLY (the backend is authority); when absent it runs the
-   * in-process LOCAL_FAKE_DEV loop.
+   * Backend base URL. Default is the closed-beta staging endpoint (online).
+   * `LIANGBIAO_BACKEND_URL=local` (or an unparseable URL) forces LOCAL_FAKE_DEV.
+   * A later health probe may still fall back to local if the backend is down.
    */
   backendUrl: string | null
   /** Shared community admission key; sent on every authenticated backend call. */
@@ -84,8 +86,9 @@ export function resolveHostConfig(
 
 /**
  * Resolve the full host runtime configuration, including which authority mode
- * to serve. An unparseable backend URL degrades to local mode loudly rather
- * than booting a half-wired online path.
+ * to serve. Online is the default (baked staging URL). `local` or an
+ * unparseable URL degrades to the in-process loop loudly rather than booting
+ * a half-wired online path.
  * @param env - environment map (injectable for tests).
  * @param warn - loud sink for ignored invalid values.
  * @returns the service config plus the resolved backend URL (or null).
@@ -96,14 +99,17 @@ export function resolveHostRuntimeConfig(
 ): HostRuntimeConfig {
   const service = resolveHostConfig(env, warn)
   const communityRaw = env.LIANGBIAO_COMMUNITY_KEY?.trim()
-  const communityKey = communityRaw === undefined || communityRaw === '' ? null : communityRaw
+  const communityKey = communityRaw === undefined || communityRaw === ''
+    ? STAGING_COMMUNITY_KEY
+    : communityRaw
   const raw = env.LIANGBIAO_BACKEND_URL?.trim()
-  if (raw === undefined || raw === '') return { service, backendUrl: null, communityKey }
+  if (raw === 'local') return { service, backendUrl: null, communityKey }
+  const candidate = raw === undefined || raw === '' ? STAGING_BACKEND_URL : raw
   try {
-    return { service, backendUrl: normalizeBaseUrl(raw), communityKey }
+    return { service, backendUrl: normalizeBaseUrl(candidate), communityKey }
   } catch (error) {
     warn(
-      `[dsh-liangbiao] ignoring invalid LIANGBIAO_BACKEND_URL=${raw} `
+      `[dsh-liangbiao] ignoring invalid LIANGBIAO_BACKEND_URL=${candidate} `
       + `(${error instanceof Error ? error.message : String(error)}); running in local mode`,
     )
     return { service, backendUrl: null, communityKey }

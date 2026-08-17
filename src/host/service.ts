@@ -53,6 +53,11 @@ export interface LiangHostService {
    * mint a claim against the shared backend.
    */
   creditSimulatedUsage?: (deltaEffectiveTokens: number) => void
+  /**
+   * LOCAL_FAKE_DEV only: rotate among the prepared 今日梁案 list.
+   * Online hosts omit this — community cases are published on the VPS CLI.
+   */
+  cycleLocalCase?: () => void
   /** Release timers, in-flight requests and subscriptions. */
   dispose?: () => void
 }

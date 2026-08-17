@@ -313,10 +313,19 @@ export class LiangbiaoBackendService {
   }
 
   /**
+   * Self-serve revoke: the holder of this installation's private key deletes
+   * their own identity row. Incense/votes on the id are orphaned. HTTP rate
+   * limits this; the service itself just deletes.
+   */
+  revokeIdentity(installationId: string, now = this.clock.now()): V1UnbindResponse {
+    return this.unbindIdentity(installationId, now)
+  }
+
+  /**
    * Operator unbind: delete one installation's identity row so its device
    * fingerprint is released and it can re-register (same or fresh key). The old
    * identity's incense/votes are orphaned — its key can no longer authenticate.
-   * Community-key gated by the HTTP layer.
+   * Operator path is CLI-only (no HTTP).
    */
   unbindIdentity(installationId: string, now = this.clock.now()): V1UnbindResponse {
     return {

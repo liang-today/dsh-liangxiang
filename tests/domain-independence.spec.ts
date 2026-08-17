@@ -19,20 +19,18 @@ function stateOf(aggregate: GlobalVoteAggregate, sequence = 1) {
 }
 
 describe('personal state cannot select the Liangzi state', () => {
-  it('remaining 0 with global 92% stays 梁祖; remaining 100 with 65% stays 梁圣', () => {
-    const zu = stateOf({ upVotes: 92, downVotes: 8, uniqueVoters: 5 })
+  it('remaining 0 with global 96% stays 梁祖; remaining 100 with 90% stays 梁圣', () => {
+    const zu = stateOf({ upVotes: 96, downVotes: 4, uniqueVoters: 5 })
     expect(zu.liangziState).toBe('liang_zu')
     const personalBroke = derivePersonalLiangQiState({ effectiveTokensToday: 0, usedIncenseToday: 0 })
     expect(personalBroke.remainingIncense).toBe(0)
-    // Snapshot is a function of global counts only — recomputing with any
-    // personal state present in scope yields the identical result.
-    expect(stateOf({ upVotes: 92, downVotes: 8, uniqueVoters: 5 }).liangziState).toBe('liang_zu')
+    expect(stateOf({ upVotes: 96, downVotes: 4, uniqueVoters: 5 }).liangziState).toBe('liang_zu')
 
-    const sheng = stateOf({ upVotes: 65, downVotes: 35, uniqueVoters: 5 })
+    const sheng = stateOf({ upVotes: 90, downVotes: 10, uniqueVoters: 5 })
     expect(sheng.liangziState).toBe('liang_sheng')
     const personalRich = derivePersonalLiangQiState({ effectiveTokensToday: 5_000_000, usedIncenseToday: 0 })
     expect(personalRich.remainingIncense).toBe(100)
-    expect(stateOf({ upVotes: 65, downVotes: 35, uniqueVoters: 5 }).liangziState).toBe('liang_sheng')
+    expect(stateOf({ upVotes: 90, downVotes: 10, uniqueVoters: 5 }).liangziState).toBe('liang_sheng')
   })
 
   it('personal token growth (397k -> 447k -> 497k) leaves the snapshot untouched', () => {
@@ -50,7 +48,7 @@ describe('personal state cannot select the Liangzi state', () => {
 describe('global ratio changes cannot move personal LiangQi', () => {
   it('10% -> 30% -> 50% -> 70% -> 90% with one fixed personal state', () => {
     const personal = derivePersonalLiangQiState({ effectiveTokensToday: 397_000, usedIncenseToday: 2 })
-    const expectedStates = ['liang_gong', 'liang_zong', 'liang_shen', 'liang_sheng', 'liang_zu'] as const
+    const expectedStates = ['liang_gong', 'liang_gong', 'liang_zong', 'liang_shen', 'liang_sheng'] as const
     const ups = [10, 30, 50, 70, 90]
     ups.forEach((up, index) => {
       const snapshot = stateOf({ upVotes: up, downVotes: 100 - up, uniqueVoters: 10 }, index + 1)
@@ -64,9 +62,9 @@ describe('global ratio changes cannot move personal LiangQi', () => {
 })
 
 describe('threshold crossing through an accepted vote', () => {
-  it('79.x% -> 80%: 梁圣 -> 梁祖, personal spend leaves fill untouched', () => {
-    // up=79 down=20 -> 79.798% (梁圣); one accepted up -> 80/100 = 80% (梁祖).
-    let aggregate: GlobalVoteAggregate = { upVotes: 79, downVotes: 20, uniqueVoters: 30 }
+  it('94.7% -> 95%: 梁圣 -> 梁祖, personal spend leaves fill untouched', () => {
+    // up=18 down=1 -> 94.737% (梁圣); one accepted up -> 19/20 = 95% (梁祖).
+    let aggregate: GlobalVoteAggregate = { upVotes: 18, downVotes: 1, uniqueVoters: 2 }
     const before = stateOf(aggregate, 1)
     expect(before.liangziState).toBe('liang_sheng')
 
@@ -75,19 +73,17 @@ describe('threshold crossing through an accepted vote', () => {
     aggregate = applyAcceptedVote(aggregate, 'up', true)
     const after = stateOf(aggregate, 2)
 
-    // Personal: only the pool moved.
     expect(personal.remainingIncense).toBe(4)
     expect(personal.liangQiFill).toBeCloseTo(0.94, 10)
-    // Global: the state changed because THE RATIO changed.
-    expect(after.upRatio).toBe(0.8)
+    expect(after.upRatio).toBe(0.95)
     expect(after.liangziState).toBe('liang_zu')
     expect(after.sequence).toBeGreaterThan(before.sequence)
   })
 
-  it('59.x% -> 60%: 梁神 -> 梁圣', () => {
-    let aggregate: GlobalVoteAggregate = { upVotes: 59, downVotes: 40, uniqueVoters: 30 }
-    expect(stateOf(aggregate).liangziState).toBe('liang_shen') // 59.6%
-    aggregate = applyAcceptedVote(aggregate, 'up', false)
-    expect(stateOf(aggregate, 2).liangziState).toBe('liang_sheng') // 60%
+  it('69.x% -> 70%: 梁总 -> 梁神', () => {
+    let aggregate: GlobalVoteAggregate = { upVotes: 69, downVotes: 30, uniqueVoters: 30 }
+    expect(stateOf(aggregate).liangziState).toBe('liang_zong')
+    aggregate = applyAcceptedVote(aggregate, 'up', true)
+    expect(stateOf(aggregate).liangziState).toBe('liang_shen')
   })
 })

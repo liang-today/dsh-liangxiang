@@ -15,7 +15,7 @@ import {
   INCENSE_STAT_LABEL,
   LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
-  PANEL_TITLE,
+  PANEL_TITLE_LOCAL,
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
@@ -86,7 +86,7 @@ describe('four visual regions', () => {
     const tree = renderPanel(demoState())
     const dialog = findAll(tree, (node) => node.props.role === 'dialog')
     expect(dialog).toHaveLength(1)
-    expect(dialog[0]?.props['aria-label']).toBe(PANEL_TITLE)
+    expect(dialog[0]?.props['aria-label']).toBe(PANEL_TITLE_LOCAL)
     expect(textContent(tree)).toContain('DeepSeek Harness 是夯还是拉')
   })
 
@@ -96,6 +96,7 @@ describe('four visual regions', () => {
     expect(styleOf(header).textAlign).toBe('center')
     // Local soft-trust stays honest via the attribute + screen-reader summary,
     // not a visible badge next to the title.
+    expect(header === undefined ? '' : textContent([header])).toContain('今日梁案（本地）')
     expect(header === undefined ? '' : textContent([header])).not.toContain('本地演示')
     const caseTitle = findByAttr(tree, 'data-liangbiao-case-title')[0]
     expect(styleOf(findAll(header === undefined ? [] : [header], (node) => node.type === 'h2')[0]).fontSize).toBe('16px')
@@ -117,6 +118,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(incense && textContent([incense])).toContain('7 炷')
     const nextVisible = visibleNextIncenseText(next)
     expect(nextVisible).toContain('3K')
+    expect(nextVisible).toContain('当量')
+    expect(nextVisible).toContain('已攒')
     expect(nextVisible).not.toContain('3,000')
     expect(nextVisible).toContain('当量')
     expect(nextVisible).not.toContain('Token')
@@ -125,10 +128,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(position && textContent([position])).toContain('梁位')
     expect(position && textContent([position])).toContain('83.021952%')
     expect(position && textContent([position])).toContain('故称')
-    expect(position && textContent([position])).toContain('梁祖')
-    expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_zu')).toHaveLength(1)
-    expect(textContent(findByAttr(tree, 'data-liangbiao-avatar'))).not.toContain('梁祖')
-    expect(textContent(findByAttr(tree, 'data-liangbiao-liangzi-title'))).toBe('梁祖')
+    expect(position && textContent([position])).toContain('梁神')
+    expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_shen')).toHaveLength(1)
+    expect(textContent(findByAttr(tree, 'data-liangbiao-avatar'))).not.toContain('梁神')
+    expect(textContent(findByAttr(tree, 'data-liangbiao-liangzi-title'))).toBe('梁神')
   })
 
   it('bobs the panel 梁子 with the logo: fill drives cadence, fill 0 is still', () => {
@@ -147,7 +150,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
   it('keeps 拉 as the complement in the tooltip instead of a second big number', () => {
     const tree = renderPanel(demoState())
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
-    expect(position?.props.title).toBe('夯 83.021952% / 拉 16.978048% → 梁祖')
+    expect(position?.props.title).toBe('夯 83.021952% / 拉 16.978048% → 梁神')
   })
 
   it('sets 梁位 / value / arrow / 称呼 in one type size and weight', () => {
@@ -174,18 +177,18 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(footer).toHaveLength(1)
     expect(footer[0] && textContent([footer[0]])).toContain('83.021952%')
     expect(footer[0] && textContent([footer[0]])).toContain('故称')
-    expect(footer[0] && textContent([footer[0]])).toContain('梁祖')
+    expect(footer[0] && textContent([footer[0]])).toContain('梁神')
     // The old up/down pair must not come back.
     expect(findByAttr(tree, 'data-liangbiao-ratio')).toHaveLength(0)
   })
 
   it('never rounds 梁位 past the threshold of the rendered state', () => {
-    // 399/501 = 79.6407…% -> 梁圣; rounding up would look like a 梁祖 mismatch.
+    // 399/501 = 79.6407…% -> 梁神; rounding must not look like a higher state.
     const store = createMockLiangbiaoStore({ upVotes: 399, downVotes: 102, uniqueVoters: 40 })
     const tree = renderPanel(store.getSnapshot())
     const position = findByAttr(tree, 'data-liangbiao-liang-position')[0]
     expect(position && textContent([position])).toContain('79.640718%')
-    expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_sheng')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangbiao-avatar', 'liang_shen')).toHaveLength(1)
   })
 
   it('moves the 梁位 value on a single accepted vote', async () => {
@@ -371,7 +374,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
 
   it('spells out the exact 夯率 band of the current state in the tooltip', () => {
     const tree = renderPanel(demoState())
-    const tooltips = findAll(tree, (node) => node.props.title === '梁祖：夯率 ≥ 80%')
+    const tooltips = findAll(tree, (node) => node.props.title === '梁神：70% ≤ 夯率 < 85%')
     expect(tooltips.length).toBeGreaterThan(0)
   })
 
@@ -413,6 +416,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const overflow = findByAttr(tree, 'data-liangbiao-incense-overflow')
     expect(overflow).toHaveLength(1)
     expect(overflow[0] && textContent([overflow[0]])).toContain('1K')
+    expect(findByAttr(tree, 'data-liangbiao-overflow-aura')).toHaveLength(1)
   })
 
   it('keeps a Pro-equivalent weight table on the next-incense flank', () => {

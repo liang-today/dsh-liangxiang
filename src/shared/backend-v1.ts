@@ -39,7 +39,7 @@ export const BACKEND_API_PREFIX = '/v1'
 export const BACKEND_SCHEMA_VERSION = 1
 
 /** Frozen id of the shipped Liangzi threshold policy (60/70/80/90). */
-export const LIANGZI_POLICY_VERSION = 'liangzi-v0.1-20-40-60-80'
+export const LIANGZI_POLICY_VERSION = 'liangzi-v0.1-50-70-85-95'
 
 /**
  * Authority modes. `VERIFIED_PRODUCTION` requires server-verifiable identity
@@ -234,7 +234,7 @@ export interface V1SnapshotResponse {
   global_snapshot: V1Snapshot
 }
 
-/** POST /v1/admin/cases body — operator publish, not a voter intent. */
+/** Operator publish case title (CLI writes SQLite; HTTP /v1/admin/* is closed). */
 export const CASE_TITLE_MAX_LENGTH = 120
 
 export interface V1PublishCaseRequest {
@@ -279,6 +279,7 @@ export const V1_ERROR_CODES = [
   'invalid_signature',
   'device_conflict',
   'rekey_cooldown',
+  'identity_rate_limited',
   'unknown_route',
   'method_not_allowed',
   'stale_case',

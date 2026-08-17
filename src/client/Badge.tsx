@@ -449,6 +449,9 @@ export function LiangbiaoBadge(): ReactElement {
           onReconcileAsk={onReconcileAsk}
           onReconcileConfirm={onReconcileConfirm}
           onReconcileCancel={onReconcileCancel}
+          {...(state.authorityMode === 'LOCAL_FAKE_DEV'
+            ? { onCycleLocalCase: () => store.cycleLocalCase() }
+            : {})}
         />
       )}
     </div>

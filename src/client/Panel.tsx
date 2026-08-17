@@ -21,12 +21,15 @@ import {
   LIANG_POSITION_LABEL,
   MY_INCENSE_LABEL,
   NEXT_INCENSE_LABEL,
+  NEXT_INCENSE_PROGRESS_LABEL,
   NEXT_INCENSE_UNIT,
   NEXT_INCENSE_WEIGHT_ROWS,
   NEXT_INCENSE_WEIGHT_TITLE,
   NO_INCENSE_REASON,
   OFFLINE_REASON,
   PANEL_TITLE,
+  PANEL_TITLE_LOCAL,
+  CYCLE_LOCAL_CASE_LABEL,
   STAT_LIFETIME_LABEL,
   STAT_TODAY_LABEL,
   VOTER_STAT_HINT,
@@ -81,6 +84,8 @@ export interface PanelProps {
   onReconcileConfirm: () => void
   onReconcileCancel: () => void
   reconcilePending: boolean
+  /** LOCAL_FAKE_DEV only: cycle the prepared 今日梁案 list. */
+  onCycleLocalCase?: () => void
 }
 
 const panelStyle: CSSProperties = {
@@ -422,6 +427,14 @@ const PANEL_CSS = `
   font-weight: 700;
   padding-bottom: 4px;
 }
+@keyframes liangbiao-overflow-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px 5px rgba(216, 135, 58, 0.55), 0 0 28px 10px rgba(243, 193, 82, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 20px 9px rgba(216, 135, 58, 0.9), 0 0 40px 16px rgba(243, 193, 82, 0.55);
+  }
+}
 @keyframes liangbiao-condense {
   0% { opacity: 0; transform: translate(-50%, 12px) scale(0.85); }
   22% { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -473,7 +486,7 @@ export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, welcomeVisible, onDismissWelcome, avatarPulse, justCondensed, voteFeedback,
     onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
-    reconcilePending,
+    reconcilePending, onCycleLocalCase,
   } = props
   const placement = props.placement ?? { stack: 'above' }
   const positionPulse = props.positionPulse ?? false
@@ -512,6 +525,7 @@ export function Panel(props: PanelProps): ReactElement {
 
   // Percentages come from the snapshot's own raw counts, so they can never
   // contradict the Liangzi state rendered beside them (AGENTS.md §12).
+  const panelTitle = state.authorityMode === 'LOCAL_FAKE_DEV' ? PANEL_TITLE_LOCAL : PANEL_TITLE
   const percents = formatRatioPercents(snapshot.upVotes, snapshot.downVotes, LIANG_POSITION_DECIMALS)
   const earnedExact = personal.earnedIncenseToday.toLocaleString('zh-CN')
   const remainingExact = personal.remainingIncense.toLocaleString('zh-CN')
@@ -527,7 +541,7 @@ export function Panel(props: PanelProps): ReactElement {
   return (
     <section
       role="dialog"
-      aria-label={PANEL_TITLE}
+      aria-label={panelTitle}
       data-liangbiao-panel=""
       data-liangbiao-authority={state.authorityMode}
       tabIndex={-1}
@@ -589,7 +603,7 @@ export function Panel(props: PanelProps): ReactElement {
         style={{ position: 'relative', marginBottom: '8px', padding: '0 22px', textAlign: 'center' }}
       >
         <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: color.textPrimary, letterSpacing: '0.5px' }}>
-          {PANEL_TITLE}
+          {panelTitle}
         </h2>
         <p
           data-liangbiao-case-title=""
@@ -606,6 +620,26 @@ export function Panel(props: PanelProps): ReactElement {
         >
           {activeCase.title}
         </p>
+        {onCycleLocalCase !== undefined && (
+          <button
+            type="button"
+            data-liangbiao-cycle-case=""
+            onClick={onCycleLocalCase}
+            style={{
+              margin: '4px 0 0',
+              border: 'none',
+              background: 'transparent',
+              color: color.brand,
+              fontSize: '11px',
+              fontWeight: 600,
+              lineHeight: '14px',
+              padding: '0',
+              cursor: 'pointer',
+            }}
+          >
+            {CYCLE_LOCAL_CASE_LABEL}
+          </button>
+        )}
         <button
           type="button"
           aria-label={`声音：${['无', '小', '中', '大'][soundLevel] ?? ''}`}
@@ -743,7 +777,9 @@ export function Panel(props: PanelProps): ReactElement {
             </span>
             <span style={flankUnitStyle}> {NEXT_INCENSE_UNIT}</span>
           </span>
-          <span aria-hidden="true" style={{ display: 'block', height: '14px' }} />
+          <span style={flankUnitStyle}>
+            {NEXT_INCENSE_PROGRESS_LABEL} {Math.trunc(Math.min(1, Math.max(0, displayFill)) * 100)}%
+          </span>
           <div data-liangbiao-weight-hint="" role="tooltip">
             <table>
               <caption>{NEXT_INCENSE_WEIGHT_TITLE}</caption>

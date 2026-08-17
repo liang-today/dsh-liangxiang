@@ -26,6 +26,7 @@ const EVENTS_PATH = '/liangbiao/api/events'
 const VOTE_PATH = '/liangbiao/api/vote'
 const REFRESH_PATH = '/liangbiao/api/refresh'
 const RECONCILE_PATH = '/liangbiao/api/reconcile'
+const CYCLE_CASE_PATH = '/liangbiao/api/local/cycle-case'
 const FETCH_TIMEOUT_MS = 6_000
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
@@ -81,6 +82,8 @@ export interface LiveLiangbiaoStore extends LiangbiaoStore {
   reconcile(): Promise<void>
   /** Abort in-flight work and close the stream. */
   dispose(): void
+  /** LOCAL_FAKE_DEV: ask the host to cycle the prepared 今日梁案 list. */
+  cycleLocalCase(): void
 }
 
 export function createLiveLiangbiaoStore(
@@ -243,6 +246,17 @@ export function createLiveLiangbiaoStore(
         })
         .finally(() => {
           reconcileInFlight = false
+        })
+    },
+    cycleLocalCase: () => {
+      if (disposed || starting) return
+      if (state.authorityMode !== 'LOCAL_FAKE_DEV') return
+      transport.fetchJson(CYCLE_CASE_PATH, { method: 'POST' })
+        .then((raw) => {
+          if (!disposed) applyWire(raw)
+        })
+        .catch((error: unknown) => {
+          console.warn(`[dsh-liangbiao] local case cycle failed: ${error instanceof Error ? error.message : String(error)}`)
         })
     },
     dispose: () => {

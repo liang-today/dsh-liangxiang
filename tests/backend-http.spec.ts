@@ -9,10 +9,8 @@ import { createBackendHttpApi } from '../src/backend/http.ts'
 import { LiangbiaoBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
 import {
-  COMMUNITY_KEY_HEADER,
   INSTALLATION_HEADER,
   parseV1Bootstrap,
-  parseV1PublishCaseResponse,
   parseV1VoteResponse,
 } from '../src/shared/backend-v1.ts'
 
@@ -542,70 +540,18 @@ describe('quiet access log', () => {
   })
 })
 
-describe('admin publish', () => {
-  it('rejects publish without a community key even when unsigned is allowed', async () => {
+describe('operator HTTP surface is closed', () => {
+  it('returns 404 for former admin case/queue/unbind routes', async () => {
     const h = await start()
-    const response = await fetch(`${h.baseUrl}/v1/admin/cases`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: '不该发出去的梁案' }),
-    })
-    expect(response.status).toBe(401)
-  })
-
-  it('archives and opens a case when the community key matches', async () => {
-    const logs: string[] = []
-    const config = resolveBackendConfig(
-      {
-        LIANGBIAO_BACKEND_DB: ':memory:',
-        LIANGBIAO_BACKEND_PORT: '0',
-        LIANGBIAO_SNAPSHOT_SECONDS: '300',
-        LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
-        LIANGBIAO_COMMUNITY_KEY: 'admit-me',
-        LIANGBIAO_ALLOW_UNSIGNED: '1',
-      },
-      () => undefined,
-    )
-    const store = openBackendStore(config.databasePath)
-    const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
-    const firstId = service.ensureActiveCase().id
-    const api = createBackendHttpApi({
-      service,
-      store,
-      voteRateLimitPerMinute: 0,
-      allowUnsigned: true,
-      communityKey: config.communityKey,
-      log: (message) => logs.push(message),
-    })
-    await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
-    const address = api.server.address()
-    if (address === null || typeof address === 'string') throw new Error('server did not bind a port')
-    const baseUrl = `http://127.0.0.1:${address.port}`
-
-    const missing = await fetch(`${baseUrl}/v1/admin/cases`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: '测试新梁案是夯还是拉' }),
-    })
-    expect(missing.status).toBe(401)
-
-    const ok = await fetch(`${baseUrl}/v1/admin/cases`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        [COMMUNITY_KEY_HEADER]: 'admit-me',
-      },
-      body: JSON.stringify({ title: '测试新梁案是夯还是拉' }),
-    })
-    expect(ok.status).toBe(200)
-    const published = parseV1PublishCaseResponse(await ok.json())
-    expect(published.archived_case?.id).toBe(firstId)
-    expect(published.active_case.title).toBe('测试新梁案是夯还是拉')
-    expect(published.global_snapshot.total_incense).toBe(0)
-    expect(logs.some((line) => line.includes('publish archived=') && line.includes('opened='))).toBe(true)
-
-    await new Promise<void>((resolve) => api.server.close(() => resolve()))
-    api.reset()
-    store.close()
+    for (const path of ['/v1/admin/cases', '/v1/admin/queue', '/v1/admin/identity/unbind']) {
+      const response = await fetch(`${h.baseUrl}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title: '不该发出去的梁案' }),
+      })
+      expect(response.status).toBe(404)
+      const body = await response.json() as { error?: { code?: string } }
+      expect(body.error?.code).toBe('unknown_route')
+    }
   })
 })
