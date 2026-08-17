@@ -46,5 +46,5 @@ Release；社区后端更新只能使用 `scripts/deploy.sh`，并保持
 
 - [ ] 提交（用户明确要求本仓每次改动都提交并推送到 GitHub；这与「不 publish/不 deploy」不冲突）
 - [ ] `scripts/deploy.sh` 部署并由 `scripts/deploy-check.sh` 确认 VERSION、服务名与当前提交一致
-- [ ] Mac 与树莓派先卸载旧 `dsh-liangbiao`，再安装 `dsh-liangxiang`；核对旧安装身份已迁移
+- [ ] Mac 与树莓派先卸载旧 `dsh-liangxiang`，再安装 `dsh-liangxiang`；核对旧安装身份已迁移
 - [ ] 输出 Final Go/No-Go 与遗留限制

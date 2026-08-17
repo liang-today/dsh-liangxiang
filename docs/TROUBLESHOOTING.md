@@ -28,7 +28,7 @@ Host 通道不可用，或在线 bootstrap 超时。检查：
 
 - WebUI 终端是否有 `[dsh-liangxiang] host half active` 以及 `DEV_STAGING_ONLY`；
 - `curl http://127.0.0.1:<webui>/liangxiang/api/state` 是否 200；
-- 在线模式：本机 `curl -m 5 http://<公网IP>:26753/v1/health`（不要只 curl VPS 的 localhost）。
+- 在线模式：本机 `curl -m 5 https://api.liang.today/v1/health`（不要只 curl 服务器的 localhost）。
 
 面板会保留最近一次状态继续渲染；重新打开面板会再试一次。
 
@@ -52,8 +52,8 @@ Host 与后端之间的请求失败。**用同一个 `request_id` 重试是安�
 
 核对：
 
-1. 安全组入站放行 `26753/tcp`（或你实际监听的端口），源 `0.0.0.0/0`。
-2. 本机 `curl -m 5 http://<公网IP>:26753/v1/health` 应在 1 秒内返回 `status":"ok"`。
+1. 安全组只需公网放行 `80/tcp` 与 `443/tcp`；后端端口 `4180` 必须只监听回环地址。
+2. 本机 `curl -m 5 https://api.liang.today/v1/health` 应在 1 秒内返回 `status":"ok"`。
 3. 面板若写「今日梁案（本地）」，那是欢迎页选了本地，或旧占位帧；连不上时应是「今日梁案」+「未连上梁相服务」。
 
 ## 梁位不动

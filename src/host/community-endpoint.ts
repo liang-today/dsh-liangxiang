@@ -5,4 +5,4 @@
  * compiled into a distributable bundle; a closed staging node may receive
  * one through its process environment.
  */
-export const STAGING_BACKEND_URL = 'http://124.71.166.225:26753'
+export const STAGING_BACKEND_URL = 'https://api.liang.today'

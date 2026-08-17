@@ -38,12 +38,9 @@ describe('shared frozen copy', () => {
     expect(OVERLAY_ENTRY_ID).toBe('liangxiang')
   })
 
-  it('prefers LIANGXIANG configuration but reads one-release legacy aliases', () => {
-    expect(readLiangxiangEnv({ LIANGXIANG_BACKEND_URL: 'new' }, 'BACKEND_URL')).toBe('new')
-    expect(readLiangxiangEnv({ LIANGBIAO_BACKEND_URL: 'legacy' }, 'BACKEND_URL')).toBe('legacy')
-    expect(readLiangxiangEnv({
-      LIANGXIANG_COMMUNITY_KEY: '',
-      LIANGBIAO_COMMUNITY_KEY: 'must-not-win',
-    }, 'COMMUNITY_KEY')).toBe('')
+  it('reads only the canonical LIANGXIANG configuration namespace', () => {
+    expect(readLiangxiangEnv({ LIANGXIANG_BACKEND_URL: 'https://api.liang.today' }, 'BACKEND_URL'))
+      .toBe('https://api.liang.today')
+    expect(readLiangxiangEnv({}, 'COMMUNITY_KEY')).toBeUndefined()
   })
 })

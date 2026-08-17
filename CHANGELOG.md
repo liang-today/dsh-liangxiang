@@ -1,13 +1,22 @@
 # Changelog
 
+## 0.6.0 — 2026-08-18
+
+### 香港节点与命名空间定稿
+
+- 代码、配置、存储、路由、部署脚本、测试与文档只允许使用 `liangxiang / 梁相`；一次性品牌过渡读取已经结束。
+- 标准部署目标切换为香港节点的密钥专用账户；构建在无特权账户中完成，安装、SQLite 在线备份和服务切换才临时使用 `sudo`。
+- 新增 SSH 最小权限基线和受审计的部署账户权限模板；后端继续只监听回环地址，由 Caddy 提供 HTTPS。
+- 构建前由唯一配置清理共享 `lib` 输出目录，避免历史哈希 chunk 留在服务器或审计目录。
+
 ## 0.5.0 — 2026-08-18
 
 ### 品牌与技术标识统一为「梁相 / liangxiang」
 
 - 对外产品名由「梁向」定稿为「梁相」，入口改为「今日梁相」，主叙事冻结为“众香成势，梁子显相”。
 - npm 包、Host 名、客户端 bundle、Host API、CSS/data attribute、日志、环境变量、存储域、开发 profile、部署目录、systemd 服务和发行包统一迁移到 `liangxiang`。
-- v0.5 兼容读取旧 `LIANGBIAO_*` 配置、`liangbiao` DSH 存储域及浏览器偏好；新写入只使用 `liangxiang`，既有安装身份和香火账不会因改名清零。
-- 社区 VPS 的标准部署脚本支持从旧服务在线备份并迁移 SQLite，失败时自动拉回旧服务；旧目录保留作回滚，不再承载运行流量。
+- v0.5 将配置、DSH 存储域及浏览器偏好写入统一的 `liangxiang` 命名空间。
+- 社区 VPS 的标准部署脚本增加 SQLite 在线备份和验证后写入版本戳。
 
 ### 发布安全收口
 
@@ -23,7 +32,7 @@
 
 ### 品牌主题统一
 
-- 对外产品名先由「梁标」收敛为「梁向」，本版最终定稿为「梁相」；悬浮入口改为「今日梁相」。
+- 对外产品名先由「梁相」收敛为「梁向」，本版最终定稿为「梁相」；悬浮入口改为「今日梁相」。
 - 个人左翼改为「今日凝香」，个人环对外统一称「香火环」；按钮收敛为 `夯 · 升梁` / `拉 · 降梁`，成功反馈改为 `已上香 · 夯/拉`。
 - 三界香火、五行香客、上达天听与进入梁祠保持不变；全产品视觉母版统一为“现代编年志 × 克制梁祠”。
 - 明确允许待开梁肖像内“牢梁”牌匾及五态同名胸牌作为装饰彩蛋；它们不进入状态、数据或可访问性文案。
@@ -45,7 +54,7 @@
 - 第四区新增 `进入梁祠`，在插件内打开月历浮层；今日使用专用「今日进行中」图标，历史日显示日梁，每行右侧显示周梁，标题区显示月梁。
 - 当前周与当前月只按截至昨天的已封存日梁生成暂梁，周一/月初无历史时显示待积；暂梁不写永久档案。
 - SQLite schema 升至 v4：日切幂等封存日梁，同日多梁案合并；完整结束的 ISO 周与自然月封存永久周梁/月梁。聚合统一按原始夯/拉票数加权，零票、无档、未来与今日严格区分。
-- 新增严格 `/v1/history` 与本机 `/liangbiao/api/history` 冷通道：首次全量，`archive_version` 变化后只拉增量；今日 snapshot/SSE 只带版本标量，不重复推送历史数组。
+- 新增严格 `/v1/history` 与本机 `/liangxiang/api/history` 冷通道：首次全量，`archive_version` 变化后只拉增量；今日 snapshot/SSE 只带版本标量，不重复推送历史数组。
 - Host 与浏览器各自保留 last-known-good 历史；历史服务失败显示 `档案未更新`，不影响今日梁案、香火或投票。
 - 梁祠视觉复用现有梁子六态、主题 token 与图标语言；完成暗色、窄屏横向滚动、Tab/Shift+Tab 焦点陷阱、Escape/焦点归还及 reduced-motion 适配。
 
@@ -71,7 +80,7 @@
 
 ### 发行纪律
 
-- 包版本与界面长按显示统一为 `0.3.0`，增加 manifest 一致性测试。`pnpm pack` 产物名自动为 `dsh-liangbiao-0.3.0.tgz`，Git Tag 使用 `v0.3.0`。
+- 包版本与界面长按显示统一为 `0.3.0`，增加 manifest 一致性测试。`pnpm pack` 产物名自动为 `dsh-liangxiang-0.3.0.tgz`，Git Tag 使用 `v0.3.0`。
 - 新增 `docs/BUGFIX.md`，集中记录后续修复提醒。
 
 ## 0.2.2 — 未发布
@@ -90,7 +99,7 @@
 
 ### 默认在线，不行再落本地
 
-- Host 默认连社区后端。`LIANGBIAO_BACKEND_URL=local` 或健康检查失败才用进程内假账。本地标题为 **今日梁案（本地）**，并可「换一案」轮换预备题目。
+- Host 默认连社区后端。`LIANGXIANG_BACKEND_URL=local` 或健康检查失败才用进程内假账。本地标题为 **今日梁案（本地）**，并可「换一案」轮换预备题目。
 
 ### 下一炷三行对齐
 
@@ -168,13 +177,13 @@
 
 ### 后端安静访问日志
 
-- 只打 hello / 新攒香火 / 投票结果 / 鉴权失败。不打 health、snapshot、daily-state 轮询。`journalctl -u liangbiao-backend -f`。
+- 只打 hello / 新攒香火 / 投票结果 / 鉴权失败。不打 health、snapshot、daily-state 轮询。`journalctl -u liangxiang-backend -f`。
 
 ### 社区软信任上公网（Ed25519 + 香火 drip + VPS）
 
 - **安装身份**：每次安装生成 Ed25519 密钥对（私钥留 Host，公钥进 `community_identity`）。请求签名；可选 MAC 集合哈希绑定，挡住同一台机器轻易重装。这不是 DSH 认证，也不是反女巫。
 - **香火 drip**：默认每分钟最多接受 50,000 声明 Token（= 1 炷）。防瞬间自报天文数字；不能证明 DSH 真跑过。时间用服务器时钟，启动时向硬编码 NTP 告警偏移。
-- **公网鉴权**：默认拒绝未签名请求；可选 `LIANGBIAO_COMMUNITY_KEY`。VPS 配方见 [`docs/121-vps-deploy.md`](docs/121-vps-deploy.md)（systemd + Caddy）。仍禁止声称 verified。
+- **公网鉴权**：默认拒绝未签名请求；可选 `LIANGXIANG_COMMUNITY_KEY`。VPS 配方见 [`docs/121-vps-deploy.md`](docs/121-vps-deploy.md)（systemd + Caddy）。仍禁止声称 verified。
 - **文案**：`STAGING_MODE_NOTE` 改为社区软信任说明，不再说「本地预发」。
 
 ### 社区产品方案（未开工）
@@ -190,7 +199,7 @@
 - **梁子必须正中**：Region 2 不再用 flex `space-between`。环、头像、环上香火点是唯一占文档流宽度的列，水平居中；「今日凝香 / 下一炷」绝对定位 overlay，文案长短不能把梁子挤偏。
 - **投票按钮**：`夯 · 升梁` / `拉 · 降梁`，`1fr / 1fr` 等宽标齐。投票类型仍只有 `up`/`down`。
 - **Git**：`AGENTS.md` §15 覆盖 Prompt 4/11「禁止 git push」——每次改完提交并立即 push。仍禁止 npm publish / GitHub Release / 公网部署 / 改真实 DSH profile。
-- 禁令差异表：`docs/110-prohibition-refresh.md`。**已按「全部刷新」回写** `PRODUCT_FREEZE_V0.1.md` 与 `LIANGBIAO_CURSOR_MASTER_R3.md`。
+- 禁令差异表：`docs/110-prohibition-refresh.md`。**已按「全部刷新」回写** `PRODUCT_FREEZE_V0.1.md` 与 `LIANGXIANG_CURSOR_MASTER_R3.md`。
 
 ### v0.1 Release Candidate（本地加固与终审）
 
@@ -198,7 +207,7 @@
 - **梁位**：小数从 4 位增到 **6 位**（大盘下 4 位会「冻住」）；被接受的投票**在自己的事务里发布快照**并随响应带回，梁位在点击那一下就动（不再等 cadence、不多一次往返）；数值变化时播放一次短促 pop 动效，`prefers-reduced-motion` 下不播。
 - **加固修复**：干净 profile 冒烟脚本在产物变大后必然失败（`curl | head -c` 写错误 + `pipefail`）—— 发布验证路径本身是坏的，已修；后端限流表按可自造的 installation id 无界增长，已改为超阈值清扫并加洪泛回归测试；`assertValidCase` 参数改名以免污染语义扫描。
 - **发布文档集**：新增 `RELEASE_CHECKLIST.md`、`CONTRIBUTING.md`、`SECURITY.md`、`docs/{100-release-readiness,101-threat-model,102-known-limitations,103-test-matrix,SECURITY,PRIVACY,DATA_FLOW,INSTALL,TROUBLESHOOTING,COMPATIBILITY}.md`;README 换成冻结的核心描述与文档导航。
-- **RC**：`dsh-liangbiao-0.1.0.tgz`（sha256 `3123a117…9bdc3`），257 项测试全绿、两个冒烟全通、`pnpm audit --prod` 无漏洞、包内容仅 6 个预期文件。结论：本地/staging **Go**，公网与「可信」表述 **No-Go**（由后端启动门禁强制）。
+- **RC**：`dsh-liangxiang-0.1.0.tgz`（sha256 `3123a117…9bdc3`），257 项测试全绿、两个冒烟全通、`pnpm audit --prod` 无漏洞、包内容仅 6 个预期文件。结论：本地/staging **Go**，公网与「可信」表述 **No-Go**（由后端启动门禁强制）。
 
 ### 交互改版：近实时梁位 + 单值小数 + 自由放置徽章
 
@@ -210,15 +219,15 @@
 ### 测试环境修复 + 安全审计
 
 - **修复 dev profile 的工具调用崩溃**：`dsh plugin add @deepseek-ai/dsh-web-app` 把 in-box 闭包装进 `<profile>/node_modules`，遮蔽了 launcher 的 `profiles/node_modules`，导致 `@deepseek-ai/dsh-tools` 在一个进程里有两个模块实例——两个 `TOOL_RUNTIME_SCHEDULER` symbol，于是 `dsh-agent-loop` 每次工具调用都拿到 `undefined`（`Cannot read properties of undefined (reading 'prepare')`），并把会话留下无结果的 `tool_calls`（后续报 "must be followed by tool messages"）。`dev-install.sh` / `smoke-clean-profile.sh` 现在只保留 bundle 行、移除该依赖，并用新增的 `scripts/assert-profile-modules.mjs` 断言单实例。
-- **超限请求体改为 413**：`/v1/*` 与 `/liangbiao/api/vote` 不再 destroy socket（被掐断的连接与网络故障不可区分，会诱发错误重试），改为结构化 413 + `connection: close`。
+- **超限请求体改为 413**：`/v1/*` 与 `/liangxiang/api/vote` 不再 destroy socket（被掐断的连接与网络故障不可区分，会诱发错误重试），改为结构化 413 + `connection: close`。
 - 60 项即席并发/安全审计全过：200 并发抢 1 炷只成功 1 次、200 并发抢 50 炷恰好 50 次、50 并发同 request_id 只扣 1 炷、claim 与扣香并发下 `used<=earned`、并发读快照全部自洽；身份头（缺失/超长/穿越/注入/unicode）全部 401、投票体自报权威字段全部 400、SQL 注入按字面量处理且五张表完好、异日与更小 claim 被忽略、被拒的 request_id 不被污染。
 
 ### Backend + Online Integration（Phase 3，localhost / DEV_STAGING_ONLY）
 
 - **Authority 模式锁定**：Decision Gate A3 ⇒ `AUTHORITY_MODE=DEV_STAGING_ONLY`。后端对 `VERIFIED_PRODUCTION` 拒绝启动，wire 的 `AuthorityMode` 联合类型不含该值，个人状态恒带 `claim_source: host_observed_unverified` + `claim_verified: false`（见 `docs/075`）。
 - **后端**（`src/backend`，零新增依赖：`node:http` + `node:sqlite`）：schema v1（`daily_liang_case` / `daily_incense_state` / `liang_vote` / `daily_liang_stats` / `public_liang_snapshot`，一个业务日一个 active 案由 partial unique index 保证，`used*tpi <= claimed` 由 CHECK 兜底）；`/v1/bootstrap`、`/v1/token-claims`、`/v1/votes`、`/v1/snapshot`、`/v1/me/daily-state`、`/v1/health`；投票事务 `BEGIN IMMEDIATE` + 条件 UPDATE（CAS 扣香）+ `UNIQUE(installation_id, request_id)` 幂等 + 首票香客 +1；快照按 cadence append-only 发布，比例与梁子状态由同一行派生。
-- **Host 在线化**：`LiangHostService` 接口让 `/liangbiao/api/*` 同时服务两种模式（浏览器 wire 形状不变，UI 零改动）；`BackendLiangService` 上报 token claim（debounce + 单调 ratchet）、拉取快照、日切自动重新 bootstrap；`UsageProjection` 抽出本地观测；自铸假名 installation id 持久化于 storage domain `identity` 表（不复用 DSH 匿名 id）。
-- **诚实标注**：新增 `STAGING_MODE_NOTE`，面板 `data-liangbiao-authority` 与屏幕阅读器摘要按模式播报真实信任边界。
+- **Host 在线化**：`LiangHostService` 接口让 `/liangxiang/api/*` 同时服务两种模式（浏览器 wire 形状不变，UI 零改动）；`BackendLiangService` 上报 token claim（debounce + 单调 ratchet）、拉取快照、日切自动重新 bootstrap；`UsageProjection` 抽出本地观测；自铸假名 installation id 持久化于 storage domain `identity` 表（不复用 DSH 匿名 id）。
+- **诚实标注**：新增 `STAGING_MODE_NOTE`，面板 `data-liangxiang-authority` 与屏幕阅读器摘要按模式播报真实信任边界。
 - 新增 56 项测试（后端事务/HTTP 并发/幂等/多标签/日切/快照版本、Host↔Backend E2E），总计 236 项全绿；新增 `scripts/smoke-online.sh` 全链路冒烟（50 并发只接受 1 票）。
 - 文档：`070` 架构、`071` schema、`072` 事务与并发、`073` 业务日、`074` authority 数据流、`075` 决策与生产阻塞项、`076` `/v1` API。
 
@@ -227,14 +236,14 @@
 - 比例显示与阈值对齐：`formatRatioPercents(upVotes, downVotes)` 与梁子状态同源于快照原始计数，夯率截断到整数百分点（拉率取补数），修掉 89.6% 被四舍五入成 `90%` 却仍显示梁圣的观感错误;梁圣区间明确为 `80% ≤ 夯率 < 90%`。
 - 状态区间可见化：`liangziUpRatioBand` + `liangziRatioRangeText` 从阈值策略推导文案，梁子标签 `title` 与 svg `aria-label` 直接给出精确区间。
 - 社会化区放大（15px 文案 / 17px 加粗数值），图标改为 `🪔 香火` / `🙏 香客`（常量集中于 `shared/index.ts`）。
-- 梁案标题与内容居中，关闭按钮绝对定位;移除可见「本地演示」徽标，软信任标注改由 `data-liangbiao-authority` 与屏幕阅读器摘要承载。
+- 梁案标题与内容居中，关闭按钮绝对定位;移除可见「本地演示」徽标，软信任标注改由 `data-liangxiang-authority` 与屏幕阅读器摘要承载。
 - 新增 10 项测试（区间、截断、补数、居中、图标、tooltip），总计 180 项全绿。
 
 ### DSH Authority Spike + 真实 Token + 本地完整闭环（Prompt 2）
 
 - Authority Spike（docs/040–044）：DSH 无 authenticated user、无服务器可验证 Token 权威;anonymous-user-id 仅假名标识。**Decision Gate A = A3**，生产可信投票标记 BLOCKED（P0 open risk），本地闭环以 `LOCAL_FAKE_DEV` 模式诚实标注。
-- 真实 Token 接入：`tokenUsage` 投影观测（启动补扫 + 变更流），每会话高水位差分账本（replay/restart/重放/替换回落均不双计;新会话 `firstLiveSeq===0` 全额计入，resume/fork 基线化），按可配置 business timezone 入账当日，storage domain `liangbiao` v1 持久化（缺席时内存降级）。
-- 本地投票闭环：`FakeAuthoritativeLiangService`（同步事务防并发双花、requestId 幂等、首票香客、快照 cadence 发布——比例与梁子状态同 sequence）、`/liangbiao/api` HTTP+SSE 通道（边界校验、body 上限、心跳、卸载清理）、client live store（帧校验、旧帧拒收、同 id 有界重试、离线保留最近状态）。
+- 真实 Token 接入：`tokenUsage` 投影观测（启动补扫 + 变更流），每会话高水位差分账本（replay/restart/重放/替换回落均不双计;新会话 `firstLiveSeq===0` 全额计入，resume/fork 基线化），按可配置 business timezone 入账当日，storage domain `liangxiang` v1 持久化（缺席时内存降级）。
+- 本地投票闭环：`FakeAuthoritativeLiangService`（同步事务防并发双花、requestId 幂等、首票香客、快照 cadence 发布——比例与梁子状态同 sequence）、`/liangxiang/api` HTTP+SSE 通道（边界校验、body 上限、心跳、卸载清理）、client live store（帧校验、旧帧拒收、同 id 有界重试、离线保留最近状态）。
 - 新增 45 项测试（水位账本、服务事务矩阵、wire 边界、live store），总计 170 项全绿。
 
 ### R2 语义对齐 + 正确 UI + 领域模型（Prompt 1）

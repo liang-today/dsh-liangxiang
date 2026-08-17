@@ -44,7 +44,10 @@ export default defineConfig([
     target: 'es2024',
     fixedExtension: false,
     dts: false,
-    clean: false,
+    // This is the single owner of the shared output directory cleanup. The
+    // backend and client configs below write into the same directory without
+    // cleaning it a second time.
+    clean: true,
   },
   {
     // Standalone localhost backend process (node:http + node:sqlite). NOT part

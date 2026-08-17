@@ -1,0 +1,4 @@
+# The only interactive administrator. SSH is key-only and direct root login is
+# disabled; sudo remains auditable through the system journal.
+Defaults:liangops !requiretty
+liangops ALL=(ALL:ALL) NOPASSWD: ALL

@@ -11,20 +11,16 @@ export type SoundLevel = 0 | 1 | 2 | 3
 
 const LEVEL_GAIN: Record<SoundLevel, number> = { 0: 0, 1: 0.33, 2: 0.66, 3: 1 }
 const STORAGE_KEY = 'liangxiang:sound:level'
-const LEGACY_LEVEL_KEY = 'liangbiao:sound:level'
-const LEGACY_ON_OFF_KEY = 'liangbiao:sound:v1'
 
 /** Fresh install / no preference: muted. A stored 1–3 is kept. */
 let level: SoundLevel = 0
 try {
   const stored = typeof localStorage === 'undefined'
     ? null
-    : localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_LEVEL_KEY)
+    : localStorage.getItem(STORAGE_KEY)
   if (stored !== null) {
     const parsed = Number(stored)
     if (parsed === 0 || parsed === 1 || parsed === 2 || parsed === 3) level = parsed as SoundLevel
-  } else if (typeof localStorage !== 'undefined' && localStorage.getItem(LEGACY_ON_OFF_KEY) === 'off') {
-    level = 0
   }
 } catch {
   /* privacy mode / quota: keep default mute */

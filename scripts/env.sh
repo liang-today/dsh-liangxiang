@@ -14,8 +14,8 @@ if [ -f .env ]; then
 fi
 
 export DSH_HOME="${DSH_HOME:-$REPO_ROOT/.dsh-home}"
-PROFILE="${LIANGXIANG_PROFILE:-${LIANGBIAO_PROFILE:-liangxiang-dev}}"
-WEB_APP_SPEC="${LIANGXIANG_WEB_APP_SPEC:-${LIANGBIAO_WEB_APP_SPEC:-@deepseek-ai/dsh-web-app@0.1.0-rc.6}}"
+PROFILE="${LIANGXIANG_PROFILE:-liangxiang-dev}"
+WEB_APP_SPEC="${LIANGXIANG_WEB_APP_SPEC:-@deepseek-ai/dsh-web-app@0.1.0-rc.6}"
 
 dsh_cli() {
   pnpm exec dsh "$@"
