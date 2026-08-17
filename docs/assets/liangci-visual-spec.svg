@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <defs>
+    <filter id="modalShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="22" stdDeviation="30" flood-color="#000000" flood-opacity="0.34"/>
+    </filter>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#111827" flood-opacity="0.10"/>
+    </filter>
+    <clipPath id="monthAvatar"><circle cx="1275" cy="137" r="34"/></clipPath>
+    <clipPath id="detailAvatar"><circle cx="325" cy="876" r="48"/></clipPath>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .primary { fill: #1c2130; }
+      .secondary { fill: #5a6472; }
+      .tertiary { fill: #8a93a2; }
+      .brand { fill: #4d6bfe; }
+      .warn { fill: #d8873a; }
+      .seal { fill: #b84a3a; }
+      .day { fill: #f8f9fb; stroke: #d9dde5; stroke-width: 1; }
+      .dayOutside { fill: #fbfbfc; stroke: #e8eaf0; stroke-width: 1; }
+      .dayFuture { fill: #fbfbfc; stroke: #e2e5eb; stroke-width: 1; stroke-dasharray: 3 4; }
+      .week { fill: #f4f5f8; stroke: #d9dde5; stroke-width: 1; }
+      .small { font-size: 11px; }
+      .label { font-size: 12px; font-weight: 600; }
+      .title { font-size: 20px; font-weight: 750; }
+      .number { font-variant-numeric: tabular-nums; }
+    </style>
+  </defs>
+
+  <!-- DSH backdrop: deliberately quiet so the Liangci surface reads as native, not a new app. -->
+  <rect width="1600" height="1100" fill="#15171b"/>
+  <rect x="0" y="0" width="252" height="1100" fill="#1b1e23"/>
+  <circle cx="34" cy="38" r="10" fill="#343941"/>
+  <rect x="52" y="29" width="98" height="18" rx="6" fill="#30343b"/>
+  <rect x="18" y="84" width="216" height="42" rx="10" fill="#252930"/>
+  <rect x="18" y="155" width="144" height="10" rx="5" fill="#2b2f36"/>
+  <rect x="18" y="185" width="188" height="10" rx="5" fill="#24282e"/>
+  <rect x="18" y="215" width="164" height="10" rx="5" fill="#24282e"/>
+  <rect x="0" y="0" width="1600" height="1100" fill="#000000" opacity="0.18"/>
+
+  <!-- Main modal -->
+  <rect x="230" y="60" width="1140" height="980" rx="16" fill="#ffffff" stroke="#d9dde5" filter="url(#modalShadow)"/>
+
+  <!-- Header -->
+  <g transform="translate(274 96)">
+    <path d="M2 12 L14 3 L26 12" fill="none" stroke="#5a6472" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6 12 V27 H22 V12" fill="none" stroke="#5a6472" stroke-width="1.8" stroke-linejoin="round"/>
+    <rect x="10" y="17" width="8" height="7" rx="1.5" fill="none" stroke="#4d6bfe" stroke-width="1.6"/>
+  </g>
+  <text x="314" y="120" class="primary title">梁祠</text>
+  <text x="314" y="144" class="secondary small">日梁 · 周梁 · 月梁</text>
+
+  <g transform="translate(622 102)">
+    <rect x="0" y="0" width="34" height="34" rx="8" fill="#f4f5f8" stroke="#d9dde5"/>
+    <path d="M20 10 L13 17 L20 24" fill="none" stroke="#5a6472" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="104" y="24" text-anchor="middle" class="primary" font-size="17" font-weight="700">2026 年 8 月</text>
+    <rect x="192" y="0" width="34" height="34" rx="8" fill="#f4f5f8" stroke="#d9dde5"/>
+    <path d="M205 10 L212 17 L205 24" fill="none" stroke="#5a6472" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Month temporary plaque -->
+  <g filter="url(#softShadow)">
+    <rect x="1052" y="88" width="278" height="92" rx="12" fill="#fffaf3" stroke="#e4c596"/>
+    <rect x="1068" y="103" width="46" height="22" rx="11" fill="#fff1dc" stroke="#d8873a"/>
+    <text x="1091" y="118" text-anchor="middle" class="warn" font-size="11" font-weight="700">本月暂梁</text>
+    <text x="1068" y="148" class="primary" font-size="14" font-weight="750">梁神</text>
+    <text x="1116" y="148" class="secondary number" font-size="12">78.314218%</text>
+    <text x="1068" y="168" class="secondary small">截至昨日 · 19 / 31 日</text>
+    <circle cx="1275" cy="137" r="36" fill="#ffffff" stroke="#e4c596"/>
+    <image href="../../src/client/artwork/shen.png" x="1241" y="103" width="68" height="68" clip-path="url(#monthAvatar)"/>
+    <circle cx="1305" cy="104" r="13" fill="#ffffff" stroke="#d8873a" stroke-width="1.5" stroke-dasharray="3 2"/>
+    <text x="1305" y="108" text-anchor="middle" class="warn" font-size="11" font-weight="800">暂</text>
+  </g>
+
+  <rect x="270" y="198" width="1060" height="1" fill="#e4e7ed"/>
+
+  <!-- Weekday labels -->
+  <g class="secondary" font-size="11" font-weight="650" text-anchor="middle">
+    <text x="326" y="226">一</text><text x="446" y="226">二</text><text x="566" y="226">三</text>
+    <text x="686" y="226">四</text><text x="806" y="226">五</text><text x="926" y="226">六</text>
+    <text x="1046" y="226">日</text><text x="1225" y="226">周梁</text>
+  </g>
+
+  <!-- Calendar day cells. The compact avatar is the existing Liangzi artwork, never a replacement set. -->
+  <!-- Row 1 -->
+  <g transform="translate(270 242)"><rect width="112" height="82" rx="8" class="dayOutside"/><text x="12" y="19" class="tertiary small">27</text><text x="56" y="50" text-anchor="middle" class="tertiary small">上月</text></g>
+  <g transform="translate(390 242)"><rect width="112" height="82" rx="8" class="dayOutside"/><text x="12" y="19" class="tertiary small">28</text><text x="56" y="50" text-anchor="middle" class="tertiary small">上月</text></g>
+  <g transform="translate(510 242)"><rect width="112" height="82" rx="8" class="dayOutside"/><text x="12" y="19" class="tertiary small">29</text><text x="56" y="50" text-anchor="middle" class="tertiary small">上月</text></g>
+  <g transform="translate(630 242)"><rect width="112" height="82" rx="8" class="dayOutside"/><text x="12" y="19" class="tertiary small">30</text><text x="56" y="50" text-anchor="middle" class="tertiary small">上月</text></g>
+  <g transform="translate(750 242)"><rect width="112" height="82" rx="8" class="dayOutside"/><text x="12" y="19" class="tertiary small">31</text><text x="56" y="50" text-anchor="middle" class="tertiary small">上月</text></g>
+  <g transform="translate(870 242)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">1</text><circle cx="56" cy="42" r="22" fill="#fff" stroke="#d9dde5"/><image href="../../src/client/artwork/zong.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁总</text></g>
+  <g transform="translate(990 242)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">2</text><circle cx="56" cy="42" r="22" fill="#fff" stroke="#d9dde5"/><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁神</text></g>
+  <g transform="translate(1120 242)"><rect width="210" height="82" rx="9" class="week"/><text x="14" y="19" class="secondary small">第 31 周</text><g stroke="#bfc5d0" stroke-width="1.5"><path d="M14 29h12M30 29h12M46 29h12M62 29h12M78 29h12M94 29h12M110 29h12"/></g><circle cx="158" cy="42" r="25" fill="#fff" stroke="#d9dde5"/><image href="../../src/client/artwork/zong.png" x="133" y="17" width="50" height="50"/><text x="14" y="58" class="primary label">梁总</text><text x="14" y="74" class="tertiary small">已封存</text><circle cx="192" cy="18" r="11" fill="#b84a3a"/><text x="192" y="22" text-anchor="middle" fill="#fff" font-size="9" font-weight="800">封</text></g>
+
+  <!-- Row 2 -->
+  <g transform="translate(270 334)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">3</text><image href="../../src/client/artwork/sheng.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁圣</text></g>
+  <g transform="translate(390 334)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">4</text><image href="../../src/client/artwork/sheng.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁圣</text></g>
+  <g transform="translate(510 334)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">5</text><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁神</text></g>
+  <g transform="translate(630 334)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">6</text><image href="../../src/client/artwork/zong.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁总</text></g>
+  <g transform="translate(750 334)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">7</text><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁神</text></g>
+  <g transform="translate(870 334)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">8</text><image href="../../src/client/artwork/sheng.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁圣</text></g>
+  <g transform="translate(990 334)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">9</text><image href="../../src/client/artwork/sheng.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁圣</text></g>
+  <g transform="translate(1120 334)"><rect width="210" height="82" rx="9" class="week"/><text x="14" y="19" class="secondary small">第 32 周</text><g stroke="#bfc5d0" stroke-width="1.5"><path d="M14 29h12M30 29h12M46 29h12M62 29h12M78 29h12M94 29h12M110 29h12"/></g><circle cx="158" cy="42" r="25" fill="#fff" stroke="#d9dde5"/><image href="../../src/client/artwork/sheng.png" x="133" y="17" width="50" height="50"/><text x="14" y="58" class="primary label">梁圣</text><text x="14" y="74" class="tertiary small">已封存</text><circle cx="192" cy="18" r="11" fill="#b84a3a"/><text x="192" y="22" text-anchor="middle" fill="#fff" font-size="9" font-weight="800">封</text></g>
+
+  <!-- Row 3 -->
+  <g transform="translate(270 426)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">10</text><image href="../../src/client/artwork/zong.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁总</text></g>
+  <g transform="translate(390 426)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">11</text><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁神</text></g>
+  <g transform="translate(510 426)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">12</text><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁神</text></g>
+  <g transform="translate(630 426)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">13</text><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁神</text></g>
+  <g transform="translate(750 426)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">14</text><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁神</text></g>
+  <g transform="translate(870 426)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">15</text><image href="../../src/client/artwork/sheng.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁圣</text></g>
+  <g transform="translate(990 426)"><rect width="112" height="82" rx="8" fill="#f8f9fb" stroke="#4d6bfe" stroke-width="2"/><text x="12" y="19" class="brand small" font-weight="700">16</text><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="brand small" font-weight="700">梁神</text></g>
+  <g transform="translate(1120 426)"><rect width="210" height="82" rx="9" class="week"/><text x="14" y="19" class="secondary small">第 33 周</text><g stroke="#bfc5d0" stroke-width="1.5"><path d="M14 29h12M30 29h12M46 29h12M62 29h12M78 29h12M94 29h12M110 29h12"/></g><circle cx="158" cy="42" r="25" fill="#fff" stroke="#d9dde5"/><image href="../../src/client/artwork/shen.png" x="133" y="17" width="50" height="50"/><text x="14" y="58" class="primary label">梁神</text><text x="14" y="74" class="tertiary small">已封存</text><circle cx="192" cy="18" r="11" fill="#b84a3a"/><text x="192" y="22" text-anchor="middle" fill="#fff" font-size="9" font-weight="800">封</text></g>
+
+  <!-- Row 4: current week; only 17-19 are archived, 20 is the dedicated today icon. -->
+  <g transform="translate(270 518)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">17</text><image href="../../src/client/artwork/zong.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁总</text></g>
+  <g transform="translate(390 518)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">18</text><image href="../../src/client/artwork/shen.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁神</text></g>
+  <g transform="translate(510 518)"><rect width="112" height="82" rx="8" class="day"/><text x="12" y="19" class="secondary small">19</text><image href="../../src/client/artwork/zong.png" x="34" y="20" width="44" height="44"/><text x="56" y="75" text-anchor="middle" class="primary small" font-weight="650">梁总</text></g>
+  <g transform="translate(630 518)"><rect width="112" height="82" rx="8" fill="#f7f8ff" stroke="#4d6bfe" stroke-width="2"/><path d="M42 17h28l8 7v38H34V24z" fill="#fff" stroke="#4d6bfe" stroke-width="1.4"/><path d="M34 28h44" stroke="#4d6bfe" stroke-width="1.4"/><text x="56" y="48" text-anchor="middle" class="brand" font-size="20" font-weight="800">今</text><text x="56" y="65" text-anchor="middle" class="brand" font-size="9" font-weight="700">进行中</text><text x="12" y="19" class="brand small" font-weight="700">20</text></g>
+  <g transform="translate(750 518)"><rect width="112" height="82" rx="8" class="dayFuture"/><text x="12" y="19" class="tertiary small">21</text></g>
+  <g transform="translate(870 518)"><rect width="112" height="82" rx="8" class="dayFuture"/><text x="12" y="19" class="tertiary small">22</text></g>
+  <g transform="translate(990 518)"><rect width="112" height="82" rx="8" class="dayFuture"/><text x="12" y="19" class="tertiary small">23</text></g>
+  <g transform="translate(1120 518)"><rect width="210" height="82" rx="9" fill="#fffaf3" stroke="#d8873a" stroke-width="1.3" stroke-dasharray="4 3"/><text x="14" y="19" class="warn small" font-weight="700">本周暂梁</text><g stroke="#d8873a" stroke-width="1.5"><path d="M14 29h12M30 29h12M46 29h12"/><path d="M62 29h12M78 29h12M94 29h12M110 29h12" opacity="0.25"/></g><circle cx="158" cy="42" r="25" fill="#fff" stroke="#e4c596"/><image href="../../src/client/artwork/zong.png" x="133" y="17" width="50" height="50"/><text x="14" y="58" class="primary label">梁总</text><text x="14" y="74" class="secondary small">截至昨日 · 3 / 7 日</text><circle cx="192" cy="18" r="11" fill="#fff" stroke="#d8873a" stroke-width="1.4" stroke-dasharray="3 2"/><text x="192" y="22" text-anchor="middle" class="warn" font-size="9" font-weight="800">暂</text></g>
+
+  <!-- Future rows -->
+  <g fill="#fbfbfc" stroke="#e2e5eb" stroke-dasharray="3 4">
+    <rect x="270" y="610" width="112" height="82" rx="8"/><rect x="390" y="610" width="112" height="82" rx="8"/><rect x="510" y="610" width="112" height="82" rx="8"/><rect x="630" y="610" width="112" height="82" rx="8"/><rect x="750" y="610" width="112" height="82" rx="8"/><rect x="870" y="610" width="112" height="82" rx="8"/><rect x="990" y="610" width="112" height="82" rx="8"/>
+    <rect x="270" y="702" width="112" height="82" rx="8"/><rect x="390" y="702" width="112" height="82" rx="8"/><rect x="510" y="702" width="112" height="82" rx="8"/><rect x="630" y="702" width="112" height="82" rx="8"/><rect x="750" y="702" width="112" height="82" rx="8"/><rect x="870" y="702" width="112" height="82" rx="8"/><rect x="990" y="702" width="112" height="82" rx="8"/>
+  </g>
+  <g class="tertiary small"><text x="282" y="629">24</text><text x="402" y="629">25</text><text x="522" y="629">26</text><text x="642" y="629">27</text><text x="762" y="629">28</text><text x="882" y="629">29</text><text x="1002" y="629">30</text><text x="282" y="721">31</text></g>
+  <g><rect x="1120" y="610" width="210" height="82" rx="9" fill="#fbfbfc" stroke="#e2e5eb" stroke-dasharray="3 4"/><rect x="1120" y="702" width="210" height="82" rx="9" fill="#fbfbfc" stroke="#e2e5eb" stroke-dasharray="3 4"/><text x="1134" y="629" class="tertiary small">尚未开始</text><text x="1134" y="721" class="tertiary small">尚未开始</text></g>
+
+  <!-- Bottom fixed details; it replaces nested day modals. -->
+  <g filter="url(#softShadow)">
+    <rect x="270" y="812" width="1060" height="184" rx="12" fill="#f8f9fb" stroke="#d9dde5"/>
+    <circle cx="325" cy="876" r="50" fill="#fff" stroke="#d9dde5"/>
+    <image href="../../src/client/artwork/shen.png" x="277" y="828" width="96" height="96" clip-path="url(#detailAvatar)"/>
+    <text x="397" y="850" class="secondary small">已封存日梁 · 2026 年 8 月 16 日</text>
+    <text x="397" y="881" class="primary" font-size="18" font-weight="750">梁位 81.431607%  →  梁神</text>
+    <text x="397" y="910" class="secondary number" font-size="12">夯 10,665   ·   拉 2,431   ·   三界香火 13,096   ·   梁案 1</text>
+    <text x="397" y="942" class="primary" font-size="13" font-weight="600">DeepSeek Harness 是夯还是拉</text>
+    <text x="397" y="970" class="tertiary small">梁位按最终 accepted 票数封存；今日实时投票不会改写本档案。</text>
+    <rect x="1138" y="852" width="156" height="34" rx="17" fill="#ffffff" stroke="#d9dde5"/>
+    <text x="1216" y="874" text-anchor="middle" class="secondary small" font-weight="650">查看当日梁案</text>
+  </g>
+
+  <!-- Close affordance -->
+  <circle cx="1340" cy="90" r="14" fill="#f4f5f8"/>
+  <path d="M1335 85l10 10m0-10l-10 10" stroke="#8a93a2" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
