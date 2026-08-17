@@ -1,8 +1,9 @@
 # 100 — Release Readiness（v0.6.0 梁相）
 
 结论：**社区 soft-trust 发布候选可部署**；不得宣传为实名、一人一票、
-可信公投或服务器核验 Token。香港迁移与 `api.liang.today` TLS 切换是独立的
-下一阶段门，不改变这条信任边界。
+可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
+`hk-api.liang.today` 旁路验收通过；`api.liang.today` 的权威 A 记录切换仍是
+正式域名上线门，不改变这条信任边界。详见 [`142`](142-hk-migration-report.md)。
 
 ## 本版变更
 
@@ -27,6 +28,9 @@
 | `smoke:online` | ✅ Host→后端、Token claim、幂等、50 并发仅一票、快照发布 |
 | 构建配置迁移 | ✅ 迁移前后三个 bundle SHA-256 相同，无弃用警告 |
 | 密钥/命名空间扫描 | ✅ bundle 不含社区口令，仓库只使用 `liangxiang / 梁相` |
+| 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
+| Mac / 树莓派升级 | ✅ 0.6.0，卸载重装前后身份存储摘要一致 |
+| `api.liang.today` 权威解析 | ⏳ 待域名控制台把 A 记录切到香港公网 IP |
 
 ## 发布验收
 
