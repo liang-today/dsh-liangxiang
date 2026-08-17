@@ -23,11 +23,18 @@ export class AuthoritySlot implements LiangHostService {
     return this.inner
   }
 
-  use(next: LiangHostService): void {
+  /**
+   * Swap the inner service.
+   * @param next - the service to serve next.
+   * @param disposePrevious - dispose the outgoing service after the swap. Pass
+   *   `false` to keep it alive (e.g. keep the online service around so a
+   *   network re-check can switch back to it).
+   */
+  use(next: LiangHostService, disposePrevious = true): void {
     if (next === this.inner) return
     const previous = this.inner
     this.bind(next)
-    previous.dispose?.()
+    if (disposePrevious) previous.dispose?.()
     this.emit()
   }
 

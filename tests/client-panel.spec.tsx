@@ -16,6 +16,8 @@ import {
   LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
   PANEL_TITLE_LOCAL,
+  PLUGIN_PACKAGE_NAME,
+  PLUGIN_VERSION,
   STAGING_MODE_NOTE,
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
@@ -46,6 +48,7 @@ function renderPanel(
     onReconcileAsk?: () => void
     onReconcileConfirm?: () => void
     onReconcileCancel?: () => void
+    versionReveal?: boolean
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -54,6 +57,9 @@ function renderPanel(
       reducedMotion={false}
       soundLevel={0}
       onCycleSound={() => undefined}
+      versionReveal={extra.versionReveal ?? false}
+      onSoundPressStart={() => undefined}
+      onSoundPressEnd={() => undefined}
       welcomeVisible={false}
       onDismissWelcome={() => undefined}
       avatarPulse={false}
@@ -258,6 +264,19 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(styleOf(nextValueRow).fontWeight).toBe(600)
   })
 
+  it('shows 余 N 炷 (not 可打梁) so the left flank stays narrow', () => {
+    const tree = renderPanel(demoState())
+    expect(textContent(tree)).toContain('余 ')
+    expect(textContent(tree)).not.toContain('可打梁')
+  })
+
+  it('reveals the installed version pill when the sound icon is long-pressed', () => {
+    const tree = renderPanel(demoState(), '', { versionReveal: true })
+    const pills = findByAttr(tree, 'data-liangbiao-version')
+    expect(pills.length).toBe(1)
+    expect(textContent(pills)).toBe(`${PLUGIN_PACKAGE_NAME}@${PLUGIN_VERSION}`)
+  })
+
   it('compacts flank counts so thousands stay short (and keeps exact values in the tooltip / SR)', () => {
     const demo = renderPanel(demoState())
     expect(textContent(findByAttr(demo, 'data-liangbiao-compact', 'incense'))).toBe('7')
@@ -335,6 +354,9 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         reducedMotion={false}
         soundLevel={0}
         onCycleSound={() => undefined}
+        versionReveal={false}
+        onSoundPressStart={() => undefined}
+        onSoundPressEnd={() => undefined}
         welcomeVisible={false}
         onDismissWelcome={() => undefined}
         avatarPulse={false}
@@ -358,6 +380,9 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         reducedMotion
         soundLevel={0}
         onCycleSound={() => undefined}
+        versionReveal={false}
+        onSoundPressStart={() => undefined}
+        onSoundPressEnd={() => undefined}
         welcomeVisible={false}
         onDismissWelcome={() => undefined}
         avatarPulse={false}

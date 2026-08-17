@@ -187,6 +187,44 @@ export function LiangbiaoBadge(): ReactElement {
     setSoundLevel(next)
     playVolumePreview()
   }, [])
+  // Long-press (3s) on the sound icon reveals the installed version — a hidden
+  // dev / easter-egg gesture. A long-press also swallows the release click so it
+  // never cycles the volume.
+  const [versionReveal, setVersionReveal] = useState(false)
+  const longPressTimer = useRef<number | null>(null)
+  const revealTimer = useRef<number | null>(null)
+  const longPressed = useRef(false)
+  const beginSoundLongPress = useCallback(() => {
+    longPressed.current = false
+    if (longPressTimer.current !== null) window.clearTimeout(longPressTimer.current)
+    longPressTimer.current = window.setTimeout(() => {
+      longPressTimer.current = null
+      longPressed.current = true
+      setVersionReveal(true)
+      if (revealTimer.current !== null) window.clearTimeout(revealTimer.current)
+      revealTimer.current = window.setTimeout(() => {
+        revealTimer.current = null
+        setVersionReveal(false)
+      }, 3000)
+    }, 3000)
+  }, [])
+  const endSoundLongPress = useCallback(() => {
+    if (longPressTimer.current !== null) {
+      window.clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+  const onSoundClick = useCallback(() => {
+    if (longPressed.current) {
+      longPressed.current = false
+      return
+    }
+    onCycleSound()
+  }, [onCycleSound])
+  useEffect(() => () => {
+    if (longPressTimer.current !== null) window.clearTimeout(longPressTimer.current)
+    if (revealTimer.current !== null) window.clearTimeout(revealTimer.current)
+  }, [])
   const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
   const onDismissWelcome = useCallback(() => {
     markWelcomeSeen()
@@ -432,7 +470,10 @@ export function LiangbiaoBadge(): ReactElement {
           reducedMotion={reducedMotion}
           throttle={throttle}
           soundLevel={soundLevel}
-          onCycleSound={onCycleSound}
+          onCycleSound={onSoundClick}
+          versionReveal={versionReveal}
+          onSoundPressStart={beginSoundLongPress}
+          onSoundPressEnd={endSoundLongPress}
           welcomeVisible={welcomeVisible}
           onDismissWelcome={onDismissWelcome}
           avatarPulse={avatarPulse}
