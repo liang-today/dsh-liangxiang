@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+# Unified Liangxiang server operator command. Installed as /usr/local/bin/liang.
+set -euo pipefail
+
+PREFIX="${LIANGXIANG_PREFIX:-/opt/liangxiang}"
+ENV_FILE="${LIANGXIANG_ENV_FILE:-/etc/liangxiang.env}"
+SERVICE="liangxiang-backend"
+BACKUP_DIR="/var/backups/liangxiang"
+
+usage() {
+  cat <<'EOF'
+梁相服务器命令
+
+  liang status                         服务、版本、今日梁案、梁位和下期梁案
+  liang logs [行数]                    最近日志（默认 200 行）
+  liang logs -f                        持续查看日志（Ctrl+C 退出）
+  liang config list                    显示安全配置（密钥只显示是否已设置）
+  liang config help                    显示可修改项和影响
+  liang config set <配置名> <值>       校验、备份、修改并安全重启
+  liang config set-secret community-key 交互式修改社区口令（不进命令历史）
+  liang cases list                     显示待发布梁案及日期
+  liang cases add [--on 日期] "标题"   加入梁案队列
+  liang cases seed --start 日期 [数量]  从内置题库连续排期（默认 10 道）
+  liang cases publish "标题"           立即结案并发布新梁案（慎用）
+EOF
+}
+
+if [[ "${1:-help}" == "help" || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+# The env file and SQLite data are deliberately not readable by login users.
+# The deployment account has passwordless sudo; other accounts receive the
+# normal sudo policy instead of a widened file permission.
+if [[ "$(id -u)" -ne 0 ]]; then
+  exec sudo -n "$0" "$@"
+fi
+
+if [[ ! -r "$ENV_FILE" ]]; then
+  echo "找不到配置：$ENV_FILE" >&2
+  exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+
+read_config() {
+  local key="$1"
+  awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1); exit }' "$ENV_FILE"
+}
+
+run_backend_cli() {
+  cd "$PREFIX"
+  node lib/backend-cli.js "$@"
+}
+
+config_help() {
+  cat <<'EOF'
+可在线修改的配置（名称大小写不限，连字符/下划线均可）：
+
+  snapshot-seconds       1..3600，社区快照刷新秒数；默认 1
+  token-per-incense      >=1，每炷所需 Pro 当量；从下一道梁案起生效
+  business-tz            IANA 时区，如 Asia/Shanghai；重启后生效
+  vote-rate-limit        >=0，单安装每分钟请求数；0 表示关闭
+  vote-rate-limit-max-keys >=1，内存限流器最多保留的活跃安装数
+  absurd-claim-tokens    >=0，单次异常 Token 增量上限；0 表示关闭
+  rekey-cooldown-ms      >=0，身份重铸冷却毫秒数；0 仅适合测试
+
+示例：
+  liang config set snapshot-seconds 2
+  liang config set vote-rate-limit 300
+
+主机监听、端口、数据库路径、ALLOW_UNSIGNED 和 authority mode 属于安全边界，
+此命令不允许修改。社区口令请用 set-secret，避免出现在 shell 历史和进程列表。
+每次修改都会先备份 /etc/liangxiang.env；若重启或健康检查失败会自动回滚。
+EOF
+}
+
+normalize_config_name() {
+  printf '%s' "$1" | tr '[:lower:]-' '[:upper:]_'
+}
+
+validate_config() {
+  local name="$1" value="$2"
+  case "$name" in
+    SNAPSHOT_SECONDS)
+      [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 1 && value <= 3600 ))
+      ;;
+    TOKEN_PER_INCENSE|VOTE_RATE_LIMIT_MAX_KEYS)
+      [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 1 ))
+      ;;
+    VOTE_RATE_LIMIT|ABSURD_CLAIM_TOKENS|REKEY_COOLDOWN_MS)
+      [[ "$value" =~ ^[0-9]+$ ]]
+      ;;
+    BUSINESS_TZ)
+      node -e 'new Intl.DateTimeFormat("en", { timeZone: process.argv[1] }).format()' "$value" >/dev/null 2>&1
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+replace_config() {
+  local suffix="$1" value="$2"
+  local key="LIANGXIANG_${suffix}"
+  local temp backup stamp
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  install -d -o root -g root -m 0700 "$BACKUP_DIR"
+  backup="$BACKUP_DIR/liangxiang.env-${stamp}"
+  cp --preserve=mode,ownership,timestamps "$ENV_FILE" "$backup"
+  chmod 0600 "$backup"
+  temp="$(mktemp /etc/.liangxiang.env.XXXXXX)"
+  awk -v key="$key" -v value="$value" '
+    BEGIN { found = 0 }
+    $0 ~ "^" key "=" { print key "=" value; found = 1; next }
+    { print }
+    END { if (!found) print key "=" value }
+  ' "$ENV_FILE" > "$temp"
+  chown root:liangxiang "$temp"
+  chmod 0640 "$temp"
+  mv -f "$temp" "$ENV_FILE"
+
+  if ! systemctl restart "$SERVICE"; then
+    cp --preserve=mode,ownership,timestamps "$backup" "$ENV_FILE"
+    systemctl restart "$SERVICE" || true
+    echo "修改导致服务无法启动，已回滚：$backup" >&2
+    exit 1
+  fi
+  local port
+  port="$(read_config LIANGXIANG_BACKEND_PORT)"
+  port="${port:-4180}"
+  for _ in $(seq 1 20); do
+    if curl -fsS --max-time 2 "http://127.0.0.1:${port}/v1/health" >/dev/null 2>&1; then
+      echo "已更新 ${key} 并通过健康检查；备份：${backup}"
+      return 0
+    fi
+    sleep 0.5
+  done
+  cp --preserve=mode,ownership,timestamps "$backup" "$ENV_FILE"
+  systemctl restart "$SERVICE" || true
+  echo "健康检查失败，已回滚：$backup" >&2
+  exit 1
+}
+
+case "$1" in
+  status)
+    echo "服务：$(systemctl is-active "$SERVICE" 2>/dev/null || true) / 开机启动：$(systemctl is-enabled "$SERVICE" 2>/dev/null || true)"
+    echo "版本：$(cat "$PREFIX/VERSION" 2>/dev/null || echo 未标记)"
+    port="$(read_config LIANGXIANG_BACKEND_PORT)"; port="${port:-4180}"
+    echo "健康：$(curl -fsS --max-time 3 "http://127.0.0.1:${port}/v1/health" || echo 不可用)"
+    run_backend_cli status
+    ;;
+  logs)
+    if [[ "${2:-}" == "-f" ]]; then
+      exec journalctl -u "$SERVICE" -f
+    fi
+    lines="${2:-200}"
+    [[ "$lines" =~ ^[0-9]+$ ]] || { echo "行数必须是整数" >&2; exit 2; }
+    exec journalctl -u "$SERVICE" -n "$lines" --no-pager
+    ;;
+  config)
+    case "${2:-}" in
+      list)
+        for suffix in BUSINESS_TZ SNAPSHOT_SECONDS TOKEN_PER_INCENSE VOTE_RATE_LIMIT VOTE_RATE_LIMIT_MAX_KEYS ABSURD_CLAIM_TOKENS REKEY_COOLDOWN_MS; do
+          printf '%-26s %s\n' "${suffix}" "$(read_config "LIANGXIANG_${suffix}")"
+        done
+        if [[ -n "$(read_config LIANGXIANG_COMMUNITY_KEY)" ]]; then
+          echo "COMMUNITY_KEY              已设置（已隐藏）"
+        else
+          echo "COMMUNITY_KEY              未设置"
+        fi
+        ;;
+      help) config_help ;;
+      set)
+        [[ $# -eq 4 ]] || { echo "用法：liang config set <配置名> <值>" >&2; exit 2; }
+        name="$(normalize_config_name "$3")"
+        validate_config "$name" "$4" || { echo "配置名或值无效；运行 liang config help" >&2; exit 2; }
+        replace_config "$name" "$4"
+        ;;
+      set-secret)
+        [[ "${3:-}" == "community-key" && $# -eq 3 ]] || { echo "用法：liang config set-secret community-key" >&2; exit 2; }
+        read -r -s -p "输入新的社区口令：" secret; echo
+        [[ ${#secret} -ge 24 ]] || { echo "口令至少 24 个字符" >&2; exit 2; }
+        [[ "$secret" =~ ^[A-Za-z0-9._~-]+$ ]] || { echo "口令只能使用字母、数字及 . _ ~ -" >&2; exit 2; }
+        replace_config COMMUNITY_KEY "$secret"
+        ;;
+      *) config_help; exit 2 ;;
+    esac
+    ;;
+  cases)
+    case "${2:-}" in
+      list) run_backend_cli case queue list ;;
+      add) shift 2; run_backend_cli case queue add "$@" ;;
+      seed)
+        [[ "${3:-}" == "--start" && -n "${4:-}" ]] || { echo "用法：liang cases seed --start YYYY-MM-DD [数量]" >&2; exit 2; }
+        limit="${5:-10}"
+        run_backend_cli case queue seed --start "$4" --limit "$limit" "$PREFIX/scripts/case-bank.txt"
+        ;;
+      publish) shift 2; run_backend_cli case publish "$@" ;;
+      *) echo '用法：liang cases list | add [--on YYYY-MM-DD] "标题" | seed --start YYYY-MM-DD [数量] | publish "标题"' >&2; exit 2 ;;
+    esac
+    ;;
+  *) usage; exit 2 ;;
+esac

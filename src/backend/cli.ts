@@ -4,14 +4,17 @@
  * community backend does not have to expose an operator port.
  *
  * Usage (on the VPS, after `pnpm run build`):
+ *   node lib/backend-cli.js status
  *   node lib/backend-cli.js case publish "新题是夯还是拉"
  *   node lib/backend-cli.js case queue list
  *   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "明日题是夯还是拉"
  *   node lib/backend-cli.js identity unbind lk_...
  */
 import { resolveBackendConfig, BackendConfigError } from './config.ts'
+import { readFileSync } from 'node:fs'
+import { formatLiangPosition, isBusinessDate } from '../domain/index.ts'
 import { LiangxiangBackendService } from './service.ts'
-import { openBackendStore } from './store.ts'
+import { openBackendStore, type QueueRow } from './store.ts'
 import { parseInstallationId, parseV1PublishCaseRequest } from '../shared/backend-v1.ts'
 import { WireError } from '../shared/wire.ts'
 
@@ -21,15 +24,19 @@ export interface OperatorCliIo {
 }
 
 const usage = `usage:
+  node lib/backend-cli.js status
   node lib/backend-cli.js case publish "<标题是夯还是拉>"
   node lib/backend-cli.js case queue list
   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "<标题是夯还是拉>"
+  node lib/backend-cli.js case queue seed --start YYYY-MM-DD [--limit N] <题库文件>
   node lib/backend-cli.js identity unbind <installation_id>`
 
 function stripExec(argv: string[]): string[] {
   let start = 0
   const first = argv[0]
-  if (first !== undefined && (first === 'node' || /(?:^|[/\\])node(?:\.exe)?$/i.test(first))) {
+  // Rocky/NodeSource may expose the executable as `/usr/bin/node-22`; macOS
+  // and most distributions use `node`. Accept both argv[0] forms.
+  if (first !== undefined && (first === 'node' || /(?:^|[/\\])node(?:-\d+)?(?:\.exe)?$/i.test(first))) {
     start = 1
   }
   const exec = argv[start]
@@ -47,7 +54,7 @@ export function runOperatorCli(
   const args = stripExec(argv)
   const topic = args[0]
   const command = args[1]
-  if (topic === undefined || command === undefined) {
+  if (topic === undefined || (topic !== 'status' && command === undefined)) {
     io.error(usage)
     return 2
   }
@@ -62,6 +69,27 @@ export function runOperatorCli(
   const store = openBackendStore(config.databasePath)
   const service = new LiangxiangBackendService({ store, config })
   try {
+    if (topic === 'status') {
+      const snapshot = service.snapshotResponse()
+      const queue = service.listQueue()
+      io.log(JSON.stringify({
+        business_date: snapshot.business_date,
+        business_timezone: config.timezone,
+        active_case: snapshot.active_case,
+        global_snapshot: snapshot.global_snapshot,
+        archive_version: snapshot.archive_version,
+        queue: {
+          pending: queue.length,
+          next: queue[0] ?? null,
+        },
+      }, null, 2))
+      io.log(
+        `[liangxiang-ops] status date=${snapshot.business_date} case=${snapshot.active_case.id} `
+        + `梁位=${formatLiangPosition(snapshot.global_snapshot.up_votes, snapshot.global_snapshot.down_votes)} `
+        + `queue=${queue.length} next=${queue[0]?.publish_on ?? 'fifo'}`,
+      )
+      return 0
+    }
     if (topic === 'case' && command === 'publish') {
       const title = args.slice(2).join(' ').trim()
       const published = service.publishCase(parseV1PublishCaseRequest({ title }).title)
@@ -89,6 +117,54 @@ export function runOperatorCli(
       io.log(`[liangxiang-ops] queue id=${queued.id} on=${queued.publish_on ?? 'fifo'}`)
       return 0
     }
+    if (topic === 'case' && command === 'queue' && args[2] === 'seed') {
+      if (args[3] !== '--start' || !isBusinessDate(args[4])) {
+        throw new WireError('start', 'seed requires --start YYYY-MM-DD')
+      }
+      const start = args[4]
+      if (start <= service.businessDate()) {
+        throw new WireError('start', `must be after current business date ${service.businessDate()}`)
+      }
+      let cursor = 5
+      let limit = 10
+      if (args[cursor] === '--limit') {
+        limit = Number(args[cursor + 1])
+        cursor += 2
+      }
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 366) {
+        throw new WireError('limit', 'expected an integer in [1,366]')
+      }
+      const path = args[cursor]
+      if (path === undefined || args.length !== cursor + 1) {
+        throw new WireError('file', 'expected one case-bank file path')
+      }
+      const titles = readFileSync(path, 'utf8')
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line !== '' && !line.startsWith('#'))
+      const pending = service.listQueue()
+      const occupiedDates = new Set(pending.flatMap(row => row.publish_on === null ? [] : [row.publish_on]))
+      const existingTitles = new Set(pending.map(row => row.title))
+      const plan: Array<{ title: string, publishOn: string }> = []
+      let date = start
+      for (const title of titles) {
+        if (plan.length >= limit) break
+        if (existingTitles.has(title)) continue
+        while (occupiedDates.has(date)) date = addUtcDays(date, 1)
+        const normalized = parseV1PublishCaseRequest({ title }).title
+        plan.push({ title: normalized, publishOn: date })
+        existingTitles.add(normalized)
+        occupiedDates.add(date)
+        date = addUtcDays(date, 1)
+      }
+      if (plan.length < limit) {
+        throw new Error(`case bank only supplied ${plan.length} new unique titles; requested ${limit}`)
+      }
+      const scheduled: QueueRow[] = plan.map(item => service.enqueueCase(item.title, item.publishOn))
+      io.log(JSON.stringify({ added: scheduled.length, items: scheduled }, null, 2))
+      io.log(`[liangxiang-ops] queue seeded=${scheduled.length} first=${scheduled[0]?.publish_on} last=${scheduled.at(-1)?.publish_on}`)
+      return 0
+    }
     if (topic === 'identity' && command === 'unbind') {
       const installationId = parseInstallationId(args[2])
       const response = service.unbindIdentity(installationId)
@@ -105,6 +181,12 @@ export function runOperatorCli(
   } finally {
     store.close()
   }
+}
+
+function addUtcDays(date: string, amount: number): string {
+  const instant = new Date(`${date}T00:00:00.000Z`)
+  instant.setUTCDate(instant.getUTCDate() + amount)
+  return instant.toISOString().slice(0, 10)
 }
 
 const invokedDirectly = process.argv[1] !== undefined

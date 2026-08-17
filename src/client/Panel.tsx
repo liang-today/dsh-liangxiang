@@ -14,6 +14,7 @@ import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, forma
 import {
   ABSURD_CLAIM_NOTICE,
   ACCOUNTING_UNAVAILABLE_HINT,
+  COMMUNITY_UNAVAILABLE_REASON,
   AUTHORITY_MODE_NOTES,
   INCENSE_STAT_HINT,
   INCENSE_STAT_LABEL,
@@ -527,16 +528,22 @@ export function Panel(props: PanelProps): ReactElement {
   const displayFill = throttle?.fill ?? personal.liangQiFill
   const displayTokensToNext = throttle?.tokensToNext ?? personal.tokensToNextIncense
   const offline = state.connection !== 'live'
+  const communityUnavailable = state.authorityMode === 'DEV_STAGING_ONLY' && !state.authorityAvailable
+  const authorityUnavailable = offline || communityUnavailable
   const outOfIncense = personal.remainingIncense <= 0
-  const votingDisabled = outOfIncense || offline
+  const votingDisabled = outOfIncense || authorityUnavailable
   const disabledReason = offline
     ? OFFLINE_REASON
+    : communityUnavailable
+      ? COMMUNITY_UNAVAILABLE_REASON
     : outOfIncense
       ? NO_INCENSE_REASON
       : ''
   const absurdNotice = state.accountingNotice === 'claim_capped_absurd'
   const statusLine = offline
     ? OFFLINE_REASON
+    : communityUnavailable
+      ? COMMUNITY_UNAVAILABLE_REASON
     : !state.accountingAvailable
       ? ACCOUNTING_UNAVAILABLE_HINT
       : absurdNotice
@@ -559,10 +566,11 @@ export function Panel(props: PanelProps): ReactElement {
   // contradict the Liangzi state rendered beside them (AGENTS.md §12).
   const panelTitle = state.authorityMode === 'LOCAL_FAKE_DEV' ? PANEL_TITLE_LOCAL : PANEL_TITLE
   const percents = formatRatioPercents(snapshot.upVotes, snapshot.downVotes, LIANG_POSITION_DECIMALS)
-  const earnedExact = personal.earnedIncenseToday.toLocaleString('zh-CN')
+  const earnedObserved = state.observedEarnedIncenseToday
+  const earnedExact = earnedObserved.toLocaleString('zh-CN')
   const remainingExact = personal.remainingIncense.toLocaleString('zh-CN')
   const toNextExact = personal.tokensToNextIncense.toLocaleString('zh-CN')
-  const earnedCompact = formatCompactCount(personal.earnedIncenseToday)
+  const earnedCompact = formatCompactCount(earnedObserved)
   const remainingCompact = formatCompactCount(personal.remainingIncense)
   const summary = `当前梁子状态：${LIANGZI_STATE_LABELS[snapshot.liangziState]}`
     + `（${liangziRatioRangeText(snapshot.liangziState)}）。`
@@ -903,7 +911,7 @@ export function Panel(props: PanelProps): ReactElement {
         <button
           type="button"
           data-liangxiang-vote="up"
-          disabled={offline}
+          disabled={authorityUnavailable}
           aria-disabled={votingDisabled}
           title={votingDisabled ? disabledReason : `${VOTE_UP_NAME}一炷香`}
           onClick={() => outOfIncense ? onInsufficientVote('up') : onVote('up')}
@@ -920,7 +928,7 @@ export function Panel(props: PanelProps): ReactElement {
         <button
           type="button"
           data-liangxiang-vote="down"
-          disabled={offline}
+          disabled={authorityUnavailable}
           aria-disabled={votingDisabled}
           title={votingDisabled ? disabledReason : `${VOTE_DOWN_NAME}一炷香`}
           onClick={() => outOfIncense ? onInsufficientVote('down') : onVote('down')}

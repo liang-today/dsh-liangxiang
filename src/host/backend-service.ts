@@ -87,6 +87,8 @@ export class BackendLiangService implements LiangHostService {
   private historyInFlight: Promise<void> | null = null
 
   private accountingAvailable = false
+  /** Last-known reachability of the community authority (history excluded). */
+  private authorityAvailable = false
   private revision = 0
   private readonly hostEpoch = Date.now()
   private readonly listeners = new Set<() => void>()
@@ -194,6 +196,13 @@ export class BackendLiangService implements LiangHostService {
   /** Cadence hook: pull the published snapshot (and re-bootstrap on rollover). */
   tick(): void {
     this.ticks += 1
+    if (!this.authorityAvailable) {
+      // Recovery must use an authenticated endpoint. The public snapshot may
+      // be healthy while this installation's signature/key is rejected, so it
+      // is not sufficient evidence for re-enabling spend actions.
+      void this.refreshBootstrap()
+      return
+    }
     void this.refreshSnapshot()
     if (this.ticks % PERSONAL_REFRESH_EVERY_TICKS === 0) void this.refreshPersonal()
   }
@@ -225,24 +234,37 @@ export class BackendLiangService implements LiangHostService {
         return
       }
       this.personal = response.authoritative_personal_state
+      this.setAuthorityAvailable(true)
       this.bump()
     } catch (error) {
+      this.setAuthorityAvailable(false)
       this.reportFailure('daily-state', error)
     }
   }
 
   async vote(intent: WireVoteRequest): Promise<VoteOutcome> {
     const installationId = this.requireIdentity()
+    if (!this.authorityAvailable) {
+      throw new BackendClientError('community authority is temporarily unavailable')
+    }
     // Flush any unclaimed local usage before the vote: the backend's spend
     // authority is the claim, so a vote must never race ahead of a debounced
     // claim. The flush reports ledger + local suffix, not a restarted daily
     // total — 上达天听 must not strand new tokens below the ratchet.
     await this.flushClaim()
-    const response = await this.client.vote(installationId, {
-      case_id: intent.caseId,
-      vote_type: intent.voteType,
-      request_id: intent.requestId,
-    })
+    let response: Awaited<ReturnType<BackendClient['vote']>>
+    try {
+      response = await this.client.vote(installationId, {
+        case_id: intent.caseId,
+        vote_type: intent.voteType,
+        request_id: intent.requestId,
+      })
+      this.setAuthorityAvailable(true)
+    } catch (error) {
+      this.setAuthorityAvailable(false)
+      this.reportFailure('vote', error)
+      throw error
+    }
     this.personal = response.authoritative_personal_state
     // The response carries the snapshot the accepted vote published, so 梁位
     // moves on the click. It is still the BACKEND's published row — the host
@@ -275,6 +297,7 @@ export class BackendLiangService implements LiangHostService {
       revision: this.revision,
       hostEpoch: this.hostEpoch,
       authorityMode: 'DEV_STAGING_ONLY',
+      authorityAvailable: this.authorityAvailable,
       snapshotRefreshSeconds: bootstrap.snapshot_refresh_seconds,
       businessDate: this.businessDate,
       archiveVersion: this.archiveVersion,
@@ -337,17 +360,19 @@ export class BackendLiangService implements LiangHostService {
     const installationId = this.installationId
     if (installationId === null || this.disposed) return
     if (this.bootstrapping !== null) return this.bootstrapping
-    if (this.bootstrap === null && Date.now() < this.bootstrapBackoffUntil) return
+    if (Date.now() < this.bootstrapBackoffUntil) return
     const run = (async (): Promise<void> => {
       try {
         const bootstrap = await this.client.bootstrap(installationId)
         this.adoptBootstrap(bootstrap)
+        this.setAuthorityAvailable(true)
         this.bootstrapBackoffMs = 0
         this.bootstrapBackoffUntil = 0
         // A fresh business date means the local claim must be re-submitted.
         this.lastClaimSent = -1
         this.scheduleClaim()
       } catch (error) {
+        this.setAuthorityAvailable(false)
         this.bootstrapBackoffMs = this.bootstrapBackoffMs === 0
           ? 1_000
           : Math.min(this.bootstrapBackoffMs * 2, 30_000)
@@ -381,6 +406,7 @@ export class BackendLiangService implements LiangHostService {
       this.bump()
       if (archiveMoved) void this.refreshHistory()
     } catch (error) {
+      this.setAuthorityAvailable(false)
       this.reportFailure('snapshot', error)
     }
   }
@@ -506,6 +532,7 @@ export class BackendLiangService implements LiangHostService {
   ): Promise<void> {
     try {
       const response = await this.client.submitClaim(installationId, target, businessDate)
+      this.setAuthorityAvailable(true)
       this.personal = response.authoritative_personal_state
       this.activeCase = response.active_case
       this.businessDate = response.business_date
@@ -535,6 +562,7 @@ export class BackendLiangService implements LiangHostService {
       }
       this.bump()
     } catch (error) {
+      this.setAuthorityAvailable(false)
       this.reportFailure('token-claim', error)
     }
   }
@@ -582,6 +610,12 @@ export class BackendLiangService implements LiangHostService {
     }
     const message = error instanceof Error ? error.message : String(error)
     this.warn(`[${PLUGIN_PACKAGE_NAME}] backend ${label} failed: ${message}`)
+  }
+
+  private setAuthorityAvailable(available: boolean): void {
+    if (this.authorityAvailable === available) return
+    this.authorityAvailable = available
+    this.bump()
   }
 
   private bump(): void {

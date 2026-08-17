@@ -50,12 +50,16 @@ function addMonths(monthId: string, amount: number): string {
   return new Date(Date.UTC(year as number, (month as number) - 1 + amount, 1)).toISOString().slice(0, 7)
 }
 
-function calendarDates(monthId: string): string[] {
+export function calendarDates(monthId: string): string[] {
   const first = `${monthId}-01`
   const instant = new Date(`${first}T00:00:00.000Z`)
   const weekday = instant.getUTCDay() === 0 ? 7 : instant.getUTCDay()
   const start = addBusinessDays(first, 1 - weekday)
-  return Array.from({ length: 42 }, (_unused, index) => addBusinessDays(start, index))
+  const [year, month] = monthId.split('-').map(Number)
+  const daysInMonth = new Date(Date.UTC(year as number, month as number, 0)).getUTCDate()
+  const occupiedCells = weekday - 1 + daysInMonth
+  const cellCount = Math.ceil(occupiedCells / 7) * 7
+  return Array.from({ length: cellCount }, (_unused, index) => addBusinessDays(start, index))
 }
 
 function monthTitle(monthId: string): string {
@@ -282,7 +286,7 @@ function DayCell({
 }): ReactElement {
   const inMonth = date.startsWith(displayedMonth)
   if (!inMonth) {
-    return <div aria-hidden="true" style={{ height: '84px', borderRadius: '8px', background: 'transparent' }} />
+    return <div aria-hidden="true" style={{ height: '100%', minHeight: 0, borderRadius: '8px', background: 'transparent' }} />
   }
   const day = Number(date.slice(-2))
   const today = date === businessDate
@@ -307,7 +311,8 @@ function DayCell({
       onMouseEnter={onSelect}
       aria-label={`${shortDate(date)}：${label}`}
       style={{
-        height: '84px',
+        height: '100%',
+        minHeight: 0,
         minWidth: 0,
         padding: '6px 5px 5px',
         display: 'flex',
@@ -388,7 +393,8 @@ function WeekCell({
       aria-label={`${week.weekId} 周梁，${shortDate(startDate)}至${shortDate(endDate)}：${label}`}
       style={{
         position: 'relative',
-        height: '84px',
+        height: '100%',
+        minHeight: 0,
         minWidth: 0,
         padding: '7px 8px',
         display: 'grid',
@@ -506,7 +512,8 @@ function DetailPanel({
       aria-live="polite"
       data-liangci-detail=""
       style={{
-        minHeight: '94px',
+        height: '94px',
+        flex: '0 0 94px',
         boxSizing: 'border-box',
         padding: '13px 15px',
         borderRadius: '10px',
@@ -595,6 +602,7 @@ export function LiangciModal({
   const weeks = archive?.weeks ?? []
   const months = archive?.months ?? []
   const dates = useMemo(() => calendarDates(displayedMonth), [displayedMonth])
+  const weekRows = dates.length / 7
   const dayByDate = useMemo(() => new Map(days.map(day => [day.businessDate, day])), [days])
   const currentMonthPeriod = deriveTemporaryMonth(businessDate, days)
   const monthPeriod = displayedMonth === currentMonth
@@ -633,7 +641,10 @@ export function LiangciModal({
         data-liangci-dialog=""
         style={{
           width: 'min(880px, calc(100vw - 32px))',
-          maxHeight: 'min(760px, 86vh)',
+          // One stable height across 4/5/6-week months. Use the viewport minus
+          // the backdrop padding rather than 86vh: the latter needlessly lost
+          // ~100px on laptop screens and squeezed a six-row month.
+          height: 'min(760px, calc(100vh - 32px))',
           boxSizing: 'border-box',
           position: 'relative',
           display: 'flex',
@@ -714,14 +725,18 @@ export function LiangciModal({
             )
             : (
               <>
-                <div data-liangci-scroll="" style={{ overflow: 'auto', minHeight: 0 }}>
-                  <div style={{ minWidth: '794px' }}>
+                <div
+                  data-liangci-scroll=""
+                  data-liangci-week-rows={weekRows}
+                  style={{ overflowX: 'auto', overflowY: 'hidden', minHeight: 0, flex: '1 1 0' }}
+                >
+                  <div style={{ minWidth: '794px', height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(78px, 1fr)) 130px', gap: '8px', marginBottom: '7px', padding: '0 2px' }}>
                       {WEEKDAY_LABELS.map(label => <span key={label} style={{ textAlign: 'center', fontSize: '10px', fontWeight: 650, color: color.textTertiary, letterSpacing: '1px' }}>周{label}</span>)}
                       <span style={{ textAlign: 'center', fontSize: '10px', fontWeight: 700, color: color.ritualEmber, letterSpacing: '1px' }}>周梁</span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(78px, 1fr)) 130px', gap: '8px' }}>
-                      {Array.from({ length: 6 }, (_unused, rowIndex) => {
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(78px, 1fr)) 130px', gridTemplateRows: `repeat(${weekRows}, minmax(0, 1fr))`, gap: '8px', flex: '1 1 0', minHeight: 0 }}>
+                      {Array.from({ length: weekRows }, (_unused, rowIndex) => {
                         const rowDates = dates.slice(rowIndex * 7, rowIndex * 7 + 7)
                         const startDate = rowDates[0] as string
                         const endDate = rowDates[6] as string

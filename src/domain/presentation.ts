@@ -113,9 +113,14 @@ export function formatRatioPercents(
   assertCount(decimals, 'invalid_vote_count', 'decimals')
   const total = upVotes + downVotes
   if (total === 0) return { up: WAITING_PERCENT_TEXT, down: WAITING_PERCENT_TEXT }
-  // Integer math on scaled basis points: no float drift near 50/70/85/95.
+  // Exact integer math: converting to Number before division can lose low
+  // digits once a popular case grows large, making a moving ratio appear to
+  // stick on `.000000`. BigInt keeps every displayed digit tied to the raw
+  // vote counts and still truncates at the requested precision.
   const scale = 10 ** decimals
-  const scaledUp = Math.floor((upVotes * 100 * scale) / total)
+  const scaledUp = Number(
+    (BigInt(upVotes) * 100n * BigInt(scale)) / BigInt(total),
+  )
   const format = (scaled: number): string =>
     `${(scaled / scale).toFixed(decimals)}%`
   return { up: format(scaledUp), down: format(100 * scale - scaledUp) }

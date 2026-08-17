@@ -23,6 +23,8 @@ interface Stack {
   host: BackendLiangService
   backend: LiangxiangBackendService
   clock: ReturnType<typeof createMutableClock>
+  stopNetwork: () => Promise<void>
+  startNetwork: () => Promise<void>
   close: () => Promise<void>
 }
 
@@ -90,9 +92,19 @@ async function startStack(
     host,
     backend,
     clock,
+    stopNetwork: async () => {
+      if (!api.server.listening) return
+      await new Promise<void>((resolve) => api.server.close(() => resolve()))
+    },
+    startNetwork: async () => {
+      if (api.server.listening) return
+      await new Promise<void>((resolve) => api.server.listen(address.port, '127.0.0.1', resolve))
+    },
     close: async () => {
       host.dispose()
-      await new Promise<void>((resolve) => api.server.close(() => resolve()))
+      if (api.server.listening) {
+        await new Promise<void>((resolve) => api.server.close(() => resolve()))
+      }
       store.close()
     },
   }
@@ -139,6 +151,29 @@ describe('online bootstrap', () => {
     expect(view.snapshot.liangziState).toBe('waiting')
     expect(view.snapshot.upRatio).toBeNull()
     expect(view.personal.remainingIncense).toBe(0)
+  })
+
+  it('keeps observing Token offline, disables authority, and recovers automatically on the next tick', async () => {
+    const s = await startStack({}, { claimDebounceMs: 60_000 })
+    expect(frame(s).authorityAvailable).toBe(true)
+    await s.stopNetwork()
+    await s.host.refreshSnapshot()
+    expect(frame(s).authorityAvailable).toBe(false)
+
+    observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    const offline = wireToViewState(frame(s), 'live')
+    expect(offline.observedEarnedIncenseToday).toBe(1)
+    expect(offline.personal.remainingIncense).toBe(0)
+    await expect(s.host.vote({
+      caseId: offline.activeCase.id,
+      voteType: 'up',
+      requestId: 'req-offline-0001',
+    })).rejects.toThrow('temporarily unavailable')
+
+    await s.startNetwork()
+    await new Promise((resolve) => setTimeout(resolve, 1_050))
+    await s.host.refreshBootstrap()
+    expect(frame(s).authorityAvailable).toBe(true)
   })
 
   it('paints and claims usage when the host TZ date disagrees with the backend', async () => {

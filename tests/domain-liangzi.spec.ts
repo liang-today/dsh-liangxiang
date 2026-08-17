@@ -106,6 +106,13 @@ describe('state bands and their displayed percentages', () => {
     expect(formatLiangPosition(700_000, 300_000, 4)).toBe(formatLiangPosition(700_001, 300_000, 4))
   })
 
+  it('keeps exact low digits beyond Number multiplication precision', () => {
+    const before = formatLiangPosition(70_000_001, 30_000_000)
+    const after = formatLiangPosition(70_000_004, 30_000_000)
+    expect(before).toBe('70.000000%')
+    expect(after).toBe('70.000001%')
+  })
+
   it('truncates 梁位 at six decimals too (never crosses a threshold)', () => {
     // 474/501 = 94.610778…% stays 梁圣 and must not print a rounded value that
     // reads as having crossed 95%.

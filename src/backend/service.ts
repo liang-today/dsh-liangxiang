@@ -27,6 +27,7 @@ import {
   LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
   derivePersonalLiangQiState,
   deriveLiangziState,
+  isBusinessDate,
   isoWeekFor,
   monthFor,
   type LiangziThresholdPolicy,
@@ -237,8 +238,11 @@ export class LiangxiangBackendService {
   /** Enqueue a 梁案 for a calendar day, or the next unused midnight (FIFO). */
   enqueueCase(title: string, publishOn: string | null, now = this.clock.now()): QueueRow {
     const { title: normalized } = parseV1PublishCaseRequest({ title })
-    if (publishOn !== null && !/^\d{4}-\d{2}-\d{2}$/.test(publishOn)) {
-      throw new WireError('publish_on', 'expected YYYY-MM-DD')
+    if (publishOn !== null && !isBusinessDate(publishOn)) {
+      throw new WireError('publish_on', 'expected a real YYYY-MM-DD calendar date')
+    }
+    if (publishOn !== null && this.store.pendingQueue().some(row => row.publish_on === publishOn)) {
+      throw new WireError('publish_on', `a pending case already exists for ${publishOn}`)
     }
     return this.store.enqueueCase(normalized, publishOn, now)
   }

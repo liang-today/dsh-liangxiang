@@ -84,6 +84,13 @@ export interface LiangxiangWireState {
    */
   hostEpoch: number
   authorityMode: AuthorityMode
+  /**
+   * Whether the selected authority can currently be reached. Local mode is
+   * always available. In online mode a false value means the Host keeps
+   * observing/persisting Token usage, but voting must remain disabled until
+   * the backend reconnects and the personal ledger is reconciled.
+   */
+  authorityAvailable: boolean
   snapshotRefreshSeconds: number
   businessDate: string
   /** Scalar signal only; 梁祠 arrays use the separate `/api/history` route. */
@@ -214,6 +221,11 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
     revision: requireCount(record.revision, 'state.revision'),
     hostEpoch: requireCount(record.hostEpoch, 'state.hostEpoch'),
     authorityMode,
+    // Backward-compatible for one rolling client/Host upgrade: old Host
+    // frames predate this additive field and were implicitly available.
+    authorityAvailable: record.authorityAvailable === undefined
+      ? true
+      : requireBoolean(record.authorityAvailable, 'state.authorityAvailable'),
     snapshotRefreshSeconds: requireCount(record.snapshotRefreshSeconds, 'state.snapshotRefreshSeconds'),
     businessDate: requireString(record.businessDate, 'state.businessDate'),
     archiveVersion: record.archiveVersion === undefined

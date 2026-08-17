@@ -23,7 +23,8 @@ export interface HostRuntimeConfig {
   service: LiangServiceConfig
   /**
    * Backend base URL. Default is the closed-beta staging endpoint (online).
-   * `LIANGXIANG_BACKEND_URL=local` (or an unparseable URL) forces LOCAL_FAKE_DEV.
+   * Only `LIANGXIANG_BACKEND_URL=local` forces LOCAL_FAKE_DEV. An invalid URL
+   * falls back to the canonical online endpoint and never changes mode.
    * A later welcome-gate choice may still switch to local; a dead backend
    * is not a silent fallback.
    */
@@ -89,8 +90,8 @@ export function resolveHostConfig(
 /**
  * Resolve the full host runtime configuration, including which authority mode
  * to serve. Online is the default (baked staging URL). `local` or an
- * unparseable URL degrades to the in-process loop loudly rather than booting
- * a half-wired online path.
+ * invalid URL falls back loudly to the canonical online endpoint. Local mode
+ * is never an error fallback; it requires an explicit user/config choice.
  * @param env - environment map (injectable for tests).
  * @param warn - loud sink for ignored invalid values.
  * @returns the service config plus the resolved backend URL (or null).
@@ -110,8 +111,8 @@ export function resolveHostRuntimeConfig(
   } catch (error) {
     warn(
       `[dsh-liangxiang] ignoring invalid LIANGXIANG_BACKEND_URL=${candidate} `
-      + `(${error instanceof Error ? error.message : String(error)}); running in local mode`,
+      + `(${error instanceof Error ? error.message : String(error)}); using ${STAGING_BACKEND_URL}`,
     )
-    return { service, backendUrl: null, communityKey }
+    return { service, backendUrl: normalizeBaseUrl(STAGING_BACKEND_URL), communityKey }
   }
 }

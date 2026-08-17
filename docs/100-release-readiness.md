@@ -1,4 +1,4 @@
-# 100 — Release Readiness（v0.6.0 梁相）
+# 100 — Release Readiness（v0.7.0 梁相）
 
 结论：**社区 soft-trust 发布候选可部署**；不得宣传为实名、一人一票、
 可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
@@ -14,6 +14,9 @@
 - 社区口令不再有源码默认值，分发 bundle 不含密钥。
 - 投票限流增加活跃 key 硬上限；预期拒绝、重放和 429 日志按原因采样。
 - 香港迁移使用 SQLite 在线一致性备份；部署只有在 health/history 冒烟通过后才写入版本戳。
+- 断网不再暗切本地玩法：Token 水位继续本地持久化，社区投票锁定，Host 与浏览器均自动重连。
+- 梁祠月历按月份实际使用 4/5/6 周，在固定高度内完整显示且只保留窄屏横向滚动。
+- 香港节点新增统一 `liang` 运维命令和可查询的未来梁案排期；客户端提供保留用户存储的一键更新脚本。
 
 ## 2026-08-18 自动化验证
 
@@ -21,15 +24,15 @@
 |---|---|
 | `pnpm run typecheck` | ✅ |
 | `pnpm run lint` | ✅ |
-| `pnpm run test` | ✅ 33 文件 / 402 项 |
-| `pnpm run build` | ✅ Host 124.59 kB；Backend 109.12 kB；Client 914.46 kB（gzip 599.36 kB） |
+| `pnpm run test` | ✅ 34 文件 / 411 项 |
+| `pnpm run build` | ✅ Host 125.61 kB；Backend 112.62 kB；Client 916.96 kB（gzip 600.11 kB） |
 | `pnpm audit --prod` | ✅ 0 个已知漏洞 |
-| `smoke:clean-profile` | ✅ 全新 profile 从 `dsh-liangxiang-0.6.0.tgz` 安装并启动 |
+| `smoke:clean-profile` | ✅ 全新 profile 从 `dsh-liangxiang-0.7.0.tgz` 安装并启动 |
 | `smoke:online` | ✅ Host→后端、Token claim、幂等、50 并发仅一票、快照发布 |
 | 构建配置迁移 | ✅ 迁移前后三个 bundle SHA-256 相同，无弃用警告 |
 | 密钥/命名空间扫描 | ✅ bundle 不含社区口令，仓库只使用 `liangxiang / 梁相` |
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
-| Mac / 树莓派升级 | ✅ 0.6.0，卸载重装前后身份存储摘要一致 |
+| Mac / 树莓派升级 | ⏳ 待部署后用保留存储的一键更新脚本验收 0.7.0 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
 
 ## 发布验收

@@ -26,6 +26,8 @@ export type ConnectionState = 'connecting' | 'live' | 'offline'
 /** Everything the panel renders, in one immutable snapshot. */
 export interface LiangxiangViewState {
   connection: ConnectionState
+  /** Online authority reachability; independent from browser -> Host SSE. */
+  authorityAvailable: boolean
   /** Server-authoritative current business date; never browser local time. */
   businessDate: string
   /** Scalar 梁祠 change cursor; archive arrays are fetched separately. */
@@ -48,6 +50,8 @@ export interface LiangxiangViewState {
   lifetimeVoters: number
   /** Personal LiangQi: spendable incense + next-incense progress. */
   personal: PersonalLiangQiState
+  /** Locally observed earned incense, including usage waiting to sync online. */
+  observedEarnedIncenseToday: number
 }
 
 export interface LiangxiangStore {
@@ -61,6 +65,7 @@ export interface LiangxiangStore {
 export function wireToViewState(wire: LiangxiangWireState, connection: ConnectionState): LiangxiangViewState {
   return {
     connection,
+    authorityAvailable: wire.authorityAvailable,
     businessDate: wire.businessDate,
     archiveVersion: wire.archiveVersion,
     accountingAvailable: wire.accounting.available,
@@ -79,7 +84,7 @@ export function wireToViewState(wire: LiangxiangWireState, connection: Connectio
     }),
     lifetimeIncense: wire.global.lifetimeIncense,
     lifetimeVoters: wire.global.lifetimeVoters,
-    personal: (() => {
+    ...(() => {
       // Ring fill / 下一炷 keep the optimistic local effective tokens; the
       // spendable incense (今日凝香 / 可打梁 / vote button) uses the AUTHORITATIVE
       // server ledger so a stale local bucket can never show spendable incense
@@ -90,9 +95,12 @@ export function wireToViewState(wire: LiangxiangWireState, connection: Connectio
         tokenPerIncense: wire.personal.tokenPerIncense,
       })
       return {
-        ...optimistic,
-        remainingIncense: wire.personal.remainingIncense,
-        earnedIncenseToday: wire.personal.remainingIncense + wire.personal.usedIncenseToday,
+        personal: {
+          ...optimistic,
+          remainingIncense: wire.personal.remainingIncense,
+          earnedIncenseToday: wire.personal.remainingIncense + wire.personal.usedIncenseToday,
+        },
+        observedEarnedIncenseToday: optimistic.earnedIncenseToday,
       }
     })(),
   }
@@ -105,6 +113,7 @@ export function wireToViewState(wire: LiangxiangWireState, connection: Connectio
 export function createOfflineViewState(connection: ConnectionState): LiangxiangViewState {
   return {
     connection,
+    authorityAvailable: false,
     businessDate: new Date().toISOString().slice(0, 10),
     archiveVersion: 0,
     accountingAvailable: false,
@@ -129,6 +138,7 @@ export function createOfflineViewState(connection: ConnectionState): LiangxiangV
     lifetimeIncense: 0,
     lifetimeVoters: 0,
     personal: derivePersonalLiangQiState({ effectiveTokensToday: 0, usedIncenseToday: 0 }),
+    observedEarnedIncenseToday: 0,
   }
 }
 
@@ -193,6 +203,7 @@ export function createMockLiangxiangStore(seed: MockStoreSeed = {}): MockLiangxi
   let sequence = 1
   const buildState = (): LiangxiangViewState => ({
     connection: 'live',
+    authorityAvailable: true,
     businessDate: activeCase.businessDate,
     archiveVersion: 0,
     accountingAvailable: true,
@@ -203,6 +214,7 @@ export function createMockLiangxiangStore(seed: MockStoreSeed = {}): MockLiangxi
     lifetimeIncense: aggregate.upVotes + aggregate.downVotes,
     lifetimeVoters: aggregate.uniqueVoters,
     personal,
+    observedEarnedIncenseToday: personal.earnedIncenseToday,
   })
   let state = buildState()
 

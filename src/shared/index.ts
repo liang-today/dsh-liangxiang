@@ -29,7 +29,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by the sound-icon long-press easter egg. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.6.0'
+export const PLUGIN_VERSION = '0.7.0'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
@@ -120,7 +120,10 @@ export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷�
 export const NO_INCENSE_GAG = '咣当——香炉空了，梁子催你先去攒香'
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
-export const OFFLINE_REASON = '未连上梁相服务：显示最近状态，重新打开面板可重试'
+export const OFFLINE_REASON = '未连上本机 DSH：显示最近状态，正在自动重连'
+
+/** Online backend is down; local observation continues but no vote is safe. */
+export const COMMUNITY_UNAVAILABLE_REASON = '社区暂未连通：香火继续凝聚，恢复后自动核对；夯 / 拉暂不可用'
 
 /** Status line when the DSH accounting seams are absent in this assembly. */
 export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合缺少 token 投影能力'
@@ -134,9 +137,10 @@ export const WELCOME_LINES = [
   '使用 DSH，输入 + 输出每 5 万当量凝成一炷香。',
   '花一炷选择「夯」或「拉」，共同显出今日梁相。',
   '每日结案后，结果收入梁祠；这是社区软信任玩法。',
+  '本地玩法与社区完全独立，只在你主动选择时启用。',
 ]
 export const WELCOME_ONLINE_LABEL = '进入在线'
-export const WELCOME_LOCAL_LABEL = '改用本地'
+export const WELCOME_LOCAL_LABEL = '自己玩（本地）'
 export const WELCOME_PRIVACY_NOTE = '在线模式不收集对话、代码、文件或账号。社区账本只用本机生成的随机安装 ID 区分不同香客，无法识别你是谁。'
 export const WELCOME_DISMISS = '知道了'
 
