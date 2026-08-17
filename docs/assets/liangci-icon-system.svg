@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040">
+  <defs>
+    <filter id="cardShadow" x="-15%" y="-15%" width="130%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#111827" flood-opacity="0.08"/>
+    </filter>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .primary { fill:#1c2130; } .secondary { fill:#5a6472; } .tertiary { fill:#8a93a2; }
+      .brand { fill:#4d6bfe; } .warn { fill:#d8873a; } .seal { fill:#b84a3a; }
+      .card { fill:#ffffff; stroke:#d9dde5; stroke-width:1; }
+      .caption { font-size:12px; fill:#5a6472; }
+      .stateTitle { font-size:17px; font-weight:750; fill:#1c2130; }
+      .stateTag { font-size:11px; font-weight:700; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1040" fill="#f4f5f8"/>
+  <text x="80" y="72" class="primary" font-size="28" font-weight="780">梁祠图标与档案状态系统</text>
+  <text x="80" y="104" class="secondary" font-size="14">现代编年志 × 克制梁祠 · 复用现有梁子头像 · 时间层级由容器轮廓表达</text>
+
+  <!-- Card 1: archived day -->
+  <g transform="translate(80 145)" filter="url(#cardShadow)">
+    <rect width="340" height="375" rx="16" class="card"/>
+    <text x="24" y="38" class="stateTitle">日梁 · 已封存</text>
+    <text x="24" y="61" class="caption">单页日历 · 日期 + 头像 + 称呼</text>
+    <g transform="translate(99 88)">
+      <rect width="142" height="182" rx="12" fill="#f8f9fb" stroke="#d9dde5" stroke-width="1.5"/>
+      <path d="M0 38h142" stroke="#d9dde5"/>
+      <rect x="24" y="-6" width="20" height="20" rx="7" fill="#ffffff" stroke="#d9dde5"/>
+      <rect x="98" y="-6" width="20" height="20" rx="7" fill="#ffffff" stroke="#d9dde5"/>
+      <text x="18" y="29" class="secondary" font-size="13" font-weight="700">16</text>
+      <circle cx="71" cy="96" r="44" fill="#ffffff" stroke="#d9dde5"/>
+      <image href="../../src/client/artwork/shen.png" x="27" y="52" width="88" height="88"/>
+      <text x="71" y="161" text-anchor="middle" class="primary" font-size="14" font-weight="750">梁神</text>
+      <circle cx="125" cy="20" r="12" fill="#b84a3a"/>
+      <text x="125" y="24" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">封</text>
+    </g>
+    <text x="24" y="307" class="caption">梁位进入 Hover / Focus 与详情栏，</text>
+    <text x="24" y="328" class="caption">默认格保持安静、可扫描。</text>
+    <text x="24" y="354" class="tertiary" font-size="11">容器：日历页　主色：中性　印记：小面积朱红</text>
+  </g>
+
+  <!-- Card 2: today in progress -->
+  <g transform="translate(450 145)" filter="url(#cardShadow)">
+    <rect width="340" height="375" rx="16" class="card"/>
+    <text x="24" y="38" class="stateTitle">今日进行中</text>
+    <text x="24" y="61" class="caption">专用图标 · 不显示实时梁子终态</text>
+    <g transform="translate(99 88)">
+      <rect width="142" height="182" rx="12" fill="#f7f8ff" stroke="#4d6bfe" stroke-width="2"/>
+      <path d="M0 38h142" stroke="#4d6bfe" stroke-width="1.2"/>
+      <rect x="24" y="-6" width="20" height="20" rx="7" fill="#ffffff" stroke="#4d6bfe"/>
+      <rect x="98" y="-6" width="20" height="20" rx="7" fill="#ffffff" stroke="#4d6bfe"/>
+      <text x="18" y="29" class="brand" font-size="13" font-weight="700">20</text>
+      <path d="M41 60h60l14 13v69H27V73z" fill="#ffffff" stroke="#4d6bfe" stroke-width="1.6"/>
+      <path d="M27 80h88" stroke="#4d6bfe" stroke-width="1.5"/>
+      <text x="71" y="116" text-anchor="middle" class="brand" font-size="36" font-weight="820">今</text>
+      <text x="71" y="138" text-anchor="middle" class="brand" font-size="11" font-weight="750">进行中</text>
+      <circle cx="125" cy="20" r="12" fill="#ffffff" stroke="#4d6bfe" stroke-dasharray="3 2"/>
+    </g>
+    <text x="24" y="307" class="caption">不是 WAITING，也不是 loading；</text>
+    <text x="24" y="328" class="caption">今日不进入周梁/月梁计算。</text>
+    <text x="24" y="354" class="tertiary" font-size="11">容器：未盖印日历页　主色：品牌蓝　禁止 spinner</text>
+  </g>
+
+  <!-- Card 3: temporary week -->
+  <g transform="translate(820 145)" filter="url(#cardShadow)">
+    <rect width="340" height="375" rx="16" class="card"/>
+    <text x="24" y="38" class="stateTitle">本周暂梁</text>
+    <text x="24" y="61" class="caption">七日册 · 只统计本周一至昨天</text>
+    <g transform="translate(48 102)">
+      <rect width="244" height="152" rx="14" fill="#fffaf3" stroke="#d8873a" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="18" y="30" class="warn" font-size="12" font-weight="750">本周暂梁</text>
+      <g stroke="#d8873a" stroke-width="2"><path d="M18 45h18M42 45h18M66 45h18"/><path d="M90 45h18M114 45h18M138 45h18M162 45h18" opacity="0.25"/></g>
+      <circle cx="185" cy="78" r="40" fill="#ffffff" stroke="#e4c596"/>
+      <image href="../../src/client/artwork/zong.png" x="145" y="38" width="80" height="80"/>
+      <text x="18" y="91" class="primary" font-size="17" font-weight="760">梁总</text>
+      <text x="18" y="118" class="secondary" font-size="11">截至昨日 · 3 / 7 日</text>
+      <circle cx="220" cy="23" r="14" fill="#ffffff" stroke="#d8873a" stroke-width="1.5" stroke-dasharray="3 2"/>
+      <text x="220" y="28" text-anchor="middle" class="warn" font-size="11" font-weight="850">暂</text>
+    </g>
+    <text x="24" y="307" class="caption">暂梁是有效结果，不使用 disabled 灰；</text>
+    <text x="24" y="328" class="caption">空心“暂”印明确未封存。</text>
+    <text x="24" y="354" class="tertiary" font-size="11">容器：七日册　主色：暖橙点睛　刻度表达覆盖日</text>
+  </g>
+
+  <!-- Card 4: archived week -->
+  <g transform="translate(1190 145)" filter="url(#cardShadow)">
+    <rect width="330" height="375" rx="16" class="card"/>
+    <text x="24" y="38" class="stateTitle">永久周梁</text>
+    <text x="24" y="61" class="caption">完整周一至周日 · 已封存</text>
+    <g transform="translate(43 102)">
+      <rect width="244" height="152" rx="14" fill="#f8f9fb" stroke="#d9dde5" stroke-width="1.5"/>
+      <text x="18" y="30" class="secondary" font-size="12" font-weight="750">第 33 周</text>
+      <g stroke="#aeb5c2" stroke-width="2"><path d="M18 45h18M42 45h18M66 45h18M90 45h18M114 45h18M138 45h18M162 45h18"/></g>
+      <circle cx="185" cy="78" r="40" fill="#ffffff" stroke="#d9dde5"/>
+      <image href="../../src/client/artwork/shen.png" x="145" y="38" width="80" height="80"/>
+      <text x="18" y="91" class="primary" font-size="17" font-weight="760">梁神</text>
+      <text x="18" y="118" class="secondary" font-size="11">已封存 · 7 / 7 日</text>
+      <circle cx="220" cy="23" r="14" fill="#b84a3a"/>
+      <text x="220" y="28" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="850">封</text>
+    </g>
+    <text x="24" y="307" class="caption">实心“封”印是唯一暖色焦点，</text>
+    <text x="24" y="328" class="caption">周梁背景仍保持 DSH 中性层。</text>
+    <text x="24" y="354" class="tertiary" font-size="11">容器：七日册　状态：永久　印记：实心朱印</text>
+  </g>
+
+  <!-- Card 5: temporary month -->
+  <g transform="translate(80 550)" filter="url(#cardShadow)">
+    <rect width="340" height="375" rx="16" class="card"/>
+    <text x="24" y="38" class="stateTitle">本月暂梁</text>
+    <text x="24" y="61" class="caption">横向月历匾 · 截至昨日</text>
+    <g transform="translate(43 110)">
+      <rect width="254" height="134" rx="14" fill="#fffaf3" stroke="#d8873a" stroke-width="1.4"/>
+      <rect x="18" y="18" width="64" height="22" rx="11" fill="#fff1dc" stroke="#d8873a"/>
+      <text x="50" y="33" text-anchor="middle" class="warn stateTag">本月暂梁</text>
+      <text x="18" y="70" class="primary" font-size="18" font-weight="780">梁神</text>
+      <text x="18" y="94" class="secondary" font-size="11">截至昨日 · 19 / 31 日</text>
+      <circle cx="198" cy="68" r="43" fill="#ffffff" stroke="#e4c596"/>
+      <image href="../../src/client/artwork/shen.png" x="155" y="25" width="86" height="86"/>
+      <circle cx="231" cy="22" r="13" fill="#ffffff" stroke="#d8873a" stroke-dasharray="3 2"/>
+      <text x="231" y="27" text-anchor="middle" class="warn" font-size="10" font-weight="850">暂</text>
+    </g>
+    <text x="24" y="307" class="caption">月梁是头部视觉锚点，不进入日历列，</text>
+    <text x="24" y="328" class="caption">不得做成巨大宫殿匾额。</text>
+    <text x="24" y="354" class="tertiary" font-size="11">容器：横向月历匾　头像：52–60px　暖色≤8%</text>
+  </g>
+
+  <!-- Card 6: archived month -->
+  <g transform="translate(450 550)" filter="url(#cardShadow)">
+    <rect width="340" height="375" rx="16" class="card"/>
+    <text x="24" y="38" class="stateTitle">永久月梁</text>
+    <text x="24" y="61" class="caption">完整自然月 · 永久档案</text>
+    <g transform="translate(43 110)">
+      <rect width="254" height="134" rx="14" fill="#f8f9fb" stroke="#d9dde5" stroke-width="1.4"/>
+      <text x="18" y="31" class="secondary stateTag">2026 年 7 月</text>
+      <text x="18" y="70" class="primary" font-size="18" font-weight="780">梁圣</text>
+      <text x="18" y="94" class="secondary" font-size="11">已封存 · 31 / 31 日</text>
+      <circle cx="198" cy="68" r="43" fill="#ffffff" stroke="#d9dde5"/>
+      <image href="../../src/client/artwork/sheng.png" x="155" y="25" width="86" height="86"/>
+      <circle cx="231" cy="22" r="13" fill="#b84a3a"/>
+      <text x="231" y="27" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="850">封</text>
+    </g>
+    <text x="24" y="307" class="caption">永久结果保持克制的中性卡面，</text>
+    <text x="24" y="328" class="caption">仅使用一枚实心朱印确认归档。</text>
+    <text x="24" y="354" class="tertiary" font-size="11">容器：横向月历匾　状态：永久　不重复发光</text>
+  </g>
+
+  <!-- Card 7: valid zero-vote archive -->
+  <g transform="translate(820 550)" filter="url(#cardShadow)">
+    <rect width="340" height="375" rx="16" class="card"/>
+    <text x="24" y="38" class="stateTitle">待开梁 · 零票日</text>
+    <text x="24" y="61" class="caption">有永久档案，但当日 accepted 票为 0</text>
+    <g transform="translate(99 88)">
+      <rect width="142" height="182" rx="12" fill="#f8f9fb" stroke="#d9dde5" stroke-width="1.5"/>
+      <path d="M0 38h142" stroke="#d9dde5"/>
+      <rect x="24" y="-6" width="20" height="20" rx="7" fill="#ffffff" stroke="#d9dde5"/>
+      <rect x="98" y="-6" width="20" height="20" rx="7" fill="#ffffff" stroke="#d9dde5"/>
+      <text x="18" y="29" class="secondary" font-size="13" font-weight="700">12</text>
+      <circle cx="71" cy="96" r="44" fill="#ffffff" stroke="#d9dde5"/>
+      <image href="../../src/client/artwork/waiting.png" x="27" y="52" width="88" height="88"/>
+      <text x="71" y="157" text-anchor="middle" class="primary" font-size="13" font-weight="750">待开梁</text>
+      <text x="71" y="175" text-anchor="middle" class="tertiary" font-size="10">梁位 --</text>
+      <circle cx="125" cy="20" r="12" fill="#b84a3a"/>
+      <text x="125" y="24" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">封</text>
+    </g>
+    <text x="24" y="307" class="caption">这是有效的零票历史，不是假 50%，</text>
+    <text x="24" y="328" class="caption">必须与“无存档”清楚区分。</text>
+    <text x="24" y="354" class="tertiary" font-size="11">容器：日历页　头像：现有 waiting　梁位：--</text>
+  </g>
+
+  <!-- Card 8: missing archive -->
+  <g transform="translate(1190 550)" filter="url(#cardShadow)">
+    <rect width="330" height="375" rx="16" class="card"/>
+    <text x="24" y="38" class="stateTitle">无存档</text>
+    <text x="24" y="61" class="caption">功能上线前或历史数据不可用</text>
+    <g transform="translate(94 88)">
+      <rect width="142" height="182" rx="12" fill="#fbfbfc" stroke="#bfc5d0" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <path d="M0 38h142" stroke="#d9dde5" stroke-dasharray="4 3"/>
+      <rect x="24" y="-6" width="20" height="20" rx="7" fill="#ffffff" stroke="#bfc5d0" stroke-dasharray="3 2"/>
+      <rect x="98" y="-6" width="20" height="20" rx="7" fill="#ffffff" stroke="#bfc5d0" stroke-dasharray="3 2"/>
+      <text x="18" y="29" class="tertiary" font-size="13" font-weight="700">—</text>
+      <path d="M45 72h52v52H45z" fill="none" stroke="#bfc5d0" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <path d="M54 82h34M54 94h26M54 106h30" stroke="#d2d6de" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="71" y="157" text-anchor="middle" class="tertiary" font-size="13" font-weight="700">无存档</text>
+    </g>
+    <text x="24" y="307" class="caption">不显示待开梁头像，不参与聚合，</text>
+    <text x="24" y="328" class="caption">通过虚线空白页表达数据缺席。</text>
+    <text x="24" y="354" class="tertiary" font-size="11">容器：空白日历页　主色：中性灰　不可冒充零票</text>
+  </g>
+
+  <text x="80" y="992" class="tertiary" font-size="12">统一规则：只用现有系统字体与 DSH 语义色；无 emoji、无书法字体、无宫殿背景、无新增梁子头像、无持续动画。</text>
+</svg>
