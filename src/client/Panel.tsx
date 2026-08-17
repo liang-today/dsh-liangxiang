@@ -85,7 +85,8 @@ export interface PanelProps {
   /** First-run: switch this Host to the in-process local loop. */
   onChooseLocal: () => void
   avatarPulse: boolean
-  justCondensed: boolean
+  /** Actual incense gained in the latest live update; 0 means no feedback. */
+  condensedIncense: number
   /** Transient feedback line under the buttons (e.g. 已上香), empty = none. */
   voteFeedback: string
   /** Play one short pop on the 梁位 value (the container detects the change). */
@@ -514,7 +515,7 @@ function SocialStatHint(props: {
 export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionReveal, onSoundPressStart, onSoundPressEnd,
-    welcomeVisible, welcomeSeconds, onDismissWelcome, onChooseLocal, avatarPulse, justCondensed, voteFeedback,
+    welcomeVisible, welcomeSeconds, onDismissWelcome, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
     onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, onOpenLiangci, onCycleLocalCase,
   } = props
@@ -677,7 +678,9 @@ export function Panel(props: PanelProps): ReactElement {
           data-liangbiao-case-title=""
           title={activeCase.title}
           style={{
-            margin: '6px -12px 0',
+            // Sound / close controls only occupy the title row. Let the case
+            // copy reclaim the full panel content width beneath them.
+            margin: '6px -24px 0',
             fontSize: '14px',
             lineHeight: '20px',
             fontWeight: 650,
@@ -792,7 +795,7 @@ export function Panel(props: PanelProps): ReactElement {
           <LiangQiRing
             personal={personal}
             reducedMotion={reducedMotion}
-            justCondensed={justCondensed}
+            condensedIncense={condensedIncense}
             fillOverride={displayFill}
             footer={(
               <span
