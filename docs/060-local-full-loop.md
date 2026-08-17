@@ -16,7 +16,7 @@
 6. cadence tick（默认 300s，dev 可 LIANGBIAO_SNAPSHOT_SECONDS=15;测试 fake clock）:
    raw aggregate → 新 published 快照（ratios+state 同一 sequence）
    → SSE 推帧 → 左右比例与中央梁子一起更新;跨阈值播放一次短切换
-7. 零票快照 → 待开梁（'--' 比例）;比例跨 60/70/80/90 → 五态切换
+7. 零票快照 → 待开梁（'--' 比例）;比例跨 50/70/85/95 → 五态切换
 ```
 
 ## 通道

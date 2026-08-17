@@ -1,7 +1,7 @@
 # 梁标 V0.1 产品冻结（R2 语义，已按实现回写）
 
 > 本文是产品语义的仓库内快照。**活契约是根目录 [`AGENTS.md`](../AGENTS.md)**。完整执行手册：[`LIANGBIAO_CURSOR_MASTER_R3.md`](LIANGBIAO_CURSOR_MASTER_R3.md)。冲突时以 `AGENTS.md` 为准。
-> 2026-08-16：按 `docs/110-prohibition-refresh.md` 全部刷新，与当前实现对齐。
+> 2026-08-17：门槛与模型权重按 v0.3.0 再冻结；与当前实现对齐。
 
 ## 一句话
 
@@ -21,7 +21,7 @@
 ## 四个视觉区域（不许增删）
 
 1. **今日梁案** — 单一活跃梁案标题。
-2. **核心区** — `我的香火 N 炷 | [居中：梁子 + 梁气环 + 香火点] | 下一炷 X Token`，环下单值 **梁位**（全网夯率，6 位小数截断）。中央必须是具象梁子（禁止 Gauge/Donut/Meter/纯文字卡）。个人两翼 overlay，不得把梁子挤离中线。
+2. **核心区** — `今日香火 N 炷 | [居中：梁子 + 梁气环 + 香火点] | 下一炷 X 当量`，环下单值 **梁位**（全网夯率，6 位小数截断）。今日香火是今日生成总数，环上标记才是剩余香火。中央必须是具象梁子（禁止 Gauge/Donut/Meter/纯文字卡）。个人两翼 overlay，不得把梁子挤离中线。
 3. **投票** — 仅 `夯：升梁！` / `拉：降梁！` 两个等宽按钮；可投性只看 `remaining_incense > 0`。升梁/降梁是文案，不是第三选项。
 4. **社会化** — `三界香火 N`（今日累计有效票）+ `五行香客 M`（今日至少成功投过一票的独立用户）+ 同行 **上达天听**。
 
@@ -29,11 +29,11 @@
 
 ```text
 total_votes == 0        -> WAITING / 待开梁（占位态，不是第六 Tier）
-up_ratio  < 20%         -> 梁工
-20% <= up_ratio < 40%   -> 梁总
-40% <= up_ratio < 60%   -> 梁神
-60% <= up_ratio < 80%   -> 梁圣
-up_ratio >= 80%         -> 梁祖
+up_ratio  < 50%         -> 梁工
+50% <= up_ratio < 70%   -> 梁总
+70% <= up_ratio < 85%   -> 梁神
+85% <= up_ratio < 95%   -> 梁圣
+up_ratio >= 95%         -> 梁祖
 ```
 
 - 个人 Token / earned / used / remaining / 梁气进度 **不得**直接选择梁子状态。
@@ -47,7 +47,7 @@ up_ratio >= 80%         -> 梁祖
 1. 还剩几炷香可投？→ `remaining_incense` 决定梁气**旺盛程度**（表现层连续标量，非业务等级）。
 2. 距下一炷还差多少 Token？→ `token_remainder / token_per_incense` 决定梁气环 **fill**。
 
-- `我的香火 N 炷` / `下一炷 X Token` 作为环左右两翼 overlay，禁止单独的"个人成长层"；环/头像/香火点必须居中。
+- `今日香火 N 炷` / `下一炷 X 当量` 作为环左右两翼 overlay，禁止单独的"个人成长层"；环/头像/香火点必须居中。
 - 投票成功：`remaining -1`，梁气可变弱；**但 remainder/fill/toNext 不变**。
 - Token 跨过 50K：`earned/remaining +1`，remainder 回绕到 0，播放一次短"凝香 +1 炷"。
 
@@ -61,7 +61,7 @@ DSH 映射：input = uncachedInput + cacheRead + cacheWrite；effective = input 
 
 - reasoning 已含于 output，不重复计。
 - 不用 Context Occupancy，不用 UI 估算，不用旧 cacheRead×0.1 公式，不 mint 梁签。
-- V0.1 不做目标模型过滤。
+- 只认精确路由 id：`deepseek-v4-pro` ×1；`deepseek-v4-flash`、缺失/未知和其它模型统一 ×0.5。模型名不发送给后端。
 
 ```text
 earned  = floor(effective_tokens_today / token_per_incense)
@@ -78,6 +78,7 @@ toNext    = token_per_incense - remainder
 - 允许连续夯、连续拉、夯拉混投，次数只受 remaining 限制。
 - `request_id` 幂等：同 payload 重试返回同一结果，不重复扣香/计票/加香客；冲突 payload 拒绝。
 - remaining=1 时并发 N 个请求，最多成功 1 个（由权威层保证，不靠按钮禁用）。
+- remaining=0 时按钮呈 `aria-disabled`，点击只播放本地搞怪提示，绝不发送投票请求；离线时使用原生 disabled。
 
 ## 权威与安全
 

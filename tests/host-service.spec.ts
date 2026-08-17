@@ -5,6 +5,7 @@
  * threshold crossing, personal/global decoupling.
  */
 import { describe, expect, it } from 'vitest'
+import { deriveLiangziState } from '../src/domain/index.ts'
 import {
   FakeAuthoritativeLiangService,
   type LiangPersistedState,
@@ -88,7 +89,7 @@ const buckets = (uncached: number, cacheRead: number, cacheWrite: number, output
 describe('real token mapping (docs/041 fixture)', () => {
   it('10k uncached + 20k cacheRead + 5k cacheWrite + 15k output = 1 incense', () => {
     const { service } = readyService()
-    service.observeUsage('s1', buckets(10_000, 20_000, 5_000, 15_000), FRESH)
+    service.observeUsage('s1', buckets(10_000, 20_000, 5_000, 15_000), FRESH, 'deepseek-v4-pro')
     const state = service.getWireState()
     expect(state.accounting.inputTokensToday).toBe(35_000)
     expect(state.accounting.outputTokensToday).toBe(15_000)
@@ -97,16 +98,16 @@ describe('real token mapping (docs/041 fixture)', () => {
 
   it('catch-up values baseline (no retroactive incense)', () => {
     const { service } = readyService()
-    service.observeUsage('old-session', buckets(100_000, 0, 0, 100_000), CATCHUP)
+    service.observeUsage('old-session', buckets(100_000, 0, 0, 100_000), CATCHUP, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(0)
     // …but growth after the baseline counts.
-    service.observeUsage('old-session', buckets(120_000, 0, 0, 110_000), FRESH)
+    service.observeUsage('old-session', buckets(120_000, 0, 0, 110_000), FRESH, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(30_000)
   })
 
   it('resumed/forked sessions (firstLiveSeq > 0) baseline their borrowed history', () => {
     const { service } = readyService()
-    service.observeUsage('fork', buckets(500_000, 0, 0, 500_000), { kind: 'live', firstLiveSeq: 88 })
+    service.observeUsage('fork', buckets(500_000, 0, 0, 500_000), { kind: 'live', firstLiveSeq: 88 }, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(0)
   })
 
@@ -162,9 +163,9 @@ describe('replay / restart / multi-session', () => {
   it('replaying the same cumulative value never double counts', () => {
     const { service } = readyService()
     const sample = buckets(30_000, 10_000, 5_000, 5_000)
-    service.observeUsage('s1', sample, FRESH)
-    service.observeUsage('s1', sample, FRESH)
-    service.observeUsage('s1', sample, FRESH)
+    service.observeUsage('s1', sample, FRESH, 'deepseek-v4-pro')
+    service.observeUsage('s1', sample, FRESH, 'deepseek-v4-pro')
+    service.observeUsage('s1', sample, FRESH, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
   })
 
@@ -173,24 +174,24 @@ describe('replay / restart / multi-session', () => {
     const clock = fakeClock(NOON_SHANGHAI)
     const first = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
     await first.attachPersistence(memoryPort(stored))
-    first.observeUsage('s1', buckets(40_000, 0, 0, 10_000), FRESH)
+    first.observeUsage('s1', buckets(40_000, 0, 0, 10_000), FRESH, 'deepseek-v4-pro')
     expect(first.getWireState().personal.effectiveTokensToday).toBe(50_000)
 
     // "Restart": fresh service instance over the same medium; the projection
     // refolds to the same cumulative value.
     const second = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
     await second.attachPersistence(memoryPort(stored))
-    second.observeUsage('s1', buckets(40_000, 0, 0, 10_000), CATCHUP)
+    second.observeUsage('s1', buckets(40_000, 0, 0, 10_000), CATCHUP, 'deepseek-v4-pro')
     expect(second.getWireState().personal.effectiveTokensToday).toBe(50_000)
     // Growth after the restart still counts once.
-    second.observeUsage('s1', buckets(43_000, 0, 0, 10_000), FRESH)
+    second.observeUsage('s1', buckets(43_000, 0, 0, 10_000), FRESH, 'deepseek-v4-pro')
     expect(second.getWireState().personal.effectiveTokensToday).toBe(53_000)
   })
 
   it('aggregates multiple sessions into one day total', () => {
     const { service } = readyService()
-    service.observeUsage('a', buckets(20_000, 0, 0, 10_000), FRESH)
-    service.observeUsage('b', buckets(0, 10_000, 5_000, 5_000), FRESH)
+    service.observeUsage('a', buckets(20_000, 0, 0, 10_000), FRESH, 'deepseek-v4-pro')
+    service.observeUsage('b', buckets(0, 10_000, 5_000, 5_000), FRESH, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
   })
 })
@@ -198,7 +199,7 @@ describe('replay / restart / multi-session', () => {
 describe('day rollover', () => {
   it('a new business date opens a fresh WAITING case; nothing leaks', () => {
     const { service, clock } = readyService()
-    service.observeUsage('s1', buckets(100_000, 0, 0, 0), FRESH)
+    service.observeUsage('s1', buckets(100_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     const caseBefore = service.getWireState().activeCase.id
     expect(service.vote({ caseId: caseBefore, voteType: 'up', requestId: 'req-rollover-1' }).result.status).toBe('accepted')
 
@@ -217,7 +218,7 @@ describe('day rollover', () => {
     if (stale.result.status === 'rejected') expect(stale.result.reason).toBe('stale_case')
 
     // Growth observed after midnight belongs to the new date only.
-    service.observeUsage('s1', buckets(150_000, 0, 0, 0), FRESH)
+    service.observeUsage('s1', buckets(150_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
   })
 })
@@ -225,7 +226,7 @@ describe('day rollover', () => {
 describe('vote transaction', () => {
   function fundedService(sticks: number) {
     const { service, clock } = readyService()
-    service.observeUsage('s1', buckets(sticks * 50_000, 0, 0, 0), FRESH)
+    service.observeUsage('s1', buckets(sticks * 50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     return { service, clock, caseId: service.getWireState().activeCase.id }
   }
 
@@ -287,7 +288,7 @@ describe('vote transaction', () => {
 describe('published snapshot cadence + decoupling', () => {
   it('a vote moves personal state immediately but the published global waits for tick()', () => {
     const { service } = readyService({ seed: 'demo' })
-    service.observeUsage('s1', buckets(100_000, 0, 0, 0), FRESH)
+    service.observeUsage('s1', buckets(100_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     const caseId = service.getWireState().activeCase.id
     const before = service.getWireState()
     expect(before.global.upVotes).toBe(10_665)
@@ -305,22 +306,23 @@ describe('published snapshot cadence + decoupling', () => {
     expect(after.global.sequence).toBeGreaterThan(before.global.sequence)
   })
 
-  it('threshold crossing arrives with the snapshot: 79.x% -> 80%', async () => {
+  it('threshold crossing arrives with the snapshot: 84.2105% -> 85%', async () => {
     const stored = memoryState()
-    stored.aggregates.set('local-2026-08-16-0', { upVotes: 79, downVotes: 20, uniqueVoters: 30 })
+    stored.aggregates.set('local-2026-08-16-0', { upVotes: 16, downVotes: 3, uniqueVoters: 8 })
     const clock = fakeClock(NOON_SHANGHAI)
     const service = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
     await service.attachPersistence(memoryPort(stored))
-    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH)
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     const caseId = service.getWireState().activeCase.id
 
-    // 79/99 = 79.8% -> 梁神 band under the 50/70/85/95 policy.
-    expect(service.getWireState().global.upVotes).toBe(79)
+    expect(service.getWireState().global.upVotes).toBe(16)
+    expect(deriveLiangziState(16, 3)).toBe('liang_shen')
     service.vote({ caseId, voteType: 'up', requestId: 'req-cross-01' })
     service.tick()
     const state = service.getWireState()
-    expect(state.global.upVotes).toBe(80)
-    expect(state.global.upVotes / (state.global.upVotes + state.global.downVotes)).toBe(0.8)
+    expect(state.global.upVotes).toBe(17)
+    expect(state.global.upVotes / (state.global.upVotes + state.global.downVotes)).toBe(0.85)
+    expect(deriveLiangziState(state.global.upVotes, state.global.downVotes)).toBe('liang_sheng')
     // Personal ring progress did not move with the vote.
     expect(state.personal.effectiveTokensToday).toBe(50_000)
     expect(state.personal.usedIncenseToday).toBe(1)
@@ -329,7 +331,7 @@ describe('published snapshot cadence + decoupling', () => {
   it('personal token growth alone never republishes different global counts', () => {
     const { service } = readyService({ seed: 'demo' })
     const before = service.getWireState().global
-    service.observeUsage('s1', buckets(500_000, 0, 0, 0), FRESH)
+    service.observeUsage('s1', buckets(500_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     service.tick()
     const after = service.getWireState().global
     expect(after.upVotes).toBe(before.upVotes)
@@ -371,7 +373,7 @@ describe('hydration guards', () => {
   it('observations arriving before readiness are folded once ready', async () => {
     const clock = fakeClock(NOON_SHANGHAI)
     const service = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
-    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH)
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(0)
     await service.attachPersistence(memoryPort(memoryState()))
     expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)

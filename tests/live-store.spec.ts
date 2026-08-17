@@ -24,7 +24,7 @@ function makeService(): FakeAuthoritativeLiangService {
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
     outputTokens: 0,
-  }, { kind: 'live', firstLiveSeq: 0 })
+  }, { kind: 'live', firstLiveSeq: 0 }, 'deepseek-v4-pro')
   return service
 }
 
@@ -129,7 +129,7 @@ describe('live store', () => {
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
       outputTokens: 0,
-    }, { kind: 'live', firstLiveSeq: 0 })
+    }, { kind: 'live', firstLiveSeq: 0 }, 'deepseek-v4-pro')
     controls.pushFrame(service.getWireState())
     expect(store.getSnapshot().personal.earnedIncenseToday).toBe(8)
     // A stale replayed frame must not rewind the view.
@@ -166,7 +166,7 @@ describe('live store', () => {
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
       outputTokens: 0,
-    }, { kind: 'live', firstLiveSeq: 0 })
+    }, { kind: 'live', firstLiveSeq: 0 }, 'deepseek-v4-pro')
     controls.pushFrame(service.getWireState())
     expect(store.getSnapshot().personal.remainingIncense).toBe(before + 1)
     expect(store.getSnapshot().personal.effectiveTokensToday).toBe(447_000)

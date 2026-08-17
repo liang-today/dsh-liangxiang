@@ -14,8 +14,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
-import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
-import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
+import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
@@ -31,17 +31,17 @@ import {
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { createLiveLiangbiaoStore } from './live-store.ts'
 import { Panel } from './Panel.tsx'
-import { color } from './theme.ts'
+import { color, font } from './theme.ts'
 import { useThrottleFill } from './use-throttle-fill.ts'
 
 const buttonStyle: CSSProperties = {
   width: `${BADGE_SIZE}px`,
   height: `${BADGE_SIZE}px`,
   padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
+  border: `1px solid color-mix(in srgb, ${color.ritualGold} 28%, ${color.border})`,
+  borderRadius: '50%',
+  background: `radial-gradient(circle at 50% 38%, color-mix(in srgb, ${color.ritualGold} 16%, transparent), transparent 64%), color-mix(in srgb, ${color.bgLayer} 86%, transparent)`,
+  boxShadow: '0 8px 22px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.10)',
   color: '#ffffff',
   display: 'flex',
   alignItems: 'center',
@@ -53,10 +53,48 @@ const buttonStyle: CSSProperties = {
 }
 
 const BADGE_CSS = `
+[data-liangbiao-badge] {
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+[data-liangbiao-badge]:hover,
+[data-liangbiao-badge][aria-expanded="true"] {
+  border-color: color-mix(in srgb, ${color.ritualGold} 66%, ${color.border});
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.26), 0 0 0 3px color-mix(in srgb, ${color.ritualGold} 10%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+[data-liangbiao-badge][data-dragging="true"] {
+  cursor: grabbing;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
 [data-liangbiao-badge]:focus-visible,
 [data-liangbiao-badge][aria-expanded="true"]:focus-visible {
   outline: 2px solid ${color.brand};
   outline-offset: 2px;
+}
+[data-liangbiao-badge-tooltip] {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translate(-50%, 3px);
+  padding: 4px 8px;
+  border: 1px solid ${color.border};
+  border-radius: 8px;
+  background: ${color.bgLayer};
+  color: ${color.textPrimary};
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  font: 600 11px/16px ${font.family};
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease, transform 100ms ease;
+}
+[data-liangbiao-badge]:hover [data-liangbiao-badge-tooltip],
+[data-liangbiao-badge]:focus-visible [data-liangbiao-badge-tooltip] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-liangbiao-badge],
+  [data-liangbiao-badge-tooltip] { transition: none !important; }
 }
 `
 
@@ -110,10 +148,23 @@ export function BadgeButton({
       }}
       data-liangbiao-badge=""
       data-liangbiao-badge-state={liangziState}
+      data-dragging={dragging}
     >
       <style>{BADGE_CSS}</style>
+      <span
+        aria-hidden="true"
+        data-liangbiao-badge-halo=""
+        style={{
+          position: 'absolute',
+          inset: '4px',
+          borderRadius: '50%',
+          background: `radial-gradient(circle, color-mix(in srgb, ${color.ritualGold} 18%, transparent) 0%, transparent 68%)`,
+          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color.ritualGold} 18%, transparent)`,
+          pointerEvents: 'none',
+        }}
+      />
       {/* The mini 梁子 is decorative here: the button already names the state. */}
-      <span aria-hidden="true" style={{ display: 'flex', pointerEvents: 'none', overflow: 'visible', background: 'transparent' }}>
+      <span aria-hidden="true" style={{ position: 'relative', zIndex: 1, display: 'flex', pointerEvents: 'none', overflow: 'visible', background: 'transparent' }}>
         <LiangAvatar
           state={liangziState}
           pulse={false}
@@ -124,6 +175,7 @@ export function BadgeButton({
           liangQiFill={liangQiFill}
         />
       </span>
+      <span aria-hidden="true" data-liangbiao-badge-tooltip="">{HOVER_TEXT}</span>
     </button>
   )
 }
@@ -410,6 +462,11 @@ export function LiangbiaoBadge(): ReactElement {
     )
   }
 
+  const onInsufficientVote = (_voteType: VoteType): void => {
+    playNoIncense()
+    setVoteFeedback(NO_INCENSE_GAG)
+  }
+
   const onReconcileAsk = (): void => {
     setReconcilePending(true)
   }
@@ -482,6 +539,7 @@ export function LiangbiaoBadge(): ReactElement {
           positionPulse={positionPulse}
           placement={panelPlacementFor(position, viewport)}
           onVote={onVote}
+          onInsufficientVote={onInsufficientVote}
           onClose={() => {
             savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
             setOpen(false)

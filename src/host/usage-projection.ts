@@ -87,7 +87,7 @@ export class UsageProjection {
   /**
    * Fold one cumulative observation.
    * @param modelId - DSH route id for this delta (`deepseek-v4-pro` / `deepseek-v4-flash`);
-   *   missing/unknown earns at Pro rate.
+   *   only V4-Pro earns at ×1; Flash/missing/unknown/other routes earn at ×0.5.
    * @param bucketDate - authoritative business date to credit into. Online hosts
    *   MUST pass the backend's `business_date` so local TZ skew cannot hide
    *   today's tokens under a different key (AGENTS.md §10).

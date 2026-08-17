@@ -7,10 +7,11 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { PLUGIN_PACKAGE_NAME } from '../src/shared/index.ts'
+import { PLUGIN_PACKAGE_NAME, PLUGIN_VERSION } from '../src/shared/index.ts'
 
 interface Manifest {
   name: string
+  version: string
   type: string
   main: string
   exports: Record<string, unknown>
@@ -30,6 +31,10 @@ const manifest = JSON.parse(readRootFile('package.json')) as Manifest
 describe('package.json dsh manifests', () => {
   it('package name matches the shared constant', () => {
     expect(manifest.name).toBe(PLUGIN_PACKAGE_NAME)
+  })
+
+  it('keeps the package/tarball version and visible plugin version in sync', () => {
+    expect(manifest.version).toBe(PLUGIN_VERSION)
   })
 
   it('is an ESM package with the host entry as main', () => {

@@ -38,7 +38,7 @@ import { WireError } from './wire.ts'
 export const BACKEND_API_PREFIX = '/v1'
 export const BACKEND_SCHEMA_VERSION = 1
 
-/** Frozen id of the shipped Liangzi threshold policy (60/70/80/90). */
+/** Frozen id of the shipped Liangzi threshold policy (50/70/85/95). */
 export const LIANGZI_POLICY_VERSION = 'liangzi-v0.1-50-70-85-95'
 
 /**

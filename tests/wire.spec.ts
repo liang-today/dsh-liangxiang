@@ -28,7 +28,7 @@ function liveState() {
     cacheReadTokens: 90_000,
     cacheWriteTokens: 7_000,
     outputTokens: 0,
-  }, { kind: 'live', firstLiveSeq: 0 })
+  }, { kind: 'live', firstLiveSeq: 0 }, 'deepseek-v4-pro')
   return { service, state: service.getWireState() }
 }
 

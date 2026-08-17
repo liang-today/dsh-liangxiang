@@ -37,15 +37,15 @@
 
 ## 梁子 WAITING + 五态（§23.4）
 
-零票 waiting；整数票组合覆盖 0% / 19.999% / 20% / 39.999% / 40% / 59.999% / 60% / 79.999% / 80% / 100%；ratio 级同边界；非法阈值策略（重叠/越界/缺口/降序）拒绝。→ `domain-liangzi.spec.ts`
+零票 waiting；覆盖 0% / 49.999% / 50% / 69.999% / 70% / 84.999% / 85% / 94.999% / 95% / 100%；ratio 级同边界；非法阈值策略（重叠/越界/缺口/降序）拒绝。→ `domain-liangzi.spec.ts`
 
 ## 全局/个人解耦（§23.5）
 
-remaining 0 + 全局 92% ⇒ 梁祖；remaining 100 + 65% ⇒ 梁圣;个人 Token 397k→447k→497k 全局快照不变；全局 10→90% 个人梁气不变。→ `domain-independence.spec.ts`、`client-store.spec.ts`
+remaining 0 + 全局 96% ⇒ 梁祖；remaining 100 + 65% ⇒ 梁总；个人 Token 397k→447k→497k 全局快照不变；全局 10→96% 个人梁气不变。→ `domain-independence.spec.ts`、`client-store.spec.ts`
 
 ## 阈值穿越（§23.6）
 
-79.x%→80%（79/20 +1 up = 80/100）梁圣→梁祖；59.x%→60% 梁神→梁圣；穿越原因是全局比例（个人仅 remaining -1、fill 不变）。→ `domain-independence.spec.ts`、`client-store.spec.ts`
+84.2105%→85%（16/3 +1 up = 17/20）梁神→梁圣；94.7368%→95%（18/1 +1 up = 19/20）梁圣→梁祖；穿越原因是全局比例（个人仅 remaining -1、fill 不变）。→ `domain-independence.spec.ts`、`client-store.spec.ts`
 
 ## 快照一致性（§23.12）/ 零票（§23.13）
 
@@ -57,15 +57,15 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 ## UI 结构（Prompt 1 §B 验收）
 
-四区顺序 case/core/vote/social、仅两个投票按钮（夯：升梁！/拉：降梁！，等宽标齐）、dialog 标题今日梁案、梁位与梁祖同快照、环居中且两翼 overlay、零票 `--`+待开梁、remaining 0 双按钮 disabled + 可访问 reason、六态头像两两视觉不同、三界香火 12,846 / 五行香客 2,841（西游 SVG 小标 + 10px 标签）、上达天听与统计同一行、case 区居中且无可见「本地演示」徽标（软信任标注在 `data-liangbiao-authority` + SR 摘要）。→ `client-panel.spec.tsx`、`badge.spec.tsx`
+四区顺序 case/core/vote/social、仅两个投票按钮（夯：升梁！/拉：降梁！，等宽标齐）、dialog 标题今日梁案、梁位与梁祖同快照、环居中且两翼 overlay、零票 `--`+待开梁、remaining 0 双按钮 `aria-disabled` 且点击只走本地搞怪反馈、六态头像两两视觉不同、三界香火 / 五行香客 / 上达天听同行、case 区居中且无可见「本地演示」徽标。→ `client-panel.spec.tsx`、`badge.spec.tsx`
 
 ## 梁位显示：单值、带小数、不越阈值
 
-399/501 = 79.6407% ⇒ 显示 `79.640718%` 且头像仍梁圣（四舍五入会印出看似跨阈值的 `80%`）；任意小数位均截断；1000 票全枚举证明显示值恒落在所在状态区间内；两侧（夯/拉）恒和 100%；零票 `--`；`10,665→10,666` 一票即改变打印值；区间文案 `60% ≤ 夯率 < 80%` 由阈值策略推导。→ `domain-liangzi.spec.ts`、`client-panel.spec.tsx`
+474/501 = 94.6107% ⇒ 显示 `94.610778%` 且头像仍梁圣（四舍五入会印出看似跨阈值的 `95%`）；任意小数位均截断；1000 票全枚举证明显示值恒落在所在状态区间内；零票 `--`；`10,665→10,666` 一票即改变打印值；区间文案 `85% ≤ 夯率 < 95%` 由阈值策略推导。→ `domain-liangzi.spec.ts`、`client-panel.spec.tsx`
 
 ## Region 2 新布局与自由放置
 
-左翼 `5 炷`、右翼可见 `3K 当量`（精确值 3,000 在 SR；悬停权重表含 Pro ×1 / Flash ×0.5）、环底 `梁位 83.021952%`、旧的 `data-liangbiao-ratio` 上下比例块已不存在、一票后梁位打印值变化;高库存 `1,234 炷` / `50,000 当量` 可见为 `1.2K` / `50K`。9 炷画 9 根香柱字形；23 炷 = 3 炷 + 2 月牙分轨；105 = 5 炷 + 1 日轮；≥1000 用环上 compact chip。徽章图标是六态头像（30px、无标签、`aria-hidden`）、`aria-label` 含状态名、cursor `grab`/`touch-action: none`；坐标夹回可视区、窗口缩小后仍在画内、`localStorage` 往返与损坏值回退、面板在左边缘翻转到右侧、贴近上下边缘改锚点。→ `client-panel.spec.tsx`、`badge.spec.tsx`、`domain-compact-count.spec.ts`
+左翼今日生成香火、右翼可见 `3K 当量`（精确值 3,000 在 SR；权重表含 Pro ×1 / 其它均 ×0.5）、环底 `梁位 83.021952% → 梁神`。9 炷画 9 根香柱；23 炷 = 3 炷 + 2 月牙分轨；105 = 5 炷 + 1 日轮；≥1000 用环上 compact chip。徽章点击区 48px、人物 42px、静止底座不参与弹跳；坐标夹回可视区、面板在右边缘翻转水平对齐。→ `client-panel.spec.tsx`、`badge.spec.tsx`、`domain-compact-count.spec.ts`
 
 ## 近实时快照
 

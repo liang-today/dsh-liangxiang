@@ -21,10 +21,11 @@ describe('incenseWeightBpsForModel', () => {
     expect(incenseWeightBpsForModel('deepseek-v4-pro[1m]')).toBe(INCENSE_WEIGHT_SCALE)
   })
 
-  it('treats missing and unknown ids as Pro-equivalent', () => {
-    expect(incenseWeightBpsForModel(null)).toBe(INCENSE_WEIGHT_SCALE)
-    expect(incenseWeightBpsForModel(undefined)).toBe(INCENSE_WEIGHT_SCALE)
-    expect(incenseWeightBpsForModel('deepseek-chat')).toBe(INCENSE_WEIGHT_SCALE)
+  it('rates missing, unknown, and every other non-Pro id like Flash', () => {
+    expect(incenseWeightBpsForModel(null)).toBe(INCENSE_WEIGHT_SCALE / 2)
+    expect(incenseWeightBpsForModel(undefined)).toBe(INCENSE_WEIGHT_SCALE / 2)
+    expect(incenseWeightBpsForModel('deepseek-chat')).toBe(INCENSE_WEIGHT_SCALE / 2)
+    expect(incenseWeightBpsForModel('some-future-model')).toBe(INCENSE_WEIGHT_SCALE / 2)
   })
 })
 
@@ -45,6 +46,13 @@ describe('creditObservedUsage', () => {
     expect(flash.inputTokens + flash.outputTokens).toBe(50_000)
     const pro = creditObservedUsage(EMPTY_DAILY_USAGE, 50_000, 0, 'deepseek-v4-pro', 1)
     expect(pro.inputTokens + pro.outputTokens).toBe(50_000)
+  })
+
+  it('halves unknown-model and missing-route deltas', () => {
+    const unknown = creditObservedUsage(EMPTY_DAILY_USAGE, 100_000, 0, 'some-future-model', 1)
+    expect(unknown.inputTokens + unknown.outputTokens).toBe(50_000)
+    const missing = creditObservedUsage(EMPTY_DAILY_USAGE, 100_000, 0, null, 1)
+    expect(missing.inputTokens + missing.outputTokens).toBe(50_000)
   })
 })
 

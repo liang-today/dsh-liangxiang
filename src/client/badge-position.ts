@@ -5,20 +5,25 @@
  * be handled explicitly:
  *  - the stored point is clamped back into view on every read (a window that
  *    shrank, or a monitor that went away, must not hide the entry);
- *  - the panel always stacks above or below the badge (never beside it), so
- *    the DSH composer on the right stays clear and the panel can stay open;
+ *  - the panel stacks above or below the badge and flips its horizontal edge
+ *    before it could leave the viewport;
  *  - `localStorage` is used ONLY for this cosmetic preference. It is never an
  *    authority for votes or balances (AGENTS.md §15).
  */
 
-/** Docked entry hit area. Was 32px; scaled by 4/3 so high-DPI can actually see it. */
-export const BADGE_SIZE = 40
-/** Portrait inside the entry. Was 30px; same 4/3 step as `BADGE_SIZE`. */
-export const BADGE_ICON_SIZE = 40
+/** Docked entry hit area: comfortably clickable without making 梁子 bulky. */
+export const BADGE_SIZE = 48
+/** Portrait inside the stationary interaction halo. */
+export const BADGE_ICON_SIZE = 42
 export const BADGE_MARGIN = 12
 /** Leave the DSH settings control in the bottom-left corner uncovered. */
 export const SETTINGS_CLEARANCE = 56
-export const PANEL_WIDTH = 260
+/**
+ * DSH's default sidebar is 280px with 12px inline padding on each side. A
+ * 256px panel therefore follows the sidebar's usable content width exactly
+ * and does not cover the conversation column at the default dock.
+ */
+export const PANEL_WIDTH = 256
 export const PANEL_GAP = 10
 /** Approximate expanded panel height; used only to pick above vs below. */
 const PANEL_STACK_HEIGHT = 316
@@ -40,6 +45,7 @@ export interface Viewport {
 /** Panel stacks above or below the badge — never left/right of it. */
 export interface PanelPlacement {
   stack: 'above' | 'below'
+  align: 'start' | 'end'
 }
 
 /** Default dock: bottom-left, sitting just above the DSH settings control. */
@@ -110,7 +116,8 @@ export function panelPlacementFor(point: BadgePoint, viewport: Viewport): PanelP
   // Prefer above (the default dock is in the bottom-left) and only drop
   // below when the badge has been dragged too close to the top.
   const stack: PanelPlacement['stack'] = roomAbove >= needed || roomAbove >= roomBelow ? 'above' : 'below'
-  return { stack }
+  const align: PanelPlacement['align'] = point.x + PANEL_WIDTH <= viewport.width - BADGE_MARGIN ? 'start' : 'end'
+  return { stack, align }
 }
 
 /** Default the expanded panel to open; persist × / badge toggles per browser. */
