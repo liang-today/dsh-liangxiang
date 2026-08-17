@@ -97,6 +97,8 @@ NODE_BIN="$(command -v node)"
 sed "s|/usr/bin/node|$NODE_BIN|" "$PREFIX/deploy/liangxiang-backend.service" \
   > /etc/systemd/system/liangxiang-backend.service
 restorecon -RF "$PREFIX" "$DATA_DIR" "$ENV_FILE" /etc/systemd/system/liangxiang-backend.service
+install -o root -g root -m 0755 "$PREFIX/scripts/liang" /usr/local/bin/liang
+restorecon -F /usr/local/bin/liang
 systemctl daemon-reload
 
 VERIFIED=0

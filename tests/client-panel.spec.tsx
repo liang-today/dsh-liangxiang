@@ -12,6 +12,7 @@ import type { LiangxiangViewState } from '../src/client/store.ts'
 import { color } from '../src/client/theme.ts'
 import { LIANGZI_STATES, liangQiFloatPeriodMs } from '../src/domain/index.ts'
 import {
+  COMMUNITY_UNAVAILABLE_REASON,
   INCENSE_STAT_LABEL,
   LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
@@ -582,6 +583,22 @@ describe('region 3: exactly two vote buttons', () => {
   it('shows the transient 已上香 feedback line', () => {
     const tree = renderPanel(demoState(), '已上香 · 夯（剩余 4 炷）')
     expect(textContent(tree)).toContain('已上香 · 夯（剩余 4 炷）')
+  })
+
+  it('keeps observed 凝香 visible but disables votes while the community is unreachable', () => {
+    const state = {
+      ...demoState(),
+      authorityMode: 'DEV_STAGING_ONLY' as const,
+      authorityAvailable: false,
+      observedEarnedIncenseToday: 12,
+    }
+    const tree = renderPanel(state)
+    expect(textContent(tree)).toContain(COMMUNITY_UNAVAILABLE_REASON)
+    expect(textContent(findByAttr(tree, 'data-liangxiang-personal', 'incense'))).toContain('12')
+    for (const vote of findByAttr(tree, 'data-liangxiang-vote')) {
+      expect(vote.props.disabled).toBe(true)
+      expect(vote.props.title).toBe(COMMUNITY_UNAVAILABLE_REASON)
+    }
   })
 })
 

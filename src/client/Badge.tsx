@@ -426,7 +426,7 @@ export function LiangxiangBadge(): ReactElement {
   // live frame is a baseline (Cmd+Shift+R starts at earned=0 then hydrates),
   // never a condensation. Bob / 下一炷 may replay; this overlay must not.
   const [condensedIncense, setCondensedIncense] = useState(0)
-  const prevEarned = useRef(state.personal.earnedIncenseToday)
+  const prevEarned = useRef(state.observedEarnedIncenseToday)
   const incenseEarnPrimed = useRef(false)
   useEffect(() => {
     if (state.connection !== 'live') {
@@ -435,17 +435,17 @@ export function LiangxiangBadge(): ReactElement {
     }
     if (!incenseEarnPrimed.current) {
       incenseEarnPrimed.current = true
-      prevEarned.current = state.personal.earnedIncenseToday
+      prevEarned.current = state.observedEarnedIncenseToday
       return undefined
     }
-    const gained = earnedIncenseGain(prevEarned.current, state.personal.earnedIncenseToday)
-    prevEarned.current = state.personal.earnedIncenseToday
+    const gained = earnedIncenseGain(prevEarned.current, state.observedEarnedIncenseToday)
+    prevEarned.current = state.observedEarnedIncenseToday
     if (gained === 0) return undefined
     setCondensedIncense(gained)
     playIncenseEarn()
     const timer = window.setTimeout(() => setCondensedIncense(0), 1400)
     return () => window.clearTimeout(timer)
-  }, [state.connection, state.personal.earnedIncenseToday])
+  }, [state.connection, state.observedEarnedIncenseToday])
 
   // Transient vote feedback (已上香).
   const [voteFeedback, setVoteFeedback] = useState('')

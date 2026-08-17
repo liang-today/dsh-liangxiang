@@ -50,6 +50,7 @@ fi
 
 NODE_BIN="$(command -v node)"
 sed "s|/usr/bin/node|$NODE_BIN|" "$UNIT_SRC" > /etc/systemd/system/liangxiang-backend.service
+install -o root -g root -m 0755 "$PREFIX/scripts/liang" /usr/local/bin/liang
 systemctl daemon-reload
 systemctl enable --now liangxiang-backend
 sleep 1

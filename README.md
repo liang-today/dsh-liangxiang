@@ -56,6 +56,8 @@ GitHub Release。迁移实录见 [`docs/142-hk-migration-report.md`](docs/142-hk
 | 待修问题 / 随时提醒 | [`docs/BUGFIX.md`](docs/BUGFIX.md) |
 | 测试覆盖 | [`docs/103-test-matrix.md`](docs/103-test-matrix.md) |
 | DSH 版本基线与升级清单 | [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) |
+| 客户端断连恢复与一键更新 | [`docs/144-client-recovery-and-update.md`](docs/144-client-recovery-and-update.md) |
+| 服务器统一命令与梁案排期 | [`docs/143-case-bank-and-operations.md`](docs/143-case-bank-and-operations.md) |
 | RC 结论 | [`docs/100-release-readiness.md`](docs/100-release-readiness.md) |
 | 原始禁令 vs 当前实现 | [`docs/110-prohibition-refresh.md`](docs/110-prohibition-refresh.md) |
 | Demo → 社区产品 | [`docs/120-community-product.md`](docs/120-community-product.md) |

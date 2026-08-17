@@ -7,8 +7,9 @@
  *  - one vote retry reuses the SAME requestId (never a fresh id to escape an
  *    uncertain outcome);
  *  - SSE errors are counted; after a bounded number the stream closes and
- *    the store goes `offline` (the UI keeps rendering the last known state);
- *  - `refresh()` reconnects when offline; while live it POSTs `/refresh` so
+ *    the store goes `offline` (the UI keeps rendering the last known state),
+ *    then reconnects automatically with bounded exponential backoff;
+ *  - `refresh()` retries immediately when offline; while live it POSTs `/refresh` so
  *    hover / panel-open can force a host re-bootstrap instead of waiting for
  *    the next 1s snapshot poll. No extra background poll loop.
  */
@@ -34,6 +35,8 @@ const HISTORY_PATH = '/liangxiang/api/history'
 const FETCH_TIMEOUT_MS = 6_000
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
+const RECONNECT_INITIAL_MS = 1_000
+const RECONNECT_MAX_MS = 30_000
 /** Hover may fire often; skip if a live refresh ran this recently. */
 const MIN_LIVE_REFRESH_MS = 2_000
 
@@ -117,6 +120,8 @@ export function createLiveLiangxiangStore(
   let refreshInFlight = false
   let reconcileInFlight = false
   let lastLiveRefreshAt = 0
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let reconnectBackoffMs = RECONNECT_INITIAL_MS
   const listeners = new Set<() => void>()
   let historyState: LiangciHistoryState = { status: 'idle', archive: null, error: null }
   let historyInFlight: Promise<void> | null = null
@@ -192,6 +197,22 @@ export function createLiveLiangxiangStore(
     }
   }
 
+  const clearReconnect = (): void => {
+    if (reconnectTimer === null) return
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+
+  const scheduleReconnect = (): void => {
+    if (disposed || reconnectTimer !== null || starting) return
+    const delay = reconnectBackoffMs
+    reconnectBackoffMs = Math.min(reconnectBackoffMs * 2, RECONNECT_MAX_MS)
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      bootstrap()
+    }, delay)
+  }
+
   const goOffline = (): void => {
     if (stream !== null) {
       stream.close()
@@ -200,6 +221,7 @@ export function createLiveLiangxiangStore(
     if (state.connection !== 'offline') {
       setState({ ...state, connection: 'offline' })
     }
+    scheduleReconnect()
   }
 
   const openStream = (): void => {
@@ -228,6 +250,8 @@ export function createLiveLiangxiangStore(
       .then((raw) => {
         starting = false
         if (disposed) return
+        clearReconnect()
+        reconnectBackoffMs = RECONNECT_INITIAL_MS
         applyWire(raw)
         openStream()
         // One full archive per Host connection; subsequent updates are deltas.
@@ -297,6 +321,7 @@ export function createLiveLiangxiangStore(
     refresh: (options) => {
       if (disposed) return
       if (state.connection === 'offline') {
+        clearReconnect()
         if (!starting) bootstrap()
         return
       }
@@ -343,6 +368,7 @@ export function createLiveLiangxiangStore(
     loadHistory,
     dispose: () => {
       disposed = true
+      clearReconnect()
       if (stream !== null) {
         stream.close()
         stream = null

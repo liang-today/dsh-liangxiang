@@ -36,8 +36,8 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 ## 二、从 RC tarball 安装到自己的 profile
 
 ```bash
-pnpm pack                                            # 当前产出 dsh-liangxiang-0.6.0.tgz
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.6.0.tgz
+pnpm pack                                            # 当前产出 dsh-liangxiang-0.7.0.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.7.0.tgz
 ```
 
 两点注意：

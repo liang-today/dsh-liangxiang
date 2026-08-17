@@ -1,6 +1,6 @@
 # 103 — Test Matrix（RC）
 
-`pnpm test`：**33 个文件 / 402 项，全绿**（2026-08-18，v0.6.0）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
+`pnpm test`：**34 个文件 / 411 项，全绿**（2026-08-18，v0.7.0）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
 
 ## 覆盖分布
 
@@ -8,7 +8,7 @@
 |---|---|---|
 | 梁祠领域/wire | `domain-archive`、`history-v1` | Gregorian 日期、ISO 周/月边界、票数加权、今日排除、暂梁、零票；严格历史解析与 delta 合并 |
 | 梁祠后端 | `backend-history`、`backend-http` | 同日多案合并、日/周/月幂等封存、版本增量、零票档、`/v1/history` query 校验 |
-| 梁祠 Host/client | `host-backend`、`live-store`、`client-panel` | 上游全量→增量、last-known-good stale、SSE 无历史数组、第四区入口与 UI 契约 |
+| 梁祠 Host/client | `host-backend`、`live-store`、`client-panel`、`client-liangci-calendar` | 上游全量→增量、last-known-good stale、SSE 无历史数组、第四区入口、4/5/6 周月历与 UI 契约 |
 | 领域核心 | `domain-token`、`domain-incense`、`domain-incense-weight`、`domain-vote`、`domain-global`、`domain-liangzi`、`domain-independence`、`domain-compact-count` | Token/香火/投票/梁位/五态/个人与全局隔离 |
 | 后端与安全 | `backend-service`、`backend-client`、`backend-http`、`community-auth`、`identity-recovery`、`operator-identity` | 事务、幂等、并发、签名、身份恢复、运营边界、错误契约 |
 | Host | `host-service`、`host-backend`、`host-usage`、`host-dev-credit`、`host-apply` | 两种权威模式、用量水位、后端集成、生命周期 |
@@ -35,11 +35,13 @@
 | 今日 SSE 只带 archiveVersion 标量 | `wire`、`live-store` |
 | 多标签安全 | `backend-http`、`host-backend` |
 | 网络重试安全 | `live-store`、`backend-http` |
+| 断网不切本地、自动重连、离线继续观察凝香 | `host-backend`、`live-store`、`client-panel`、`operator-identity` |
 | 服务器时钟/业务日权威 | `backend-service`（UTC vs Asia/Shanghai） |
 | Token 边界 0/49,999/50,000/99,999/100,000/397,000/500,000/1M | `domain-token`、`backend-service` |
 | reasoning 不重复 / 四桶口径 | `domain-token`、`host-usage`、`host-backend`（10k+20k+5k+15k=50k） |
 | replay/restart 不重复 | `host-usage` |
 | 五态精确边界 + 零票 WAITING | `domain-liangzi`、`domain-global` |
+| 梁位六位小数大基数精确截断 | `domain-liangzi` |
 | 比例与状态同 snapshot version | `domain-global`、`backend-v1` 校验器、`host-backend` |
 | 个人变动不改梁子 / 全局变动不改个人 | `domain-independence`、`backend-service`、`host-backend` |
 | 客户端不能伪造票权 | `backend-http`（400 + 字段路径）、审计 |

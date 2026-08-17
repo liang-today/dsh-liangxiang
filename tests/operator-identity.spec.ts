@@ -4,7 +4,7 @@ import { resolveHostRuntimeConfig } from '../src/host/config.ts'
 import { STAGING_BACKEND_URL } from '../src/host/community-endpoint.ts'
 import { LOCAL_CASE_TITLES, nextLocalCaseIndex } from '../src/host/local-cases.ts'
 import { runOperatorCli } from '../src/backend/cli.ts'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -19,6 +19,16 @@ describe('host runtime defaults to online', () => {
   it('forces local mode when LIANGXIANG_BACKEND_URL=local', () => {
     const runtime = resolveHostRuntimeConfig({ LIANGXIANG_BACKEND_URL: 'local' }, () => undefined)
     expect(runtime.backendUrl).toBeNull()
+  })
+
+  it('never turns an invalid online URL into local mode', () => {
+    const warnings: string[] = []
+    const runtime = resolveHostRuntimeConfig(
+      { LIANGXIANG_BACKEND_URL: 'not a url' },
+      (message) => warnings.push(message),
+    )
+    expect(runtime.backendUrl).toBe(STAGING_BACKEND_URL)
+    expect(warnings.join('\n')).toContain(`using ${STAGING_BACKEND_URL}`)
   })
 })
 
@@ -52,6 +62,16 @@ describe('identity mutation rate limit', () => {
 })
 
 describe('operator CLI', () => {
+  it('accepts Rocky Linux node-22 argv prefixes', () => {
+    const logs: string[] = []
+    expect(runOperatorCli(
+      ['/usr/bin/node-22', '/opt/liangxiang/lib/backend-cli.js', 'status'],
+      { LIANGXIANG_BACKEND_DB: ':memory:' },
+      { log: (line) => logs.push(line), error: (line) => logs.push(line) },
+    )).toBe(0)
+    expect(logs.join('\n')).toContain('[liangxiang-ops] status')
+  })
+
   it('publishes a case against sqlite without HTTP', () => {
     const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-'))
     const db = join(dir, 'liangxiang.sqlite')
@@ -68,6 +88,31 @@ describe('operator CLI', () => {
     expect(code).toBe(0)
     expect(logs.join('\n')).toContain('CLI 发布是夯还是拉')
     expect(logs.join('\n')).toContain('[liangxiang-ops] publish')
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('seeds a dated, queryable case schedule and refuses date collisions', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-seed-'))
+    const db = join(dir, 'liangxiang.sqlite')
+    const bank = join(dir, 'bank.txt')
+    writeFileSync(bank, '# comment\n第一题是夯还是拉\n第二题是夯还是拉\n第三题是夯还是拉\n')
+    const env = { LIANGXIANG_BACKEND_DB: db }
+    const logs: string[] = []
+    const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
+    expect(runOperatorCli(
+      ['case', 'queue', 'seed', '--start', '2026-08-19', '--limit', '3', bank],
+      env,
+      io,
+    )).toBe(0)
+    expect(logs.join('\n')).toContain('2026-08-19')
+    expect(logs.join('\n')).toContain('2026-08-21')
+    const collision: string[] = []
+    expect(runOperatorCli(
+      ['case', 'queue', 'add', '--on', '2026-08-20', '冲突题是夯还是拉'],
+      env,
+      { log: (line) => collision.push(line), error: (line) => collision.push(line) },
+    )).toBe(1)
+    expect(collision.join('\n')).toContain('already exists')
     rmSync(dir, { recursive: true, force: true })
   })
 })
