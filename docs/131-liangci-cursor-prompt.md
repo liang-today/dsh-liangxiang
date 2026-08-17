@@ -3,7 +3,7 @@
 > 历史材料：该提示词对应的功能已由 Codex 在 v0.4.0 完成，不再作为待执行任务。
 > 后续维护以 `AGENTS.md`、`docs/130-liangci-design.md` 和当前测试为准，禁止整段重跑本提示词覆盖现实现。
 
-你现在要在 `dsh-liangbiao` 仓库中完整实现“梁祠”。这不是只做一个日历外壳；必须一次打通领域语义、永久档案、日切封存、历史 API、Host 缓存/增量同步、Client 月历浮层、美术规范、无障碍、测试与文档。
+你现在要在 `dsh-liangxiang` 仓库中完整实现“梁祠”。这不是只做一个日历外壳；必须一次打通领域语义、永久档案、日切封存、历史 API、Host 缓存/增量同步、Client 月历浮层、美术规范、无障碍、测试与文档。
 
 ## 一、开始前必须阅读
 
@@ -17,7 +17,7 @@
 6. `docs/073-business-date.md`
 7. `docs/076-backend-api-v1.md`
 8. `docs/102-known-limitations.md`
-9. `docs/LIANGBIAO_CURSOR_MASTER_R3.md`
+9. `docs/LIANGXIANG_CURSOR_MASTER_R3.md`
 10. `docs/assets/liangci-visual-spec.png`
 11. `docs/assets/liangci-icon-system.png`
 
@@ -39,7 +39,7 @@
 ### 今日
 
 - 今日格只显示专用 `今日进行中` 图标。
-- 今日图标不得显示实时今日梁子头像，不得绑定今日梁向或实时状态。
+- 今日图标不得显示实时今日梁子头像，不得绑定今日梁相或实时状态。
 - 今日不是 `WAITING`，也不是 loading；禁止 spinner。
 - 今日不参与本周暂梁或本月暂梁计算。
 
@@ -123,7 +123,7 @@ TemporaryMonthLiang
 
 ## 五、历史读取与同步
 
-不要把历史数组塞进当前 `LiangbiaoWireState`，因为现有 SSE 每个 revision 会发送完整 state，导致历史在每次今日变化时重复发送。
+不要把历史数组塞进当前 `LiangxiangWireState`，因为现有 SSE 每个 revision 会发送完整 state，导致历史在每次今日变化时重复发送。
 
 实现独立历史链路：
 
@@ -131,7 +131,7 @@ TemporaryMonthLiang
 首次连接：
 Backend GET /v1/history
   -> Host 解析、校验和缓存
-  -> Browser GET /liangbiao/api/history
+  -> Browser GET /liangxiang/api/history
   -> 一次获得永久日/周/月档案
 
 日常：
@@ -189,7 +189,7 @@ Host 发现 business_date / archive_version 变化
 - `src/client/artwork/*.png` 的现有六态梁子头像。
 - 当前 `currentColor` SVG 图标语言、1px 边框、8/12px 圆角与克制阴影。
 
-美术方向只有一个：`现代编年志 × 克制梁祠`，约 80% DSH 原生、15% 编年日历、5% 梁祠点睛；这也是梁向主面板、入口、欢迎与提示卡的全局视觉母版，见 `docs/140-liangxiang-brand.md`。
+美术方向只有一个：`现代编年志 × 克制梁祠`，约 80% DSH 原生、15% 编年日历、5% 梁祠点睛；这也是梁相主面板、入口、欢迎与提示卡的全局视觉母版，见 `docs/140-liangxiang-brand.md`。
 
 时间层级必须有不同轮廓：
 
@@ -274,7 +274,7 @@ Host 发现 business_date / archive_version 变化
 - 不修改用户真实 DSH profile，不修改 `../deepseek-harness`，不做 npm publish、GitHub Release 或生产部署。
 - 后端有改动时，按仓库规则用 `scripts/deploy-check.sh` 判断 staging 是否陈旧；除非用户明确授权部署，不要自行部署。
 - 跑完整相关 typecheck、lint、unit、integration、UI/backend tests 与 `./scripts/validate.sh`，失败必须修复。
-- 完成后按 `AGENTS.md` 强制要求 commit 并 push；永远不要提交 `src/host/staging-defaults.ts`。
+- 完成后按 `AGENTS.md` 强制要求 commit 并 push；永远不要把社区口令写进源码或分发包。
 
 ## 十一、完成标准
 

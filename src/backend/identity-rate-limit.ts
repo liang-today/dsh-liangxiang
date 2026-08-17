@@ -11,7 +11,7 @@
  */
 export const IDENTITY_HIT_WINDOW_MS = 10 * 60 * 1000
 export const IDENTITY_MISS_WINDOW_MS = 30 * 60 * 1000
-const EVICT_THRESHOLD = 2_000
+export const IDENTITY_RATE_LIMIT_MAX_KEYS = 4_096
 
 export type IdentityRateKind = 'hit' | 'miss'
 
@@ -30,10 +30,15 @@ export class IdentityRateLimiter {
     installationId: string,
     kind: IdentityRateKind,
   ): IdentityRateDecision {
-    if (this.last.size > EVICT_THRESHOLD) this.evict(now)
     const windowMs = kind === 'hit' ? IDENTITY_HIT_WINDOW_MS : IDENTITY_MISS_WINDOW_MS
     const key = kind === 'hit' ? `hit:${ip}:${installationId}` : `miss:${ip}`
     const previous = this.last.get(key)
+    if (previous === undefined && this.last.size >= IDENTITY_RATE_LIMIT_MAX_KEYS) {
+      this.evict(now)
+      if (this.last.size >= IDENTITY_RATE_LIMIT_MAX_KEYS) {
+        return { allowed: false, kind, retryAfterMs: windowMs }
+      }
+    }
     if (previous !== undefined) {
       const elapsed = now - previous
       if (elapsed < windowMs) {
@@ -47,6 +52,10 @@ export class IdentityRateLimiter {
 
   reset(): void {
     this.last.clear()
+  }
+
+  get activeKeys(): number {
+    return this.last.size
   }
 
   private evict(now: number): void {

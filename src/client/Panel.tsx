@@ -1,5 +1,5 @@
 /**
- * The expanded 梁向 panel — exactly four visual regions (frozen UI contract):
+ * The expanded 梁相 panel — exactly four visual regions (frozen UI contract):
  *
  *   1. 今日梁案 (single active case)
  *   2. overlay flanks | centered 梁子 + 香火环 | 梁位
@@ -61,12 +61,12 @@ import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangciIcon } from './LiangciIcon.tsx'
 import { LiangQiRing, AVATAR_SLOT, RING_SIZE } from './LiangQiRing.tsx'
 import { SoundIcon } from './SoundIcon.tsx'
-import type { LiangbiaoViewState } from './store.ts'
+import type { LiangxiangViewState } from './store.ts'
 import { color, font } from './theme.ts'
 import type { ThrottledProgress } from './use-throttle-fill.ts'
 
 export interface PanelProps {
-  state: LiangbiaoViewState
+  state: LiangxiangViewState
   reducedMotion: boolean
   /** Smoothed + rate-extrapolated fill for the 油门 animation (optional). */
   throttle?: ThrottledProgress
@@ -283,40 +283,40 @@ function placementStyle(placement: PanelPlacement): CSSProperties {
 
 /** Panel-scoped CSS that inline styles cannot express (focus ring, keyframes). */
 const PANEL_CSS = `
-[data-liangbiao-panel] {
-  animation: liangbiao-panel-enter 150ms cubic-bezier(.2,.8,.2,1) both;
+[data-liangxiang-panel] {
+  animation: liangxiang-panel-enter 150ms cubic-bezier(.2,.8,.2,1) both;
 }
-[data-liangbiao-panel] button:focus-visible {
+[data-liangxiang-panel] button:focus-visible {
   outline: 2px solid ${color.brand};
   outline-offset: 2px;
 }
-[data-liangbiao-panel] button[disabled] {
+[data-liangxiang-panel] button[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
 }
-[data-liangbiao-panel] button[aria-disabled="true"]:not([disabled]) {
+[data-liangxiang-panel] button[aria-disabled="true"]:not([disabled]) {
   opacity: 0.72;
   cursor: pointer;
 }
-[data-liangbiao-vote]:hover:not([disabled]) {
+[data-liangxiang-vote]:hover:not([disabled]) {
   transform: translateY(-1px);
   filter: brightness(1.04);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
-[data-liangbiao-vote]:active:not([disabled]) {
+[data-liangxiang-vote]:active:not([disabled]) {
   transform: translateY(1px) scale(0.985);
   box-shadow: 0 2px 7px rgba(0, 0, 0, 0.14);
 }
-@keyframes liangbiao-panel-enter {
+@keyframes liangxiang-panel-enter {
   from { opacity: 0; transform: translateY(4px) scale(0.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes liangbiao-position-pop {
+@keyframes liangxiang-position-pop {
   0% { transform: translateY(3px); opacity: 0.35; }
   45% { transform: translateY(0); opacity: 1; filter: brightness(1.5); }
   100% { transform: translateY(0); opacity: 1; }
 }
-[data-liangbiao-ritual] {
+[data-liangxiang-ritual] {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -336,14 +336,14 @@ const PANEL_CSS = `
   transform: translateY(0);
   transition: color 60ms ease, background-color 60ms ease, box-shadow 60ms ease, transform 60ms ease;
 }
-[data-liangbiao-ritual]:hover:not(:disabled),
-[data-liangbiao-ritual]:focus-visible {
+[data-liangxiang-ritual]:hover:not(:disabled),
+[data-liangxiang-ritual]:focus-visible {
   color: ${color.textPrimary};
   background: ${color.bgLayer};
   box-shadow: inset 0 0 0 1px ${color.brand}, 0 4px 10px rgba(0, 0, 0, 0.12);
   transform: translateY(-1px);
 }
-[data-liangbiao-ritual] [data-liangbiao-hint] {
+[data-liangxiang-ritual] [data-liangxiang-hint] {
   position: absolute;
   right: 0;
   bottom: calc(100% + 6px);
@@ -364,16 +364,16 @@ const PANEL_CSS = `
   transition: opacity 40ms ease, transform 40ms ease;
   transition-delay: 0s;
 }
-[data-liangbiao-ritual]:hover:not(:disabled) [data-liangbiao-hint],
-[data-liangbiao-ritual]:focus-visible [data-liangbiao-hint] {
+[data-liangxiang-ritual]:hover:not(:disabled) [data-liangxiang-hint],
+[data-liangxiang-ritual]:focus-visible [data-liangxiang-hint] {
   opacity: 1;
   transform: translateY(0);
 }
-[data-liangbiao-personal="next-incense"] {
+[data-liangxiang-personal="next-incense"] {
   cursor: help;
   outline: none;
 }
-[data-liangbiao-personal="next-incense"] [data-liangbiao-weight-hint] {
+[data-liangxiang-personal="next-incense"] [data-liangxiang-weight-hint] {
   position: absolute;
   right: 0;
   top: calc(100% - 8px);
@@ -393,12 +393,12 @@ const PANEL_CSS = `
   pointer-events: none;
   transition: opacity 40ms ease, transform 40ms ease;
 }
-[data-liangbiao-personal="next-incense"]:hover [data-liangbiao-weight-hint],
-[data-liangbiao-personal="next-incense"]:focus-within [data-liangbiao-weight-hint] {
+[data-liangxiang-personal="next-incense"]:hover [data-liangxiang-weight-hint],
+[data-liangxiang-personal="next-incense"]:focus-within [data-liangxiang-weight-hint] {
   opacity: 1;
   transform: translateY(0);
 }
-[data-liangbiao-stat] [data-liangbiao-stat-hint] {
+[data-liangxiang-stat] [data-liangxiang-stat-hint] {
   position: absolute;
   left: 0;
   bottom: calc(100% + 8px);
@@ -415,19 +415,19 @@ const PANEL_CSS = `
   pointer-events: none;
   transition: opacity 40ms ease, transform 40ms ease;
 }
-[data-liangbiao-stat]:hover [data-liangbiao-stat-hint],
-[data-liangbiao-stat]:focus-visible [data-liangbiao-stat-hint] {
+[data-liangxiang-stat]:hover [data-liangxiang-stat-hint],
+[data-liangxiang-stat]:focus-visible [data-liangxiang-stat-hint] {
   opacity: 1;
   transform: translateY(0);
 }
-[data-liangbiao-stat-hint] strong {
+[data-liangxiang-stat-hint] strong {
   display: block;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.2px;
   margin-bottom: 6px;
 }
-[data-liangbiao-stat-hint] dl {
+[data-liangxiang-stat-hint] dl {
   margin: 0;
   display: grid;
   grid-template-columns: auto 1fr;
@@ -436,12 +436,12 @@ const PANEL_CSS = `
   font-size: 11px;
   line-height: 1.35;
 }
-[data-liangbiao-stat-hint] dt {
+[data-liangxiang-stat-hint] dt {
   margin: 0;
   color: ${color.textTertiary};
   font-weight: 500;
 }
-[data-liangbiao-stat-hint] dd {
+[data-liangxiang-stat-hint] dd {
   margin: 0;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -449,30 +449,30 @@ const PANEL_CSS = `
   font-weight: 600;
   color: ${color.textPrimary};
 }
-[data-liangbiao-weight-hint] table {
+[data-liangxiang-weight-hint] table {
   border-collapse: collapse;
   width: 100%;
 }
-[data-liangbiao-weight-hint] th,
-[data-liangbiao-weight-hint] td {
+[data-liangxiang-weight-hint] th,
+[data-liangxiang-weight-hint] td {
   padding: 2px 4px;
   text-align: left;
   font-weight: 500;
 }
-[data-liangbiao-weight-hint] caption {
+[data-liangxiang-weight-hint] caption {
   caption-side: top;
   text-align: left;
   font-weight: 700;
   padding-bottom: 4px;
 }
-@keyframes liangbiao-condense {
+@keyframes liangxiang-condense {
   0% { opacity: 0; transform: translate(-50%, 12px) scale(0.85); }
   22% { opacity: 1; transform: translate(-50%, 0) scale(1); }
   70% { opacity: 1; transform: translate(-50%, -3px) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -8px) scale(0.95); }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-liangbiao-panel] * {
+  [data-liangxiang-panel] * {
     animation: none !important;
     transition: none !important;
   }
@@ -500,7 +500,7 @@ function SocialStatHint(props: {
   const todayText = props.today.toLocaleString('zh-CN')
   const lifetimeText = props.lifetime.toLocaleString('zh-CN')
   return (
-    <div data-liangbiao-stat-hint={props.kind} role="tooltip">
+    <div data-liangxiang-stat-hint={props.kind} role="tooltip">
       <strong>{props.label}</strong>
       <dl>
         <dt>{STAT_TODAY_LABEL}</dt>
@@ -574,8 +574,8 @@ export function Panel(props: PanelProps): ReactElement {
     <section
       role="dialog"
       aria-label={panelTitle}
-      data-liangbiao-panel=""
-      data-liangbiao-authority={state.authorityMode}
+      data-liangxiang-panel=""
+      data-liangxiang-authority={state.authorityMode}
       tabIndex={-1}
       style={{ ...panelStyle, ...placementStyle(placement) }}
       onKeyDown={onKeyDown}
@@ -586,7 +586,7 @@ export function Panel(props: PanelProps): ReactElement {
         <div
           role="dialog"
           aria-label={WELCOME_TITLE}
-          data-liangbiao-welcome=""
+          data-liangxiang-welcome=""
           style={{
             position: 'absolute',
             inset: 0,
@@ -612,7 +612,7 @@ export function Panel(props: PanelProps): ReactElement {
             </p>
           ))}
           <p
-            data-liangbiao-welcome-privacy=""
+            data-liangxiang-welcome-privacy=""
             style={{
               margin: '2px 0 0',
               fontSize: '10px',
@@ -626,7 +626,7 @@ export function Panel(props: PanelProps): ReactElement {
           <div style={{ display: 'flex', gap: '8px', marginTop: '6px', width: '100%' }}>
             <button
               type="button"
-              data-liangbiao-welcome-online=""
+              data-liangxiang-welcome-online=""
               onClick={onDismissWelcome}
               style={{
                 flex: 1,
@@ -645,7 +645,7 @@ export function Panel(props: PanelProps): ReactElement {
             </button>
             <button
               type="button"
-              data-liangbiao-welcome-local=""
+              data-liangxiang-welcome-local=""
               onClick={onChooseLocal}
               style={{
                 flex: 1,
@@ -668,14 +668,14 @@ export function Panel(props: PanelProps): ReactElement {
 
       {/* Region 1 — 今日梁案 */}
       <header
-        data-liangbiao-region="case"
+        data-liangxiang-region="case"
         style={{ position: 'relative', marginBottom: '6px', padding: '0 24px', textAlign: 'center' }}
       >
         <h2 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: color.textTertiary, letterSpacing: '1.6px' }}>
           {panelTitle}
         </h2>
         <p
-          data-liangbiao-case-title=""
+          data-liangxiang-case-title=""
           title={activeCase.title}
           style={{
             // Sound / close controls only occupy the title row. Let the case
@@ -698,7 +698,7 @@ export function Panel(props: PanelProps): ReactElement {
         {onCycleLocalCase !== undefined && (
           <button
             type="button"
-            data-liangbiao-cycle-case=""
+            data-liangxiang-cycle-case=""
             onClick={onCycleLocalCase}
             style={{
               margin: '4px 0 0',
@@ -743,7 +743,7 @@ export function Panel(props: PanelProps): ReactElement {
         {versionReveal && (
           <span
             role="status"
-            data-liangbiao-version=""
+            data-liangxiang-version=""
             style={{
               position: 'absolute',
               top: '26px',
@@ -790,8 +790,8 @@ export function Panel(props: PanelProps): ReactElement {
           今日凝香 N 炷   [香火环 + 梁子]   下一炷 X 当量
                           梁位 83.021952% → 梁祖
       */}
-      <div data-liangbiao-region="core" style={coreStyle}>
-        <div data-liangbiao-core-anchor="" style={coreAnchorStyle}>
+      <div data-liangxiang-region="core" style={coreStyle}>
+        <div data-liangxiang-core-anchor="" style={coreAnchorStyle}>
           <LiangQiRing
             personal={personal}
             reducedMotion={reducedMotion}
@@ -799,7 +799,7 @@ export function Panel(props: PanelProps): ReactElement {
             fillOverride={displayFill}
             footer={(
               <span
-                data-liangbiao-liang-position=""
+                data-liangxiang-liang-position=""
                 title={`${VOTE_UP_NAME} ${percents.up} / ${VOTE_DOWN_NAME} ${percents.down} → ${LIANGZI_STATE_LABELS[snapshot.liangziState]}`}
                 style={{
                   display: 'inline-flex',
@@ -816,24 +816,24 @@ export function Panel(props: PanelProps): ReactElement {
                   ...positionLineStyle,
                 }}
               >
-                <span data-liangbiao-liang-position-label="" style={positionGlueStyle}>
+                <span data-liangxiang-liang-position-label="" style={positionGlueStyle}>
                   {LIANG_POSITION_LABEL}
                 </span>
                 <strong
-                  data-liangbiao-liang-position-value=""
+                  data-liangxiang-liang-position-value=""
                   style={{
                     ...positionFactStyle,
                     ...numericStyle,
                     animation: positionPulse && !reducedMotion
-                      ? 'liangbiao-position-pop 0.5s ease-out 1'
+                      ? 'liangxiang-position-pop 0.5s ease-out 1'
                       : undefined,
                   }}
                 >
                   {percents.up}
                 </strong>
-                <span aria-hidden="true" data-liangbiao-liang-position-causal="" style={{ ...positionGlueStyle, color: color.textTertiary }}>→</span>
+                <span aria-hidden="true" data-liangxiang-liang-position-causal="" style={{ ...positionGlueStyle, color: color.textTertiary }}>→</span>
                 <span
-                  data-liangbiao-liangzi-title=""
+                  data-liangxiang-liangzi-title=""
                   title={`${LIANGZI_STATE_LABELS[snapshot.liangziState]}：${liangziRatioRangeText(snapshot.liangziState)}`}
                   style={{ ...positionFactStyle, color: color.ritualEmber }}
                 >
@@ -852,10 +852,10 @@ export function Panel(props: PanelProps): ReactElement {
             />
           </LiangQiRing>
         </div>
-        <div style={{ ...flankStyle, left: '0px' }} data-liangbiao-personal="incense">
+        <div style={{ ...flankStyle, left: '0px' }} data-liangxiang-personal="incense">
           <span style={flankCaptionStyle}>{MY_INCENSE_LABEL}</span>
           <span title={`今日生成 ${earnedExact} 炷`} style={flankValueStyle}>
-            <span data-liangbiao-compact="incense">{earnedCompact}</span>
+            <span data-liangxiang-compact="incense">{earnedCompact}</span>
             <span style={flankUnitStyle}> 炷</span>
           </span>
           <span title={`余 ${remainingExact} 炷`} style={flankUnitStyle}>
@@ -864,14 +864,14 @@ export function Panel(props: PanelProps): ReactElement {
         </div>
         <div
           style={{ ...flankStyle, right: '0px' }}
-          data-liangbiao-personal="next-incense"
+          data-liangxiang-personal="next-incense"
           tabIndex={0}
           aria-label={`${NEXT_INCENSE_LABEL} ${toNextExact} ${NEXT_INCENSE_UNIT}，悬停查看模型权重`}
         >
           <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
           <span style={flankValueStyle}>
             <span
-              data-liangbiao-compact="next-incense"
+              data-liangxiang-compact="next-incense"
               title={`${toNextExact} ${NEXT_INCENSE_UNIT}`}
             >
               {formatCompactCount(displayTokensToNext, 0)}
@@ -881,7 +881,7 @@ export function Panel(props: PanelProps): ReactElement {
           <span style={flankUnitStyle}>
             {NEXT_INCENSE_PROGRESS_LABEL} {Math.trunc(Math.min(1, Math.max(0, displayFill)) * 100)}%
           </span>
-          <div data-liangbiao-weight-hint="" role="tooltip">
+          <div data-liangxiang-weight-hint="" role="tooltip">
             <table>
               <caption>{NEXT_INCENSE_WEIGHT_TITLE}</caption>
               <tbody>
@@ -899,10 +899,10 @@ export function Panel(props: PanelProps): ReactElement {
       </div>
 
       {/* Region 3 — exactly two equal-width vote buttons */}
-      <div data-liangbiao-region="vote" style={voteRowStyle}>
+      <div data-liangxiang-region="vote" style={voteRowStyle}>
         <button
           type="button"
-          data-liangbiao-vote="up"
+          data-liangxiang-vote="up"
           disabled={offline}
           aria-disabled={votingDisabled}
           title={votingDisabled ? disabledReason : `${VOTE_UP_NAME}一炷香`}
@@ -919,7 +919,7 @@ export function Panel(props: PanelProps): ReactElement {
         </button>
         <button
           type="button"
-          data-liangbiao-vote="down"
+          data-liangxiang-vote="down"
           disabled={offline}
           aria-disabled={votingDisabled}
           title={votingDisabled ? disabledReason : `${VOTE_DOWN_NAME}一炷香`}
@@ -937,7 +937,7 @@ export function Panel(props: PanelProps): ReactElement {
       </div>
       <p
         role="status"
-        data-liangbiao-vote-feedback=""
+        data-liangxiang-vote-feedback=""
         style={{ margin: '5px 0 0', minHeight: '15px', lineHeight: '15px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontSize: '10px', color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary, textAlign: 'center' }}
       >
         {statusLine}
@@ -945,7 +945,7 @@ export function Panel(props: PanelProps): ReactElement {
 
       {/* Region 4 — stats + the compact ritual-control column. */}
       <footer
-        data-liangbiao-region="social"
+        data-liangxiang-region="social"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -957,14 +957,14 @@ export function Panel(props: PanelProps): ReactElement {
         }}
       >
         <span
-          data-liangbiao-stat="incense"
+          data-liangxiang-stat="incense"
           tabIndex={0}
           aria-label={`${INCENSE_STAT_LABEL}。${INCENSE_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.totalIncense.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeIncense.toLocaleString('zh-CN')}`}
           style={statStyle}
         >
           <ThreeRealmsIncenseIcon size={18} />
           <span style={statCopyStyle}>
-            <span data-liangbiao-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
+            <span data-liangxiang-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
             <strong style={statValueStyle}>{formatZhCompactCount(snapshot.totalIncense)}</strong>
           </span>
           <SocialStatHint
@@ -975,14 +975,14 @@ export function Panel(props: PanelProps): ReactElement {
           />
         </span>
         <span
-          data-liangbiao-stat="voters"
+          data-liangxiang-stat="voters"
           tabIndex={0}
           aria-label={`${VOTER_STAT_LABEL}。${VOTER_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.uniqueVoters.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeVoters.toLocaleString('zh-CN')}`}
           style={statStyle}
         >
           <FivePhasePilgrimIcon size={18} />
           <span style={statCopyStyle}>
-            <span data-liangbiao-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
+            <span data-liangxiang-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
             <strong style={statValueStyle}>{formatZhCompactCount(snapshot.uniqueVoters)}</strong>
           </span>
           <SocialStatHint
@@ -993,13 +993,13 @@ export function Panel(props: PanelProps): ReactElement {
           />
         </span>
         <div
-          data-liangbiao-reconcile-slot=""
+          data-liangxiang-reconcile-slot=""
           style={{ position: 'relative', flex: '0 0 auto', marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}
         >
           <button
             type="button"
-            data-liangbiao-reconcile=""
-            data-liangbiao-ritual=""
+            data-liangxiang-reconcile=""
+            data-liangxiang-ritual=""
             aria-label={`${RECONCILE_LABEL}：${RECONCILE_HINT}`}
             aria-hidden={reconcilePending || undefined}
             disabled={offline || reconcilePending}
@@ -1008,25 +1008,25 @@ export function Panel(props: PanelProps): ReactElement {
           >
             <HeavenHearIcon size={14} />
             {RECONCILE_LABEL}
-            <span data-liangbiao-hint="" aria-hidden="true">{RECONCILE_HINT}</span>
+            <span data-liangxiang-hint="" aria-hidden="true">{RECONCILE_HINT}</span>
           </button>
           <button
             type="button"
-            data-liangbiao-liangci-entry=""
-            data-liangbiao-ritual=""
+            data-liangxiang-liangci-entry=""
+            data-liangxiang-ritual=""
             aria-label={`${LIANGCI_ENTRY_LABEL}：${LIANGCI_ENTRY_HINT}`}
             onClick={onOpenLiangci}
           >
             <LiangciIcon size={14} />
             {LIANGCI_ENTRY_LABEL}
-            <span data-liangbiao-hint="" aria-hidden="true">{LIANGCI_ENTRY_HINT}</span>
+            <span data-liangxiang-hint="" aria-hidden="true">{LIANGCI_ENTRY_HINT}</span>
           </button>
           {reconcilePending
             ? (
               <div
                 role="alertdialog"
                 aria-label={RECONCILE_CONFIRM_PROMPT}
-                data-liangbiao-reconcile-confirm=""
+                data-liangxiang-reconcile-confirm=""
                 style={{
                   position: 'absolute',
                   right: 0,
@@ -1050,7 +1050,7 @@ export function Panel(props: PanelProps): ReactElement {
                 <span style={{ display: 'flex', gap: '6px' }}>
                   <button
                     type="button"
-                    data-liangbiao-reconcile-cancel=""
+                    data-liangxiang-reconcile-cancel=""
                     onClick={onReconcileCancel}
                     style={{
                       border: `1px solid ${color.border}`,
@@ -1067,7 +1067,7 @@ export function Panel(props: PanelProps): ReactElement {
                   </button>
                   <button
                     type="button"
-                    data-liangbiao-reconcile-ok=""
+                    data-liangxiang-reconcile-ok=""
                     onClick={onReconcileConfirm}
                     style={{
                       border: 'none',

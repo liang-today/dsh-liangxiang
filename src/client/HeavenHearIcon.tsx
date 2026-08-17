@@ -12,7 +12,7 @@ export function HeavenHearIcon({ size = 14 }: { size?: number }): ReactElement {
       viewBox="0 0 16 16"
       aria-hidden="true"
       focusable="false"
-      data-liangbiao-heaven-icon=""
+      data-liangxiang-heaven-icon=""
     >
       {/* 祥云 */}
       <path

@@ -23,6 +23,6 @@ export {
   type StatsRow,
   type VoteRow,
 } from './store.ts'
-export { LiangbiaoBackendService, toV1Snapshot, type BackendServiceDeps } from './service.ts'
+export { LiangxiangBackendService, toV1Snapshot, type BackendServiceDeps } from './service.ts'
 export { createBackendHttpApi, type BackendHttpApi, type BackendHttpOptions } from './http.ts'
 export { startBackend } from './main.ts'

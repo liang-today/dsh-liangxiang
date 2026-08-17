@@ -1,5 +1,5 @@
 /**
- * The authoritative Liangbiao service (A3 / DEV_STAGING_ONLY).
+ * The authoritative Liangxiang service (A3 / DEV_STAGING_ONLY).
  *
  * What it IS authoritative for:
  *  - the business date and the single active DailyLiangCase;
@@ -77,7 +77,7 @@ export interface BackendServiceDeps {
   warn?: (message: string) => void
 }
 
-export class LiangbiaoBackendService {
+export class LiangxiangBackendService {
   private readonly store: BackendStore
   private readonly config: BackendConfig
   private readonly clock: Clock
@@ -347,7 +347,7 @@ export class LiangbiaoBackendService {
         // self-report, never a silent "香火不涨".
         if (requested <= row.claimed_effective_tokens) {
           this.warn(
-            `[liangbiao-backend] claim below_watermark: install=${installationId.slice(0, 8)}… `
+            `[liangxiang-backend] claim below_watermark: install=${installationId.slice(0, 8)}… `
             + `requested=${requested} have=${row.claimed_effective_tokens}`,
           )
           return { applied: false, notice: undefined }
@@ -359,7 +359,7 @@ export class LiangbiaoBackendService {
           target = row.claimed_effective_tokens + ceiling
           notice = 'claim_capped_absurd'
           this.warn(
-            `[liangbiao-backend] absurd claim clamped: install=${installationId.slice(0, 8)}… `
+            `[liangxiang-backend] absurd claim clamped: install=${installationId.slice(0, 8)}… `
             + `requested=${requested} clamped_to=${target} ceiling=${ceiling}`,
           )
         }
@@ -370,7 +370,7 @@ export class LiangbiaoBackendService {
       claimNotice = outcome.notice
     } else {
       this.warn(
-        `[liangbiao-backend] ignoring token claim for ${claim.claim_business_date} `
+        `[liangxiang-backend] ignoring token claim for ${claim.claim_business_date} `
         + `(authoritative business date is ${caseRow.business_date})`,
       )
     }
@@ -543,7 +543,7 @@ export class LiangbiaoBackendService {
       })
     })
     this.warn(
-      `[liangbiao-backend] rekey: device ${deviceFingerprint.slice(0, 8)}… `
+      `[liangxiang-backend] rekey: device ${deviceFingerprint.slice(0, 8)}… `
       + `${previous.installation_id.slice(0, 8)}… -> ${installationId.slice(0, 8)}…`,
     )
     return {

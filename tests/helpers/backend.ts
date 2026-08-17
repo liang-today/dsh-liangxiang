@@ -3,7 +3,7 @@
  * clock, and helpers for the recurring "give this installation N incense" step.
  */
 import { resolveBackendConfig, type BackendConfig } from '../../src/backend/config.ts'
-import { LiangbiaoBackendService } from '../../src/backend/service.ts'
+import { LiangxiangBackendService } from '../../src/backend/service.ts'
 import { openBackendStore, type BackendStore } from '../../src/backend/store.ts'
 import type { Clock } from '../../src/shared/business-date.ts'
 
@@ -30,7 +30,7 @@ export function createMutableClock(start = FIXED_NOW): MutableClock {
 }
 
 export interface BackendFixture {
-  service: LiangbiaoBackendService
+  service: LiangxiangBackendService
   store: BackendStore
   config: BackendConfig
   clock: MutableClock
@@ -44,12 +44,12 @@ export function createBackendFixture(
   start = FIXED_NOW,
 ): BackendFixture {
   const config = resolveBackendConfig(
-    { LIANGBIAO_BACKEND_DB: ':memory:', LIANGBIAO_SNAPSHOT_SECONDS: '1', LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0', ...env },
+    { LIANGXIANG_BACKEND_DB: ':memory:', LIANGXIANG_SNAPSHOT_SECONDS: '1', LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0', ...env },
     () => undefined,
   )
   const store = openBackendStore(config.databasePath)
   const clock = createMutableClock(start)
-  const service = new LiangbiaoBackendService({ store, config, clock, warn: () => undefined })
+  const service = new LiangxiangBackendService({ store, config, clock, warn: () => undefined })
   return {
     service,
     store,

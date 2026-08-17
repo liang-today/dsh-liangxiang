@@ -1,6 +1,6 @@
 # 051 — 当日 Token 聚合规则
 
-实现：`src/host/usage-ledger.ts`（纯函数） + `src/host/fake-service.ts`（账目所有者）。持久化：storage domain `liangbiao` v1（`watermarks` / `daily_usage` 表）。
+实现：`src/host/usage-ledger.ts`（纯函数） + `src/host/fake-service.ts`（账目所有者）。持久化：storage domain `liangxiang` v1（`watermarks` / `daily_usage` 表）。
 
 ## 规则汇总
 

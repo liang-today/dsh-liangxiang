@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Credit simulated incense on the local fake ledger. Does not call a model.
 #
-# LOCAL_FAKE_DEV only (unset LIANGBIAO_BACKEND_URL). There is no panel
+# LOCAL_FAKE_DEV only (unset LIANGXIANG_BACKEND_URL). There is no panel
 # 「演示 +1 炷」 button; this CLI writes the in-process fake ledger.
 #
 # Usage:
@@ -10,8 +10,8 @@
 #   pnpm run dev:credit -- --tokens 3000
 . "$(dirname "$0")/env.sh"
 
-PORT="${LIANGBIAO_DEV_PORT:-3080}"
-URL="http://127.0.0.1:${PORT}/liangbiao/api/dev/credit"
+PORT="${LIANGXIANG_DEV_PORT:-3080}"
+URL="http://127.0.0.1:${PORT}/liangxiang/api/dev/credit"
 
 # pnpm run dev:credit -- 9 forwards a literal "--" as $1.
 if [ "${1:-}" = "--" ]; then
@@ -49,7 +49,7 @@ except json.JSONDecodeError:
     raise SystemExit(1)
 if "error" in data:
     print("error:", data["error"], file=sys.stderr)
-    print("Need LOCAL_FAKE_DEV: unset LIANGBIAO_BACKEND_URL, restart pnpm run dev:web.", file=sys.stderr)
+    print("Need LOCAL_FAKE_DEV: unset LIANGXIANG_BACKEND_URL, restart pnpm run dev:web.", file=sys.stderr)
     raise SystemExit(1)
 personal = data["personal"]
 eff = personal["effectiveTokensToday"]

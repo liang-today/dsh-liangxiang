@@ -1,19 +1,19 @@
-# dsh-liangbiao(梁向)
+# dsh-liangxiang(梁相)
 
-> **用 DSH 攒香火，一炷夯或拉，共同写下今日梁向。**
+> **用 DSH 攒香火，一炷夯或拉，共同显出今日梁相。**
 
-梁向是一个 DeepSeek Harness(DSH)WebUI 插件:
+梁相是一个 DeepSeek Harness(DSH)WebUI 插件:
 
 - 用 DSH 的 **Input + Output Token** 攒个人香火,默认 **50,000 Token = 1 炷**;
 - 香火就是你的参与库存，**夯与拉共用同一个库存**，一炷香对应一次选择；
 - 对当天唯一的二元梁案选择「夯 / 拉」；按钮为 **夯 · 升梁 / 拉 · 降梁**；
 - **香火环** = 当前剩余香火（旺盛程度）+ 距下一炷的 Token 进度（环形填充）；`LiangQi` 仅保留为内部兼容名；
-- 中央**梁子**只由**全网投票比例**决定:`待开梁`(零票)/ 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖;
-- 面板正中只有一个公开数字 **梁位**(= 全网夯率,6 位小数),每一票都看得见它在动;
-- 底部 **三界香火** = 全网已接受票数，**五行香客** = 至少成功投过一票的独立参与者。
+- 中央**梁子**只由**本社区节点的夯拉比例**决定:`待开梁`(零票)/ 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖;
+- 面板正中只有一个公开数字 **梁位**(= 社区夯率,6 位小数),每一票都看得见它在动;
+- 底部 **三界香火** = 当前梁案已接受票数，**五行香客** = 至少成功投过一票的独立安装身份数。
 - 底部 **进入梁祠** 打开插件内月历：今日进行中、永久日梁、周梁、月梁，以及只统计到昨天的本周/本月暂梁。
 
-悬停文案恒为 `今日梁向`;入口图标就是当前梁子那一态,可以拖到画面任意位置。
+悬停文案恒为 `今日梁相`;入口图标就是当前梁子那一态,可以拖到画面任意位置。
 
 每日结案后，今日结果收入梁祠成为日梁，并继续汇成周梁与月梁。三界香火、五行香客与上达天听保留为产品的仪式化语言；整体视觉统一采用“现代编年志 × 克制梁祠”。
 
@@ -25,10 +25,10 @@
 
 | 模式 | 触发 | 权威 | 适用 |
 |---|---|---|---|
-| `LOCAL_FAKE_DEV` | `LIANGBIAO_BACKEND_URL=local`，或首次欢迎页选「改用本地」 | Host 进程内(`FakeAuthoritativeLiangService`) | 单机演示 |
-| `DEV_STAGING_ONLY` | 默认（烘焙社区 URL）；也可显式设 `LIANGBIAO_BACKEND_URL` | 独立 Liangbiao 后端 + SQLite(`/v1/*`) | 社区软信任 |
+| `LOCAL_FAKE_DEV` | `LIANGXIANG_BACKEND_URL=local`，或首次欢迎页选「改用本地」 | Host 进程内(`FakeAuthoritativeLiangService`) | 单机演示 |
+| `DEV_STAGING_ONLY` | 默认（烘焙社区 URL）；也可显式设 `LIANGXIANG_BACKEND_URL` | 独立 Liangxiang 后端 + SQLite(`/v1/*`) | 社区软信任 |
 
-在线链路:DSH Host 观测真实 provider-reported 用量(`tokenUsage` 投影,水位差分防重)→ 作为**声明**上报 `POST /v1/token-claims` → 后端在 DB 事务里原子扣香、幂等去重、更新聚合 → 按 cadence 发布 `public_liang_snapshot` → Host 经 `/liangbiao/api`(state/SSE/vote)推给浏览器。梁祠另走低频 `/v1/history` → `/liangbiao/api/history` 冷通道：首次全量、归档版本变化后仅取增量，秒级 SSE 不重复携带历史数组。
+在线链路:DSH Host 观测真实 provider-reported 用量(`tokenUsage` 投影,水位差分防重)→ 作为**声明**上报 `POST /v1/token-claims` → 后端在 DB 事务里原子扣香、幂等去重、更新聚合 → 按 cadence 发布 `public_liang_snapshot` → Host 经 `/liangxiang/api`(state/SSE/vote)推给浏览器。梁祠另走低频 `/v1/history` → `/liangxiang/api/history` 冷通道：首次全量、归档版本变化后仅取增量，秒级 SSE 不重复携带历史数组。
 
 **诚实声明(必读)**:Decision Gate A 判定为 **A3**([`docs/043`](docs/043-decision-gate-a.md))——DSH 不提供服务器可验证的身份与 Token 权威。因此:
 
@@ -36,7 +36,9 @@
 - 后端**不能**保证:投票者是谁(`installation_id` 是自铸可重置的**假名安装标识**)、Token 用量是否真实(`claimed_effective_tokens` 是**不可验证的声明**);
 - 因此这**不是** secure / verified / 可信全网 usage voting。`VERIFIED_PRODUCTION` 在后端启动门禁与 wire 类型上双重禁用,UI 屏幕阅读器摘要固定播报社区软信任说明（安装密钥 + 本机声明 Token，不是公投）。详见 [`docs/075`](docs/075-backend-decision.md)、[`docs/121`](docs/121-vps-deploy.md)。
 
-未部署公网、未发布 npm。
+当前社区后端是带 Ed25519 安装签名与共享闭测口令的公网 soft-trust
+节点；仍使用临时 IP/HTTP，香港迁移与 `api.liang.today` TLS 切换完成前
+不作为正式公开服务。尚未发布 npm 或 GitHub Release。
 
 ## 文档导航
 
@@ -56,7 +58,7 @@
 | 原始禁令 vs 当前实现 | [`docs/110-prohibition-refresh.md`](docs/110-prohibition-refresh.md) |
 | Demo → 社区产品 | [`docs/120-community-product.md`](docs/120-community-product.md) |
 | 梁祠产品/实现契约 | [`docs/130-liangci-design.md`](docs/130-liangci-design.md) |
-| 梁向品牌、主题与宣传口径 | [`docs/140-liangxiang-brand.md`](docs/140-liangxiang-brand.md) |
+| 梁相品牌、主题与宣传口径 | [`docs/140-liangxiang-brand.md`](docs/140-liangxiang-brand.md) |
 
 其余设计文档:`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵、`020` UI、`030–032` 领域模型/不变量/P0 矩阵、`040–044` authority 勘察、`050–062` 本地闭环、`070–076` 在线后端。
 
@@ -92,7 +94,7 @@
 | 单元测试 | `pnpm run test` |
 | 构建 Host + Client 产物 | `pnpm run build`(产出 `lib/index.js`、`lib/client.js`) |
 | 一键验证 | `pnpm run verify` |
-| 安装进 `liangbiao-dev` profile | `pnpm run dev:install` |
+| 安装进 `liangxiang-dev` profile | `pnpm run dev:install` |
 | 查看 effective config | `pnpm run dev:dump-config` |
 | 启动 WebUI(带插件) | `pnpm run dev:web`(默认 `http://127.0.0.1:3080`) |
 | 卸载插件 | `pnpm run dev:uninstall` |
@@ -106,9 +108,9 @@
 
 ```bash
 pnpm run build
-LIANGBIAO_BACKEND_DB=.liangbiao-backend/dev.sqlite pnpm run backend:start
+LIANGXIANG_BACKEND_DB=.liangxiang-backend/dev.sqlite pnpm run backend:start
 # 另一个终端:
-LIANGBIAO_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
+LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 ```
 
 `pnpm run smoke:online` 会自动完成上面两步并断言:后端拒绝 `VERIFIED_PRODUCTION`、Host 报告 `DEV_STAGING_ONLY`、claim 折算、同 `request_id` 只扣一次香、50 并发只接受 1 票、快照按 cadence 发布。
@@ -116,8 +118,8 @@ LIANGBIAO_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 ### 开发循环
 
 1. `pnpm install` — 安装工具链与 DSH 类型包/CLI(`prepare` 会顺带构建一次)。
-2. `pnpm run dev:install` — 构建后创建 `liangbiao-dev` profile:先装 `@deepseek-ai/dsh-web-app`(Web 界面层),再以 **pnpm link 方式**装入本地检出;随后自动用 `--dump-config` 断言 `dsh-liangbiao` bundle 层存在。
-3. `pnpm run dev:web` — 启动 WebUI。右缘应出现占位圆点,悬停显示 `今日梁向`;终端出现 `[dsh-liangbiao] host half active`。
+2. `pnpm run dev:install` — 构建后创建 `liangxiang-dev` profile:先装 `@deepseek-ai/dsh-web-app`(Web 界面层),再以 **pnpm link 方式**装入本地检出;随后自动用 `--dump-config` 断言 `dsh-liangxiang` bundle 层存在。
+3. `pnpm run dev:web` — 启动 WebUI。右缘应出现占位圆点,悬停显示 `今日梁相`;终端出现 `[dsh-liangxiang] host half active`。
 4. 改 Client 代码后 `pnpm run build`(或 `pnpm exec tsdown --watch`):web-app 组合默认挂载的 HMR 会 stat-poll 到 `lib/client.js` 变化并热替换,无需重启;改 Host 代码需重启 `dev:web`。
 5. `pnpm run dev:uninstall` — 移除依赖与 bundle 层,并断言 dump-config 中不再出现;重启后徽章与 Host effect 一并消失(注册寿命随插件 fiber)。
 
@@ -132,7 +134,7 @@ LIANGBIAO_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 ### 发行验证
 
-`pnpm run smoke:clean-profile` 会:打 tarball → 在全新 profile 安装 web-app + tarball → 断言 dump-config 有 bundle 层 → 启动 WebUI → 断言 `/plugins/dsh-liangbiao/client.js` 以 `window.__ModuleLoader__.load` banner 开头、`__DSH_BOOT__` 启动图包含本插件、Host 生命周期日志出现 → 清理。
+`pnpm run smoke:clean-profile` 会:打 tarball → 在全新 profile 安装 web-app + tarball → 断言 dump-config 有 bundle 层 → 启动 WebUI → 断言 `/plugins/dsh-liangxiang/client.js` 以 `window.__ModuleLoader__.load` banner 开头、`__DSH_BOOT__` 启动图包含本插件、Host 生命周期日志出现 → 清理。
 
 ### 版本基线注意
 

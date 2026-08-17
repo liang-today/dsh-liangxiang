@@ -1,6 +1,6 @@
 # 语义纠偏记录（R2，2026-08-16）
 
-本文记录 Prompt 1（语义纠偏 + UI + Domain）阶段对旧业务语义的全仓清查与处置结果。事实源：[`PRODUCT_FREEZE_V0.1.md`](PRODUCT_FREEZE_V0.1.md)、[`LIANGBIAO_CURSOR_MASTER_R3.md`](LIANGBIAO_CURSOR_MASTER_R3.md)。
+本文记录 Prompt 1（语义纠偏 + UI + Domain）阶段对旧业务语义的全仓清查与处置结果。事实源：[`PRODUCT_FREEZE_V0.1.md`](PRODUCT_FREEZE_V0.1.md)、[`LIANGXIANG_CURSOR_MASTER_R3.md`](LIANGXIANG_CURSOR_MASTER_R3.md)。
 
 ## 清查方式
 

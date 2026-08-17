@@ -1,6 +1,6 @@
 # 032 — P0 测试矩阵（Prompt 1 覆盖情况）
 
-运行方式：`pnpm run test`（vitest）。本阶段 13 个测试文件全部通过。矩阵与 `LIANGBIAO_CURSOR_MASTER_R3.md` §23 对齐；标注"P2"的行属于下一里程碑（真实 Token / Fake authoritative service / 并发幂等）。
+运行方式：`pnpm run test`（vitest）。本阶段 13 个测试文件全部通过。矩阵与 `LIANGXIANG_CURSOR_MASTER_R3.md` §23 对齐；标注"P2"的行属于下一里程碑（真实 Token / Fake authoritative service / 并发幂等）。
 
 ## Token / 香火（§23.1）
 

@@ -2,7 +2,7 @@
 
 > 活契约永远是根目录 [`AGENTS.md`](../AGENTS.md)。
 >
-> **2026-08-16 决策：全部刷新。** `PRODUCT_FREEZE_V0.1.md` 与 `LIANGBIAO_CURSOR_MASTER_R3.md` 的过时段落已回写成与 `AGENTS.md` / 当前实现一致。
+> **2026-08-16 决策：全部刷新。** `PRODUCT_FREEZE_V0.1.md` 与 `LIANGXIANG_CURSOR_MASTER_R3.md` 的过时段落已回写成与 `AGENTS.md` / 当前实现一致。
 
 ## 已落地的站立指令
 

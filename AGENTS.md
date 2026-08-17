@@ -1,9 +1,9 @@
-# AGENTS.md — 梁向 V0.1
+# AGENTS.md — 梁相 V0.1
 
-> This file defines the permanent product and engineering rules for the Liangbiao repository.
+> This file defines the permanent product and engineering rules for the Liangxiang repository.
 > It applies to Cursor, Codex, and any other coding agent working in this repo.
 > If old code, tests, docs, prompts, comments, or mock data conflict with this file, this file wins.
-> For the full execution plan, also read `docs/LIANGBIAO_CURSOR_MASTER_R3.md` when present.
+> For the full execution plan, also read `docs/LIANGXIANG_CURSOR_MASTER_R3.md` when present.
 > Brand theme and release copy are centralized in `docs/140-liangxiang-brand.md`.
 
 ---
@@ -12,12 +12,15 @@
 
 ### Product identity
 
-- Product name: **梁向**
-- `dsh-liangbiao`, `liangbiao`, `/liangbiao/api`, storage/table prefixes, service
-  names, and code symbols are stable technical identifiers; they do not define
-  the user-facing brand and are not renamed mechanically.
+- Product name: **梁相**
+- New technical identifiers are `dsh-liangxiang`, `liangxiang`,
+  `/liangxiang/api`, `LIANGXIANG_*`, and `liangxiang-backend`. The v0.5
+  migration may recognize legacy `liangbiao` identifiers only at explicit
+  compatibility boundaries so existing identity, preferences, and ledgers are
+  preserved. New writes, installs, logs, routes, and deployments use
+  `liangxiang`; do not add new legacy identifiers outside those boundaries.
 - 梁文锋 is referred to as **梁子** in product UI/copy.
-- DSH WebUI entry Hover / Focus text: **今日梁向**
+- DSH WebUI entry Hover / Focus text: **今日梁相**
 - The docked entry's icon IS the current central 梁子 state (one of the five, or
   the 待开梁 placeholder) — never a letter or an abstract logo.
 - The entry is freely placeable: it can be dragged anywhere in the frame and the
@@ -32,7 +35,7 @@
 
 ### Never reintroduce
 
-The following are obsolete and must not return as Liangbiao product concepts:
+The following are obsolete and must not return as Liangxiang product concepts:
 
 - `稳`, neutral, steady, abstain, or any third vote option
 - candidate / Candidate Ranking
@@ -46,7 +49,7 @@ The following are obsolete and must not return as Liangbiao product concepts:
 - “vote must not reduce LiangQi” as an invariant
 - cache-read 10% weighting
 
-Do not mechanically delete unrelated generic words from dependencies or third-party code. Remove only obsolete Liangbiao business semantics.
+Do not mechanically delete unrelated generic words from dependencies or third-party code. Remove only obsolete Liangxiang business semantics.
 
 Artwork exception: `牢梁` is intentionally allowed only as the decorative
 plaque inside the `WAITING / 待开梁` portrait. It is never a state name, tier,
@@ -58,7 +61,7 @@ marks are visual jokes, not data or accessible copy.
 
 ## 2. Frozen UI Structure
 
-The expanded Liangbiao panel has **four visual regions**. Do not add a separate “personal growth tier” section.
+The expanded Liangxiang panel has **four visual regions**. Do not add a separate “personal growth tier” section.
 
 ### Region 1 — 今日梁案
 
@@ -727,7 +730,7 @@ Local-only/dev modes may use an explicit configurable BusinessDateProvider, but 
 
 `../deepseek-harness` is a **read-only reference** unless the user explicitly changes that scope.
 
-Do not patch DSH core to make Liangbiao work.
+Do not patch DSH core to make Liangxiang work.
 
 Before depending on any DSH API:
 
@@ -947,7 +950,9 @@ Do not wait for the user to ask. Do not leave a finished fix uncommitted.
 The original Prompt 4 / Prompt 11 line 「禁止 git push」is **overridden**.
 Cursor rule: `.cursor/rules/git-commit-push.mdc`.
 
-Never commit `src/host/staging-defaults.ts` (community passphrase).
+Never reintroduce a source-code community passphrase/defaults file. Community
+admission secrets belong only in ignored `.env` files or protected process
+environments; distributable bundles must contain no key.
 
 ### Staging deploy (hard rule)
 
@@ -983,7 +988,7 @@ Resource lifecycle must be clean:
 - no duplicate polling per tab/instance when avoidable
 - abort in-flight requests on dispose
 - remove timers/listeners/subscriptions
-- plugin unload must remove Liangbiao UI cleanly
+- plugin unload must remove Liangxiang UI cleanly
 - HMR must not multiply stateful resources
 
 ---
@@ -998,7 +1003,7 @@ Never claim cryptographically or server-verified usage voting unless the impleme
 
 Core product description:
 
-> **用 DSH 攒香火，一炷夯或拉，共同写下今日梁向。**
+> **用 DSH 攒香火，一炷夯或拉，共同显出今日梁相。**
 
 The conceptual loop is:
 
@@ -1025,7 +1030,7 @@ These two flows meet visually around 梁子, but must remain separate in data an
 
 ## 17. Final Semantic Sanity Check
 
-Before completing any major Liangbiao change, be able to answer **yes** to all of these:
+Before completing any major Liangxiang change, be able to answer **yes** to all of these:
 
 - Is voting still only 夯/拉?
 - Is there still exactly one shared personal incense pool?
@@ -1053,4 +1058,4 @@ Before completing any major Liangbiao change, be able to answer **yes** to all o
 - Does a history failure preserve last-known-good history without affecting today's voting loop?
 - Are obsolete ranking/winner/third-option/personal-avatar concepts absent?
 
-If any answer is no, the implementation is not aligned with 梁向 V0.1.
+If any answer is no, the implementation is not aligned with 梁相 V0.1.

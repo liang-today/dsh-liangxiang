@@ -1,5 +1,5 @@
 import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
-import type { LiangbiaoWireState, WireVoteRequest } from '../shared/wire.ts'
+import type { LiangxiangWireState, WireVoteRequest } from '../shared/wire.ts'
 import type { LiangHostService, VoteOutcome } from './service.ts'
 import type { V1HistoryResponse } from '../shared/history-v1.ts'
 
@@ -49,7 +49,7 @@ export class AuthoritySlot implements LiangHostService {
     }
   }
 
-  getWireState(): LiangbiaoWireState {
+  getWireState(): LiangxiangWireState {
     return this.inner.getWireState()
   }
 

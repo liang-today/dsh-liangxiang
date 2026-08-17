@@ -1,15 +1,15 @@
 # 076 — `/v1` API 契约
 
 契约与双向校验器：`src/shared/backend-v1.ts`（Host 与 Backend 共用同一份定义与 parser）。
-`schema_version = 1`。身份走 header `x-liangbiao-installation`（假名安装标识，见 [`074`](074-authority-data-flow.md)）。
+`schema_version = 1`。身份走 header `x-liangxiang-installation`（假名安装标识，见 [`074`](074-authority-data-flow.md)）。
 
 ## 通用
 
 - 错误体：`{ "error": { "code", "message", "field?" } }`，含 `identity_rate_limited`、`rekey_cooldown`、`device_conflict` 等（见 `V1_ERROR_CODES`）。
 - 鉴权（公共只读的 `/health`、`/snapshot`、`/history` 除外）：
-  - 默认要求 Ed25519 签名头：`x-liangbiao-installation`、`x-liangbiao-public-key`、`x-liangbiao-signature`、`x-liangbiao-timestamp`；可选 `x-liangbiao-device`（MAC 集合哈希）。
-  - 若服务器设了 `LIANGBIAO_COMMUNITY_KEY`，还要带 `x-liangbiao-community-key`。
-  - `LIANGBIAO_ALLOW_UNSIGNED=1` 才接受旧的「只有 installation 头」请求，仅供 localhost smoke。
+  - 默认要求 Ed25519 签名头：`x-liangxiang-installation`、`x-liangxiang-public-key`、`x-liangxiang-signature`、`x-liangxiang-timestamp`；可选 `x-liangxiang-device`（MAC 集合哈希）。
+  - 若服务器设了 `LIANGXIANG_COMMUNITY_KEY`，还要带 `x-liangxiang-community-key`。
+  - `LIANGXIANG_ALLOW_UNSIGNED=1` 才接受旧的「只有 installation 头」请求，仅供 localhost smoke。
 - 请求体上限 4KB，超限回 **413**（`invalid_request`）并带 `connection: close`——刻意不掐 socket：被掐断的连接与网络故障无法区分，会让投票方在「已拒绝」和「结果未知」之间猜，从而错误重试。
 - 请求日志只含 method/path/status/installation 前 8 字符，绝不含 prompt/回复/路径/密钥。
 - 时间戳统一 epoch ms；业务日 `YYYY-MM-DD`。
@@ -74,7 +74,7 @@
 单调 ratchet：更小的值不生效（`claim_applied: false`）；`claim_business_date` 与服务器业务日不符则忽略。
 名字里的 “claim” 是契约的一部分：这是声明，不是证明。
 
-（早期曾按身份年龄 drip 限速 `LIANGBIAO_MAX_TOKENS_PER_MINUTE`，现已移除：真实 Token 产生速率远高于固定每分钟上限，drip 只会误伤诚实用户。防滥用改在 vote 侧限流，见下方「限流」。）
+（早期曾按身份年龄 drip 限速 `LIANGXIANG_MAX_TOKENS_PER_MINUTE`，现已移除：真实 Token 产生速率远高于固定每分钟上限，drip 只会误伤诚实用户。防滥用改在 vote 侧限流，见下方「限流」。）
 
 ## POST /v1/votes
 
@@ -140,7 +140,7 @@
 - 日/周/月只传原始票数和策略版本，比例与梁子状态由共享 parser 在严格校验后派生。
 - parser 拒绝负数、NaN/Infinity、非真实日期、错误 ISO 周/月边界、重复主键、标题数与案数不符、未知策略版本或行版本超过 envelope 版本。
 - Host 缓存首次全量并合并后续 delta；若后端失败，保留 last-known-good、设置 `stale=true`，不影响今日链路。
-- 浏览器只向本机 Host 的 `/liangbiao/api/history` 请求同形状数据；当前周/月暂梁由共享纯函数从日档推导，不在该 API 中持久化。
+- 浏览器只向本机 Host 的 `/liangxiang/api/history` 请求同形状数据；当前周/月暂梁由共享纯函数从日档推导，不在该 API 中持久化。
 
 ## GET /v1/me/daily-state
 
@@ -151,12 +151,12 @@
 运营发布不走 HTTP。在放 SQLite 的 VPS 上：
 
 ```bash
-node lib/backend-cli.js case publish "测试发布：梁向是夯还是拉"
+node lib/backend-cli.js case publish "测试发布：梁相是夯还是拉"
 ```
 
 `POST /v1/admin/cases` 已关闭（404）。语义仍是：归档当前 active、开新零票案、清当日 used incense。详见 [`122`](122-identity-recovery.md)、[`121`](121-vps-deploy.md)。
 
 ## 限流
 
-`POST /v1/votes` 按 installation 每分钟 `LIANGBIAO_VOTE_RATE_LIMIT` 次（默认 600，0 关闭），超出 429。
+`POST /v1/votes` 按 installation 每分钟 `LIANGXIANG_VOTE_RATE_LIMIT` 次（默认 600，0 关闭），超出 429。
 这是防误用/防抖，不是安全边界——没有 DSH 身份，限流可以被换密钥对绕过（设备指纹只挡住同一 MAC 集合上的第二次安装）。

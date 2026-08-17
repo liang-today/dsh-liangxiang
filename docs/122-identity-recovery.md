@@ -35,7 +35,7 @@ node lib/backend-cli.js identity unbind lk_旧id
 
 ### 3. 指纹接管 `POST /v1/identity/rekey`（保留）
 
-同机重铸密钥后，等旧标识静默超过 `LIANGBIAO_REKEY_COOLDOWN_MS`（默认 24h）
+同机重铸密钥后，等旧标识静默超过 `LIANGXIANG_REKEY_COOLDOWN_MS`（默认 24h）
 才能接管指纹。旧香火仍不转移。
 
 ### 4. 频率限制（两条路径共用）
@@ -62,7 +62,7 @@ node lib/backend-cli.js identity unbind lk_旧id
 
 ## 配置
 
-- `LIANGBIAO_REKEY_COOLDOWN_MS`：指纹接管冷却（默认 86400000）。`0` 仅测试。
+- `LIANGXIANG_REKEY_COOLDOWN_MS`：指纹接管冷却（默认 86400000）。`0` 仅测试。
 
 ## 测试
 

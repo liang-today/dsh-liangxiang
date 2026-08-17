@@ -19,18 +19,18 @@ import { loadAuthorityPreference } from './welcome.ts'
 import {
   createOfflineViewState,
   wireToViewState,
-  type LiangbiaoStore,
-  type LiangbiaoViewState,
+  type LiangxiangStore,
+  type LiangxiangViewState,
 } from './store.ts'
 
-const STATE_PATH = '/liangbiao/api/state'
-const EVENTS_PATH = '/liangbiao/api/events'
-const VOTE_PATH = '/liangbiao/api/vote'
-const REFRESH_PATH = '/liangbiao/api/refresh'
-const RECONCILE_PATH = '/liangbiao/api/reconcile'
-const ENTER_LOCAL_PATH = '/liangbiao/api/local/enter'
-const CYCLE_CASE_PATH = '/liangbiao/api/local/cycle-case'
-const HISTORY_PATH = '/liangbiao/api/history'
+const STATE_PATH = '/liangxiang/api/state'
+const EVENTS_PATH = '/liangxiang/api/events'
+const VOTE_PATH = '/liangxiang/api/vote'
+const REFRESH_PATH = '/liangxiang/api/refresh'
+const RECONCILE_PATH = '/liangxiang/api/reconcile'
+const ENTER_LOCAL_PATH = '/liangxiang/api/local/enter'
+const CYCLE_CASE_PATH = '/liangxiang/api/local/cycle-case'
+const HISTORY_PATH = '/liangxiang/api/history'
 const FETCH_TIMEOUT_MS = 6_000
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
@@ -74,7 +74,7 @@ function createBrowserTransport(): LiveStoreTransport {
   }
 }
 
-export interface LiveLiangbiaoStore extends LiangbiaoStore {
+export interface LiveLiangxiangStore extends LiangxiangStore {
   /** Bootstrap + open the push stream (idempotent). */
   start(): void
   /**
@@ -103,13 +103,13 @@ export interface LiangciHistoryState {
   error: string | null
 }
 
-export function createLiveLiangbiaoStore(
+export function createLiveLiangxiangStore(
   transport: LiveStoreTransport = createBrowserTransport(),
-): LiveLiangbiaoStore {
-  let state: LiangbiaoViewState = createOfflineViewState('connecting')
+): LiveLiangxiangStore {
+  let state: LiangxiangViewState = createOfflineViewState('connecting')
   let lastRevision = -1
   let lastHostEpoch = -1
-  let lastWire: LiangbiaoViewState | null = null
+  let lastWire: LiangxiangViewState | null = null
   let stream: { close(): void } | null = null
   let sseErrors = 0
   let disposed = false
@@ -157,7 +157,7 @@ export function createLiveLiangbiaoStore(
     return run
   }
 
-  const publishWire = (view: LiangbiaoViewState): void => {
+  const publishWire = (view: LiangxiangViewState): void => {
     lastWire = view
     setState(view)
     if (
@@ -170,7 +170,7 @@ export function createLiveLiangbiaoStore(
     for (const listener of listeners) listener()
   }
 
-  const setState = (next: LiangbiaoViewState): void => {
+  const setState = (next: LiangxiangViewState): void => {
     state = next
     notify()
   }
@@ -211,7 +211,7 @@ export function createLiveLiangbiaoStore(
           applyWire(JSON.parse(data) as unknown)
           sseErrors = 0
         } catch (error) {
-          console.warn(`[dsh-liangbiao] dropping malformed SSE frame: ${error instanceof Error ? error.message : String(error)}`)
+          console.warn(`[dsh-liangxiang] dropping malformed SSE frame: ${error instanceof Error ? error.message : String(error)}`)
         }
       },
       onError: () => {
@@ -236,7 +236,7 @@ export function createLiveLiangbiaoStore(
       })
       .catch((error: unknown) => {
         starting = false
-        console.warn(`[dsh-liangbiao] state bootstrap failed: ${error instanceof Error ? error.message : String(error)}`)
+        console.warn(`[dsh-liangxiang] state bootstrap failed: ${error instanceof Error ? error.message : String(error)}`)
         goOffline()
       })
   }
@@ -248,7 +248,7 @@ export function createLiveLiangbiaoStore(
         if (!disposed) applyWire(raw)
       })
       .catch((error: unknown) => {
-        console.warn(`[dsh-liangbiao] enter local mode failed: ${error instanceof Error ? error.message : String(error)}`)
+        console.warn(`[dsh-liangxiang] enter local mode failed: ${error instanceof Error ? error.message : String(error)}`)
       })
   }
 
@@ -263,7 +263,7 @@ export function createLiveLiangbiaoStore(
         if (!disposed) applyWire(raw)
       })
       .catch((error: unknown) => {
-        console.warn(`[dsh-liangbiao] live refresh failed: ${error instanceof Error ? error.message : String(error)}`)
+        console.warn(`[dsh-liangxiang] live refresh failed: ${error instanceof Error ? error.message : String(error)}`)
       })
       .finally(() => {
         refreshInFlight = false
@@ -314,7 +314,7 @@ export function createLiveLiangbiaoStore(
           if (!disposed) applyWire(raw)
         })
         .catch((error: unknown) => {
-          console.warn(`[dsh-liangbiao] reconcile failed: ${error instanceof Error ? error.message : String(error)}`)
+          console.warn(`[dsh-liangxiang] reconcile failed: ${error instanceof Error ? error.message : String(error)}`)
           throw error
         })
         .finally(() => {
@@ -332,7 +332,7 @@ export function createLiveLiangbiaoStore(
           if (!disposed) applyWire(raw)
         })
         .catch((error: unknown) => {
-          console.warn(`[dsh-liangbiao] local case cycle failed: ${error instanceof Error ? error.message : String(error)}`)
+          console.warn(`[dsh-liangxiang] local case cycle failed: ${error instanceof Error ? error.message : String(error)}`)
         })
     },
     getHistorySnapshot: () => historyState,

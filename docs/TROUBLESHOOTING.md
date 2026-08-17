@@ -22,12 +22,12 @@ pnpm --dir <DSH_HOME>/profiles/<profile> remove @deepseek-ai/dsh-web-app   # 保
 
 然后**重启** WebUI（内存里的旧模块图不会自愈）。已经报错的会话不用删：DSH 在加载时会用同 `callId` 的合成错误结果补齐孤立的 tool call（`packages/core/session/src/repair.ts`），重启后旧会话可继续；想干净就新开一个会话。
 
-## 面板显示「未连上梁向服务」
+## 面板显示「未连上梁相服务」
 
 Host 通道不可用，或在线 bootstrap 超时。检查：
 
-- WebUI 终端是否有 `[dsh-liangbiao] host half active` 以及 `DEV_STAGING_ONLY`；
-- `curl http://127.0.0.1:<webui>/liangbiao/api/state` 是否 200；
+- WebUI 终端是否有 `[dsh-liangxiang] host half active` 以及 `DEV_STAGING_ONLY`；
+- `curl http://127.0.0.1:<webui>/liangxiang/api/state` 是否 200；
 - 在线模式：本机 `curl -m 5 http://<公网IP>:26753/v1/health`（不要只 curl VPS 的 localhost）。
 
 面板会保留最近一次状态继续渲染；重新打开面板会再试一次。
@@ -38,9 +38,9 @@ DSH 的 `sessionProjections` / `sessions` 没注入（组合里缺插件，或�
 
 ## 香火一直是 0（在线模式）
 
-大概率是**业务日不一致**：Host 用自己的时区给本地观测分桶，后端只接受 `claim_business_date == 服务器业务日` 的声明，不一致就忽略并告警（宁可少记不错记）。把两侧的 `LIANGBIAO_BUSINESS_TZ` 对齐后重启。
+大概率是**业务日不一致**：Host 用自己的时区给本地观测分桶，后端只接受 `claim_business_date == 服务器业务日` 的声明，不一致就忽略并告警（宁可少记不错记）。把两侧的 `LIANGXIANG_BUSINESS_TZ` 对齐后重启。
 
-也可能是当天确实还没产生用量：`LIANGBIAO_TOKEN_PER_INCENSE=50000` 意味着要 5 万 Effective Token 才有第一炷；本地演示可以调小。
+也可能是当天确实还没产生用量：`LIANGXIANG_TOKEN_PER_INCENSE=50000` 意味着要 5 万 Effective Token 才有第一炷；本地演示可以调小。
 
 ## 打梁报 502 / 「打梁失败」
 
@@ -48,13 +48,13 @@ Host 与后端之间的请求失败。**用同一个 `request_id` 重试是安�
 
 ## Host 日志 `backend GET /bootstrap timed out`
 
-进程在 VPS 上仍可能是 `active`，本机 `curl 127.0.0.1:<port>/v1/health` 也仍可能 200。这表示**外网到该端口被挡住了**（华为云安全组 / 防护），不是梁向又切回了本地。
+进程在 VPS 上仍可能是 `active`，本机 `curl 127.0.0.1:<port>/v1/health` 也仍可能 200。这表示**外网到该端口被挡住了**（华为云安全组 / 防护），不是梁相又切回了本地。
 
 核对：
 
 1. 安全组入站放行 `26753/tcp`（或你实际监听的端口），源 `0.0.0.0/0`。
 2. 本机 `curl -m 5 http://<公网IP>:26753/v1/health` 应在 1 秒内返回 `status":"ok"`。
-3. 面板若写「今日梁案（本地）」，那是欢迎页选了本地，或旧占位帧；连不上时应是「今日梁案」+「未连上梁向服务」。
+3. 面板若写「今日梁案（本地）」，那是欢迎页选了本地，或旧占位帧；连不上时应是「今日梁案」+「未连上梁相服务」。
 
 ## 梁位不动
 
@@ -67,7 +67,7 @@ Host 与后端之间的请求失败。**用同一个 `request_id` 重试是安�
 configuration rejected: VERIFIED_PRODUCTION is blocked: Decision Gate A = A3 …
 ```
 
-这是设计好的门禁，不是 bug（见 [`075`](075-backend-decision.md)）。用 `LIANGBIAO_AUTHORITY_MODE=DEV_STAGING_ONLY`（默认值）。
+这是设计好的门禁，不是 bug（见 [`075`](075-backend-decision.md)）。用 `LIANGXIANG_AUTHORITY_MODE=DEV_STAGING_ONLY`（默认值）。
 
 ## `fetch failed: bad port`
 
@@ -82,5 +82,5 @@ Node 的 fetch（undici）会拒绝 WHATWG「bad port」名单上的端口（404
 位置存在浏览器 `localStorage`，读取时会按当前窗口尺寸夹回可视区。真丢了就清掉这一项：
 
 ```js
-localStorage.removeItem('liangbiao:badge-position:v1')
+localStorage.removeItem('liangxiang:badge-position:v1')
 ```

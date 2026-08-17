@@ -40,7 +40,7 @@ DSH tokenUsage projection（每会话累计四桶，公开 seam）
 
 ## Business date
 
-`host/business-date.ts`：显式 `BusinessDateProvider`（Intl.DateTimeFormat + IANA 时区校验），默认 `Asia/Shanghai`，`LIANGBIAO_BUSINESS_TZ` 覆盖;`Clock` 抽象注入（测试用 fake clock 穿越午夜）。仓内无散落的 `new Date().toLocaleDateString()`。在线后以 Backend 的 business_date 为权威（AGENTS.md §10）。
+`host/business-date.ts`：显式 `BusinessDateProvider`（Intl.DateTimeFormat + IANA 时区校验），默认 `Asia/Shanghai`，`LIANGXIANG_BUSINESS_TZ` 覆盖;`Clock` 抽象注入（测试用 fake clock 穿越午夜）。仓内无散落的 `new Date().toLocaleDateString()`。在线后以 Backend 的 business_date 为权威（AGENTS.md §10）。
 
 ## UI（替换 mock）
 

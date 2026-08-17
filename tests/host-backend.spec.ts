@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveBackendConfig } from '../src/backend/config.ts'
 import { createBackendHttpApi } from '../src/backend/http.ts'
-import { LiangbiaoBackendService } from '../src/backend/service.ts'
+import { LiangxiangBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
 import { createBackendClient } from '../src/host/backend-client.ts'
 import { BackendLiangService } from '../src/host/backend-service.ts'
@@ -21,7 +21,7 @@ const SESSION = 'session-e2e-1'
 
 interface Stack {
   host: BackendLiangService
-  backend: LiangbiaoBackendService
+  backend: LiangxiangBackendService
   clock: ReturnType<typeof createMutableClock>
   close: () => Promise<void>
 }
@@ -54,16 +54,16 @@ async function startStack(
 ): Promise<Stack> {
   const config = resolveBackendConfig(
     {
-      LIANGBIAO_BACKEND_DB: ':memory:',
-      LIANGBIAO_SNAPSHOT_SECONDS: '300',
-      LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
+      LIANGXIANG_BACKEND_DB: ':memory:',
+      LIANGXIANG_SNAPSHOT_SECONDS: '300',
+      LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
       ...env,
     },
     () => undefined,
   )
   const clock = createMutableClock(hostOptions.start ?? FIXED_NOW)
   const store = openBackendStore(config.databasePath)
-  const backend = new LiangbiaoBackendService({ store, config, clock, warn: () => undefined })
+  const backend = new LiangxiangBackendService({ store, config, clock, warn: () => undefined })
   const api = createBackendHttpApi({
     service: backend,
     store,

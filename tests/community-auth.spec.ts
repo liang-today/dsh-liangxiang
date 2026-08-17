@@ -15,7 +15,7 @@ describe('community Ed25519 keys', () => {
   it('round-trips a signature and derives installation id from the public key', () => {
     const keys = generateCommunityKeypair(null)
     expect(keys.installationId).toBe(installationIdFromPublicKey(keys.publicKey))
-    const message = 'liangbiao-test'
+    const message = 'liangxiang-test'
     const signature = signCommunityMessage(keys.privateKeyPem, message)
     expect(verifyCommunitySignature(keys.publicKey, message, signature)).toBe(true)
     expect(verifyCommunitySignature(keys.publicKey, 'tampered', signature)).toBe(false)

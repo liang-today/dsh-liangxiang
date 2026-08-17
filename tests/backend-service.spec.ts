@@ -84,7 +84,7 @@ describe('bootstrap and token claims', () => {
   })
 
   it('clamps an absurd single-claim jump and flags it', () => {
-    const f = boot({ LIANGBIAO_ABSURD_CLAIM_TOKENS: '1000000' })
+    const f = boot({ LIANGXIANG_ABSURD_CLAIM_TOKENS: '1000000' })
     const response = f.service.applyTokenClaim(INSTALLATION, {
       claimed_effective_tokens: 5_000_000,
       claim_business_date: '2026-08-16',
@@ -242,7 +242,7 @@ describe('global snapshot', () => {
   it('publishes inside the vote transaction, even with a slow poll cadence', () => {
     // A long cadence bounds how often clients RE-READ; it must not delay the
     // snapshot that contains the voter's own vote.
-    const f = boot({ LIANGBIAO_SNAPSHOT_SECONDS: '300' })
+    const f = boot({ LIANGXIANG_SNAPSHOT_SECONDS: '300' })
     f.grantIncense(INSTALLATION, 2)
     const before = parseV1Snapshot(f.service.snapshotResponse().global_snapshot)
     const response = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-cadence-001'))
@@ -260,7 +260,7 @@ describe('global snapshot', () => {
   })
 
   it('does not publish a new sequence for a replayed or rejected vote', () => {
-    const f = boot({ LIANGBIAO_SNAPSHOT_SECONDS: '300' })
+    const f = boot({ LIANGXIANG_SNAPSHOT_SECONDS: '300' })
     f.grantIncense(INSTALLATION, 1)
     const accepted = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-nopub-00001'))
     const replay = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-nopub-00001'))
@@ -367,14 +367,14 @@ describe('business date rollover', () => {
   })
 
   it('derives the business date from the server clock and configured timezone only', () => {
-    const utc = createBackendFixture({ LIANGBIAO_BUSINESS_TZ: 'UTC' })
+    const utc = createBackendFixture({ LIANGXIANG_BUSINESS_TZ: 'UTC' })
     try {
       // 2026-08-16 04:00 UTC is already 12:00 in Shanghai; both are day 16.
       expect(utc.service.businessDate()).toBe('2026-08-16')
       // 22:00 UTC on the 16th is 06:00 on the 17th in Shanghai.
       utc.clock.set(Date.UTC(2026, 7, 16, 22, 0, 0))
       expect(utc.service.businessDate()).toBe('2026-08-16')
-      const shanghai = createBackendFixture({ LIANGBIAO_BUSINESS_TZ: 'Asia/Shanghai' }, Date.UTC(2026, 7, 16, 22, 0, 0))
+      const shanghai = createBackendFixture({ LIANGXIANG_BUSINESS_TZ: 'Asia/Shanghai' }, Date.UTC(2026, 7, 16, 22, 0, 0))
       try {
         expect(shanghai.service.businessDate()).toBe('2026-08-17')
       } finally {

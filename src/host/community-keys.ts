@@ -110,5 +110,5 @@ export function readDeviceFingerprint(): string | null {
   }
   if (macs.size === 0) return null
   const joined = [...macs].sort().join('\n')
-  return createHash('sha256').update('liangbiao-device-v1\n').update(joined).digest('base64url')
+  return createHash('sha256').update('liangxiang-device-v1\n').update(joined).digest('base64url')
 }

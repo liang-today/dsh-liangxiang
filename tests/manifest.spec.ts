@@ -68,7 +68,7 @@ describe('cordis.patch.yml', () => {
   const patch = readRootFile('cordis.patch.yml')
 
   it('inserts the host row referencing the package by name', () => {
-    expect(patch).toContain('id: liangbiao')
+    expect(patch).toContain('id: liangxiang')
     expect(patch).toContain(`name: ${PLUGIN_PACKAGE_NAME}`)
   })
 })

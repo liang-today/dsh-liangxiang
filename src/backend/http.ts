@@ -40,19 +40,19 @@ import {
 } from '../shared/backend-v1.ts'
 import { authenticateCommunityRequest, CommunityAuthError } from './community-auth.ts'
 import { IdentityRateLimiter, type IdentityRateKind } from './identity-rate-limit.ts'
-import type { LiangbiaoBackendService } from './service.ts'
+import { DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS, VoteRateLimiter } from './vote-rate-limit.ts'
+import type { LiangxiangBackendService } from './service.ts'
 import type { BackendStore } from './store.ts'
 
 const MAX_BODY_BYTES = 4096
-const RATE_WINDOW_MS = 60_000
-/** Sweep the rate-limit map once it grows past this many installations. */
-const RATE_WINDOW_EVICT_THRESHOLD = 1_000
-
+const EXPECTED_EVENT_SAMPLE_MS = 60_000
 export interface BackendHttpOptions {
-  service: LiangbiaoBackendService
+  service: LiangxiangBackendService
   store: BackendStore
   /** Per-installation vote requests per minute; 0 disables the limit. */
   voteRateLimitPerMinute: number
+  /** Hard cap on active installation keys retained by the vote limiter. */
+  voteRateLimitMaxKeys?: number
   /** Accept the old unsigned installation header (localhost tests / curl smoke). */
   allowUnsigned?: boolean
   /** Shared admission secret; null/undefined means not required. */
@@ -65,6 +65,8 @@ export interface BackendHttpApi {
   server: Server
   /** Clear the rate-limit window bookkeeping (dispose/tests). */
   reset: () => void
+  /** Test/operations visibility without exposing a public HTTP endpoint. */
+  rateLimitState: () => { activeVoteKeys: number, maxVoteKeys: number }
 }
 
 function writeJson(res: ServerResponse, status: number, payload: unknown): void {
@@ -145,39 +147,38 @@ function communityKeyMatches(expected: string, presented: string): boolean {
   return timingSafeEqual(left, right)
 }
 
+class ExpectedEventSampler {
+  private readonly buckets = new Map<string, { at: number, suppressed: number }>()
+
+  constructor(private readonly sink: (message: string) => void) {}
+
+  record(key: string, message: string, now = Date.now()): void {
+    const bucket = this.buckets.get(key)
+    if (bucket !== undefined && now - bucket.at < EXPECTED_EVENT_SAMPLE_MS) {
+      bucket.suppressed += 1
+      return
+    }
+    if (bucket !== undefined && bucket.suppressed > 0) {
+      this.sink(`[liangxiang-backend] ${key} suppressed=${bucket.suppressed} in previous window`)
+    }
+    this.buckets.set(key, { at: now, suppressed: 0 })
+    this.sink(message)
+  }
+
+  reset(): void {
+    this.buckets.clear()
+  }
+}
+
 export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpApi {
   const { service, store, voteRateLimitPerMinute } = options
   const allowUnsigned = options.allowUnsigned === true
   const communityKey = options.communityKey ?? null
   const log = options.log ?? ((message: string) => console.log(message))
-  /** installation -> timestamps of recent vote attempts (bounded window). */
-  const voteWindows = new Map<string, number[]>()
+  const voteRateLimitMaxKeys = options.voteRateLimitMaxKeys ?? DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS
+  const voteLimiter = new VoteRateLimiter(voteRateLimitPerMinute, voteRateLimitMaxKeys)
   const identityLimiter = new IdentityRateLimiter()
-
-  /**
-   * Drop windows that can no longer rate-limit anything. Without this the map
-   * would keep one entry per installation id ever seen — and ids are
-   * self-minted, so that is attacker-controlled unbounded growth.
-   */
-  const evictStaleWindows = (now: number): void => {
-    for (const [installationId, window] of voteWindows) {
-      const newest = window.at(-1)
-      if (newest === undefined || now - newest >= RATE_WINDOW_MS) voteWindows.delete(installationId)
-    }
-  }
-
-  const rateLimited = (installationId: string, now: number): boolean => {
-    if (voteRateLimitPerMinute <= 0) return false
-    if (voteWindows.size > RATE_WINDOW_EVICT_THRESHOLD) evictStaleWindows(now)
-    const window = (voteWindows.get(installationId) ?? []).filter((at) => now - at < RATE_WINDOW_MS)
-    if (window.length >= voteRateLimitPerMinute) {
-      voteWindows.set(installationId, window)
-      return true
-    }
-    window.push(now)
-    voteWindows.set(installationId, window)
-    return false
-  }
+  const expectedEvents = new ExpectedEventSampler(log)
 
   const authenticate = (req: IncomingMessage, method: string, path: string, rawBody: string): string => {
     if (communityKey !== null) {
@@ -286,7 +287,10 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     const whoLabel = `${installShort(installationId)} ip=${ip} kind=${kind}`
     if (!decision.allowed) {
       const seconds = Math.ceil(decision.retryAfterMs / 1000)
-      log(`[liangbiao-backend] ${action} rate-limited ${whoLabel} retry=${seconds}s`)
+      expectedEvents.record(
+        `identity_${action}_rate_limited_${kind}`,
+        `[liangxiang-backend] ${action} rate-limited ${whoLabel} retry=${seconds}s`,
+      )
       writeError(
         res,
         429,
@@ -297,12 +301,12 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       )
       return false
     }
-    log(`[liangbiao-backend] ${action} allowed ${whoLabel}`)
+    log(`[liangxiang-backend] ${action} allowed ${whoLabel}`)
     return true
   }
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    const url = new URL(req.url ?? '/', 'http://liangbiao.backend')
+    const url = new URL(req.url ?? '/', 'http://liangxiang.backend')
     const path = url.pathname
     const method = req.method ?? 'GET'
     const routes: Record<string, string> = {
@@ -388,7 +392,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         writeJson(res, 200, response)
         if (response.rekeyed) {
           log(
-            `[liangbiao-backend] rekey ${installShort(response.previous_installation_id ?? '')} `
+            `[liangxiang-backend] rekey ${installShort(response.previous_installation_id ?? '')} `
             + `-> ${installShort(installationId)} ip=${peerAddress(req)}`,
           )
         }
@@ -437,7 +441,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         const response = service.revokeIdentity(installationId)
         writeJson(res, 200, response)
         log(
-          `[liangbiao-backend] revoke ${installShort(installationId)} `
+          `[liangxiang-backend] revoke ${installShort(installationId)} `
           + `unbound=${String(response.unbound)} ip=${peerAddress(req)}`,
         )
       } catch (error) {
@@ -458,8 +462,9 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         writeError(res, error.httpStatus, error.code, error.message)
         const install = headerValue(req, INSTALLATION_HEADER)
         if (install !== undefined) {
-          log(
-            `[liangbiao-backend] deny ${error.httpStatus} ${error.code} `
+          expectedEvents.record(
+            `auth_deny_${error.code}`,
+            `[liangxiang-backend] deny ${error.httpStatus} ${error.code} `
             + `${who(req, install)} ${method} ${path}`,
           )
         }
@@ -476,7 +481,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
 
     if (path === `${BACKEND_API_PREFIX}/bootstrap`) {
       writeJson(res, 200, service.bootstrap(installationId))
-      log(`[liangbiao-backend] hello ${who(req, installationId)}`)
+      expectedEvents.record('bootstrap_hello', `[liangxiang-backend] hello ${who(req, installationId)}`)
       return
     }
     if (path === `${BACKEND_API_PREFIX}/me/daily-state`) {
@@ -496,10 +501,6 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     if (path === `${BACKEND_API_PREFIX}/token-claims`) {
       try {
         const claim = parseV1TokenClaimRequest(body)
-        log(
-          `[liangbiao-backend] claim ${who(req, installationId)} `
-          + `tokens=${claim.claimed_effective_tokens} date=${claim.claim_business_date}`,
-        )
         const prior = store.incenseFor(installationId, service.businessDate())
         const priorEarned = prior === undefined
           ? 0
@@ -510,19 +511,21 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         const have = response.authoritative_personal_state.claimed_effective_tokens
         if (response.claim_applied === true && earned > priorEarned) {
           log(
-            `[liangbiao-backend] incense +${earned - priorEarned}炷 ${who(req, installationId)} `
+            `[liangxiang-backend] incense +${earned - priorEarned}炷 ${who(req, installationId)} `
             + `remaining=${response.authoritative_personal_state.remaining_incense} `
             + `tokens=${have}`,
           )
         } else if (response.claim_applied !== true) {
           if (claim.claim_business_date !== response.business_date) {
-            log(
-              `[liangbiao-backend] claim ignored wrong_date ${who(req, installationId)} `
+            expectedEvents.record(
+              'claim_wrong_date',
+              `[liangxiang-backend] claim ignored wrong_date ${who(req, installationId)} `
               + `requested_date=${claim.claim_business_date} have_date=${response.business_date}`,
             )
           } else {
-            log(
-              `[liangbiao-backend] claim ignored below_watermark ${who(req, installationId)} `
+            expectedEvents.record(
+              'claim_below_watermark',
+              `[liangxiang-backend] claim ignored below_watermark ${who(req, installationId)} `
               + `requested=${claim.claimed_effective_tokens} have=${have}`,
             )
           }
@@ -534,9 +537,16 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     }
 
     // POST /v1/votes
-    if (rateLimited(installationId, Date.now())) {
-      writeError(res, 429, 'invalid_request', 'too many vote requests; slow down')
-      log(`[liangbiao-backend] vote 429 ${who(req, installationId)}`)
+    const rateDecision = voteLimiter.check(installationId, Date.now())
+    if (!rateDecision.allowed) {
+      const message = rateDecision.reason === 'active_key_capacity'
+        ? 'server vote limiter is at active-key capacity; retry later'
+        : 'too many vote requests; slow down'
+      writeError(res, 429, 'invalid_request', message)
+      expectedEvents.record(
+        `vote_rate_limited_${rateDecision.reason ?? 'unknown'}`,
+        `[liangxiang-backend] vote 429 reason=${rateDecision.reason ?? 'unknown'} ${who(req, installationId)}`,
+      )
       return
     }
     try {
@@ -549,14 +559,14 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       const position = formatLiangPosition(snapshot.up_votes, snapshot.down_votes)
       const remaining = response.authoritative_personal_state.remaining_incense
       if (response.result.status === 'accepted') {
-        const replayed = response.result.replayed ? ' replay' : ''
-        log(
-          `[liangbiao-backend] vote ${direction} accepted${replayed} ${who(req, installationId)} `
-          + `remaining=${remaining} 梁位=${position} 香火=${snapshot.total_incense} 香客=${snapshot.unique_voters}`,
-        )
+        const message = `[liangxiang-backend] vote ${direction} accepted ${who(req, installationId)} `
+          + `remaining=${remaining} 梁位=${position} 香火=${snapshot.total_incense} 香客=${snapshot.unique_voters}`
+        if (response.result.replayed) expectedEvents.record('vote_replay', `${message} replay=true`)
+        else log(message)
       } else {
-        log(
-          `[liangbiao-backend] vote ${direction} rejected ${response.result.reason} ${who(req, installationId)} `
+        expectedEvents.record(
+          `vote_rejected_${response.result.reason}`,
+          `[liangxiang-backend] vote ${direction} rejected ${response.result.reason} ${who(req, installationId)} `
           + `remaining=${remaining}`,
         )
       }
@@ -568,7 +578,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
   const server = createServer((req, res) => {
     handler(req, res).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error)
-      log(`[liangbiao-backend] unhandled request failure: ${message}`)
+      log(`[liangxiang-backend] unhandled request failure: ${message}`)
       if (!res.headersSent) writeError(res, 500, 'internal_error', 'internal error')
       else res.end()
     })
@@ -578,9 +588,14 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     handler,
     server,
     reset: () => {
-      voteWindows.clear()
+      voteLimiter.reset()
       identityLimiter.reset()
+      expectedEvents.reset()
     },
+    rateLimitState: () => ({
+      activeVoteKeys: voteLimiter.activeKeys,
+      maxVoteKeys: voteRateLimitMaxKeys,
+    }),
   }
 }
 

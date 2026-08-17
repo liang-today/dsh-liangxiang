@@ -2,7 +2,7 @@
  * Client view store vocabulary + the MOCK implementation (tests/demos).
  *
  * The live host-backed store lives in `live-store.ts` and shares the same
- * `LiangbiaoStore` interface. All business transitions delegate to
+ * `LiangxiangStore` interface. All business transitions delegate to
  * `domain/`; the store never hand-rolls ratios, thresholds, or incense math.
  */
 import {
@@ -19,12 +19,12 @@ import {
   type VoteType,
 } from '../domain/index.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
-import type { AuthorityMode, LiangbiaoWireState } from '../shared/wire.ts'
+import type { AuthorityMode, LiangxiangWireState } from '../shared/wire.ts'
 
 export type ConnectionState = 'connecting' | 'live' | 'offline'
 
 /** Everything the panel renders, in one immutable snapshot. */
-export interface LiangbiaoViewState {
+export interface LiangxiangViewState {
   connection: ConnectionState
   /** Server-authoritative current business date; never browser local time. */
   businessDate: string
@@ -50,15 +50,15 @@ export interface LiangbiaoViewState {
   personal: PersonalLiangQiState
 }
 
-export interface LiangbiaoStore {
-  getSnapshot(): LiangbiaoViewState
+export interface LiangxiangStore {
+  getSnapshot(): LiangxiangViewState
   subscribe(listener: () => void): () => void
   /** Submit one vote intent; resolves with the authoritative-side result. */
   vote(voteType: VoteType): Promise<VoteResult>
 }
 
 /** Derive the render state from one validated wire frame (raw counts in, domain invariants out). */
-export function wireToViewState(wire: LiangbiaoWireState, connection: ConnectionState): LiangbiaoViewState {
+export function wireToViewState(wire: LiangxiangWireState, connection: ConnectionState): LiangxiangViewState {
   return {
     connection,
     businessDate: wire.businessDate,
@@ -102,7 +102,7 @@ export function wireToViewState(wire: LiangbiaoWireState, connection: Connection
  * Placeholder state rendered before the first frame / while offline. The
  * date is cosmetic only (placeholder copy), never an eligibility input.
  */
-export function createOfflineViewState(connection: ConnectionState): LiangbiaoViewState {
+export function createOfflineViewState(connection: ConnectionState): LiangxiangViewState {
   return {
     connection,
     businessDate: new Date().toISOString().slice(0, 10),
@@ -154,7 +154,7 @@ const DEFAULT_SEED: Required<MockStoreSeed> = {
   tokenPerIncense: 50_000,
 }
 
-export interface MockLiangbiaoStore extends LiangbiaoStore {
+export interface MockLiangxiangStore extends LiangxiangStore {
   /** Test/dev helper: simulate today's effective tokens growing by `count`. */
   addEffectiveTokens(count: number): void
 }
@@ -167,7 +167,7 @@ function nextMockRequestId(): string {
   return `mock-${Date.now().toString(36)}-${requestCounter.toString(36).padStart(4, '0')}`
 }
 
-export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbiaoStore {
+export function createMockLiangxiangStore(seed: MockStoreSeed = {}): MockLiangxiangStore {
   const resolved = { ...DEFAULT_SEED, ...seed }
   const activeCase: DailyLiangCase = {
     id: 'mock-case-001',
@@ -191,7 +191,7 @@ export function createMockLiangbiaoStore(seed: MockStoreSeed = {}): MockLiangbia
   // The seeded `usedIncenseToday` counts as prior participation.
   let hasAcceptedVote = resolved.usedIncenseToday > 0
   let sequence = 1
-  const buildState = (): LiangbiaoViewState => ({
+  const buildState = (): LiangxiangViewState => ({
     connection: 'live',
     businessDate: activeCase.businessDate,
     archiveVersion: 0,

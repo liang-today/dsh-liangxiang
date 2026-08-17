@@ -101,7 +101,7 @@ export class UsageProjection {
     bucketDate?: string,
   ): boolean {
     if (!isDshTokenUsageBuckets(value)) {
-      this.warn(`[dsh-liangbiao] ignoring malformed tokenUsage projection for session ${sessionId}`)
+      this.warn(`[dsh-liangxiang] ignoring malformed tokenUsage projection for session ${sessionId}`)
       return false
     }
     const cumulative = normalizeDshTokenUsage(value)

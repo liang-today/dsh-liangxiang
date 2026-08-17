@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveBackendConfig, BackendConfigError } from '../src/backend/config.ts'
 import { createBackendHttpApi } from '../src/backend/http.ts'
-import { LiangbiaoBackendService } from '../src/backend/service.ts'
+import { LiangxiangBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
 import {
   INSTALLATION_HEADER,
@@ -19,7 +19,7 @@ const INSTALLATION = 'install-http-0001'
 
 interface Harness {
   baseUrl: string
-  service: LiangbiaoBackendService
+  service: LiangxiangBackendService
   get(path: string, installationId?: string): Promise<{ status: number, body: unknown }>
   post(path: string, body: unknown, installationId?: string): Promise<{ status: number, body: unknown }>
   close(): Promise<void>
@@ -27,23 +27,29 @@ interface Harness {
 
 let harness: Harness | null = null
 
-async function start(options: { voteRateLimitPerMinute?: number, tokenPerIncense?: number, logs?: string[] } = {}): Promise<Harness> {
+async function start(options: {
+  voteRateLimitPerMinute?: number
+  voteRateLimitMaxKeys?: number
+  tokenPerIncense?: number
+  logs?: string[]
+} = {}): Promise<Harness> {
   const config = resolveBackendConfig(
     {
-      LIANGBIAO_BACKEND_DB: ':memory:',
-      LIANGBIAO_BACKEND_PORT: '0',
-      LIANGBIAO_SNAPSHOT_SECONDS: '300',
-      LIANGBIAO_TOKEN_PER_INCENSE: String(options.tokenPerIncense ?? 50_000),
-      LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
+      LIANGXIANG_BACKEND_DB: ':memory:',
+      LIANGXIANG_BACKEND_PORT: '0',
+      LIANGXIANG_SNAPSHOT_SECONDS: '300',
+      LIANGXIANG_TOKEN_PER_INCENSE: String(options.tokenPerIncense ?? 50_000),
+      LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
     },
     () => undefined,
   )
   const store = openBackendStore(config.databasePath)
-  const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
+  const service = new LiangxiangBackendService({ store, config, warn: () => undefined })
   const api = createBackendHttpApi({
     service,
     store,
     voteRateLimitPerMinute: options.voteRateLimitPerMinute ?? 0,
+    ...(options.voteRateLimitMaxKeys === undefined ? {} : { voteRateLimitMaxKeys: options.voteRateLimitMaxKeys }),
     allowUnsigned: true,
     log: options.logs === undefined ? () => undefined : (message) => options.logs?.push(message),
   })
@@ -173,7 +179,7 @@ describe('routing and boundary validation', () => {
   })
 
   it('does not grow the rate-limit map with every installation id it sees', async () => {
-    const h = await start({ voteRateLimitPerMinute: 5 })
+    const h = await start({ voteRateLimitPerMinute: 5, voteRateLimitMaxKeys: 32 })
     const caseId = await activeCaseId(h)
     // Installation ids are self-minted, so unbounded per-id state would be
     // attacker-controlled memory growth.
@@ -187,18 +193,14 @@ describe('routing and boundary validation', () => {
     // Nothing was spent (no claims), and the server is still responsive.
     const health = await fetch(`${h.baseUrl}/v1/health`)
     expect(health.status).toBe(200)
-    // The limiter still works for a real caller after the sweep.
-    await grant(h, 500_000)
-    const statuses: number[] = []
-    for (let i = 0; i < 7; i += 1) {
-      const response = await h.post('/v1/votes', {
-        case_id: caseId,
-        vote_type: 'up',
-        request_id: `req-after-sweep-${i}`,
-      })
-      statuses.push(response.status)
-    }
-    expect(statuses.filter((status) => status === 429).length).toBeGreaterThan(0)
+    // Once the active-key cap is full, an unseen id fails closed with 429.
+    const overflow = await h.post(
+      '/v1/votes',
+      { case_id: caseId, vote_type: 'up', request_id: 'req-after-cap-0001' },
+      'inst-after-cap-0001',
+    )
+    expect(overflow.status).toBe(429)
+    expect(overflow.body).toMatchObject({ error: { message: expect.stringContaining('active-key capacity') } })
   })
 
   it('answers an oversized body with 413 instead of killing the connection', async () => {
@@ -355,12 +357,12 @@ describe('concurrency and idempotency over HTTP', () => {
 describe('authority mode guard', () => {
   it('refuses to boot as VERIFIED_PRODUCTION under Decision Gate A3', () => {
     expect(() =>
-      resolveBackendConfig({ LIANGBIAO_AUTHORITY_MODE: 'VERIFIED_PRODUCTION' }, () => undefined))
+      resolveBackendConfig({ LIANGXIANG_AUTHORITY_MODE: 'VERIFIED_PRODUCTION' }, () => undefined))
       .toThrow(BackendConfigError)
   })
 
   it('rejects an unknown authority mode', () => {
-    expect(() => resolveBackendConfig({ LIANGBIAO_AUTHORITY_MODE: 'TRUSTED' }, () => undefined))
+    expect(() => resolveBackendConfig({ LIANGXIANG_AUTHORITY_MODE: 'TRUSTED' }, () => undefined))
       .toThrow(BackendConfigError)
   })
 
@@ -376,15 +378,15 @@ describe('community Ed25519 auth', () => {
   it('rejects unsigned bootstrap when allowUnsigned is off', async () => {
     const config = resolveBackendConfig(
       {
-        LIANGBIAO_BACKEND_DB: ':memory:',
-        LIANGBIAO_BACKEND_PORT: '0',
-        LIANGBIAO_SNAPSHOT_SECONDS: '300',
-        LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
+        LIANGXIANG_BACKEND_DB: ':memory:',
+        LIANGXIANG_BACKEND_PORT: '0',
+        LIANGXIANG_SNAPSHOT_SECONDS: '300',
+        LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
       },
       () => undefined,
     )
     const store = openBackendStore(config.databasePath)
-    const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
+    const service = new LiangxiangBackendService({ store, config, warn: () => undefined })
     const api = createBackendHttpApi({
       service,
       store,
@@ -415,15 +417,15 @@ describe('community Ed25519 auth', () => {
     } = await import('../src/shared/backend-v1.ts')
     const config = resolveBackendConfig(
       {
-        LIANGBIAO_BACKEND_DB: ':memory:',
-        LIANGBIAO_BACKEND_PORT: '0',
-        LIANGBIAO_SNAPSHOT_SECONDS: '300',
-        LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
+        LIANGXIANG_BACKEND_DB: ':memory:',
+        LIANGXIANG_BACKEND_PORT: '0',
+        LIANGXIANG_SNAPSHOT_SECONDS: '300',
+        LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
       },
       () => undefined,
     )
     const store = openBackendStore(config.databasePath)
-    const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
+    const service = new LiangxiangBackendService({ store, config, warn: () => undefined })
     const api = createBackendHttpApi({
       service,
       store,
@@ -485,17 +487,17 @@ describe('community Ed25519 auth', () => {
   it('requires the community key when configured', async () => {
     const config = resolveBackendConfig(
       {
-        LIANGBIAO_BACKEND_DB: ':memory:',
-        LIANGBIAO_BACKEND_PORT: '0',
-        LIANGBIAO_SNAPSHOT_SECONDS: '300',
-        LIANGBIAO_MAX_TOKENS_PER_MINUTE: '0',
-        LIANGBIAO_COMMUNITY_KEY: 'admit-me',
-        LIANGBIAO_ALLOW_UNSIGNED: '1',
+        LIANGXIANG_BACKEND_DB: ':memory:',
+        LIANGXIANG_BACKEND_PORT: '0',
+        LIANGXIANG_SNAPSHOT_SECONDS: '300',
+        LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
+        LIANGXIANG_COMMUNITY_KEY: 'admit-me',
+        LIANGXIANG_ALLOW_UNSIGNED: '1',
       },
       () => undefined,
     )
     const store = openBackendStore(config.databasePath)
-    const service = new LiangbiaoBackendService({ store, config, warn: () => undefined })
+    const service = new LiangxiangBackendService({ store, config, warn: () => undefined })
     const api = createBackendHttpApi({
       service,
       store,
@@ -557,6 +559,26 @@ describe('quiet access log', () => {
     expect(text).toContain('claim ignored below_watermark')
     expect(text).toContain('requested=10000')
     expect(text).toContain('have=150000')
+  })
+
+  it('samples replay and rejection logs instead of amplifying every retry', async () => {
+    const logs: string[] = []
+    const h = await start({ logs })
+    await grant(h, 50_000)
+    const caseId = await activeCaseId(h)
+    const accepted = { case_id: caseId, vote_type: 'up', request_id: 'req-sampled-replay-01' }
+    await h.post('/v1/votes', accepted)
+    for (let index = 0; index < 20; index += 1) await h.post('/v1/votes', accepted)
+    for (let index = 0; index < 20; index += 1) {
+      await h.post('/v1/votes', {
+        case_id: caseId,
+        vote_type: 'down',
+        request_id: `req-sampled-reject-${String(index).padStart(2, '0')}`,
+      })
+    }
+
+    expect(logs.filter(line => line.includes('replay=true'))).toHaveLength(1)
+    expect(logs.filter(line => line.includes('rejected insufficient_incense'))).toHaveLength(1)
   })
 })
 

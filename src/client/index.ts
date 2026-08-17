@@ -1,12 +1,12 @@
 /**
- * Client half (exports["./client"] entry): register the 梁向 entry (badge +
+ * Client half (exports["./client"] entry): register the 梁相 entry (badge +
  * panel container) into shell.overlay. All DSH touchpoints go through
  * compat/dsh; this module itself imports no DSH symbols.
  */
 import type { DshClientContext } from '../compat/dsh/client-context.ts'
 import { registerOverlayEntry } from '../compat/dsh/overlay-slot.ts'
 import { OVERLAY_ENTRY_ID, OVERLAY_ENTRY_ORDER } from '../shared/index.ts'
-import { LiangbiaoBadge } from './Badge.tsx'
+import { LiangxiangBadge } from './Badge.tsx'
 
 export const inject = ['slots']
 
@@ -18,6 +18,6 @@ export function apply(ctx: DshClientContext): void {
   registerOverlayEntry(ctx, {
     id: OVERLAY_ENTRY_ID,
     order: OVERLAY_ENTRY_ORDER,
-    component: LiangbiaoBadge,
+    component: LiangxiangBadge,
   })
 }

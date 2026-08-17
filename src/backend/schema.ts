@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v4) for the Liangbiao backend.
+ * SQLite schema (v4) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -187,7 +187,7 @@ export function migrate(db: DatabaseSync): void {
   const current = typeof row?.user_version === 'number' ? row.user_version : 0
   if (current > BACKEND_SCHEMA_USER_VERSION) {
     throw new Error(
-      `liangbiao backend database is at schema version ${current}, newer than this build (${BACKEND_SCHEMA_USER_VERSION})`,
+      `liangxiang backend database is at schema version ${current}, newer than this build (${BACKEND_SCHEMA_USER_VERSION})`,
     )
   }
   if (current < 2) db.exec(DDL_V2)

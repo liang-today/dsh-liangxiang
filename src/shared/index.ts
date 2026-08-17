@@ -11,6 +11,8 @@ import {
 } from '../domain/index.ts'
 import type { AuthorityMode } from './wire.ts'
 
+export { readLiangxiangEnv } from './env.ts'
+
 export {
   emptyHistoryArchive,
   historyArchiveToV1,
@@ -24,19 +26,19 @@ export {
 } from './history-v1.ts'
 
 /** npm package name: the loader row `name`, the client bundle id, and the `/plugins/<id>/client.js` route segment. */
-export const PLUGIN_PACKAGE_NAME = 'dsh-liangbiao'
+export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by the sound-icon long-press easter egg. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.4.0'
+export const PLUGIN_VERSION = '0.5.0'
 
 /** Cordis plugin display name of the host half. */
-export const HOST_PLUGIN_NAME = 'liangbiao'
+export const HOST_PLUGIN_NAME = 'liangxiang'
 
 /** Frozen product copy (AGENTS.md): the product name. */
-export const PRODUCT_NAME = '梁向'
+export const PRODUCT_NAME = '梁相'
 
 /** Frozen product copy (AGENTS.md §1): the hover/focus tooltip. Must remain exactly this string. */
-export const HOVER_TEXT = '今日梁向'
+export const HOVER_TEXT = '今日梁相'
 
 /** Frozen product copy (AGENTS.md §1): the expanded panel title. */
 export const PANEL_TITLE = '今日梁案'
@@ -103,7 +105,7 @@ export const LOCAL_MODE_NOTE = '本地演示模式：香火与打梁均在本机
  * authenticate a DSH user nor verify the Token usage behind the incense.
  * Ed25519 installation keys only prove "same Host still holds this private key".
  */
-export const STAGING_MODE_NOTE = '社区软信任：打梁由梁向服务端记账；身份是本机安装密钥，Token 用量由本机声明、服务端无法核验。不是可信全网公投。'
+export const STAGING_MODE_NOTE = '社区软信任：打梁由梁相服务端记账；身份是本机安装密钥，Token 用量由本机声明、服务端无法核验。不是可信全网公投。'
 
 /** The note that must accompany each authority mode. */
 export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {
@@ -118,7 +120,7 @@ export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷�
 export const NO_INCENSE_GAG = '咣当——香炉空了，梁子催你先去攒香'
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
-export const OFFLINE_REASON = '未连上梁向服务：显示最近状态，重新打开面板可重试'
+export const OFFLINE_REASON = '未连上梁相服务：显示最近状态，重新打开面板可重试'
 
 /** Status line when the DSH accounting seams are absent in this assembly. */
 export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合缺少 token 投影能力'
@@ -127,10 +129,10 @@ export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合�
 export const ABSURD_CLAIM_NOTICE = 'Token 上报超出合理上限，已限幅（疑似异常）'
 
 /** First-run welcome: three plain-language lines (not just screen-reader copy). */
-export const WELCOME_TITLE = '欢迎来到梁向'
+export const WELCOME_TITLE = '欢迎来到梁相'
 export const WELCOME_LINES = [
   '使用 DSH，输入 + 输出每 5 万当量凝成一炷香。',
-  '花一炷选择「夯」或「拉」，共同写下今日梁向。',
+  '花一炷选择「夯」或「拉」，共同显出今日梁相。',
   '每日结案后，结果收入梁祠；这是社区软信任玩法。',
 ]
 export const WELCOME_ONLINE_LABEL = '进入在线'
@@ -190,7 +192,7 @@ export function liangziRatioRangeText(
 }
 
 /** List-entry id of the badge inside the `shell.overlay` slot. */
-export const OVERLAY_ENTRY_ID = 'liangbiao'
+export const OVERLAY_ENTRY_ID = 'liangxiang'
 
 /** List ordering of the badge entry among `shell.overlay` occupants. */
 export const OVERLAY_ENTRY_ORDER = 100

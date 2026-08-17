@@ -4,7 +4,7 @@
 
 ```text
 Browser (client bundle, 仅 UI)
-   │  /liangbiao/api/{state,events,vote,history}
+   │  /liangxiang/api/{state,events,vote,history}
    ▼
 DSH Host plugin  (src/host)
    │  · UsageProjection：本地观测 tokenUsage → 当日 Effective Token（claim，非证明）
@@ -12,7 +12,7 @@ DSH Host plugin  (src/host)
    │  · BackendLiangService：缓存代理 + 上报 claim + 拉取快照
    │  HTTP /v1/{bootstrap,token-claims,votes,snapshot,history,me/daily-state,health}
    ▼
-Liangbiao Backend (src/backend，独立 node 进程，127.0.0.1:4180)
+Liangxiang Backend (src/backend，独立 node 进程，127.0.0.1:4180)
    │  node:http + node:sqlite（WAL），无第三方依赖
    ▼
 SQLite  (daily_liang_case / daily_incense_state / liang_vote /
@@ -34,7 +34,7 @@ SQLite  (daily_liang_case / daily_incense_state / liang_vote /
 
 ## 两种 authority 模式（同一套路由）
 
-| `LIANGBIAO_BACKEND_URL` | 服务实现 | wire `authorityMode` |
+| `LIANGXIANG_BACKEND_URL` | 服务实现 | wire `authorityMode` |
 |---|---|---|
 | 未设置 | `FakeAuthoritativeLiangService`（进程内） | `LOCAL_FAKE_DEV` |
 | 设置 | `BackendLiangService`（后端为权威） | `DEV_STAGING_ONLY` |
@@ -64,7 +64,7 @@ cadence 默认 **1 秒**（近实时）：Host 按 cadence 轮询 `/v1/snapshot`
 
 日切入口先在一个事务中关闭过期 active 案，并封存所有尚未归档的已结束业务日；同一日期的多梁案合为一个日档。若周一至周日或自然月已经完整结束，再由日档票数和生成永久周/月档。当前周/月只在 Host/Client 用“截至昨天”的日档即时派生，不入 SQLite。
 
-`bootstrap` 与 `snapshot` 只带单调标量 `archive_version`。Host 首次读取完整 `/v1/history`，版本变大时再传 `after_version` 拉增量；浏览器同样走独立 `/liangbiao/api/history`。因此 1 秒 SSE 只推今天，不会反复发送历史数组。多个浏览器标签共享 Host 的上游缓存，而不是各自直连社区后端。
+`bootstrap` 与 `snapshot` 只带单调标量 `archive_version`。Host 首次读取完整 `/v1/history`，版本变大时再传 `after_version` 拉增量；浏览器同样走独立 `/liangxiang/api/history`。因此 1 秒 SSE 只推今天，不会反复发送历史数组。多个浏览器标签共享 Host 的上游缓存，而不是各自直连社区后端。
 
 ## 失败姿态
 
@@ -78,8 +78,8 @@ cadence 默认 **1 秒**（近实时）：Host 按 cadence 轮询 `/v1/snapshot`
 
 ```bash
 pnpm run build
-LIANGBIAO_BACKEND_DB=.liangbiao-backend/dev.sqlite pnpm run backend:start   # :4180
-LIANGBIAO_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web                # DSH WebUI
+LIANGXIANG_BACKEND_DB=.liangxiang-backend/dev.sqlite pnpm run backend:start   # :4180
+LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web                # DSH WebUI
 pnpm run smoke:online                                                       # 全链路自检
 ```
 

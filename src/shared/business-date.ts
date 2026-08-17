@@ -16,7 +16,7 @@ export interface Clock {
 
 export const systemClock: Clock = { now: () => Date.now() }
 
-/** Frozen dev default; override with the LIANGBIAO_BUSINESS_TZ environment variable. */
+/** Frozen dev default; override with the LIANGXIANG_BUSINESS_TZ environment variable. */
 export const DEFAULT_BUSINESS_TIMEZONE = 'Asia/Shanghai'
 
 export interface BusinessDateProvider {

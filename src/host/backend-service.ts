@@ -34,7 +34,7 @@ import {
   mergeHistoryArchive,
   type V1HistoryResponse,
 } from '../shared/history-v1.ts'
-import { WIRE_SCHEMA_VERSION, type LiangbiaoWireState, type WireVoteRequest } from '../shared/wire.ts'
+import { WIRE_SCHEMA_VERSION, type LiangxiangWireState, type WireVoteRequest } from '../shared/wire.ts'
 import { BackendClientError, type BackendClient } from './backend-client.ts'
 import { generateCommunityKeypair, type CommunityKeypair } from './community-keys.ts'
 import type { LiangHostService, VoteOutcome } from './service.ts'
@@ -261,7 +261,7 @@ export class BackendLiangService implements LiangHostService {
     return { result: toDomainVoteResult(response.result), state: this.getWireState() }
   }
 
-  getWireState(): LiangbiaoWireState {
+  getWireState(): LiangxiangWireState {
     const bootstrap = this.bootstrap
     const activeCase = this.activeCase
     const personal = this.personal
@@ -566,7 +566,7 @@ export class BackendLiangService implements LiangHostService {
           `[${PLUGIN_PACKAGE_NAME}] DEVICE CONFLICT: this device fingerprint is already bound to `
           + `another installation (the key was re-generated, or the DSH profile was copied from `
           + `another machine). Recover: mint a fresh key (delete the identity in `
-          + `$DSH_HOME/storages/liangbiao.json / pnpm run reset:identity, then restart) and POST `
+          + `$DSH_HOME/storages/liangxiang.json / pnpm run reset:identity, then restart) and POST `
           + `/v1/identity/rekey, or ask the operator to run `
           + `node lib/backend-cli.js identity unbind.`,
         )

@@ -2,7 +2,12 @@
 
 ## 先看清适用范围
 
-梁向 v0.1 是 **本地/预发（`DEV_STAGING_ONLY`）** 软件：后端默认只监听 `127.0.0.1`，没有 TLS、鉴权、配额，也**没有可验证身份或可验证 Token 用量**（Decision Gate A = A3，见 [`docs/075-backend-decision.md`](docs/075-backend-decision.md)）。
+梁相 v0.5 是 **本地/社区预发（`DEV_STAGING_ONLY`）** 软件。默认后端只
+监听 `127.0.0.1`；社区节点通过 Ed25519 安装签名、可选共享闭测口令、
+请求体上限、硬容量限流和 SQLite 事务保护。当前大陆测试节点仍是临时
+IP/HTTP，TLS 要等香港迁移与域名切换后启用。以上控制都不等于可验证的
+真人身份或可验证 Token 用量（Decision Gate A = A3，见
+[`docs/075-backend-decision.md`](docs/075-backend-decision.md)）。
 
 因此这两类问题**不是**漏洞，而是已记录的已知限制：
 
@@ -27,7 +32,7 @@
 
 在仓库提交 issue 并加 `security` 标签，或直接联系维护者。请附：复现步骤、影响、版本（`package.json` 的 version + git commit）、运行模式（`LOCAL_FAKE_DEV` / `DEV_STAGING_ONLY`）。
 
-**报告里不要包含**真实 prompt、源码、密钥或个人数据——按上面的口径，梁向不需要它们就能复现。
+**报告里不要包含**真实 prompt、源码、密钥或个人数据——按上面的口径，梁相不需要它们就能复现。
 
 ## 处理承诺
 

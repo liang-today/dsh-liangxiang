@@ -1,6 +1,6 @@
 # 041 — DSH Token 映射（已验证 seam）
 
-基线 `47f94385`。本文是梁向真实 Token 集成唯一允许使用的 seam 记录;实现落点 `src/compat/dsh/`。
+基线 `47f94385`。本文是梁相真实 Token 集成唯一允许使用的 seam 记录;实现落点 `src/compat/dsh/`。
 
 ## 权威数据源
 
@@ -46,9 +46,9 @@ effective = input + outputTokens
 - `snapshot(session)`：对单会话全部注册投影的一致读（`{asOfSeq, values}`，同步）。index.ts:240-255。
 - `ctx.sessions.list()`：live 会话枚举（`packages/core/session/src/index.ts:1050-1065`，docs/001-Q7），用于启动时基线化补扫。
 
-## 聚合与防重（梁向侧规则）
+## 聚合与防重（梁相侧规则）
 
-投影值是**每会话累计值**。梁向 Host 维护每会话高水位（HWM）差分账本：
+投影值是**每会话累计值**。梁相 Host 维护每会话高水位（HWM）差分账本：
 
 1. **水位**：`sessionId → { inputHwm, outputHwm }`（input = 三桶之和）。
 2. **未知会话规则**（防追溯 + 不吞新会话首笔）：

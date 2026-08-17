@@ -74,7 +74,7 @@ export interface WireAccounting {
 }
 
 /** One full state frame (GET /state and every SSE frame). */
-export interface LiangbiaoWireState {
+export interface LiangxiangWireState {
   schemaVersion: typeof WIRE_SCHEMA_VERSION
   /** Monotonic; stale frames must be dropped by the client. */
   revision: number
@@ -105,7 +105,7 @@ export interface WireVoteRequest {
 export interface WireVoteResponse {
   schemaVersion: typeof WIRE_SCHEMA_VERSION
   result: VoteResult
-  state: LiangbiaoWireState
+  state: LiangxiangWireState
 }
 
 /** Boundary-validation failure, discriminated by the offending field path. */
@@ -179,7 +179,7 @@ function parseCase(raw: unknown, field: string): DailyLiangCase {
 }
 
 /** Validate one full state frame (domain invariants enforced downstream). */
-export function parseWireState(raw: unknown): LiangbiaoWireState {
+export function parseWireState(raw: unknown): LiangxiangWireState {
   const record = asRecord(raw, 'state')
   if (record.schemaVersion !== WIRE_SCHEMA_VERSION) {
     throw new WireError('state.schemaVersion', `unsupported schema version ${String(record.schemaVersion)}`)

@@ -10,7 +10,7 @@
 - 领域归档与暂梁派生：`src/domain/archive.ts`
 - 严格历史 wire：`src/shared/history-v1.ts`
 - SQLite v4 归档表与幂等封存：`src/backend/schema.ts`、`src/backend/service.ts`
-- 独立后端/Host 历史路由：`GET /v1/history`、`GET /liangbiao/api/history`
+- 独立后端/Host 历史路由：`GET /v1/history`、`GET /liangxiang/api/history`
 - 浏览器冷数据缓存：`src/client/live-store.ts`
 - 月历浮层与三层图标：`src/client/LiangciModal.tsx`、`src/client/LiangciIcon.tsx`
 
@@ -20,12 +20,12 @@ SQLite v4 与 `/v1/history` 的版本；客户端在旧后端上会诚实显示 
 
 ## 1. 产品目标
 
-梁祠是梁向的历史日历：以月历为主视图，用三种时间层级组织全局梁位。
+梁祠是梁相的历史日历：以月历为主视图，用三种时间层级组织全局梁位。
 
 - **日梁**：一个业务日一个日历图标。
 - **周梁**：周一至周日七个日梁的汇总，显示在对应七天右侧。
 - **月梁**：一个自然月全部日梁的汇总，显示在月份标题区。
-- **今日**：尚未结束，不显示今日梁向或今日梁子终态，只显示专用的 **今日进行中** 图标。
+- **今日**：尚未结束，不显示今日梁相或今日梁子终态，只显示专用的 **今日进行中** 图标。
 
 梁祠的核心原则是：**只有已经结束的业务日才能进入历史计算。**
 
@@ -33,7 +33,7 @@ SQLite v4 与 `/v1/history` 的版本；客户端在旧后端上会诚实显示 
 
 ### 2.1 日梁
 
-- 今日格固定显示 `今日进行中` 图标，不用实时今日梁向生成日梁图标。
+- 今日格固定显示 `今日进行中` 图标，不用实时今日梁相生成日梁图标。
 - 今日不参与本周暂梁、本月暂梁计算。
 - 到下一业务日开始时，服务器封存昨日的最终夯票、拉票与日梁元数据。
 - 封存后的日梁不可被今日快照或浏览器时钟改写。
@@ -154,7 +154,7 @@ else:
 ### 5.1 总方向
 
 梁祠的视觉定义是：**现代编年志 × 克制梁祠**。自 2026-08-17
-起，这也是梁向全产品的视觉母版：主面板、入口、首次欢迎、提示卡与
+起，这也是梁相全产品的视觉母版：主面板、入口、首次欢迎、提示卡与
 梁祠共享同一套密度、颜色比例、边框、圆角和图标克制度。品牌完整
 规则见 [`140-liangxiang-brand.md`](140-liangxiang-brand.md)。
 
@@ -334,7 +334,7 @@ LiangMonthArchive
 首次连接：
 Backend GET /v1/history
   -> Host 缓存
-  -> Browser GET /liangbiao/api/history
+  -> Browser GET /liangxiang/api/history
   -> 一次取得日 / 周 / 月永久档案
 
 日常运行：

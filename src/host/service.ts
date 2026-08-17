@@ -1,5 +1,5 @@
 /**
- * The seam `/liangbiao/api/*` is written against, so the host half can serve
+ * The seam `/liangxiang/api/*` is written against, so the host half can serve
  * either authority mode without the routes (or the browser wire) changing:
  *
  *   LOCAL_FAKE_DEV      `FakeAuthoritativeLiangService` — everything in-process
@@ -10,19 +10,19 @@
  */
 import type { VoteResult } from '../domain/index.ts'
 import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
-import type { LiangbiaoWireState, WireVoteRequest } from '../shared/wire.ts'
+import type { LiangxiangWireState, WireVoteRequest } from '../shared/wire.ts'
 import type { V1HistoryResponse } from '../shared/history-v1.ts'
 
 export interface VoteOutcome {
   result: VoteResult
-  state: LiangbiaoWireState
+  state: LiangxiangWireState
 }
 
 export interface LiangHostService {
   /** False until the service can answer authoritatively (routes serve 503). */
   readonly isReady: boolean
   subscribe: (listener: () => void) => () => void
-  getWireState: () => LiangbiaoWireState
+  getWireState: () => LiangxiangWireState
   /** Separate cold archive channel; never embedded into the hot SSE frame. */
   history: (afterVersion?: number) => V1HistoryResponse | Promise<V1HistoryResponse>
   vote: (intent: WireVoteRequest) => VoteOutcome | Promise<VoteOutcome>

@@ -8,8 +8,8 @@
 #  5. tear everything down (bounded waits everywhere)
 . "$(dirname "$0")/env.sh"
 
-SMOKE_PROFILE="${LIANGBIAO_SMOKE_PROFILE:-liangbiao-smoke}"
-PORT="${LIANGBIAO_SMOKE_PORT:-3981}"
+SMOKE_PROFILE="${LIANGXIANG_SMOKE_PROFILE:-liangxiang-smoke}"
+PORT="${LIANGXIANG_SMOKE_PORT:-3981}"
 SERVER_PID=""
 
 cleanup() {
@@ -44,7 +44,7 @@ pnpm --dir "$DSH_HOME/profiles/$SMOKE_PROFILE" remove "${WEB_APP_SPEC%@*}" >/dev
 node "$REPO_ROOT/scripts/assert-profile-modules.mjs" "$DSH_HOME/profiles/$SMOKE_PROFILE"
 
 echo "== 3/5 dump-config layer =="
-dsh_cli --profile "$SMOKE_PROFILE" --dump-config | grep -n "dsh-liangbiao"
+dsh_cli --profile "$SMOKE_PROFILE" --dump-config | grep -n "dsh-liangxiang"
 
 echo "== 4/5 boot + probe =="
 BOOT_LOG="$(mktemp)"
@@ -74,22 +74,22 @@ fi
 # under `pipefail` that aborts the whole smoke run (it did, the moment inlined
 # artwork pushed client.js past a few hundred KB).
 CLIENT_BUNDLE="$(mktemp)"
-curl -sf -o "$CLIENT_BUNDLE" "$BASE/plugins/dsh-liangbiao/client.js"
+curl -sf -o "$CLIENT_BUNDLE" "$BASE/plugins/dsh-liangxiang/client.js"
 BUNDLE_HEAD="$(head -c 200 "$CLIENT_BUNDLE")"
 rm -f "$CLIENT_BUNDLE"
 case "$BUNDLE_HEAD" in
-  'window.__ModuleLoader__.load('*'"dsh-liangbiao"'*) echo "client bundle served with loader banner" ;;
+  'window.__ModuleLoader__.load('*'"dsh-liangxiang"'*) echo "client bundle served with loader banner" ;;
   *) echo "ERROR: unexpected client bundle head: $BUNDLE_HEAD" >&2; exit 1 ;;
 esac
 
-if curl -sf "$BASE/" | grep -q '__DSH_BOOT__.*dsh-liangbiao'; then
-  echo "boot graph lists dsh-liangbiao"
+if curl -sf "$BASE/" | grep -q '__DSH_BOOT__.*dsh-liangxiang'; then
+  echo "boot graph lists dsh-liangxiang"
 else
-  echo "ERROR: dsh-liangbiao missing from __DSH_BOOT__ graph" >&2
+  echo "ERROR: dsh-liangxiang missing from __DSH_BOOT__ graph" >&2
   exit 1
 fi
 
-if grep -q '\[dsh-liangbiao\] host half active' "$BOOT_LOG"; then
+if grep -q '\[dsh-liangxiang\] host half active' "$BOOT_LOG"; then
   echo "host half activated"
 else
   echo "ERROR: host lifecycle marker missing from boot log" >&2

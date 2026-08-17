@@ -1,5 +1,5 @@
 /**
- * HTTP client for the Liangbiao backend `/v1` API.
+ * HTTP client for the Liangxiang backend `/v1` API.
  *
  * Posture:
  *  - every request is timeout-bounded and abortable; `dispose()` cancels

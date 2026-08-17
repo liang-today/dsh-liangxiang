@@ -10,7 +10,7 @@
  *   node lib/backend-cli.js identity unbind lk_...
  */
 import { resolveBackendConfig, BackendConfigError } from './config.ts'
-import { LiangbiaoBackendService } from './service.ts'
+import { LiangxiangBackendService } from './service.ts'
 import { openBackendStore } from './store.ts'
 import { parseInstallationId, parseV1PublishCaseRequest } from '../shared/backend-v1.ts'
 import { WireError } from '../shared/wire.ts'
@@ -60,14 +60,14 @@ export function runOperatorCli(
     return 2
   }
   const store = openBackendStore(config.databasePath)
-  const service = new LiangbiaoBackendService({ store, config })
+  const service = new LiangxiangBackendService({ store, config })
   try {
     if (topic === 'case' && command === 'publish') {
       const title = args.slice(2).join(' ').trim()
       const published = service.publishCase(parseV1PublishCaseRequest({ title }).title)
       io.log(JSON.stringify(published, null, 2))
       io.log(
-        `[liangbiao-ops] publish archived=${published.archived_case?.id ?? '-'} `
+        `[liangxiang-ops] publish archived=${published.archived_case?.id ?? '-'} `
         + `opened=${published.active_case.id} title=${published.active_case.title}`,
       )
       return 0
@@ -86,21 +86,21 @@ export function runOperatorCli(
       const title = rest.join(' ').trim()
       const queued = service.enqueueCase(parseV1PublishCaseRequest({ title }).title, publishOn)
       io.log(JSON.stringify(queued, null, 2))
-      io.log(`[liangbiao-ops] queue id=${queued.id} on=${queued.publish_on ?? 'fifo'}`)
+      io.log(`[liangxiang-ops] queue id=${queued.id} on=${queued.publish_on ?? 'fifo'}`)
       return 0
     }
     if (topic === 'identity' && command === 'unbind') {
       const installationId = parseInstallationId(args[2])
       const response = service.unbindIdentity(installationId)
       io.log(JSON.stringify(response, null, 2))
-      io.log(`[liangbiao-ops] unbind ${installationId} unbound=${String(response.unbound)}`)
+      io.log(`[liangxiang-ops] unbind ${installationId} unbound=${String(response.unbound)}`)
       return 0
     }
     io.error(usage)
     return 2
   } catch (error) {
     const message = error instanceof WireError || error instanceof Error ? error.message : String(error)
-    io.error(`[liangbiao-ops] ${message}`)
+    io.error(`[liangxiang-ops] ${message}`)
     return 1
   } finally {
     store.close()

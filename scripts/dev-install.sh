@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Build and install dsh-liangbiao into the dedicated dev profile.
+# Build and install dsh-liangxiang into the dedicated dev profile.
 #
-# Layer order after this script: dsh-base -> dsh-web-app -> dsh-liangbiao.
+# Layer order after this script: dsh-base -> dsh-web-app -> dsh-liangxiang.
 #
 # `plugin add` does two things: it appends the bundle to dsh.profile.bundles AND
 # it pnpm-installs the package into <profile>/node_modules. For an IN-BOX bundle
@@ -29,8 +29,8 @@ pnpm --dir "$DSH_HOME/profiles/$PROFILE" remove "${WEB_APP_SPEC%@*}" >/dev/null
 
 echo
 echo "== dump-config layer check =="
-dsh_cli --profile "$PROFILE" --dump-config | grep -n "dsh-liangbiao" || {
-  echo "ERROR: dsh-liangbiao layer missing from dump-config" >&2
+dsh_cli --profile "$PROFILE" --dump-config | grep -n "dsh-liangxiang" || {
+  echo "ERROR: dsh-liangxiang layer missing from dump-config" >&2
   exit 1
 }
 echo

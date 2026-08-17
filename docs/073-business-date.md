@@ -3,7 +3,7 @@
 ## 权威链
 
 ```text
-后端服务器时钟 + LIANGBIAO_BUSINESS_TZ（默认 Asia/Shanghai）
+后端服务器时钟 + LIANGXIANG_BUSINESS_TZ（默认 Asia/Shanghai）
   → business_date（YYYY-MM-DD）
   → 当日唯一 active DailyLiangCase
   → daily_incense_state 的分区键

@@ -3,7 +3,7 @@
  * without talking to a model. It must never reach DEV_STAGING_ONLY: that
  * path would POST a fake claim to the shared backend.
  */
-export const DEV_CREDIT_SESSION_ID = '__liangbiao_dev_sim__'
+export const DEV_CREDIT_SESSION_ID = '__liangxiang_dev_sim__'
 export const DEV_CREDIT_MAX_STICKS = 50
 export const DEV_CREDIT_MAX_TOKENS = 5_000_000
 

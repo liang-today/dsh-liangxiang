@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LiangbiaoBadge } from '../src/client/Badge.tsx'
+import { LiangxiangBadge } from '../src/client/Badge.tsx'
 import { apply, inject } from '../src/client/index.ts'
 import type { DshClientContext } from '../src/compat/dsh/client-context.ts'
 
@@ -49,9 +49,9 @@ describe('client half skeleton', () => {
     expect(registrations).toHaveLength(1)
     expect(registrations[0]?.options).toMatchObject({
       name: 'shell.overlay',
-      id: 'liangbiao',
+      id: 'liangxiang',
       order: 100,
     })
-    expect(registrations[0]?.component).toBe(LiangbiaoBadge)
+    expect(registrations[0]?.component).toBe(LiangxiangBadge)
   })
 })

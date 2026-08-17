@@ -38,7 +38,7 @@
 
 | 控制 | 实现 |
 |---|---|
-| 投票限流 | 每安装每分钟 `LIANGBIAO_VOTE_RATE_LIMIT`（默认 600，0 关闭）→ 429 |
+| 投票限流 | 每安装每分钟 `LIANGXIANG_VOTE_RATE_LIMIT`（默认 600，0 关闭）→ 429 |
 | 限流表不无界增长 | 超过 1000 个安装即清扫过期窗口（安装标识是自造的，否则是攻击者可控的内存增长） |
 | 快照历史有界 | 每梁案保留最新 200 条，发布时同事务裁剪 |
 | 出站请求 | 全部超时可取消（AbortController），读请求最多一次有界重试，写请求**不自动重试** |
@@ -46,7 +46,7 @@
 
 ## 密钥与日志
 
-- 梁向不读、不存、不发任何 provider 凭据；`.env` 在 `.gitignore` 内。
+- 梁相不读、不存、不发任何 provider 凭据；`.env` 在 `.gitignore` 内。
 - 投票日志只含 `method / path / status / installation 前 8 字符 / accepted|rejected`。
 - 错误响应不回显请求体（有断言）。
 - 详见 [`PRIVACY.md`](PRIVACY.md)。

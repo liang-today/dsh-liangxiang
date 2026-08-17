@@ -8,7 +8,7 @@
 ## 0. 一句话
 
 **把现在的 RC Demo 做成「装上插件就能一起夯」的社区产品。**  
-共享的是同一台梁向后端上的今日梁案；信任模型公开写成软信任，不写成民调、不写成全网公投。
+共享的是同一台梁相后端上的今日梁案；信任模型公开写成软信任，不写成民调、不写成全网公投。
 
 这不是等 DSH。这是选用 042 已经写好的第三条路。
 
@@ -58,10 +58,10 @@
 ```text
 浏览器  ──不──直连──>  社区后端
 DSH Host（每台香客的本机进程）  ──HTTP──>  社区后端
-浏览器  ──/liangbiao/api/*──>  本机 Host
+浏览器  ──/liangxiang/api/*──>  本机 Host
 ```
 
-所以社区产品 = **插件装到每人的 DSH** + **所有 Host 指向同一 `LIANGBIAO_BACKEND_URL`**。不需要浏览器 CORS，不需要 DSH 云账号。
+所以社区产品 = **插件装到每人的 DSH** + **所有 Host 指向同一 `LIANGXIANG_BACKEND_URL`**。不需要浏览器 CORS，不需要 DSH 云账号。
 
 现成的第一台社区节点：局域网 Pi（`.env.example` 里已有 `bean@192.168.2.21`）。先局域网/Tailscale，再公网。
 
@@ -71,8 +71,8 @@ DSH Host（每台香客的本机进程）  ──HTTP──>  社区后端
 
 一个没读过仓库的 DSH 用户，10 分钟内能：
 
-1. 装上梁向插件
-2. 打开 WebUI 看到今日梁向（和别人看到的是同一梁子）
+1. 装上梁相插件
+2. 打开 WebUI 看到今日梁相（和别人看到的是同一梁子）
 3. 正常用 DSH 攒香火
 4. 投出夯/拉，约 1 秒内看到梁位动
 5. 读懂这是社区玩法，不是认证公投
@@ -95,10 +95,10 @@ DSH Host（每台香客的本机进程）  ──HTTP──>  社区后端
 | 项 | 做什么 | 完成标准 |
 |---|---|---|
 | 社区文案 | `STAGING_MODE_NOTE` 改为香客能懂的社区软信任说明；README 首页按香客写，开发者安装挪到 INSTALL | 面板/SR/README 都不说「预发」，都不说 verified |
-| 后端可被远端 Host 连 | 允许 `LIANGBIAO_BACKEND_HOST=0.0.0.0`；文档写清只应放在 Tailscale/反代后面 | 另一台机器的 DSH Host 设 URL 后能 bootstrap + 投票 |
-| 社区包 | tarball **带上** `lib/backend.js` 或另打 `dsh-liangbiao-community` 运维包；`docker compose`：后端 + 可选 Caddy | `docker compose up` 后 Host 能连 |
-| 安装一条龙 | `docs/INSTALL-COMMUNITY.md`：插件怎么加、`LIANGBIAO_BACKEND_URL` 怎么写、不要把 web-app 装进 profile | 按文档在干净 profile 走通 |
-| 软门闩 | 可选 `LIANGBIAO_COMMUNITY_KEY`：Host 请求带共享密钥，错了 401。不是身份，只挡扫到端口的路人 | 无 key 的客户端进不了社区后端 |
+| 后端可被远端 Host 连 | 允许 `LIANGXIANG_BACKEND_HOST=0.0.0.0`；文档写清只应放在 Tailscale/反代后面 | 另一台机器的 DSH Host 设 URL 后能 bootstrap + 投票 |
+| 社区包 | tarball **带上** `lib/backend.js` 或另打 `dsh-liangxiang-community` 运维包；`docker compose`：后端 + 可选 Caddy | `docker compose up` 后 Host 能连 |
+| 安装一条龙 | `docs/INSTALL-COMMUNITY.md`：插件怎么加、`LIANGXIANG_BACKEND_URL` 怎么写、不要把 web-app 装进 profile | 按文档在干净 profile 走通 |
+| 软门闩 | 可选 `LIANGXIANG_COMMUNITY_KEY`：Host 请求带共享密钥，错了 401。不是身份，只挡扫到端口的路人 | 无 key 的客户端进不了社区后端 |
 | Pi 配方 | 用现有 Pi 当第一节点：systemd、SQLite 路径、备份、`reset:staging` | 你本机 WebUI 连 Pi，第二台电脑也能连 |
 
 **C1 需要你明确点头的两件事（现在的禁令拦住了推广）：**
@@ -112,7 +112,7 @@ DSH Host（每台香客的本机进程）  ──HTTP──>  社区后端
 
 | 项 | 做什么 |
 |---|---|
-| 默认指向社区 | 社区构建把 `BACKEND_URL` 打进默认值；`LIANGBIAO_OFFLINE=1` 才退回本机演示 |
+| 默认指向社区 | 社区构建把 `BACKEND_URL` 打进默认值；`LIANGXIANG_OFFLINE=1` 才退回本机演示 |
 | 首次打开 | 三句说明：香火怎么来、夯/拉干什么、这是社区软信任 |
 | 运营改案 | VPS 本机 `node lib/backend-cli.js case publish "…"`：归档当前案并开新案（见 [`122`](122-identity-recovery.md)、[`121`](121-vps-deploy.md)） |
 | 健康页 | `GET /v1/public` 或现有 snapshot：梁位、梁子、香火、香客、业务日——给运营看，也可给落地页用 |
@@ -124,7 +124,7 @@ DSH Host（每台香客的本机进程）  ──HTTP──>  社区后端
 | 项 | 做什么 |
 |---|---|
 | 公网反代 | VPS + HTTPS，Host 只打 HTTPS |
-| 落地页 | 一句话产品 + 安装 + 今日梁向只读（可从健康页拉） |
+| 落地页 | 一句话产品 + 安装 + 今日梁相只读（可从健康页拉） |
 | Release 节奏 | 跟 DSH rc 钉版本，见 COMPATIBILITY |
 | 仍不做 | npm publish、排行榜、一人一票、把香客说成人数 |
 
@@ -149,7 +149,7 @@ DSH 以后若出现签名用量 / 可验证身份：重跑 Gate A，另开可信
 C1 身份 / 远端绑定 / 社区口令 / VPS 配方已经落地，见 [`121-vps-deploy.md`](121-vps-deploy.md)。
 
 1. 你申请 Linux VPS，按 121 装后端 + Caddy。
-2. 多台 DSH Host 指向同一 `LIANGBIAO_BACKEND_URL` + 同一 `LIANGBIAO_COMMUNITY_KEY` 做联调。
+2. 多台 DSH Host 指向同一 `LIANGXIANG_BACKEND_URL` + 同一 `LIANGXIANG_COMMUNITY_KEY` 做联调。
 3. 手感过了再 C2（默认 URL、首次说明、运营改案）。GitHub Release 仍等你点头。
 
 公网部署的是**社区软信任**，不是可信全网。`VERIFIED_PRODUCTION` 仍然启动即拒。

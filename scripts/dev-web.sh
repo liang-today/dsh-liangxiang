@@ -3,5 +3,5 @@
 # App args after the profile flag reach the web app's own command line.
 . "$(dirname "$0")/env.sh"
 
-PORT="${LIANGBIAO_DEV_PORT:-3080}"
+PORT="${LIANGXIANG_DEV_PORT:-3080}"
 exec pnpm exec dsh --profile "$PROFILE" --port "$PORT"
