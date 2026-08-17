@@ -90,6 +90,29 @@ describe('parseV1VoteEnvelope / parseV1VoteResponse', () => {
     expect(parsed.snapshot_version.sequence).toBe(2)
   })
 
+  it('remaps a stale server Liangzi label onto this binary\'s thresholds instead of 502', () => {
+    // Staging still on 20% bands painted 梁神 at ~45%; current policy is 梁工.
+    const body = completeVoteBody() as Record<string, unknown>
+    body.global_snapshot = {
+      ...SNAPSHOT,
+      up_votes: 45,
+      down_votes: 55,
+      total_incense: 100,
+      unique_voters: 3,
+      up_ratio: 0.45,
+      down_ratio: 0.55,
+      liangzi_state: 'liang_shen',
+      policy_version: 'liangzi-v0.1-20-40-60-80',
+      lifetime_incense: 100,
+      lifetime_voters: 3,
+    }
+    const parsed = parseV1VoteResponse(body)
+    expect(parsed.result.status).toBe('accepted')
+    expect(parsed.global_snapshot.up_votes).toBe(45)
+    expect(parsed.global_snapshot.up_ratio).toBe(0.45)
+    expect(parsed.global_snapshot.liangzi_state).toBe('liang_gong')
+  })
+
   it('an older accepted body without global_snapshot is an envelope, not a response', () => {
     const body = completeVoteBody() as Record<string, unknown>
     delete body.global_snapshot

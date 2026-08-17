@@ -422,9 +422,13 @@ export function parseV1PersonalState(raw: unknown, field = 'authoritative_person
 }
 
 /**
- * Validate a published snapshot. The derived view must agree with the raw
- * counts in the SAME payload, which is how a cross-process frame proves it did
- * not mix a stale ratio with a fresh Liangzi state (AGENTS.md §12).
+ * Validate a published snapshot. Ratios must match the raw counts in the SAME
+ * payload (AGENTS.md §12: never mix a stale ratio with a fresh Liangzi state).
+ * `liangzi_state` is then derived with *this* binary's threshold policy. A
+ * rolling deploy can leave the server on an older band table (e.g. 20% steps
+ * painting 梁神 at 45% while this client expects 梁工); rejecting that frame
+ * 502s an already-accepted vote and freezes 梁位. Counts stay authoritative;
+ * the label is recomputed locally.
  */
 export function parseV1Snapshot(
   raw: unknown,
@@ -464,12 +468,6 @@ export function parseV1Snapshot(
     }
   }
   const derived = deriveLiangziState(upVotes, downVotes, policy)
-  if (derived !== liangziState) {
-    throw new WireError(
-      `${field}.liangzi_state`,
-      `state ${liangziState} disagrees with the counts in the same snapshot (expected ${derived})`,
-    )
-  }
   return {
     case_id: requireString(record.case_id, `${field}.case_id`),
     business_date: requireBusinessDate(record.business_date, `${field}.business_date`),
@@ -479,7 +477,7 @@ export function parseV1Snapshot(
     unique_voters: uniqueVoters,
     up_ratio: upRatio,
     down_ratio: downRatio,
-    liangzi_state: liangziState as LiangziState,
+    liangzi_state: derived,
     captured_at: requireFinite(record.captured_at, `${field}.captured_at`),
     sequence: requireCount(record.sequence, `${field}.sequence`),
     policy_version: requireString(record.policy_version, `${field}.policy_version`),

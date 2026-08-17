@@ -42,7 +42,7 @@ DSH 的 `sessionProjections` / `sessions` 没注入（组合里缺插件，或�
 
 也可能是当天确实还没产生用量：`LIANGBIAO_TOKEN_PER_INCENSE=50000` 意味着要 5 万 Effective Token 才有第一炷；本地演示可以调小。
 
-## 投票报 502 / 「投票失败」
+## 打梁报 502 / 「打梁失败」
 
 Host 与后端之间的请求失败。**用同一个 `request_id` 重试是安全的**（幂等域是 `(installation_id, request_id)`，重放不会二次扣香）；换新 id 才会有二次扣香风险，客户端不会那样做。
 

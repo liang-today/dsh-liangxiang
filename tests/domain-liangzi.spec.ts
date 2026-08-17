@@ -70,7 +70,7 @@ describe('state bands and their displayed percentages', () => {
   })
 
   it('renders the band as user-facing copy', () => {
-    expect(liangziRatioRangeText('waiting')).toBe('尚无投票')
+    expect(liangziRatioRangeText('waiting')).toBe('尚无打梁')
     expect(liangziRatioRangeText('liang_gong')).toBe('夯率 < 50%')
     expect(liangziRatioRangeText('liang_sheng')).toBe('85% ≤ 夯率 < 95%')
     expect(liangziRatioRangeText('liang_zu')).toBe('夯率 ≥ 95%')

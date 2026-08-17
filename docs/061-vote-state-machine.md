@@ -8,7 +8,7 @@
 Client 点击
   └─ requestId = crypto.randomUUID()（一次意图一个 id，重试复用）
   └─ POST /vote {caseId, voteType, requestId}
-       网络失败 → 等 400ms → 同 requestId 重试一次 → 仍失败 → UI「投票失败」
+       网络失败 → 等 400ms → 同 requestId 重试一次 → 仍失败 → UI「打梁失败」
   └─ Host 边界：JSON ≤4KB、parseWireVoteRequest（voteType 严格 up/down、requestId 格式）
   └─ 服务事务（同步，无 await 间隙）：
        1. rotateToCurrentDate()（rollover 安全）

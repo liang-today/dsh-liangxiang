@@ -16,6 +16,7 @@ import {
   LOCAL_MODE_NOTE,
   NO_INCENSE_REASON,
   PANEL_TITLE_LOCAL,
+  STAGING_MODE_NOTE,
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
@@ -309,17 +310,19 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(afterSmall.label).not.toBe(beforeSmall.label)
     expect(afterSmall.title).toBe('600 当量')
 
-    // Typical 30K band: one-decimal K must tick (integer K froze 33,xxx as 33K).
+    // Typical 30K band: integer K so 当量 stays short (no overlap with 梁子).
+    // Title / aria still carry the exact count so a 300-当量 delta is not lost.
     const mid = createMockLiangbiaoStore({ effectiveTokensToday: 16_600, usedIncenseToday: 0 })
     expect(mid.getSnapshot().personal.tokensToNextIncense).toBe(33_400)
     const beforeMid = nextFlank(mid.getSnapshot())
-    expect(beforeMid.compact).toBe('33.4K')
+    expect(beforeMid.compact).toBe('33K')
+    expect(beforeMid.compact).not.toMatch(/≈|\./)
     expect(beforeMid.title).toBe('33,400 当量')
     mid.addEffectiveTokens(300)
     expect(mid.getSnapshot().personal.tokensToNextIncense).toBe(33_100)
     const afterMid = nextFlank(mid.getSnapshot())
-    expect(afterMid.compact).toBe('33.1K')
-    expect(afterMid.compact).not.toBe(beforeMid.compact)
+    expect(afterMid.compact).toBe('33K')
+    expect(afterMid.title).toBe('33,100 当量')
     expect(afterMid.label).toContain('33,100')
     expect(afterMid.label).not.toBe(beforeMid.label)
   })
@@ -476,6 +479,8 @@ describe('region 3: exactly two vote buttons', () => {
     expect(textContent(tree)).toContain(NO_INCENSE_REASON)
     expect(NO_INCENSE_REASON).toContain('打梁')
     expect(NO_INCENSE_REASON).not.toContain('投票')
+    expect(LOCAL_MODE_NOTE).not.toContain('投票')
+    expect(STAGING_MODE_NOTE).not.toContain('投票')
   })
 
   it('shows the transient 已上香 feedback line', () => {

@@ -495,7 +495,6 @@ export function Panel(props: PanelProps): ReactElement {
   // authoritative remaining incense / vote availability stay on `personal`.
   const displayFill = throttle?.fill ?? personal.liangQiFill
   const displayTokensToNext = throttle?.tokensToNext ?? personal.tokensToNextIncense
-  const displayEstimated = throttle?.isEstimated ?? false
   const offline = state.connection !== 'live'
   const outOfIncense = personal.remainingIncense <= 0
   const votingDisabled = outOfIncense || offline
@@ -757,8 +756,8 @@ export function Panel(props: PanelProps): ReactElement {
             <span data-liangbiao-compact="incense">{earnedCompact}</span>
             <span style={flankUnitStyle}> 炷</span>
           </span>
-          <span title={`可投 ${remainingExact} 炷`} style={flankUnitStyle}>
-            可投 {remainingCompact} 炷
+          <span title={`可打梁 ${remainingExact} 炷`} style={flankUnitStyle}>
+            可打梁 {remainingCompact} 炷
           </span>
         </div>
         <div
@@ -773,7 +772,7 @@ export function Panel(props: PanelProps): ReactElement {
               data-liangbiao-compact="next-incense"
               title={`${toNextExact} ${NEXT_INCENSE_UNIT}`}
             >
-              {displayEstimated ? '≈ ' : ''}{formatCompactCount(displayTokensToNext)}
+              {formatCompactCount(displayTokensToNext, 0)}
             </span>
             <span style={flankUnitStyle}> {NEXT_INCENSE_UNIT}</span>
           </span>

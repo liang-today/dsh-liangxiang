@@ -58,7 +58,7 @@ export const MY_INCENSE_LABEL = '今日香火'
 /** Caption of the personal "tokens to the next incense stick" flank. */
 export const NEXT_INCENSE_LABEL = '下一炷'
 
-/** Third-row caption under 下一炷, mirroring 可投 N 炷 on the left. */
+/** Third-row caption under 下一炷, mirroring 可打梁 N 炷 on the left. */
 export const NEXT_INCENSE_PROGRESS_LABEL = '已攒'
 
 /** Visible unit under 下一炷: Pro-equivalent tokens, not raw Flash tokens. */
@@ -80,7 +80,7 @@ export const STAT_TODAY_LABEL = '今日'
 export const STAT_LIFETIME_LABEL = '累计'
 
 /** Honest soft-trust note for the LOCAL_FAKE_DEV authority mode (AGENTS.md §16). */
-export const LOCAL_MODE_NOTE = '本地演示模式：香火与投票均在本机，不代表可信全网结果'
+export const LOCAL_MODE_NOTE = '本地演示模式：香火与打梁均在本机，不代表可信全网结果'
 
 /**
  * Honest community soft-trust note for DEV_STAGING_ONLY: the backend really
@@ -88,7 +88,7 @@ export const LOCAL_MODE_NOTE = '本地演示模式：香火与投票均在本机
  * authenticate a DSH user nor verify the Token usage behind the incense.
  * Ed25519 installation keys only prove "same Host still holds this private key".
  */
-export const STAGING_MODE_NOTE = '社区软信任：投票由梁标服务端记账；身份是本机安装密钥，Token 用量由本机声明、服务端无法核验。不是可信全网公投。'
+export const STAGING_MODE_NOTE = '社区软信任：打梁由梁标服务端记账；身份是本机安装密钥，Token 用量由本机声明、服务端无法核验。不是可信全网公投。'
 
 /** The note that must accompany each authority mode. */
 export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {
@@ -154,7 +154,7 @@ export function liangziRatioRangeText(
   policy: LiangziThresholdPolicy = DEFAULT_LIANGZI_THRESHOLDS,
 ): string {
   const { minInclusive, maxExclusive } = liangziUpRatioBand(state, policy)
-  if (minInclusive === null && maxExclusive === null) return '尚无投票'
+  if (minInclusive === null && maxExclusive === null) return '尚无打梁'
   if (minInclusive === null) return `夯率 < ${percentText(maxExclusive as number)}`
   if (maxExclusive === null) return `夯率 ≥ ${percentText(minInclusive)}`
   return `${percentText(minInclusive)} ≤ 夯率 < ${percentText(maxExclusive)}`

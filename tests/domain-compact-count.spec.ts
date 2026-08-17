@@ -54,6 +54,15 @@ describe('formatCompactCount', () => {
     expect(formatCompactCount(1_000_000_000)).toBe('1B')
   })
 
+  it('integer 当量 compact has no decimal (narrow flank next to 梁子)', () => {
+    expect(formatCompactCount(33_421, 0)).toBe('33K')
+    expect(formatCompactCount(33_100, 0)).toBe('33K')
+    expect(formatCompactCount(46_935, 0)).toBe('47K')
+    expect(formatCompactCount(1_499, 0)).toBe('1K')
+    expect(formatCompactCount(1_500, 0)).toBe('2K')
+    expect(formatCompactCount(50_000, 0)).toBe('50K')
+  })
+
   it('keeps every compact form short enough for the 48px flanks', () => {
     const samples = [
       0, 9, 10, 999, 1_000, 1_499, 9_950, 33_421, 46_935, 50_000, 999_950, 1_500_000, 12_000_000, 1_000_000_000,
