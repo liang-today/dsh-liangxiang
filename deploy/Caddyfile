@@ -18,7 +18,9 @@ api.liang.today, hk-api.liang.today {
 	}
 
 	reverse_proxy 127.0.0.1:4180 {
-		dial_timeout 3s
-		response_header_timeout 10s
+		transport http {
+			dial_timeout 3s
+			response_header_timeout 10s
+		}
 	}
 }
