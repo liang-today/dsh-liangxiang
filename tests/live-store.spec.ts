@@ -69,6 +69,9 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
           const cursor = Number(new URL(path, 'http://local').searchParams.get('after_version'))
           return Promise.resolve(JSON.parse(JSON.stringify(service.history(cursor))) as unknown)
         }
+        if (path === '/liangbiao/api/local/enter') {
+          return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
+        }
         if (path === '/liangbiao/api/vote') {
           const intent = JSON.parse(init?.body ?? '{}') as { caseId: string, voteType: 'up' | 'down', requestId: string }
           const outcome = service.vote(intent)

@@ -133,6 +133,9 @@ export const WELCOME_LINES = [
   '花一炷香投「夯」或「拉」，共同决定今日梁子。',
   '这是社区软信任，不是加密验证的公投。',
 ]
+export const WELCOME_ONLINE_LABEL = '进入在线'
+export const WELCOME_LOCAL_LABEL = '改用本地'
+export const WELCOME_PRIVACY_NOTE = '在线模式不收集对话、代码、文件或账号。社区账本只用本机生成的随机安装 ID 区分不同香客，无法识别你是谁。'
 export const WELCOME_DISMISS = '知道了'
 
 /**

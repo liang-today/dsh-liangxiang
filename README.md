@@ -21,8 +21,8 @@
 
 | 模式 | 触发 | 权威 | 适用 |
 |---|---|---|---|
-| `LOCAL_FAKE_DEV` | 不设 `LIANGBIAO_BACKEND_URL` | Host 进程内(`FakeAuthoritativeLiangService`) | 单机演示 |
-| `DEV_STAGING_ONLY` | 设 `LIANGBIAO_BACKEND_URL` | 独立 Liangbiao 后端 + SQLite(`/v1/*`) | 本地/团队内 staging |
+| `LOCAL_FAKE_DEV` | `LIANGBIAO_BACKEND_URL=local`，或首次欢迎页选「改用本地」 | Host 进程内(`FakeAuthoritativeLiangService`) | 单机演示 |
+| `DEV_STAGING_ONLY` | 默认（烘焙社区 URL）；也可显式设 `LIANGBIAO_BACKEND_URL` | 独立 Liangbiao 后端 + SQLite(`/v1/*`) | 社区软信任 |
 
 在线链路:DSH Host 观测真实 provider-reported 用量(`tokenUsage` 投影,水位差分防重)→ 作为**声明**上报 `POST /v1/token-claims` → 后端在 DB 事务里原子扣香、幂等去重、更新聚合 → 按 cadence 发布 `public_liang_snapshot` → Host 经 `/liangbiao/api`(state/SSE/vote)推给浏览器。梁祠另走低频 `/v1/history` → `/liangbiao/api/history` 冷通道：首次全量、归档版本变化后仅取增量，秒级 SSE 不重复携带历史数组。
 
