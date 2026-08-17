@@ -103,6 +103,13 @@ export LIANGBIAO_COMMUNITY_KEY=<与服务器同一把>
 
 ## 6. 备份与重置
 
+正常 staging 发布必须使用 `scripts/deploy.sh`：脚本在重启/迁移前通过
+`node:sqlite backup()` 将包含 WAL 状态的一致性备份写入
+`/var/backups/liangbiao/`，通过 health 与 history smoke 后才更新 `VERSION`。
+不要在服务运行时只复制主 `.sqlite` 文件。
+
+手工停机备份仅用于恢复演练：
+
 ```bash
 sudo systemctl stop liangbiao-backend
 sudo cp /var/lib/liangbiao/data/liangbiao.sqlite /var/backups/liangbiao-$(date +%F).sqlite

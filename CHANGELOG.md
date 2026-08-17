@@ -26,6 +26,7 @@
 
 - 新增归档领域、wire、数据库/HTTP/Host/client 集成测试；真实日期校验拒绝不存在的 Gregorian 日期。
 - 包版本与界面长按显示同步为 `0.4.0`。GitHub Pages 仍不进入本阶段范围。
+- staging 部署在迁移前使用 SQLite 在线 backup 保存含 WAL 的一致快照；远端构建、服务重启、health/history smoke 全部成功后才更新 `VERSION`，避免失败发布伪装成新版本。
 
 ## 0.3.0 — 2026-08-17
 
