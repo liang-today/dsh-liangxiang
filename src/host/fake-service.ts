@@ -38,6 +38,7 @@ import type { LiangbiaoWireState, WireGlobalCounts, WireVoteRequest } from '../s
 import { WIRE_SCHEMA_VERSION } from '../shared/wire.ts'
 import { createBusinessDateProvider, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import { DEV_CREDIT_SESSION_ID } from './dev-credit.ts'
+import { localCaseId, LOCAL_CASE_TITLES, nextLocalCaseIndex } from './local-cases.ts'
 import {
   creditObservedUsage,
   EMPTY_DAILY_USAGE,
@@ -117,6 +118,7 @@ export class FakeAuthoritativeLiangService {
 
   private published!: WireGlobalCounts
   private snapshotSequence = 0
+  private localCaseIndex = 0
 
   private revision = 0
   private accountingAvailable = false
@@ -342,6 +344,16 @@ export class FakeAuthoritativeLiangService {
     )
   }
 
+  /** Cycle the prepared local 今日梁案 list. Each title keeps its own aggregate. */
+  cycleLocalCase(): void {
+    this.rotateToCurrentDate()
+    this.aggregates.set(this.activeCase.id, this.aggregate)
+    this.persistence?.putAggregate(this.activeCase.id, this.aggregate)
+    this.localCaseIndex = nextLocalCaseIndex(this.localCaseIndex)
+    this.openLocalCase()
+    this.publishSnapshot()
+  }
+
   getWireState(): LiangbiaoWireState {
     this.rotateToCurrentDate()
     const usage = this.dailyUsage.get(this.currentDate) ?? EMPTY_DAILY_USAGE
@@ -389,16 +401,8 @@ export class FakeAuthoritativeLiangService {
     const date = this.dates.businessDateOf(this.clock.now())
     if (date === this.currentDate) return
     this.currentDate = date
-    this.activeCase = {
-      id: `local-${date}`,
-      businessDate: date,
-      title: this.config.caseTitle,
-      status: 'active',
-      createdAt: this.clock.now(),
-      tokenPerIncense: this.config.tokenPerIncense,
-    }
-    this.aggregate = this.aggregates.get(this.activeCase.id)
-      ?? (this.config.seed === 'demo' ? DEMO_SEED : EMPTY_GLOBAL_AGGREGATE)
+    this.localCaseIndex = 0
+    this.openLocalCase()
     this.usedIncenseToday = this.ledgers.get(date)?.usedIncense ?? 0
     // Hydration guard: a ledger without its usage record would violate
     // used <= earned. Clamp loudly rather than dying or inventing tokens.
@@ -420,6 +424,20 @@ export class FakeAuthoritativeLiangService {
       }
     }
     this.publishSnapshot()
+  }
+
+  private openLocalCase(): void {
+    const title = LOCAL_CASE_TITLES[this.localCaseIndex] ?? this.config.caseTitle
+    this.activeCase = {
+      id: localCaseId(this.currentDate, this.localCaseIndex),
+      businessDate: this.currentDate,
+      title,
+      status: 'active',
+      createdAt: this.clock.now(),
+      tokenPerIncense: this.config.tokenPerIncense,
+    }
+    this.aggregate = this.aggregates.get(this.activeCase.id)
+      ?? (this.config.seed === 'demo' && this.localCaseIndex === 0 ? DEMO_SEED : EMPTY_GLOBAL_AGGREGATE)
   }
 
   /** Capture the raw aggregate into a new published snapshot (one sequence). */

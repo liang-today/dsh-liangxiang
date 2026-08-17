@@ -39,6 +39,7 @@
     "dev:credit": "bash scripts/dev-credit.sh",
     "backend:start": "node lib/backend.js",
     "backend:dev": "pnpm run build && node lib/backend.js",
+    "backend:ops": "node lib/backend-cli.js",
     "smoke:clean-profile": "bash scripts/smoke-clean-profile.sh",
     "smoke:online": "bash scripts/smoke-online.sh",
     "reset:staging": "bash scripts/reset-staging.sh",

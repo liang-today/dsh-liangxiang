@@ -39,9 +39,12 @@ export interface LiangziThresholdPolicy {
   readonly boundaries: readonly [number, number, number, number]
 }
 
-/** Frozen thresholds: five equal 20% bands from 0% to 100%. */
+/**
+ * Frozen thresholds: the lower half is 梁工; the upper half gets harder
+ * toward 梁祖 (50 / 70 / 85 / 95).
+ */
 export const DEFAULT_LIANGZI_THRESHOLDS: LiangziThresholdPolicy = {
-  boundaries: [0.2, 0.4, 0.6, 0.8],
+  boundaries: [0.5, 0.7, 0.85, 0.95],
 }
 
 /** Validate a threshold policy: four finite, strictly ascending values in (0,1). */

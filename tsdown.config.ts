@@ -50,7 +50,7 @@ export default defineConfig([
     // Standalone localhost backend process (node:http + node:sqlite). NOT part
     // of the installable DSH bundle: the plugin talks to it over HTTP.
     name: `${PACKAGE_ID}/backend`,
-    entry: { backend: 'src/backend/main.ts' },
+    entry: { backend: 'src/backend/main.ts', 'backend-cli': 'src/backend/cli.ts' },
     outDir: 'lib',
     format: ['esm'],
     platform: 'node',

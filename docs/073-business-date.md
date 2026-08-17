@@ -28,7 +28,7 @@
 
 ## 同日运营发布（TEMP）
 
-`POST /v1/admin/cases`（社区口令）会：
+VPS 本机 CLI `node lib/backend-cli.js case publish "…"` 会：
 
 1. 把今日 active 案 `closed`（旧票/统计/快照留在旧 `case_id`）；
 2. 开新 id + 零票快照（待开梁 / `--`）；

@@ -37,6 +37,7 @@ describe('host half wiring', () => {
   })
 
   it('installs lifecycle + timers as effects and requests the DSH seams via inject', () => {
+    vi.stubEnv('LIANGBIAO_BACKEND_URL', 'local')
     vi.useFakeTimers()
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
     const { ctx, disposers, injectedDeps } = fakeHostContext()
@@ -55,6 +56,7 @@ describe('host half wiring', () => {
     expect(log).toHaveBeenCalledWith('[dsh-liangbiao] host half disposed')
     expect(vi.getTimerCount()).toBe(0)
     log.mockRestore()
+    vi.unstubAllEnvs()
     vi.useRealTimers()
   })
 })

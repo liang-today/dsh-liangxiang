@@ -132,15 +132,12 @@ sudo journalctl -u liangbiao-backend -f
 
 暂时**不**限制一日一案：发布会归档当前 active 案、开新案、全网票从零开始（待开梁），并清掉当日 `used_incense`（Token 声明保留，香火还能投新案）。旧票留在旧 `case_id` 上，不整库 wipe。
 
-在 **VPS 本机**（走回环，社区口令不出网）：
+在 **VPS 本机**（直接写 SQLite，不开运营 HTTP 口）：
 
 ```bash
 set -a; source /etc/liangbiao.env; set +a
-curl -fsS -X POST "http://127.0.0.1:${LIANGBIAO_BACKEND_PORT}/v1/admin/cases" \
-  -H "content-type: application/json" \
-  -H "x-liangbiao-community-key: $LIANGBIAO_COMMUNITY_KEY" \
-  -d '{"title":"测试发布：梁标是夯还是拉"}'
-echo
+cd /opt/liangbiao   # 或仓库目录
+node lib/backend-cli.js case publish "测试发布：梁标是夯还是拉"
 ```
 
 成功响应里会有新的 `active_case.id`（形如 `case-YYYY-MM-DD-<hex>`）和零票 `global_snapshot`。journal 一行 `publish archived=… opened=…`。
@@ -152,7 +149,7 @@ echo
 
 没有单独的「每分钟查梁案」轮询。
 
-仓库脚本（本机 `.env` 已有 `LIANGBIAO_BACKEND_URL` + `LIANGBIAO_COMMUNITY_KEY` 时）：
+仓库脚本必须在持有 sqlite 的那台机器上跑（不再远程 curl）：
 
 ```bash
 pnpm run publish:case -- "测试发布：梁标是夯还是拉"

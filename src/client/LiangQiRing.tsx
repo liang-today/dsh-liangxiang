@@ -200,6 +200,21 @@ export function LiangQiRing({
       </div>
       {places.overflow > 0 && (
         <span
+          data-liangbiao-overflow-aura=""
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: '18px',
+            borderRadius: '50%',
+            pointerEvents: 'none',
+            background: 'radial-gradient(circle, rgba(243, 193, 82, 0.45) 0%, rgba(216, 135, 58, 0.18) 55%, transparent 70%)',
+            animation: reducedMotion ? undefined : 'liangbiao-overflow-glow 2.4s ease-in-out infinite',
+            boxShadow: '0 0 16px 8px rgba(216, 135, 58, 0.55), 0 0 32px 14px rgba(243, 193, 82, 0.35)',
+          }}
+        />
+      )}
+      {places.overflow > 0 && (
+        <span
           data-liangbiao-incense-overflow=""
           title={`${personal.remainingIncense.toLocaleString('zh-CN')} 炷`}
           style={{
@@ -207,14 +222,18 @@ export function LiangQiRing({
             top: '2px',
             left: '50%',
             transform: 'translateX(-50%)',
-            padding: '0 5px',
+            padding: '1px 7px',
             borderRadius: '999px',
             background: color.warn,
             color: '#ffffff',
             fontFamily: font.family,
-            fontSize: '10px',
+            fontSize: '11px',
             fontWeight: 700,
-            lineHeight: '16px',
+            lineHeight: '18px',
+            letterSpacing: '0.02em',
+            boxShadow: '0 0 10px 3px rgba(216, 135, 58, 0.85), 0 0 18px 6px rgba(243, 193, 82, 0.45)',
+            animation: reducedMotion ? undefined : 'liangbiao-overflow-glow 2.4s ease-in-out infinite',
+            zIndex: 1,
           }}
         >
           {formatCompactCount(places.overflow)}炷

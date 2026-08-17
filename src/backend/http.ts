@@ -7,7 +7,11 @@
  *   GET  /v1/snapshot        the published global snapshot
  *   GET  /v1/me/daily-state  cheap personal refresh
  *   GET  /v1/health          liveness + authority mode
- *   POST /v1/admin/cases     operator publish (community key; no installation)
+ *   POST /v1/identity/rekey  self-serve fingerprint takeover (rate-limited)
+ *   POST /v1/identity/revoke self-serve delete-own-key (rate-limited)
+ *
+ * Operator 梁案 / unbind are CLI-only (`node lib/backend-cli.js`). They are
+ * not on this HTTP surface — the VPS does not need an operator port.
  *
  * Boundary rules: every body is size-bounded and schema-validated, signed
  * community identity is required unless `allowUnsigned` is on (localhost
@@ -28,13 +32,13 @@ import {
   SIGNATURE_HEADER,
   TIMESTAMP_HEADER,
   parseInstallationId,
-  parseV1PublishCaseRequest,
   parseV1TokenClaimRequest,
   parseV1VoteRequest,
   type V1ErrorBody,
   type V1ErrorCode,
 } from '../shared/backend-v1.ts'
 import { authenticateCommunityRequest, CommunityAuthError } from './community-auth.ts'
+import { IdentityRateLimiter, type IdentityRateKind } from './identity-rate-limit.ts'
 import type { LiangbiaoBackendService } from './service.ts'
 import type { BackendStore } from './store.ts'
 
@@ -147,6 +151,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
   const log = options.log ?? ((message: string) => console.log(message))
   /** installation -> timestamps of recent vote attempts (bounded window). */
   const voteWindows = new Map<string, number[]>()
+  const identityLimiter = new IdentityRateLimiter()
 
   /**
    * Drop windows that can no longer rate-limit anything. Without this the map
@@ -253,6 +258,48 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     return { installationId, publicKey, deviceFingerprint }
   }
 
+  const identityKind = (
+    publicKey: string,
+    installationId: string,
+    fingerprint: string | null,
+  ): IdentityRateKind => {
+    if (store.identityByInstallation(installationId) !== undefined) return 'hit'
+    if (store.identityByPublicKey(publicKey) !== undefined) return 'hit'
+    if (fingerprint !== null && fingerprint !== '' && store.identityByFingerprint(fingerprint) !== undefined) {
+      return 'hit'
+    }
+    return 'miss'
+  }
+
+  const gateIdentityMutation = (
+    req: IncomingMessage,
+    res: ServerResponse,
+    publicKey: string,
+    installationId: string,
+    fingerprint: string | null,
+    action: string,
+  ): boolean => {
+    const ip = peerAddress(req)
+    const kind = identityKind(publicKey, installationId, fingerprint)
+    const decision = identityLimiter.check(Date.now(), ip, installationId, kind)
+    const whoLabel = `${installShort(installationId)} ip=${ip} kind=${kind}`
+    if (!decision.allowed) {
+      const seconds = Math.ceil(decision.retryAfterMs / 1000)
+      log(`[liangbiao-backend] ${action} rate-limited ${whoLabel} retry=${seconds}s`)
+      writeError(
+        res,
+        429,
+        'identity_rate_limited',
+        kind === 'miss'
+          ? `unrecognized key; wait ${seconds}s before retrying`
+          : `identity update already used; wait ${seconds}s`,
+      )
+      return false
+    }
+    log(`[liangbiao-backend] ${action} allowed ${whoLabel}`)
+    return true
+  }
+
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://liangbiao.backend')
     const path = url.pathname
@@ -264,10 +311,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       [`${BACKEND_API_PREFIX}/me/daily-state`]: 'GET',
       [`${BACKEND_API_PREFIX}/token-claims`]: 'POST',
       [`${BACKEND_API_PREFIX}/votes`]: 'POST',
-      [`${BACKEND_API_PREFIX}/admin/cases`]: 'POST',
-      [`${BACKEND_API_PREFIX}/admin/queue`]: 'GET,POST',
       [`${BACKEND_API_PREFIX}/identity/rekey`]: 'POST',
-      [`${BACKEND_API_PREFIX}/admin/identity/unbind`]: 'POST',
+      [`${BACKEND_API_PREFIX}/identity/revoke`]: 'POST',
     }
     const expected = routes[path]
     if (expected === undefined) {
@@ -310,93 +355,12 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       }
     }
 
-    if (path === `${BACKEND_API_PREFIX}/admin/queue`) {
-      if (communityKey === null) {
-        writeError(res, 401, 'invalid_signature', 'the case queue requires LIANGBIAO_COMMUNITY_KEY')
-        return
-      }
-      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
-        writeError(res, 401, 'invalid_signature', 'community key required')
-        return
-      }
-      try {
-        if (method === 'GET') {
-          writeJson(res, 200, { items: service.listQueue() })
-          return
-        }
-        const body = rawBody === '' ? {} : (JSON.parse(rawBody) as unknown)
-        const record = body as Record<string, unknown>
-        const title = typeof record.title === 'string' ? record.title : ''
-        const publishOn = record.publish_on === undefined || record.publish_on === null
-          ? null
-          : String(record.publish_on)
-        const queued = service.enqueueCase(title, publishOn)
-        writeJson(res, 200, queued)
-        log(`[liangbiao-backend] queue id=${queued.id} on=${queued.publish_on ?? 'fifo'} ip=${peerAddress(req)}`)
-      } catch (error) {
-        writeValidationError(res, error)
-      }
-      return
-    }
-
-    if (path === `${BACKEND_API_PREFIX}/admin/cases`) {
-      if (communityKey === null) {
-        writeError(res, 401, 'invalid_signature', 'publishing a case requires LIANGBIAO_COMMUNITY_KEY')
-        return
-      }
-      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
-        writeError(res, 401, 'invalid_signature', 'community key required')
-        if (presented !== undefined) {
-          log(`[liangbiao-backend] deny 401 invalid_signature ip=${peerAddress(req)} POST /v1/admin/cases`)
-        }
-        return
-      }
-      try {
-        const body = rawBody === '' ? {} : (JSON.parse(rawBody) as unknown)
-        const intent = parseV1PublishCaseRequest(body)
-        const published = service.publishCase(intent.title)
-        writeJson(res, 200, published)
-        const title = published.active_case.title.length <= 40
-          ? published.active_case.title
-          : `${published.active_case.title.slice(0, 40)}…`
-        log(
-          `[liangbiao-backend] publish archived=${published.archived_case?.id ?? '-'} `
-          + `opened=${published.active_case.id} title=${title} ip=${peerAddress(req)}`,
-        )
-      } catch (error) {
-        writeValidationError(res, error)
-      }
-      return
-    }
-
-    if (path === `${BACKEND_API_PREFIX}/admin/identity/unbind`) {
-      if (communityKey === null) {
-        writeError(res, 401, 'invalid_signature', 'unbinding an identity requires LIANGBIAO_COMMUNITY_KEY')
-        return
-      }
-      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
-        writeError(res, 401, 'invalid_signature', 'community key required')
-        return
-      }
-      try {
-        const body = rawBody === '' ? {} : (JSON.parse(rawBody) as unknown)
-        const record = body as Record<string, unknown>
-        const installationId = parseInstallationId(record.installation_id)
-        const response = service.unbindIdentity(installationId)
-        writeJson(res, 200, response)
-        log(`[liangbiao-backend] unbind ${installShort(installationId)} ip=${peerAddress(req)}`)
-      } catch (error) {
-        writeValidationError(res, error)
-      }
-      return
-    }
-
     if (path === `${BACKEND_API_PREFIX}/identity/rekey`) {
       try {
         const { installationId, publicKey, deviceFingerprint } = authenticateRekey(req, method, path, rawBody)
+        if (!gateIdentityMutation(req, res, publicKey, installationId, deviceFingerprint, 'rekey')) {
+          return
+        }
         const response = service.rekeyIdentity(installationId, publicKey, deviceFingerprint)
         writeJson(res, 200, response)
         if (response.rekeyed) {
@@ -405,6 +369,54 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
             + `-> ${installShort(installationId)} ip=${peerAddress(req)}`,
           )
         }
+      } catch (error) {
+        if (error instanceof CommunityAuthError) {
+          writeError(res, error.httpStatus, error.code, error.message)
+          return
+        }
+        writeValidationError(res, error)
+      }
+      return
+    }
+
+    if (path === `${BACKEND_API_PREFIX}/identity/revoke`) {
+      try {
+        const publicKey = headerValue(req, PUBLIC_KEY_HEADER)
+        const signature = headerValue(req, SIGNATURE_HEADER)
+        const timestamp = headerValue(req, TIMESTAMP_HEADER)
+        if (publicKey === undefined || signature === undefined || timestamp === undefined) {
+          throw new CommunityAuthError(401, 'invalid_signature', 'signed identity headers required')
+        }
+        if (communityKey !== null) {
+          const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+          if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
+            throw new CommunityAuthError(401, 'invalid_signature', 'community key required')
+          }
+        }
+        const installationId = parseInstallationId(headerValue(req, INSTALLATION_HEADER))
+        const device = headerValue(req, DEVICE_HEADER) ?? null
+        authenticateCommunityRequest({
+          store,
+          method,
+          path,
+          body: rawBody,
+          installationId,
+          publicKey,
+          signature,
+          timestamp,
+          deviceFingerprint: device,
+          now: Date.now(),
+          skipFingerprintEnforcement: true,
+        })
+        if (!gateIdentityMutation(req, res, publicKey, installationId, device, 'revoke')) {
+          return
+        }
+        const response = service.revokeIdentity(installationId)
+        writeJson(res, 200, response)
+        log(
+          `[liangbiao-backend] revoke ${installShort(installationId)} `
+          + `unbound=${String(response.unbound)} ip=${peerAddress(req)}`,
+        )
       } catch (error) {
         if (error instanceof CommunityAuthError) {
           writeError(res, error.httpStatus, error.code, error.message)
@@ -542,7 +554,10 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
   return {
     handler,
     server,
-    reset: () => voteWindows.clear(),
+    reset: () => {
+      voteWindows.clear()
+      identityLimiter.reset()
+    },
   }
 }
 

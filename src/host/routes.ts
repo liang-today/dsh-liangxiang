@@ -6,6 +6,7 @@
  *   POST /liangbiao/api/vote       minimal vote intent -> result + fresh state
  *   POST /liangbiao/api/refresh    force host re-read (hover / panel open)
  *   POST /liangbiao/api/reconcile  drop local Token observation, re-read incense
+ *   POST /liangbiao/api/local/cycle-case  LOCAL_FAKE_DEV only: next prepared 梁案
  *   POST /liangbiao/api/dev/credit LOCAL_FAKE_DEV only: simulate Token credit
  *
  * The handler validates every request body at the boundary, bounds body
@@ -188,6 +189,7 @@ export function createLiangbiaoApi(
       '/liangbiao/api/vote': 'POST',
       '/liangbiao/api/refresh': 'POST',
       '/liangbiao/api/reconcile': 'POST',
+      '/liangbiao/api/local/cycle-case': 'POST',
       '/liangbiao/api/dev/credit': 'POST',
     }
     const expected = methods[pathname]
@@ -214,6 +216,16 @@ export function createLiangbiaoApi(
     }
     if (pathname === '/liangbiao/api/reconcile') {
       await service.reconcileNow?.()
+      writeJson(res, 200, service.getWireState())
+      return
+    }
+    if (pathname === '/liangbiao/api/local/cycle-case') {
+      const cycle = service.cycleLocalCase
+      if (cycle === undefined) {
+        writeJson(res, 404, { error: 'local case cycling is not available on this host' })
+        return
+      }
+      cycle()
       writeJson(res, 200, service.getWireState())
       return
     }

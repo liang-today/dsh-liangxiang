@@ -127,6 +127,7 @@ export interface BackendStore {
   /** Drop all but the newest `keep` snapshots of one case; returns rows deleted. */
   pruneSnapshots: (caseId: string, keep: number) => number
   identityByInstallation: (installationId: string) => CommunityIdentityRow | undefined
+  identityByPublicKey: (publicKey: string) => CommunityIdentityRow | undefined
   identityByFingerprint: (fingerprint: string) => CommunityIdentityRow | undefined
   /**
    * Insert or refresh last_seen. Throws SQLITE unique on a fingerprint already
@@ -310,6 +311,9 @@ export function openBackendStore(databasePath: string): BackendStore {
   const selectIdentity = db.prepare(
     'SELECT * FROM community_identity WHERE installation_id = ?',
   )
+  const selectIdentityByPublicKey = db.prepare(
+    'SELECT * FROM community_identity WHERE public_key = ?',
+  )
   const selectIdentityByFingerprint = db.prepare(
     'SELECT * FROM community_identity WHERE device_fingerprint = ?',
   )
@@ -409,6 +413,8 @@ export function openBackendStore(databasePath: string): BackendStore {
     pruneSnapshots: (caseId, keep) => changed(pruneSnapshotsStmt.run(caseId, keep, caseId)),
     identityByInstallation: (installationId) =>
       selectIdentity.get(installationId) as CommunityIdentityRow | undefined,
+    identityByPublicKey: (publicKey) =>
+      selectIdentityByPublicKey.get(publicKey) as CommunityIdentityRow | undefined,
     identityByFingerprint: (fingerprint) =>
       selectIdentityByFingerprint.get(fingerprint) as CommunityIdentityRow | undefined,
     upsertIdentity(row) {

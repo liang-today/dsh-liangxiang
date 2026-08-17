@@ -110,7 +110,7 @@ describe('live store', () => {
     await settled()
     const state = store.getSnapshot()
     expect(state.connection).toBe('live')
-    expect(state.snapshot.liangziState).toBe('liang_zu')
+    expect(state.snapshot.liangziState).toBe('liang_shen')
     expect(state.personal.remainingIncense).toBe(7)
     expect(controls.streamsOpened).toBe(1)
     store.dispose()

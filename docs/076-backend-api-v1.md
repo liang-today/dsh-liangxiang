@@ -5,8 +5,8 @@
 
 ## 通用
 
-- 错误体：`{ "error": { "code", "message", "field?" } }`，`code ∈ invalid_request | missing_installation | invalid_signature | device_conflict | unknown_route | method_not_allowed | stale_case | case_not_active | idempotency_conflict | insufficient_incense | not_ready | internal_error`。
-- 鉴权（`/health` 与 `/snapshot` 除外；`POST /v1/admin/cases` 只验社区口令、不验 installation）：
+- 错误体：`{ "error": { "code", "message", "field?" } }`，含 `identity_rate_limited`、`rekey_cooldown`、`device_conflict` 等（见 `V1_ERROR_CODES`）。
+- 鉴权（`/health` 与 `/snapshot` 除外）：
   - 默认要求 Ed25519 签名头：`x-liangbiao-installation`、`x-liangbiao-public-key`、`x-liangbiao-signature`、`x-liangbiao-timestamp`；可选 `x-liangbiao-device`（MAC 集合哈希）。
   - 若服务器设了 `LIANGBIAO_COMMUNITY_KEY`，还要带 `x-liangbiao-community-key`。
   - `LIANGBIAO_ALLOW_UNSIGNED=1` 才接受旧的「只有 installation 头」请求，仅供 localhost smoke。
@@ -31,7 +31,7 @@
   "business_timezone": "Asia/Shanghai",
   "snapshot_refresh_seconds": 300,
   "token_policy": { "token_per_incense": 50000, "effective_token_formula": "input_plus_output" },
-  "liangzi_policy": { "version": "liangzi-v0.1-20-40-60-80", "boundaries": [0.2, 0.4, 0.6, 0.8] },
+  "liangzi_policy": { "version": "liangzi-v0.1-50-70-85-95", "boundaries": [0.5, 0.7, 0.85, 0.95] },
   "active_case": { "id": "case-2026-08-16", "business_date": "…", "title": "…", "status": "active",
                    "created_at": 0, "token_per_incense": 50000, "liangzi_policy_version": "…" },
   "authoritative_personal_state": {
@@ -47,7 +47,7 @@
     "case_id": "case-2026-08-16", "business_date": "2026-08-16",
     "up_votes": 1, "down_votes": 1, "total_incense": 2, "unique_voters": 1,
     "up_ratio": 0.5, "down_ratio": 0.5, "liangzi_state": "liang_gong",
-    "captured_at": 0, "sequence": 3, "policy_version": "liangzi-v0.1-20-40-60-80"
+    "captured_at": 0, "sequence": 3, "policy_version": "liangzi-v0.1-50-70-85-95"
   }
 }
 ```
@@ -104,34 +104,15 @@
 
 需要身份。便宜的个人状态刷新：`{ schema_version, business_date, server_time, active_case, authoritative_personal_state }`。
 
-## POST /v1/admin/cases
+## 运营梁案（CLI only，无 HTTP）
 
-运营发布新梁案。**不要**带 installation 签名；只验 `x-liangbiao-community-key`（服务器未配置该口令则 401，发布口关闭）。
+运营发布不走 HTTP。在放 SQLite 的 VPS 上：
 
-```jsonc
-// 请求
-{ "title": "测试发布：梁标是夯还是拉" }
-// 响应 200
-{
-  "schema_version": 1,
-  "business_date": "2026-08-16",
-  "server_time": 0,
-  "archived_case": { "id": "case-2026-08-16", "status": "closed", "title": "…", /* … */ },
-  "active_case": { "id": "case-2026-08-16-a1b2c3d4", "status": "active", "title": "测试发布：梁标是夯还是拉", /* … */ },
-  "global_snapshot": { "case_id": "case-2026-08-16-a1b2c3d4", "sequence": 1, "up_votes": 0, "down_votes": 0,
-                       "total_incense": 0, "up_ratio": null, "down_ratio": null, "liangzi_state": "waiting", /* … */ }
-}
+```bash
+node lib/backend-cli.js case publish "测试发布：梁标是夯还是拉"
 ```
 
-语义（TEMP：同日可多次发布；任意时刻仍只有一个 active）：
-
-1. 当前 active → `closed`（旧票 / stats / snapshot 留在旧 `case_id`）；
-2. 新 id `case-YYYY-MM-DD-<8 hex>` + 零票 `sequence=1` 快照；
-3. 当日所有 installation 的 `used_incense` 清零，**claimed Token 保留**，剩余香火可投新案。
-
-标题 1–120 字符，去首尾空白，禁止控制字符。缺/错社区口令 → 401 `invalid_signature`。VPS 上的 curl 见 [`121`](121-vps-deploy.md)。
-
-香客发现新案走现有 **1s `GET /v1/snapshot`**：响应已含 `active_case`；Host 见 `id` 变化就 re-bootstrap。这是 Host 拉公共快照，不是 VPS 往 Host 推 WebSocket。悬停/打开面板可额外 force refresh，不必干等下一秒。
+`POST /v1/admin/cases` 已关闭（404）。语义仍是：归档当前 active、开新零票案、清当日 used incense。详见 [`122`](122-identity-recovery.md)、[`121`](121-vps-deploy.md)。
 
 ## 限流
 

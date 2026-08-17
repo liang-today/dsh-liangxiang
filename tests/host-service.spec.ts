@@ -307,14 +307,14 @@ describe('published snapshot cadence + decoupling', () => {
 
   it('threshold crossing arrives with the snapshot: 79.x% -> 80%', async () => {
     const stored = memoryState()
-    stored.aggregates.set('local-2026-08-16', { upVotes: 79, downVotes: 20, uniqueVoters: 30 })
+    stored.aggregates.set('local-2026-08-16-0', { upVotes: 79, downVotes: 20, uniqueVoters: 30 })
     const clock = fakeClock(NOON_SHANGHAI)
     const service = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
     await service.attachPersistence(memoryPort(stored))
     service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH)
     const caseId = service.getWireState().activeCase.id
 
-    // 79/99 = 79.8% -> 梁神 territory (client derives the state from counts).
+    // 79/99 = 79.8% -> 梁神 band under the 50/70/85/95 policy.
     expect(service.getWireState().global.upVotes).toBe(79)
     service.vote({ caseId, voteType: 'up', requestId: 'req-cross-01' })
     service.tick()
@@ -335,6 +335,16 @@ describe('published snapshot cadence + decoupling', () => {
     expect(after.upVotes).toBe(before.upVotes)
     expect(after.downVotes).toBe(before.downVotes)
     expect(after.sequence).toBe(before.sequence)
+  })
+
+  it('cycles the prepared local 今日梁案 list', () => {
+    const { service } = readyService()
+    const first = service.getWireState().activeCase
+    expect(first.title).toBe('DeepSeek Harness 是夯还是拉')
+    service.cycleLocalCase()
+    const second = service.getWireState().activeCase
+    expect(second.title).not.toBe(first.title)
+    expect(second.id).not.toBe(first.id)
   })
 
   it('empty seed publishes a zero-vote snapshot (WAITING semantics)', () => {
