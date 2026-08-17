@@ -118,7 +118,7 @@ export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷�
 export const NO_INCENSE_GAG = '咣当——香炉空了，梁子催你先去攒香'
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
-export const OFFLINE_REASON = '未连接本地服务：显示最近状态，重新打开面板可重试'
+export const OFFLINE_REASON = '未连上梁标服务：显示最近状态，重新打开面板可重试'
 
 /** Status line when the DSH accounting seams are absent in this assembly. */
 export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合缺少 token 投影能力'

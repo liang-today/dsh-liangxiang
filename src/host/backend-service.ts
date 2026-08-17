@@ -104,6 +104,8 @@ export class BackendLiangService implements LiangHostService {
    */
   private displayBaseline = 0
   private bootstrapping: Promise<void> | null = null
+  private bootstrapBackoffUntil = 0
+  private bootstrapBackoffMs = 0
   private ticks = 0
   private disposed = false
 
@@ -335,14 +337,21 @@ export class BackendLiangService implements LiangHostService {
     const installationId = this.installationId
     if (installationId === null || this.disposed) return
     if (this.bootstrapping !== null) return this.bootstrapping
+    if (this.bootstrap === null && Date.now() < this.bootstrapBackoffUntil) return
     const run = (async (): Promise<void> => {
       try {
         const bootstrap = await this.client.bootstrap(installationId)
         this.adoptBootstrap(bootstrap)
+        this.bootstrapBackoffMs = 0
+        this.bootstrapBackoffUntil = 0
         // A fresh business date means the local claim must be re-submitted.
         this.lastClaimSent = -1
         this.scheduleClaim()
       } catch (error) {
+        this.bootstrapBackoffMs = this.bootstrapBackoffMs === 0
+          ? 1_000
+          : Math.min(this.bootstrapBackoffMs * 2, 30_000)
+        this.bootstrapBackoffUntil = Date.now() + this.bootstrapBackoffMs
         this.reportFailure('bootstrap', error)
       } finally {
         this.bootstrapping = null

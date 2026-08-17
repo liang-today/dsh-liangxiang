@@ -22,15 +22,15 @@ pnpm --dir <DSH_HOME>/profiles/<profile> remove @deepseek-ai/dsh-web-app   # 保
 
 然后**重启** WebUI（内存里的旧模块图不会自愈）。已经报错的会话不用删：DSH 在加载时会用同 `callId` 的合成错误结果补齐孤立的 tool call（`packages/core/session/src/repair.ts`），重启后旧会话可继续；想干净就新开一个会话。
 
-## 面板显示「未连接本地服务」
+## 面板显示「未连上梁标服务」
 
-Host 通道不可用。检查：
+Host 通道不可用，或在线 bootstrap 超时。检查：
 
-- WebUI 终端是否有 `[dsh-liangbiao] host half active`；
-- `curl http://127.0.0.1:<port>/liangbiao/api/state` 是否 200；
-- 在线模式下后端是否活着：`curl http://127.0.0.1:4180/v1/health`。
+- WebUI 终端是否有 `[dsh-liangbiao] host half active` 以及 `DEV_STAGING_ONLY`；
+- `curl http://127.0.0.1:<webui>/liangbiao/api/state` 是否 200；
+- 在线模式：本机 `curl -m 5 http://<公网IP>:26753/v1/health`（不要只 curl VPS 的 localhost）。
 
-面板会保留最近一次状态继续渲染；重新打开面板是唯一的重连触发点（不做无界后台重试）。
+面板会保留最近一次状态继续渲染；重新打开面板会再试一次。
 
 ## 面板显示「记账不可用」
 
@@ -45,6 +45,16 @@ DSH 的 `sessionProjections` / `sessions` 没注入（组合里缺插件，或�
 ## 打梁报 502 / 「打梁失败」
 
 Host 与后端之间的请求失败。**用同一个 `request_id` 重试是安全的**（幂等域是 `(installation_id, request_id)`，重放不会二次扣香）；换新 id 才会有二次扣香风险，客户端不会那样做。
+
+## Host 日志 `backend GET /bootstrap timed out`
+
+进程在 VPS 上仍可能是 `active`，本机 `curl 127.0.0.1:<port>/v1/health` 也仍可能 200。这表示**外网到该端口被挡住了**（华为云安全组 / 防护），不是梁标又切回了本地。
+
+核对：
+
+1. 安全组入站放行 `26753/tcp`（或你实际监听的端口），源 `0.0.0.0/0`。
+2. 本机 `curl -m 5 http://<公网IP>:26753/v1/health` 应在 1 秒内返回 `status":"ok"`。
+3. 面板若写「今日梁案（本地）」，那是欢迎页选了本地，或旧占位帧；连不上时应是「今日梁案」+「未连上梁标服务」。
 
 ## 梁位不动
 

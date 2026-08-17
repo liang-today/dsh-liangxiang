@@ -141,6 +141,9 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
       return payload
     } catch (error) {
       if (error instanceof BackendClientError) throw error
+      if (isAbortError(error)) {
+        throw new BackendClientError(`backend ${init.method} ${path} timed out after ${timeoutMs}ms`)
+      }
       const message = error instanceof Error ? error.message : String(error)
       throw new BackendClientError(`backend ${init.method} ${path} failed: ${message}`)
     } finally {
@@ -219,6 +222,14 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
       inFlight.clear()
     },
   }
+}
+
+function isAbortError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const name = (error as { name?: unknown }).name
+  if (name === 'AbortError' || name === 'TimeoutError') return true
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('aborted') || message.includes('AbortError')
 }
 
 function extractErrorCode(payload: unknown): string | null {
