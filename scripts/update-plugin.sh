@@ -24,8 +24,15 @@ done
 
 [[ -n "$TARBALL" && -f "$TARBALL" ]] || { usage; exit 2; }
 command -v "$DSH_BIN" >/dev/null 2>&1 || { echo "DSH command not found: $DSH_BIN" >&2; exit 1; }
+command -v node >/dev/null 2>&1 || { echo "Node.js command not found" >&2; exit 1; }
+command -v tar >/dev/null 2>&1 || { echo "tar command not found" >&2; exit 1; }
 
 TARBALL="$(cd "$(dirname "$TARBALL")" && pwd)/$(basename "$TARBALL")"
+EXPECTED_VERSION="$(tar -xOf "$TARBALL" package/package.json | node -e '
+  const manifest = JSON.parse(require("node:fs").readFileSync(0, "utf8"))
+  if (manifest.name !== "dsh-liangxiang" || typeof manifest.version !== "string") process.exit(2)
+  process.stdout.write(manifest.version)
+')" || { echo "不是有效的 dsh-liangxiang 分发包：$TARBALL" >&2; exit 2; }
 if [[ -z "${DSH_HOME:-}" ]]; then
   echo "DSH_HOME 未设置；请先指向正在使用的 DSH 数据目录，避免更新错误的 profile。" >&2
   exit 2
@@ -47,8 +54,17 @@ fi
 
 echo "正在更新 profile '$PROFILE' ..."
 "$DSH_BIN" plugin --profile "$PROFILE" add "$TARBALL"
-"$DSH_BIN" --profile "$PROFILE" --dump-config | grep -q 'dsh-liangxiang' || {
-  echo "更新后配置中未发现 dsh-liangxiang" >&2
+INSTALLED_MANIFEST="$DSH_HOME/profiles/$PROFILE/node_modules/dsh-liangxiang/package.json"
+INSTALLED_VERSION="$(node -e '
+  const manifest = require(process.argv[1])
+  if (manifest.name !== "dsh-liangxiang" || typeof manifest.version !== "string") process.exit(2)
+  process.stdout.write(manifest.version)
+' "$INSTALLED_MANIFEST" 2>/dev/null)" || {
+  echo "更新后未发现已安装的 dsh-liangxiang" >&2
+  exit 1
+}
+[[ "$INSTALLED_VERSION" == "$EXPECTED_VERSION" ]] || {
+  echo "版本校验失败：期望 ${EXPECTED_VERSION}，实际 ${INSTALLED_VERSION}" >&2
   exit 1
 }
 
@@ -59,5 +75,5 @@ if [[ "$BEFORE" != "$AFTER" ]]; then
   exit 1
 fi
 
-echo "更新完成，身份、香火水位和浏览器偏好未被删除。"
+echo "更新完成：dsh-liangxiang@${INSTALLED_VERSION}；身份、香火水位和浏览器偏好未被删除。"
 echo "请重启该 DSH WebUI；版本升级后浏览器刷新一次，以加载新的前端 bundle。"
