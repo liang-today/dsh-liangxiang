@@ -1,9 +1,10 @@
-# AGENTS.md — 梁标 V0.1
+# AGENTS.md — 梁向 V0.1
 
 > This file defines the permanent product and engineering rules for the Liangbiao repository.
 > It applies to Cursor, Codex, and any other coding agent working in this repo.
 > If old code, tests, docs, prompts, comments, or mock data conflict with this file, this file wins.
 > For the full execution plan, also read `docs/LIANGBIAO_CURSOR_MASTER_R3.md` when present.
+> Brand theme and release copy are centralized in `docs/140-liangxiang-brand.md`.
 
 ---
 
@@ -11,9 +12,12 @@
 
 ### Product identity
 
-- Product name: **梁标**
+- Product name: **梁向**
+- `dsh-liangbiao`, `liangbiao`, `/liangbiao/api`, storage/table prefixes, service
+  names, and code symbols are stable technical identifiers; they do not define
+  the user-facing brand and are not renamed mechanically.
 - 梁文锋 is referred to as **梁子** in product UI/copy.
-- DSH WebUI entry Hover / Focus text: **今日梁位**
+- DSH WebUI entry Hover / Focus text: **今日梁向**
 - The docked entry's icon IS the current central 梁子 state (one of the five, or
   the 待开梁 placeholder) — never a letter or an abstract logo.
 - The entry is freely placeable: it can be dragged anywhere in the frame and the
@@ -36,13 +40,19 @@ The following are obsolete and must not return as Liangbiao product concepts:
 - 大夯 / 偏夯 / 胶着 / 偏拉 / 大拉
 - global `LiangScore`, 0–100 梁分, Bayesian prior
 - `BallotLedger`, `LiangBallot`, 梁签 as the core voting-credit model
-- 小难梁 / 牢梁 / 老梁
+- 小难梁 / 老梁
 - old personal avatar progression `梁哥 -> 梁总 -> 梁神 -> 梁圣 -> 梁祖`
 - personal Token / earned incense / remaining incense driving the central Liangzi state
 - “vote must not reduce LiangQi” as an invariant
 - cache-read 10% weighting
 
 Do not mechanically delete unrelated generic words from dependencies or third-party code. Remove only obsolete Liangbiao business semantics.
+
+Artwork exception: `牢梁` is intentionally allowed only as the decorative
+plaque inside the `WAITING / 待开梁` portrait. It is never a state name, tier,
+metric, or UI label. The five active portraits may likewise carry a small
+in-art badge/plaque matching their authoritative state name. These embedded
+marks are visual jokes, not data or accessible copy.
 
 ---
 
@@ -64,18 +74,18 @@ DeepSeek Harness 是夯还是拉
 ### Region 2 — Central core
 
 ```text
-今日香火 7 炷     [梁子 + 个人梁气环]     下一炷 3,000 当量
+今日凝香 7 炷     [梁子 + 个人香火环]     下一炷 3,000 当量
                   梁位 83.021952% → 梁神
 ```
 
 Rules:
 
-- left overlay: personal `earned_incense_today` (`今日香火` = 今天总共生成的香火)
+- left overlay: personal `earned_incense_today` (`今日凝香` = 今天总共生成的香火)
 - center (in-flow, geometrically centered in the panel): concrete Liangzi
-  avatar, the 梁气 ring, and the incense-mark overlay. These three MUST share
+  avatar, the 香火环, and the incense-mark overlay. These three MUST share
   the panel's horizontal centerline. Personal flanks are absolutely positioned
   and MUST NOT participate in in-flow width (`space-between` / unequal flex
-  columns are forbidden here — 「今日香火」 being wider than 「下一炷」 must
+  columns are forbidden here — 「今日凝香」 being wider than 「下一炷」 must
   never shove 梁子 sideways).
 - remaining incense on the ring is pictorial place-value on **separate orbits**
   (炷=stick ones, 月=moon tens, 日=sun hundreds, each 0–9). Glyphs sit on
@@ -94,16 +104,18 @@ Rules:
   (Pro ×1 / Flash ×0.5 / 其它 ×0.5).
 - visible 下一炷 当量 uses integer compact (`33K`, never `≈ 33.4K`) so the
   flank does not overlap 梁子. Hover title and the screen-reader summary keep
-  the exact integer. 今日香火 / 环上 overflow 仍可用一位小数。
+  the exact integer. 今日凝香 / 环上 overflow 仍可用一位小数。
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
   6 decimals (`LIANG_POSITION_DECIMALS`) — then a causal arrow to the 称呼
-  (`梁位 83.021952% → 梁神`). The 称呼 is not painted on the portrait.
+  (`梁位 83.021952% → 梁神`). The authoritative text label remains outside the
+  portrait; the artwork may also contain the decorative matching badge allowed
+  by the exception above.
 - `down_ratio` gets **no** second big number: it is `1 − 梁位` and appears only in
   the tooltip and the screen-reader summary
 - the printed 梁位 must be TRUNCATED, never rounded, so it can never read as
   having crossed a threshold the rendered Liangzi state has not crossed
 - central Liangzi must not be replaced by a Gauge, Donut, Meter, or plain percentage card
-- Liangzi state and LiangQi are visually overlaid but semantically independent
+- Liangzi state and the personal 香火环 are visually overlaid but semantically independent
 - 梁位 and Liangzi state must come from the **same Global Snapshot/version**
 
 Why one value with decimals: two complementary integer percentages made an
@@ -114,17 +126,17 @@ incense.
 ### Region 3 — Voting
 
 ```text
-[ 夯：升梁！ ]     [ 拉：降梁！ ]
+[ 夯 · 升梁 ]     [ 拉 · 降梁 ]
 ```
 
 - exactly two buttons
-- labels are `夯：升梁！` / `拉：降梁！` (direction + action); the two buttons
+- labels are `夯 · 升梁` / `拉 · 降梁` (direction + action); the two buttons
   are equal-width and visually aligned (`1fr / 1fr` grid)
 - vote type remains strictly `up` / `down` — the extra 升梁/降梁 copy is not a
   third option
 - vote availability depends only on authoritative `remaining_incense > 0`
 - do not add a third placeholder or neutral action
-- do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside LiangQi
+- do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside the 香火环
 
 ### Region 4 — Social stats
 
@@ -228,6 +240,12 @@ The joke is “a normal person is gradually夯 into an ancestor”:
 
 Artwork can change later. State semantics cannot.
 
+The global visual master is **现代编年志 × 克制梁祠**: approximately 80% DSH
+native desktop UI, 15% calendar/chronicle structure, and 5% ritual accents.
+Warm gold and vermilion are punctuation, not background themes. The main panel,
+welcome, tooltips, icons, and 梁祠 must look like one system; do not drift into
+an ancient-fantasy game, dashboard card wall, glassmorphism, or palace UI.
+
 ### Forbidden inputs
 
 Central Liangzi state must never directly depend on:
@@ -243,9 +261,11 @@ Central Liangzi state must never directly depend on:
 
 ---
 
-## 4. Personal LiangQi
+## 4. Personal 香火环 (`LiangQi` is an internal compatibility name)
 
-LiangQi is **personal** and has no personal tier.
+The 香火环 is **personal** and has no personal tier. Existing `LiangQi` type,
+field, and code identifiers may remain for compatibility, but product UI,
+accessible copy, README, demos, and promotion must call it **香火环**, not 梁气.
 
 It expresses only:
 
@@ -270,7 +290,7 @@ This is presentation only. Do not create new business tiers such as weak/medium/
 
 Use a bounded presentation function if needed, e.g. clamp/log/sqrt, so large balances do not create uncontrolled animation.
 
-### B. Token progress -> LiangQi ring fill
+### B. Token progress -> 香火环 fill
 
 ```text
 token_remainder
@@ -296,14 +316,14 @@ This means a full incense stick was just earned and accumulation for the next on
 
 Do not add a separate personal-growth row.
 
-The two LiangQi numbers flank the central 梁子 (Region 2): `earned_incense_today`
-(今日香火, today's total generated) on the left, `tokens_to_next_incense` on
+The two personal incense numbers flank the central 梁子 (Region 2): `earned_incense_today`
+(今日凝香, today's total generated) on the left, `tokens_to_next_incense` on
 the right. The ring's incense glyphs show `remaining_incense` (what is left to
 spend). The ring fill is next-incense progress; its footer slot is reserved for
 the global 梁位 value.
 
 ```text
-今日香火 7 炷   [环 + 梁子]   下一炷 3,000 当量
+今日凝香 7 炷   [环 + 梁子]   下一炷 3,000 当量
 ```
 
 The ring/avatar/incense glyphs stay on the panel centerline; the two numbers are
@@ -326,7 +346,7 @@ then one accepted vote changes only the spendable stock:
 remaining_incense: 5 -> 4
 ```
 
-LiangQi intensity may reduce, but:
+The 香火环 intensity may reduce, but:
 
 ```text
 token_remainder = 47,000
@@ -976,7 +996,7 @@ Never claim cryptographically or server-verified usage voting unless the impleme
 
 Core product description:
 
-> **用 DSH 攒香火，投下“夯”或“拉”，共同决定今日风向。**
+> **用 DSH 攒香火，一炷夯或拉，共同写下今日梁向。**
 
 The conceptual loop is:
 
@@ -992,9 +1012,9 @@ And independently:
 
 ```text
 personal remaining incense
-        -> LiangQi intensity
+        -> 香火环 intensity
 personal progress to next 50K
-        -> LiangQi ring fill
+        -> 香火环 fill
 ```
 
 These two flows meet visually around 梁子, but must remain separate in data and domain logic.
@@ -1011,13 +1031,13 @@ Before completing any major Liangbiao change, be able to answer **yes** to all o
 - Is central 梁子 driven only by global up ratio?
 - Does zero vote render 待开梁?
 - Are the five states exactly 梁工/梁总/梁神/梁圣/梁祖?
-- Is LiangQi personal rather than global?
-- Does remaining incense control LiangQi intensity?
-- Does Token remainder control LiangQi ring fill?
-- Can spending incense reduce LiangQi intensity without rewinding Token progress?
-- Are “5 炷 / 再 3,000 当量” shown as LiangQi overlays rather than a separate personal tier section?
+- Is the 香火环 personal rather than global?
+- Does remaining incense control 香火环 intensity?
+- Does Token remainder control 香火环 fill?
+- Can spending incense reduce 香火环 intensity without rewinding Token progress?
+- Are “5 炷 / 再 3,000 当量” shown as 香火环 overlays rather than a separate personal tier section?
 - Does the ring/avatar/incense-dot cluster sit on the panel centerline, unmoved by flank copy width?
-- Are the two vote buttons labelled `夯：升梁！` / `拉：降梁！` and equal-width?
+- Are the two vote buttons labelled `夯 · 升梁` / `拉 · 降梁` and equal-width?
 - Are global ratios and Liangzi state from the same snapshot/version?
 - Is Effective Token still Input + Output?
 - Are cache-read and cache-write both counted as Input under the verified current DSH mapping?
@@ -1031,4 +1051,4 @@ Before completing any major Liangbiao change, be able to answer **yes** to all o
 - Does a history failure preserve last-known-good history without affecting today's voting loop?
 - Are obsolete ranking/winner/third-option/personal-avatar concepts absent?
 
-If any answer is no, the implementation is not aligned with 梁标 V0.1.
+If any answer is no, the implementation is not aligned with 梁向 V0.1.

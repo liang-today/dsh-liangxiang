@@ -1,19 +1,23 @@
-# dsh-liangbiao(梁标)
+# dsh-liangbiao(梁向)
 
-> **用 DSH 攒香火，投下「夯」或「拉」，共同决定今日梁子从梁工一路被夯成梁祖。**
+> **用 DSH 攒香火，一炷夯或拉，共同写下今日梁向。**
 
-梁标是一个 DeepSeek Harness(DSH)WebUI 插件:
+梁向是一个 DeepSeek Harness(DSH)WebUI 插件:
 
 - 用 DSH 的 **Input + Output Token** 攒个人香火,默认 **50,000 Token = 1 炷**;
-- 香火就是你的投票库存,**夯与拉共用同一个库存**,一炷香换一票;
-- 对当天唯一的二元梁案投「夯 / 拉」;
-- **梁气** = 当前剩余香火(旺盛程度)+ 距下一炷的 Token 进度(环形填充);
+- 香火就是你的参与库存，**夯与拉共用同一个库存**，一炷香对应一次选择；
+- 对当天唯一的二元梁案选择「夯 / 拉」；按钮为 **夯 · 升梁 / 拉 · 降梁**；
+- **香火环** = 当前剩余香火（旺盛程度）+ 距下一炷的 Token 进度（环形填充）；`LiangQi` 仅保留为内部兼容名；
 - 中央**梁子**只由**全网投票比例**决定:`待开梁`(零票)/ 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖;
 - 面板正中只有一个公开数字 **梁位**(= 全网夯率,6 位小数),每一票都看得见它在动;
 - 底部 **三界香火** = 全网已接受票数，**五行香客** = 至少成功投过一票的独立参与者。
 - 底部 **进入梁祠** 打开插件内月历：今日进行中、永久日梁、周梁、月梁，以及只统计到昨天的本周/本月暂梁。
 
-悬停文案恒为 `今日梁位`;入口图标就是当前梁子那一态,可以拖到画面任意位置。
+悬停文案恒为 `今日梁向`;入口图标就是当前梁子那一态,可以拖到画面任意位置。
+
+每日结案后，今日结果收入梁祠成为日梁，并继续汇成周梁与月梁。三界香火、五行香客与上达天听保留为产品的仪式化语言；整体视觉统一采用“现代编年志 × 克制梁祠”。
+
+> 非 DeepSeek 官方产品，与 DeepSeek 及梁文锋本人无官方关联。梁位是社区软信任玩法，不代表实名人数、真实民意或任何人的本人立场。
 
 产品语义冻结于 [`AGENTS.md`](AGENTS.md) 与 [`docs/PRODUCT_FREEZE_V0.1.md`](docs/PRODUCT_FREEZE_V0.1.md);历史勘察文档中的旧模型(梁签、cache-read 10% 权重等)已废弃,见 [`docs/SEMANTIC_CORRECTION_R2.md`](docs/SEMANTIC_CORRECTION_R2.md)。
 
@@ -52,6 +56,7 @@
 | 原始禁令 vs 当前实现 | [`docs/110-prohibition-refresh.md`](docs/110-prohibition-refresh.md) |
 | Demo → 社区产品 | [`docs/120-community-product.md`](docs/120-community-product.md) |
 | 梁祠产品/实现契约 | [`docs/130-liangci-design.md`](docs/130-liangci-design.md) |
+| 梁向品牌、主题与宣传口径 | [`docs/140-liangxiang-brand.md`](docs/140-liangxiang-brand.md) |
 
 其余设计文档:`000` 版本基线、`001` DSH 勘察问答、`002` 架构、`003` 兼容性矩阵、`020` UI、`030–032` 领域模型/不变量/P0 矩阵、`040–044` authority 勘察、`050–062` 本地闭环、`070–076` 在线后端。
 
@@ -112,7 +117,7 @@ LIANGBIAO_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 1. `pnpm install` — 安装工具链与 DSH 类型包/CLI(`prepare` 会顺带构建一次)。
 2. `pnpm run dev:install` — 构建后创建 `liangbiao-dev` profile:先装 `@deepseek-ai/dsh-web-app`(Web 界面层),再以 **pnpm link 方式**装入本地检出;随后自动用 `--dump-config` 断言 `dsh-liangbiao` bundle 层存在。
-3. `pnpm run dev:web` — 启动 WebUI。右缘应出现占位圆点,悬停显示 `今日梁位`;终端出现 `[dsh-liangbiao] host half active`。
+3. `pnpm run dev:web` — 启动 WebUI。右缘应出现占位圆点,悬停显示 `今日梁向`;终端出现 `[dsh-liangbiao] host half active`。
 4. 改 Client 代码后 `pnpm run build`(或 `pnpm exec tsdown --watch`):web-app 组合默认挂载的 HMR 会 stat-poll 到 `lib/client.js` 变化并热替换,无需重启;改 Host 代码需重启 `dev:web`。
 5. `pnpm run dev:uninstall` — 移除依赖与 bundle 层,并断言 dump-config 中不再出现;重启后徽章与 Host effect 一并消失(注册寿命随插件 fiber)。
 

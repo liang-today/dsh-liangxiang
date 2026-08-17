@@ -1,9 +1,9 @@
 /**
- * The expanded 梁标 panel — exactly four visual regions (frozen UI contract):
+ * The expanded 梁向 panel — exactly four visual regions (frozen UI contract):
  *
  *   1. 今日梁案 (single active case)
- *   2. overlay flanks | centered 梁子 + 梁气环 | 梁位
- *   3. two equal-width vote buttons 夯：升梁！ / 拉：降梁！
+ *   2. overlay flanks | centered 梁子 + 香火环 | 梁位
+ *   3. two equal-width vote buttons 夯 · 升梁 / 拉 · 降梁
  *   4. 三界香火 + 五行香客 + 右侧礼仪控制列（上达天听 / 进入梁祠）
  *
  * No personal-growth section, no ranking, no third option.
@@ -191,7 +191,7 @@ const positionFactStyle: CSSProperties = {
 
 /**
  * Personal flanks overlay the core; they never take in-flow width. Otherwise
- * 「我的香火」(wider copy) vs 「下一炷」 pulls `space-between` off-center and
+ * 「今日凝香」(wider copy) vs 「下一炷」 pulls `space-between` off-center and
  * the 梁子, ring, and incense dots drift sideways.
  */
 const FLANK_WIDTH = 54
@@ -229,7 +229,7 @@ const flankCaptionStyle: CSSProperties = {
   color: color.textSecondary,
 }
 
-/** Shared by 今日香火 and 下一炷 so the two numbers are one voice. */
+/** Shared by 今日凝香 and 下一炷 so the two numbers are one voice. */
 const flankValueStyle: CSSProperties = {
   ...numericStyle,
   fontSize: '13px',
@@ -784,7 +784,7 @@ export function Panel(props: PanelProps): ReactElement {
         and are therefore always the panel's horizontal center. Personal
         numbers overlay left/right and cannot shove that column.
 
-          我的香火 N 炷   [梁气环 + 梁子]   下一炷 X 当量
+          今日凝香 N 炷   [香火环 + 梁子]   下一炷 X 当量
                           梁位 83.021952% → 梁祖
       */}
       <div data-liangbiao-region="core" style={coreStyle}>

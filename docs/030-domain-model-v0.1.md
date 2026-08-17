@@ -1,4 +1,4 @@
-# 030 — 梁标 V0.1 领域模型
+# 030 — 梁向 V0.1 领域模型
 
 纯 TypeScript，零依赖（无 React / DSH / Node / network / DB）。全部位于 `src/domain/`，经 `src/domain/index.ts` 具名导出。所有跨层消费（client store、后续 host 记账）只允许经由这些导出。
 

@@ -4,7 +4,7 @@
 
 ## 结构性（A3，无法在本仓修好）
 
-1. **没有可验证身份**。`installation_id` 是梁标自铸的假名 uuid，可删可造。`unique_voters` 的真实含义是「参与过的独立安装数」，不是人数。
+1. **没有可验证身份**。`installation_id` 是梁向自铸的假名 uuid，可删可造。`unique_voters` 的真实含义是「参与过的独立安装数」，不是人数。
 2. **Token 用量不可验证**。`claimed_effective_tokens` 是 Host 观测的声明；后端只保证单调不回退，不保证为真。
 3. 因此 **不能反女巫**，也不能声称 verified/secure usage voting。见 [`075`](075-backend-decision.md)、[`101`](101-threat-model.md)。
 

@@ -81,7 +81,7 @@ export function wireToViewState(wire: LiangbiaoWireState, connection: Connection
     lifetimeVoters: wire.global.lifetimeVoters,
     personal: (() => {
       // Ring fill / 下一炷 keep the optimistic local effective tokens; the
-      // spendable incense (今日香火 / 可打梁 / vote button) uses the AUTHORITATIVE
+      // spendable incense (今日凝香 / 可打梁 / vote button) uses the AUTHORITATIVE
       // server ledger so a stale local bucket can never show spendable incense
       // the backend has not recorded.
       const optimistic = derivePersonalLiangQiState({

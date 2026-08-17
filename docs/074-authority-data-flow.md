@@ -28,7 +28,7 @@
 
 ```text
 remaining_incense      → 梁气旺盛程度（presentation）
-token_remainder/50K    → 梁气环 fill
+token_remainder/50K    → 香火环 fill
 ```
 
 ## 客户端绝不携带的字段

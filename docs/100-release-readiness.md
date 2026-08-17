@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| 梁标版本 | 0.1.0 |
+| 梁向版本 | 0.1.0 |
 | RC 产物 | `dsh-liangbiao-0.1.0.tgz`（仓库根，gitignored） |
 | SHA256 | `3123a117cf0cede971488edb3015550db4229dec19f5e151f09c86ac6ba9bdc3` |
 | 包内容 | `lib/index.js`、`lib/client.js`、`lib/client.js.map`、`cordis.patch.yml`、`README.md`、`LICENSE`、`package.json` |

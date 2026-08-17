@@ -1,11 +1,12 @@
-# 梁标 V0.1 — Cursor 一体化开发手册（R3）
+# 梁向 V0.1 — Cursor 一体化开发手册（R3）
 
-> 将本文件放入梁标仓库：`docs/LIANGBIAO_CURSOR_MASTER_R3.md`。
+> 将本文件放入梁向仓库：`docs/LIANGBIAO_CURSOR_MASTER_R3.md`。
 > 本文件前半部分是产品/技术事实源，后半部分是 4 个最终执行 Phase。
 > **活契约是仓库根目录 `AGENTS.md`。** 本文 PART A 已按 2026-08-16 的实现回写；若再冲突，以 `AGENTS.md` 为准。
 > `../deepseek-harness` 仅作为只读 API/运行时事实源。
 > **v0.3.0 硬限制更新（2026-08-17）**：梁子门槛统一为 50/70/85/95；仅 V4-Pro ×1，V4-Flash、其它、缺失/未知模型统一 ×0.5。本文其余执行段均服从这两条与根目录 `AGENTS.md`。
 > **v0.4.0 梁祠更新（2026-08-17）**：日/周/月永久档案、今日进行中、截至昨日暂梁与独立 history 冷通道已经实现；完整契约见 [`130-liangci-design.md`](130-liangci-design.md)。本手册内任何“无历史接口”或未实施表述均已失效。
+> **品牌更新（2026-08-17）**：对外产品名为「梁向」，入口为「今日梁向」，个人环对外称「香火环」，按钮为 `夯 · 升梁` / `拉 · 降梁`；完整故事、视觉与宣传口径见 [`140-liangxiang-brand.md`](140-liangxiang-brand.md)。本手册保留的 `LiangQi/梁气` 仅是内部兼容术语。
 > Git：每次改完必须 commit + push。仍禁止 npm publish / GitHub Release / 公网部署 / 改真实 DSH profile / 改 DSH 核心。
 
 ---
@@ -17,23 +18,23 @@
 > 产品版本：**V0.1**  
 > Prompt Pack Revision：**R2**  
 > 日期：2026-08-16  
-> 重要原则：本文档覆盖此前所有与梁标业务语义冲突的 Prompt、设计、测试不变量和数据模型。若旧内容与 `AGENTS.md` 冲突，以 `AGENTS.md` 为准。
+> 重要原则：本文档覆盖此前所有与梁向业务语义冲突的 Prompt、设计、测试不变量和数据模型。若旧内容与 `AGENTS.md` 冲突，以 `AGENTS.md` 为准。
 
 ---
 
 ## 0. 新会话先读：唯一正确的产品认知
 
-**梁标不是排行榜，而是围绕“今日梁案”的二元群体投票装置：用户日常使用 DSH 所产生的 Input+Output Token 转化成个人香火，以香火投“夯”或“拉”；全网夯/拉比例共同决定中央“梁子”的五态，个人剩余香火与距离下一炷香的 Token 进度共同形成“梁气”；底部以全局香火和香客形成社会化反馈。**
+**梁向不是排行榜，而是围绕“今日梁案”的二元社区玩法：用户日常使用 DSH 所产生的 Input+Output Token 转化成个人香火，以一炷选择“夯”或“拉”；社区夯/拉比例共同决定中央“梁子”的五态，个人剩余香火与距离下一炷香的 Token 进度共同形成“香火环”；底部以全局香火和香客形成社会化反馈。**
 
 一句话产品口诀：
 
-> **众人夯梁子，夯到梁成祖；自己攒梁气，攒香继续投。**
+> **用 DSH 攒香火，一炷夯或拉，共同写下今日梁向。**
 
 ### 产品名与入口
 
-- 产品名：**梁标**
+- 产品名：**梁向**
 - 梁文锋在产品语境中统一称为：**梁子**
-- DSH WebUI 悬浮入口 Hover / Focus 提示：**今日梁位**
+- DSH WebUI 悬浮入口 Hover / Focus 提示：**今日梁向**
 - 展开面板主标题：**今日梁案**
 - 每天原则上只有一个 Active 梁案
 - 投票永远只有两个选项：
@@ -61,7 +62,7 @@
 - 用普通 Gauge / 百分比仪表替代中央具象梁子
 - 把用户 Token、票权、香火余额交给前端自行声明并让服务端直接相信
 - “一人一票”
-- 旧版七档“小难梁/牢梁/梁子/老梁/梁圣/梁神/梁祖”
+- 旧版七档“小难梁/牢梁/梁子/老梁/梁圣/梁神/梁祖”（禁止作为状态体系；待开梁肖像内“牢梁”牌匾是允许的装饰彩蛋）
 - 旧版个人五态“梁哥→梁总→梁神→梁圣→梁祖”
 - 旧版 `LiangScore` / Bayesian prior / 全局 0–100 梁分模型
 - 旧版 `梁签` 作为核心票权对象
@@ -72,7 +73,7 @@
 
 ## 1.1 页面结构：四个视觉区域
 
-梁标展开后，从上到下保持四个视觉区域。不要再额外制造“个人成长层”。
+梁向展开后，从上到下保持四个视觉区域。不要再额外制造“个人成长层”。
 
 ### Region 1 — 今日梁案
 
@@ -87,31 +88,31 @@ DeepSeek Harness 是夯还是拉
 ### Region 2 — 中央核心区
 
 ```text
-我的香火 5 炷     [梁子 + 个人梁气环]     下一炷 3,000 Token
+今日凝香 5 炷     [梁子 + 个人香火环]     下一炷 3,000 Token
                        梁位 83.021952%
 ```
 
 规则：
 
 - 左 overlay：个人 `remaining_incense`（`N 炷`）
-- 中央（唯一占文档流宽度的列，必须落在面板水平中线）：具象梁子、梁气环、环上香火点。个人两翼绝对定位，禁止 flex `space-between` 把梁子挤偏
+- 中央（唯一占文档流宽度的列，必须落在面板水平中线）：具象梁子、香火环、环上香火点。个人两翼绝对定位，禁止 flex `space-between` 把梁子挤偏
 - 右 overlay：个人 `tokens_to_next_incense`
 - 环下**恰好一个**全局数字：梁位 = `up_ratio`，6 位小数截断（`LIANG_POSITION_DECIMALS`）
 - `down_ratio` 不占第二个大数字，只出现在 tooltip / 屏幕阅读器摘要
 - 中央梁子不是 Gauge、Donut、Meter 或纯文字卡片
 - 中央梁子的形态由**全网夯比例**唯一决定
-- 梁子外围的“梁气”只属于**当前用户个人**
+- 梁子外围的“香火环”只属于**当前用户个人**
 - 梁位与梁子五态必须来自**同一份 Global Snapshot**
 
 ### Region 3 — 两个投票按钮
 
 ```text
-[ 夯：升梁！ ]        [ 拉：降梁！ ]
+[ 夯 · 升梁 ]        [ 拉 · 降梁 ]
 ```
 
 只有两个按钮，等宽标齐。
 
-- 主文案就是 `夯：升梁！` / `拉：降梁！`；投票类型仍只有 `up` / `down`，升梁/降梁不是第三选项
+- 主文案就是 `夯 · 升梁` / `拉 · 降梁`；投票类型仍只有 `up` / `down`，升梁/降梁不是第三选项
 - 是否还能投，只看个人 `remaining_incense > 0`
 - 不再单独占一整行重复显示“可用香火：N 炷”，个人可用香火在 Region 2 左翼
 - `remaining_incense = 0` 时两个按钮进入解释性 disabled 状态
@@ -206,7 +207,7 @@ liang_qi_intensity
 
 ---
 
-## 1.3 梁气：个人香火库存 + 下一炷 Token 进度
+## 1.3 香火环（内部兼容名 LiangQi）：个人香火库存 + 下一炷 Token 进度
 
 梁气没有个人 Tier，没有“梁哥→梁祖”的个人成长含义。
 
@@ -245,7 +246,7 @@ remaining_incense
 
 具体 intensity 曲线由 UI 设计决定，可使用 clamp/log/sqrt 等平滑映射，不要创造新的产品等级。
 
-#### B. 距离下一炷香的 Token 进度 -> 决定梁气环从空到满
+#### B. 距离下一炷香的 Token 进度 -> 决定香火环从空到满
 
 ```text
 token_remainder
@@ -272,7 +273,7 @@ liang_qi_fill = 0
 不要额外再做一整行个人成长文案。数字放在环的左右两翼 overlay，环本身只承载 fill / intensity / 香火点，且环必须居中：
 
 ```text
-我的香火 5 炷   [环 + 梁子]   下一炷 3,000 Token
+今日凝香 5 炷   [环 + 梁子]   下一炷 3,000 Token
 ```
 
 要求：
@@ -654,7 +655,7 @@ vote_type
 
 - 中央五态由 `earned_incense_today` 驱动
 - “投票不能让梁气倒退”
-- 梁气环表示个人 Tier 成长
+- 香火环表示个人 Tier 成长
 - “距下一 Tier 还差 N 炷”
 - `梁哥` 作为 V0.1 第一档
 - Global ratio 与 Avatar 完全解耦
@@ -666,7 +667,7 @@ vote_type
 - 0 票是 `待开梁`
 - 五态是 `梁工 / 梁总 / 梁神 / 梁圣 / 梁祖`
 - 梁气旺盛程度由 `remaining_incense` 驱动
-- 梁气环 fill 由下一炷 Token 进度驱动
+- 香火环 fill 由下一炷 Token 进度驱动
 - 投票会降低梁气旺盛程度，但不会改变下一炷 Token 进度
 - global snapshot 比例跨阈值时，中央梁子必须切换五态
 
@@ -713,7 +714,7 @@ vote_type
 - 中央梁子由全网夯率决定
 - 梁气与梁子视觉叠加、数据解耦
 - 个人 `remaining_incense` 决定梁气旺盛程度
-- `tokens_to_next_incense` 直接整合进梁气环
+- `tokens_to_next_incense` 直接整合进香火环
 - 0 票显示待开梁
 
 ## 2.5 Prompt 03：完全重写
@@ -816,7 +817,7 @@ effective_tokens_today
 > Cursor 新 Chat。先 Plan，再 Agent。不得重构已成功的 DSH skeleton。
 
 ```text
-我们刚刚再次冻结了“梁标 V0.1”的最终产品语义。
+我们刚刚再次冻结了“梁向 V0.1”的最终产品语义。
 
 当前 Prompt 01 已经完成 DSH 插件工程骨架。不要推倒、不要重做 package/Host/Client/build/profile 安装结构。
 
@@ -863,14 +864,14 @@ effective_tokens_today
 - priorHang
 - priorLa
 
-不要机械删除无关英文单词，只处理梁标业务语义。
+不要机械删除无关英文单词，只处理梁向业务语义。
 
 第三步：更新根目录 AGENTS.md，冻结以下合同：
 
 PRODUCT:
-- 产品名：梁标
+- 产品名：梁向
 - 梁文锋统一称为“梁子”
-- Hover/Focus：今日梁位
+- Hover/Focus：今日梁向
 - 展开标题：今日梁案
 - 一天原则上只有一个 Active 梁案
 - 投票只有 up/down
@@ -881,7 +882,7 @@ PRODUCT:
 UI:
 - 四个视觉区域：
   1. 今日梁案
-  2. 左夯比例 + 中央梁子 + 个人梁气环 + 右拉比例
+  2. 左夯比例 + 中央梁子 + 个人香火环 + 右拉比例
   3. 夯/拉两个投票按钮
   4. 全局香火 + 香客
 - 不再单独设置“个人成长状态”层。
@@ -902,7 +903,7 @@ GLOBAL LIANGZI STATE:
 PERSONAL LIANGQI:
 - 梁气无个人 Tier。
 - remaining_incense 决定梁气“旺盛程度”。
-- token_remainder / token_per_incense 决定梁气环 fill。
+- token_remainder / token_per_incense 决定香火环 fill。
 - tokens_to_next_incense 必须整合在 LiangQi 组件内，不单独增加一整层文案。
 - 投票成功后 remaining_incense -1，因此 LiangQi intensity 可降低。
 - 投票不改变 token_remainder / ring fill。
@@ -1057,7 +1058,7 @@ Prompt 11 后：Codex Final Review
 > Cursor 新 Chat。Plan → Agent。
 
 ```text
-基于已经完成的 Prompt 01B R2，在当前可运行的 dsh-liangbiao skeleton 上实现“梁标 V0.1 正确 UI”。
+基于已经完成的 Prompt 01B R2，在当前可运行的 dsh-liangbiao skeleton 上实现“梁向 V0.1 正确 UI”。
 
 本阶段只做：
 - DSH WebUI UI
@@ -1086,13 +1087,13 @@ Prompt 11 后：Codex Final Review
 
 ## 入口
 
-产品名：梁标
+产品名：梁向
 
 DSH WebUI 中显示一个全局悬浮/停靠式入口。
 
 Hover 和 keyboard focus tooltip 必须精确为：
 
-`今日梁位`
+`今日梁向`
 
 入口图标就是当前梁子五态（或待开梁占位），不是「梁」字。入口可拖到画面任意位置（纯外观偏好，存 `localStorage`，绝非权威）。
 
@@ -1116,7 +1117,7 @@ mock 梁案：
 
 必须实现：
 
-`我的香火 5 炷    [中央梁子 + 个人梁气环]    下一炷 3,000 Token`
+`今日凝香 5 炷    [中央梁子 + 个人香火环]    下一炷 3,000 Token`
 `                      梁位 83.021952%`
 
 要求：
@@ -1184,7 +1185,7 @@ mock personal state 采用：
 
 建议紧凑视觉：
 
-- 左翼：`我的香火` / `5 炷`
+- 左翼：`今日凝香` / `5 炷`
 - 右翼：`下一炷` / `3,000 Token`
 - 环底：`梁位 83.021952%`
 
@@ -1192,8 +1193,8 @@ mock personal state 采用：
 
 只有两个，等宽标齐：
 
-左：`夯：升梁！`
-右：`拉：降梁！`
+左：`夯 · 升梁`
+右：`拉 · 降梁`
 
 投票类型仍只有 `up` / `down`。
 
@@ -1339,7 +1340,7 @@ Global ratio：
 
 必须用当前 DSH WebUI 实际挂载验证：
 
-- 梁标不遮挡 composer
+- 梁向不遮挡 composer
 - 不遮挡 navigation
 - popover 不溢出
 - dark/light 正常
@@ -1377,7 +1378,7 @@ Acceptance Criteria:
 > Cursor 新 Chat。Plan → Agent。
 
 ```text
-在 Prompt 02 UI 正确后，实现梁标 V0.1 的纯 TypeScript domain model。
+在 Prompt 02 UI 正确后，实现梁向 V0.1 的纯 TypeScript domain model。
 
 本阶段禁止：
 - React dependency in domain
@@ -1709,7 +1710,7 @@ Acceptance Criteria:
 > Online Voting 的 P0 技术门。Cursor 新 Chat，Plan Mode，先只读勘察。
 
 ```text
-现在进入梁标 V0.1 的 DSH Authority Spike。
+现在进入梁向 V0.1 的 DSH Authority Spike。
 
 本阶段主要目标不是写代码，而是回答：
 
@@ -1719,7 +1720,7 @@ Acceptance Criteria:
 - 中央梁子 WAITING/五态由全网 up_ratio 决定
 - 个人 Token 不驱动中央梁子状态
 - 个人 remaining incense 决定梁气旺盛程度
-- token remainder 决定梁气环 fill
+- token remainder 决定香火环 fill
 - 50K Input+Output Token = 1 earned incense
 - 1 accepted vote = 1 used incense
 
@@ -1752,7 +1753,7 @@ Acceptance Criteria:
 5. anonymous id 是否可删除/重置？
 6. 是否只能作为 pseudonymous identifier，而不能作为 Auth？
 7. DeepSeek provider 是否向远端发送某个 harness user id header？
-8. 梁标 Backend 是否有合法手段验证该 header 的真实性？
+8. 梁向 Backend 是否有合法手段验证该 header 的真实性？
 
 每个结论附：
 - source file
@@ -1825,12 +1826,12 @@ Source | readable by Host | readable by Browser | verifiable by Liangbiao Backen
 - current service registration patterns
 
 回答：
-- 梁标 Host 与 Client 推荐怎样通信？
-- 如果梁标需要本地 state，推荐存哪里？
-- 如果梁标 Backend 与 DSH Host 通信，推荐怎样发 HTTP？
+- 梁向 Host 与 Client 推荐怎样通信？
+- 如果梁向需要本地 state，推荐存哪里？
+- 如果梁向 Backend 与 DSH Host 通信，推荐怎样发 HTTP？
 - 是否有现有 auth token forwarding pattern？
 - 是否有 user-facing toast/dialog/theme primitives？
-- 当前最适合梁标的 UI Slot 是否仍与 Prompt 00 一致？
+- 当前最适合梁向的 UI Slot 是否仍与 Prompt 00 一致？
 
 ## E. Business date / timezone
 
@@ -1840,7 +1841,7 @@ Source | readable by Host | readable by Browser | verifiable by Liangbiao Backen
 - day rollover 必须由 server authoritative clock 决定。
 
 检查 DSH 是否有现成 timezone/user setting。
-若没有，梁标 Backend 自己管理。
+若没有，梁向 Backend 自己管理。
 
 ## F. Decision Gate A
 
@@ -1869,7 +1870,7 @@ Source | readable by Host | readable by Browser | verifiable by Liangbiao Backen
 
 停止在线 Vote Backend 的生产实现，并给出最小技术选项，不替用户做产品决策：
 - DSH upstream 增加 signed usage/identity capability
-- 梁标引入独立账号与服务器可验证模型 usage
+- 梁向引入独立账号与服务器可验证模型 usage
 - 用户明确接受 soft-trust community mode
 - 仅发布本地 demo，不开放可信全网投票
 
@@ -1911,13 +1912,13 @@ Acceptance Criteria:
 # 9. DSH Self-check A：与 Prompt 04 并行
 
 ```text
-请作为当前运行版本 DeepSeek Harness 的框架专家，对“梁标 V0.1”的身份、Token 与扩展接口进行独立只读审查。
+请作为当前运行版本 DeepSeek Harness 的框架专家，对“梁向 V0.1”的身份、Token 与扩展接口进行独立只读审查。
 
 本审查与 Cursor 源码勘察并行。
 不要依赖 Cursor 的任何结论。
 所有判断只基于当前 DSH runtime 和当前源码。
 
-梁标产品约束：
+梁向产品约束：
 
 - 今日只有一个 Active 二元梁案
 - 只有“夯 / 拉”
@@ -1926,7 +1927,7 @@ Acceptance Criteria:
 - 中央“梁子”状态由全网 up_ratio 决定：
   0票待开梁；<50 梁工；50–70 梁总；70–85 梁神；85–95 梁圣；>=95 梁祖
 - 个人 remaining incense 决定梁气旺盛程度
-- 距下一炷的 Token progress 决定梁气环 fill
+- 距下一炷的 Token progress 决定香火环 fill
 - production backend 不允许相信前端自报 user_id/token/incense
 
 请重点回答：
@@ -2020,7 +2021,7 @@ Acceptance Criteria:
 > Decision Gate A 不影响本地 UX 计量开发，但本地值不得自动冒充 production authority。
 
 ```text
-在 Prompt 04/04.5 完成后，将梁标接入真实 DSH provider-reported Token usage，用于计算当前用户的 PersonalLiangQiState。
+在 Prompt 04/04.5 完成后，将梁向接入真实 DSH provider-reported Token usage，用于计算当前用户的 PersonalLiangQiState。
 
 本阶段目标：
 
@@ -2111,7 +2112,7 @@ LocalObservedDailyUsage {
 
 替换 Prompt 02 的 token progress mock：
 
-- 梁气环 fill 来自真实 observed token remainder
+- 香火环 fill 来自真实 observed token remainder
 - “再 N Token”来自真实 observed token remainder
 - 如果 dev mock authoritative balance 与真实 earned 同步，梁气 intensity 可跟随 dev balance
 - 中央梁子状态仍只来自 global mock/snapshot
@@ -2267,7 +2268,7 @@ Global Liangzi：
 # 13. Prompt 06：本地完整闭环（Fake Authoritative Service）
 
 ```text
-在真实 PersonalLiangQi token progress 已经工作后，完成梁标 V0.1 的本地完整体验。
+在真实 PersonalLiangQi token progress 已经工作后，完成梁向 V0.1 的本地完整体验。
 
 关键原则：
 
@@ -2571,7 +2572,7 @@ Do not modify files.
 > 只有 Prompt 04 Decision Gate A 已明确后执行。
 
 ```text
-设计梁标 V0.1 production backend。
+设计梁向 V0.1 production backend。
 
 本阶段先完成 architecture + schema + transaction proof，不急着写全部 HTTP handlers。
 
@@ -2841,7 +2842,7 @@ Acceptance Criteria:
 > 若 Decision Gate A 不允许生产可信票权，本 Prompt 仅实现 staging adapter，不得伪装 production。
 
 ```text
-根据 Prompt 07 已冻结 backend architecture，实现梁标 V0.1 Vote Backend。
+根据 Prompt 07 已冻结 backend architecture，实现梁向 V0.1 Vote Backend。
 
 第一步读取 docs/075-backend-decision.md。
 
@@ -3027,7 +3028,7 @@ Acceptance Criteria:
 # 17. Prompt 09：DSH Host ↔ Backend 集成
 
 ```text
-将梁标 DSH plugin 与 Prompt 08 backend 集成。
+将梁向 DSH plugin 与 Prompt 08 backend 集成。
 
 原则：
 
@@ -3269,12 +3270,12 @@ Do not modify files.
 # 19. Prompt 10：发布前加固
 
 ```text
-对梁标 V0.1 进行发布前加固。
+对梁向 V0.1 进行发布前加固。
 本阶段不增加新产品功能。
 
 ## Semantic audit
 
-全仓搜索并确认没有梁标业务意义上的：
+全仓搜索并确认没有梁向业务意义上的：
 - 稳
 - neutral vote
 - candidate
@@ -3478,7 +3479,7 @@ Acceptance Criteria:
 
 ## README 核心描述
 
-# 梁标
+# 梁向
 
 一句话：
 
@@ -3516,7 +3517,7 @@ Acceptance Criteria:
 当前用户尚未投出的香火，决定梁气旺盛程度，也是可投票余额。
 
 `next-incense progress`：
-当前用户距离再获得一炷香的 Token 进度，决定梁气环 fill。
+当前用户距离再获得一炷香的 Token 进度，决定香火环 fill。
 
 `global incense`：
 所有用户今日实际投出的有效票总数。
@@ -3563,7 +3564,7 @@ authority 未 VERIFIED：明确 community/dev/soft-trust limitation，绝不能�
 2. 0票“待开梁”
 3. 有票后按夯率显示梁工/梁总/梁神/梁圣/梁祖
 4. 当前个人 5 炷香，梁气旺盛
-5. 梁气环显示“再 3,000 Token”且接近满
+5. 香火环显示“再 3,000 Token”且接近满
 6. 使用 DSH 增加 3,000 Token
 7. 环满，凝成 +1 炷，随后环重新开始
 8. 连续投夯/拉，remaining 下降，梁气变弱
@@ -3721,7 +3722,7 @@ Do not make style-only comments.
 - [https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/llm/token-meter/src/projection.ts](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/llm/token-meter/src/projection.ts)
 - [https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/architecture/2026-07-29-projected-token-usage-and-request-context.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/architecture/2026-07-29-projected-token-usage-and-request-context.md)
 
-因此梁标 V0.1 的产品公式 Input+Output，在当前 DSH bucket 下应优先验证映射：
+因此梁向 V0.1 的产品公式 Input+Output，在当前 DSH bucket 下应优先验证映射：
 
 ```
 Input
@@ -3753,7 +3754,7 @@ Effective
 
 - [https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/identity/anonymous-user-id/README.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/identity/anonymous-user-id/README.md)
 
-**这证明 DSH 有稳定匿名标识，不证明它是可供梁标云端验证的 authenticated user identity。**
+**这证明 DSH 有稳定匿名标识，不证明它是可供梁向云端验证的 authenticated user identity。**
 
 因此新 Prompt 把：
 
@@ -4122,7 +4123,7 @@ workspace/
 将本文件导入新会话后，可直接说明：
 
 ```text
-这是梁标 V0.1 当前唯一有效的产品冻结与 Cursor Prompt Pack（R2）。
+这是梁向 V0.1 当前唯一有效的产品冻结与 Cursor Prompt Pack（R2）。
 
 最终冻结：
 - 梁文锋统一称“梁子”
@@ -4130,8 +4131,8 @@ workspace/
 - 全网夯率决定：梁工 / 梁总 / 梁神 / 梁圣 / 梁祖
 - 个人 LiangQi 只表示 remaining incense + 距下一炷 Token progress
 - remaining incense 决定梁气旺盛程度
-- token remainder 决定梁气环 fill
-- “N 炷 / 再 X Token”整合在梁气环中
+- token remainder 决定香火环 fill
+- “N 炷 / 再 X Token”整合在香火环中
 - 个人 Token 不驱动中央梁子状态
 
 Prompt 01 已完成。
@@ -4154,10 +4155,10 @@ Prompt 01B R2 已完成，下面是 Cursor 的执行结果。
 
 # PART B — 4 步最终执行 Prompts
 
-# 梁标 V0.1 — Cursor 4 步最终开发 Prompts（R3）
+# 梁向 V0.1 — Cursor 4 步最终开发 Prompts（R3）
 
 > 使用方式：
-> 1. 将 `梁标_V0.1_产品冻结与_Cursor_Prompt_Pack_R2.md` 放入梁标仓库，建议路径：`docs/LIANGBIAO_CURSOR_MASTER_R3.md`。
+> 1. 将 `梁向_V0.1_产品冻结与_Cursor_Prompt_Pack_R2.md` 放入梁向仓库，建议路径：`docs/LIANGBIAO_CURSOR_MASTER_R3.md`。
 > 2. Cursor 每个阶段开一个新 Chat。
 > 3. 依次执行下面 4 个 Prompt。
 > 4. 每阶段允许 Cursor 自主 Plan → Implement → Test → Fix → Commit；除 P0 无法继续外，不要中途停下来等确认。
@@ -4168,7 +4169,7 @@ Prompt 01B R2 已完成，下面是 Cursor 的执行结果。
 # PROMPT 1 / 4 — 产品语义纠偏 + 正确 UI + Domain 一次完成
 
 ```text
-你现在负责完成「梁标 V0.1」第一大阶段。
+你现在负责完成「梁向 V0.1」第一大阶段。
 
 不要只做 Plan。先 Plan，然后立即进入 Agent/Implement，持续完成本 Prompt 的全部内容；遇到普通实现问题自行解决并继续。只有真正的 P0 阻塞才停止。
 
@@ -4182,7 +4183,7 @@ Prompt 01B R2 已完成，下面是 Cursor 的执行结果。
 - Prompt 00/01 已经生成的 DSH plugin skeleton
 - 当前本地 `../deepseek-harness` 中已验证的 UI Slot / Host / Client conventions
 
-`docs/LIANGBIAO_CURSOR_MASTER_R3.md` 是梁标产品语义最高优先级事实源。
+`docs/LIANGBIAO_CURSOR_MASTER_R3.md` 是梁向产品语义最高优先级事实源。
 任何旧代码、旧文档、旧测试、旧 Prompt 与它冲突时，以本文件冻结语义为准。
 
 不要修改 `../deepseek-harness`。
@@ -4192,14 +4193,14 @@ Prompt 01B R2 已完成，下面是 Cursor 的执行结果。
 
 ## A. 先做全仓业务语义纠偏
 
-全仓搜索并清除/修正梁标业务语义中的旧模型：
+全仓搜索并清除/修正梁向业务语义中的旧模型：
 
 - 稳 / neutral / steady / third option
 - candidate / ranking / leaderboard / winner / top-n
 - 大夯 / 偏夯 / 胶着 / 偏拉 / 大拉
 - LiangScore / Bayesian prior
 - BallotLedger / LiangBallot / 梁签
-- 小难梁 / 牢梁 / 老梁
+- 小难梁 / 老梁；“牢梁”仅允许作为待开梁肖像内的装饰牌匾，不得成为状态或文案
 - 旧个人五态 `梁哥 -> 梁总 -> 梁神 -> 梁圣 -> 梁祖`
 - “个人 Token / earned incense / remaining incense 驱动中央人物”
 - “投票后梁气不能下降”
@@ -4212,9 +4213,9 @@ Prompt 01B R2 已完成，下面是 Cursor 的执行结果。
 
 ### 产品
 
-- 产品名：梁标
+- 产品名：梁向
 - 梁文锋在产品 UI 中统一称为：梁子
-- Hover/Focus：`今日梁位`
+- Hover/Focus：`今日梁向`
 - Panel title：`今日梁案`
 - 每天原则上一个 Active 梁案
 - 投票只有 `up/down`，UI 只有 `夯/拉`
@@ -4252,7 +4253,7 @@ Prompt 01B R2 已完成，下面是 Cursor 的执行结果。
 设计原则：
 
 - 已有几炷香 -> 决定梁气“旺盛程度”
-- 距下一炷 Token 进度 -> 决定梁气环从空到满的 fill
+- 距下一炷 Token 进度 -> 决定香火环从空到满的 fill
 - “再 3,000 Token 得 1 炷”作为环右翼 overlay，禁止单独再制造一层个人成长区；环/头像必须居中
 - 投票消耗香火后 `remaining_incense` 会下降，因此梁气旺盛程度可以下降
 - 投票不会回退已经产生的 Token remainder/progress
@@ -4334,7 +4335,7 @@ mock case：
 
 布局语义：
 
-`我的香火 5 炷    [梁子 + 个人梁气环]    下一炷 3,000 Token`
+`今日凝香 5 炷    [梁子 + 个人香火环]    下一炷 3,000 Token`
 `                      梁位 83.021952%`
 
 要求：
@@ -4344,7 +4345,7 @@ mock case：
 - 五态 + WAITING 均有明显视觉差异
 - 可先用原创 SVG/CSS placeholder
 - 不使用普通 Gauge/Donut 替代梁子
-- 梁气环围绕梁子
+- 香火环围绕梁子
 - 梁气 overlay 只属于当前用户
 
 视觉方向：
@@ -4365,7 +4366,7 @@ mock case：
 
 不要在头像下面再单独放一整行个人成长文案。左右两翼 overlay：
 
-`我的香火 5 炷` …… `下一炷 3,000 Token`
+`今日凝香 5 炷` …… `下一炷 3,000 Token`
 
 环必须居中。完整含义必须可访问：
 - 当前剩余 5 炷
@@ -4375,7 +4376,7 @@ mock case：
 
 只有，等宽标齐：
 
-`[ 夯：升梁！ ]    [ 拉：降梁！ ]`
+`[ 夯 · 升梁 ]    [ 拉 · 降梁 ]`
 
 mock vote accepted：
 
@@ -4617,7 +4618,7 @@ negative / NaN / Infinity / unsafe integer / used>earned / malformed snapshot �
 # PROMPT 2 / 4 — DSH Authority Spike + 真实 Token + 本地完整闭环一次完成
 
 ```text
-你现在负责「梁标 V0.1」第二大阶段。
+你现在负责「梁向 V0.1」第二大阶段。
 
 不要只做调研文档。请按顺序完成：
 
@@ -5015,7 +5016,7 @@ ring 仍=94%，只降低 intensity/库存表现。
 # PROMPT 3 / 4 — Authority Backend + Online Integration 一次完成
 
 ```text
-你现在负责「梁标 V0.1」第三大阶段：Backend + Online Integration。
+你现在负责「梁向 V0.1」第三大阶段：Backend + Online Integration。
 
 不要重复前面的产品讨论。直接读取事实和 Decision Gate，设计并实现。
 
@@ -5464,7 +5465,7 @@ commit，例如：
 # PROMPT 4 / 4 — 全面加固 + Release Candidate + Final Review 一次完成
 
 ```text
-你现在负责「梁标 V0.1」最后阶段：Release Hardening + RC。
+你现在负责「梁向 V0.1」最后阶段：Release Hardening + RC。
 
 「本阶段不新增产品功能」只约束当时那一次 RC 审计，不约束后续对话里的 UI/文案修正。
 
@@ -5490,14 +5491,14 @@ commit，例如：
 
 ## A. Semantic Final Audit
 
-全仓确认没有梁标业务意义上的：
+全仓确认没有梁向业务意义上的：
 
 - 稳 / neutral / third option
 - candidate / ranking / leaderboard / winner / top-n
 - 大夯 / 偏夯 / 胶着 / 偏拉 / 大拉
 - LiangScore / Bayesian prior
 - 梁签 / BallotLedger
-- 小难梁 / 牢梁 / 老梁
+- 小难梁 / 老梁；“牢梁”仅允许作为待开梁肖像内的装饰牌匾，不得成为状态或文案
 - 个人 Avatar Tier
 - 个人 Token/香火直接决定中央梁子
 - global ratio 决定个人梁气
@@ -5516,14 +5517,14 @@ commit，例如：
 严格四个视觉区域：
 
 1. 今日梁案
-2. 夯比例 | 梁子 + 个人梁气环 | 拉比例
+2. 夯比例 | 梁子 + 个人香火环 | 拉比例
 3. 夯 / 拉两个按钮
 4. 全局香火 / 香客
 
 检查：
 
 - 没有多余个人成长行
-- `再 N Token 得 1 炷` 已融合进梁气环
+- `再 N Token 得 1 炷` 已融合进香火环
 - remaining incense 决定梁气旺盛程度
 - token remainder/progress 决定 ring fill
 - vote 会降低库存/intensity
@@ -5679,7 +5680,7 @@ Security：
 
 README 核心描述：
 
-# 梁标
+# 梁向
 
 `用 DSH 攒香火，投下“夯”或“拉”，共同决定今日梁子从梁工一路被夯成梁祖。`
 
@@ -5746,7 +5747,7 @@ clean DSH profile smoke：
 
 1. install RC
 2. launch WebUI
-3. 今日梁位入口
+3. 今日梁向入口
 4. 打开今日梁案
 5. 0 票 WAITING
 6. Token 增长

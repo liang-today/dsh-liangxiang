@@ -1,9 +1,9 @@
 /**
- * 梁标 entry + panel container.
+ * 梁向 entry + panel container.
  *
  * `BadgeButton` is the presentational docked entry: the current 梁子 state IS
  * the icon (so the global mood is readable without opening anything), and the
- * hover/focus tooltip stays the frozen `今日梁位`. It is freely placeable —
+ * hover/focus tooltip stays the frozen `今日梁向`. It is freely placeable —
  * drag it anywhere in the frame; the position is remembered per browser.
  *
  * `LiangbiaoBadge` is the stateful container that the overlay slot renders: it
@@ -115,7 +115,7 @@ export interface BadgeButtonProps {
   buttonRef: RefObject<HTMLButtonElement> | null
 }
 
-/** Keyboard-reachable docked entry; hover and focus both surface `今日梁位`. */
+/** Keyboard-reachable docked entry; hover and focus both surface `今日梁向`. */
 export function BadgeButton({
   open,
   liangziState,
@@ -474,7 +474,7 @@ export function LiangbiaoBadge(): ReactElement {
         if (result.status === 'accepted') {
           if (voteType === 'up') playVoteUp()
           else playVoteDown()
-          setVoteFeedback(`已上香：${voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME}（剩余 ${result.remainingIncense} 炷）`)
+          setVoteFeedback(`已上香 · ${voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME}（剩余 ${result.remainingIncense} 炷）`)
         } else if (result.reason === 'insufficient_incense') {
           // The panel painted optimistic local incense the backend has not
           // authorized. Re-read the authoritative ledger so the count is honest

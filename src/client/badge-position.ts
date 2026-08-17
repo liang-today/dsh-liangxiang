@@ -1,5 +1,5 @@
 /**
- * Where the docked 梁标 entry sits, and how that survives a reload.
+ * Where the docked 梁向 entry sits, and how that survives a reload.
  *
  * The badge is freely placeable anywhere in the frame, so three things have to
  * be handled explicitly:

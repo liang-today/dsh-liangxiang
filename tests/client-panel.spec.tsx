@@ -283,7 +283,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(value.fontVariantNumeric).toBe('tabular-nums')
   })
 
-  it('paints 今日香火 and 下一炷 with the same orange value and row rhythm', () => {
+  it('paints 今日凝香 and 下一炷 with the same orange value and row rhythm', () => {
     const tree = renderPanel(demoState())
     const incenseWrap = findByAttr(tree, 'data-liangbiao-personal', 'incense')[0]
     const nextWrap = findByAttr(tree, 'data-liangbiao-personal', 'next-incense')[0]
@@ -299,6 +299,16 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(styleOf(nextValueRow).lineHeight).toBe('18px')
     expect(styleOf(incenseValueRow).fontWeight).toBe(700)
     expect(styleOf(nextValueRow).fontWeight).toBe(700)
+  })
+
+  it('names the personal ring 香火环 in accessible copy', () => {
+    const tree = renderPanel(demoState())
+    const ring = findByAttr(tree, 'data-liangbiao-ring')[0]
+    const ringImage = ring === undefined
+      ? undefined
+      : findAll([ring], (node) => node.props.role === 'img' && String(node.props['aria-label']).startsWith('香火环：'))[0]
+    expect(ringImage?.props['aria-label']).toContain('香火环：剩余香火')
+    expect(ringImage?.props['aria-label']).not.toContain('梁气：')
   })
 
   it('shows 余 N 炷 (not 可打梁) so the left flank stays narrow', () => {
@@ -523,15 +533,15 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
 })
 
 describe('region 3: exactly two vote buttons', () => {
-  it('renders 夯：升梁！ and 拉：降梁！ aligned, and nothing else', () => {
+  it('renders 夯 · 升梁 and 拉 · 降梁 aligned, and nothing else', () => {
     const tree = renderPanel(demoState())
     const row = findByAttr(tree, 'data-liangbiao-region', 'vote')[0]
     const votes = findByAttr(tree, 'data-liangbiao-vote')
     expect(votes.map((node) => node.props['data-liangbiao-vote'])).toEqual(['up', 'down'])
     expect(votes[0] && textContent([votes[0]])).toBe(VOTE_UP_LABEL)
     expect(votes[1] && textContent([votes[1]])).toBe(VOTE_DOWN_LABEL)
-    expect(VOTE_UP_LABEL).toBe('夯：升梁！')
-    expect(VOTE_DOWN_LABEL).toBe('拉：降梁！')
+    expect(VOTE_UP_LABEL).toBe('夯 · 升梁')
+    expect(VOTE_DOWN_LABEL).toBe('拉 · 降梁')
     expect(styleOf(row).gridTemplateColumns).toBe('1fr 1fr')
     expect(styleOf(votes[0]).width).toBe('100%')
     expect(styleOf(votes[1]).width).toBe('100%')
@@ -561,8 +571,8 @@ describe('region 3: exactly two vote buttons', () => {
   })
 
   it('shows the transient 已上香 feedback line', () => {
-    const tree = renderPanel(demoState(), '已上香：夯（剩余 4 炷）')
-    expect(textContent(tree)).toContain('已上香：夯（剩余 4 炷）')
+    const tree = renderPanel(demoState(), '已上香 · 夯（剩余 4 炷）')
+    expect(textContent(tree)).toContain('已上香 · 夯（剩余 4 炷）')
   })
 })
 

@@ -22,7 +22,7 @@ DSH 会话产生 provider-reported 用量
 ```text
 daily_incense_state.{claimed_effective_tokens, used_incense}
   → remaining = earned - used            → 梁气旺盛程度（粒子/光晕/火苗）
-  → remainder = claimed % 50,000         → 梁气环 fill
+  → remainder = claimed % 50,000         → 香火环 fill
   → to_next  = 50,000 - remainder        → 右翼「下一炷 X Token」
 ```
 

@@ -5,11 +5,15 @@
  * into an ancestor. Pixels are swappable; state semantics are frozen:
  *
  *   waiting     待开梁  gray unlit placeholder; plaque in art reads 牢梁
- *   liang_gong  梁工    hard hat + coffee; chest badge reads 老梁
- *   liang_zong  梁总    navy suit + red tie, fake executive smirk
- *   liang_shen  梁神    crooked halo, levitation, smile going feral
- *   liang_sheng 梁圣    holy robes + rays, still holding a keyboard
- *   liang_zu    梁祖    beard + vermillion 法相, maximum 梁威
+ *   liang_gong  梁工    hard hat + coffee; chest badge reads 梁工
+ *   liang_zong  梁总    navy suit + matching 梁总 badge
+ *   liang_shen  梁神    crooked halo, levitation, matching 梁神 badge
+ *   liang_sheng 梁圣    holy robes + rays, keyboard, matching 梁圣 badge
+ *   liang_zu    梁祖    beard + vermillion 法相, matching 梁祖 badge
+ *
+ * The 牢梁 waiting plaque and matching active-state badges are intentional
+ * in-art jokes. They are decorative; the state outside the bitmap remains the
+ * authoritative and accessible label.
  *
  * Presentational only: no hooks, driven entirely by props.
  */

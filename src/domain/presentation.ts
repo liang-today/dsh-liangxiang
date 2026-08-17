@@ -44,7 +44,7 @@ export function liangQiFloatPeriodMs(fill: number): number | null {
 }
 
 /**
- * Pictorial remaining-incense on the 梁气环, QQ-style place value WITHOUT
+ * Pictorial remaining-incense on the 香火环, QQ-style place value WITHOUT
  * letting a "moon" steal a stick slot: each denomination has its own orbit.
  *
  *   炷 (ones)     0–9

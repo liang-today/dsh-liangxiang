@@ -151,7 +151,7 @@
 运营发布不走 HTTP。在放 SQLite 的 VPS 上：
 
 ```bash
-node lib/backend-cli.js case publish "测试发布：梁标是夯还是拉"
+node lib/backend-cli.js case publish "测试发布：梁向是夯还是拉"
 ```
 
 `POST /v1/admin/cases` 已关闭（404）。语义仍是：归档当前 active、开新零票案、清当日 used incense。详见 [`122`](122-identity-recovery.md)、[`121`](121-vps-deploy.md)。

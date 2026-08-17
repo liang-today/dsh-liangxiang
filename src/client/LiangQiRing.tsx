@@ -1,5 +1,5 @@
 /**
- * LiangQiRing — the personal 梁气 overlay around the central 梁子.
+ * LiangQiRing — the personal 香火环 around the central 梁子.
  *
  * One component, two visual variables (frozen contract, AGENTS.md §4):
  *  - remaining incense  -> vitality + pictorial 炷/月/日 on separate orbits
@@ -159,7 +159,7 @@ export function LiangQiRing({
     filter: intensity > 0 ? `drop-shadow(0 0 ${Math.round(3 + intensity * 5)}px rgba(216, 135, 58, ${(0.10 + intensity * 0.24).toFixed(2)}))` : undefined,
   }
 
-  const ringLabel = `梁气：剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} 当量`
+  const ringLabel = `香火环：剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} 当量`
 
   return (
     <div style={wrapStyle} data-liangbiao-ring="" data-remaining={personal.remainingIncense} data-fill={fill.toFixed(4)}>

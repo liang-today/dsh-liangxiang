@@ -5,7 +5,7 @@
 ## 1. 契约
 
 - [ ] `AGENTS.md` §17 的语义自检逐条为「是」
-- [ ] 语义扫描无废弃概念（稳/第三态、candidate/ranking/leaderboard/winner、大夯…大拉、LiangScore、梁签、小难梁/牢梁/老梁、个人 Avatar Tier、cacheRead×0.1）
+- [ ] 语义扫描无废弃概念（稳/第三态、candidate/ranking/leaderboard/winner、大夯…大拉、LiangScore、梁签、小难梁/老梁、个人 Avatar Tier、cacheRead×0.1）；“牢梁”仅允许存在于待开梁肖像装饰牌匾
 - [ ] 五态恰为 梁工/梁总/梁神/梁圣/梁祖 + `待开梁` 零票占位
 - [ ] 投票恰为 夯/拉，共用一个香火池，一票一炷
 
@@ -35,7 +35,7 @@
 ## 5. RC 产物
 
 - [ ] `pnpm pack` 生成 tarball，记录 SHA256
-- [ ] 记录：梁标版本、git commit、tested DSH commit、Node、pnpm、OS/浏览器、host entry、client entry、Token Meter seam、authority mode
+- [ ] 记录：梁向版本、git commit、tested DSH commit、Node、pnpm、OS/浏览器、host entry、client entry、Token Meter seam、authority mode
 - [ ] 干净 profile 装该 tarball 后手工过一遍 20 步冒烟（见 `docs/100`）
 
 ## 6. 收尾

@@ -3,7 +3,7 @@
 > 这是路径 ③ 的运维说明，不是可信生产。  
 > `VERIFIED_PRODUCTION` 仍然启动即拒。不要把本页写成「已验证身份 / 已核验 Token」。
 
-浏览器**不**直连梁标后端。每人本机的 DSH Host 连 `LIANGBIAO_BACKEND_URL`。
+浏览器**不**直连梁向后端。每人本机的 DSH Host 连 `LIANGBIAO_BACKEND_URL`。
 
 ```text
 香客浏览器  →  本机 DSH WebUI  →  本机 Host 插件
@@ -144,7 +144,7 @@ sudo journalctl -u liangbiao-backend -f
 ```bash
 set -a; source /etc/liangbiao.env; set +a
 cd /opt/liangbiao   # 或仓库目录
-node lib/backend-cli.js case publish "测试发布：梁标是夯还是拉"
+node lib/backend-cli.js case publish "测试发布：梁向是夯还是拉"
 ```
 
 成功响应里会有新的 `active_case.id`（形如 `case-YYYY-MM-DD-<hex>`）和零票 `global_snapshot`。journal 一行 `publish archived=… opened=…`。
@@ -159,7 +159,7 @@ node lib/backend-cli.js case publish "测试发布：梁标是夯还是拉"
 仓库脚本必须在持有 sqlite 的那台机器上跑（不再远程 curl）：
 
 ```bash
-pnpm run publish:case -- "测试发布：梁标是夯还是拉"
+pnpm run publish:case -- "测试发布：梁向是夯还是拉"
 ```
 
 ## 9. 不要做的事

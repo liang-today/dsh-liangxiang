@@ -46,7 +46,7 @@
 
 ## 密钥与日志
 
-- 梁标不读、不存、不发任何 provider 凭据；`.env` 在 `.gitignore` 内。
+- 梁向不读、不存、不发任何 provider 凭据；`.env` 在 `.gitignore` 内。
 - 投票日志只含 `method / path / status / installation 前 8 字符 / accepted|rejected`。
 - 错误响应不回显请求体（有断言）。
 - 详见 [`PRIVACY.md`](PRIVACY.md)。
