@@ -37,7 +37,7 @@ function renderButton(open: boolean, liangziState: 'waiting' | 'liang_gong' | 'l
   return { tree, button }
 }
 
-describe('LiangbiaoBadge entry', () => {
+describe('LiangxiangBadge entry', () => {
   it('preserves the actual incense gain from a multi-stick update', () => {
     expect(earnedIncenseGain(7, 8)).toBe(1)
     expect(earnedIncenseGain(7, 13)).toBe(6)
@@ -93,9 +93,9 @@ describe('LiangbiaoBadge entry', () => {
           buttonRef={null}
         />,
       )
-      const avatars = findByAttr(tree, 'data-liangbiao-avatar', state)
+      const avatars = findByAttr(tree, 'data-liangxiang-avatar', state)
       expect(avatars).toHaveLength(1)
-      expect(avatars[0]?.props['data-liangbiao-avatar-chrome']).toBe('none')
+      expect(avatars[0]?.props['data-liangxiang-avatar-chrome']).toBe('none')
       // The mini avatar carries no state label (no room) and is decorative.
       const portrait = findAll(tree, (node) => node.type === 'img')[0]
       expect(portrait?.props.width).toBe(BADGE_ICON_SIZE)
@@ -103,7 +103,7 @@ describe('LiangbiaoBadge entry', () => {
       expect(portrait?.props.src).toEqual(expect.stringMatching(/^data:image\/png;base64,/))
     }
     const { button } = renderButton(false)
-    expect(button.props['data-liangbiao-badge-state']).toBe('liang_sheng')
+    expect(button.props['data-liangxiang-badge-state']).toBe('liang_sheng')
   })
 
   it('uses a stationary interaction halo while only the figure bobs', () => {
@@ -117,13 +117,13 @@ describe('LiangbiaoBadge entry', () => {
     expect(style.height).toBe(`${BADGE_SIZE}px`)
     expect(style.animation).toBeUndefined()
 
-    const halo = findByAttr(tree, 'data-liangbiao-badge-halo')[0]
+    const halo = findByAttr(tree, 'data-liangxiang-badge-halo')[0]
     expect(halo).toBeDefined()
     expect(styleOf(halo).animation).toBeUndefined()
 
-    const figure = findByAttr(tree, 'data-liangbiao-avatar-figure')[0]
+    const figure = findByAttr(tree, 'data-liangxiang-avatar-figure')[0]
     if (figure === undefined) throw new Error('avatar figure missing')
-    expect(styleOf(figure).animation).toContain('liangbiao-avatar-figure-float')
+    expect(styleOf(figure).animation).toContain('liangxiang-avatar-figure-float')
     expect(styleOf(figure).transform).toBe('translateZ(0)')
     expect(styleOf(findAll(tree, (node) => node.type === 'img')[0]).animation).toBeUndefined()
     expect(styleOf(findAll(tree, (node) => node.type === 'img')[0]).borderRadius).toBe(0)
@@ -140,9 +140,9 @@ describe('LiangbiaoBadge entry', () => {
         buttonRef={null}
       />,
     )
-    const fillingFigure = findByAttr(filling, 'data-liangbiao-avatar-figure')[0]
-    expect(fillingFigure?.props['data-liangbiao-float-ms']).toBe(liangQiFloatPeriodMs(0.94))
-    expect(styleOf(fillingFigure).animation).toContain('liangbiao-avatar-figure-float')
+    const fillingFigure = findByAttr(filling, 'data-liangxiang-avatar-figure')[0]
+    expect(fillingFigure?.props['data-liangxiang-float-ms']).toBe(liangQiFloatPeriodMs(0.94))
+    expect(styleOf(fillingFigure).animation).toContain('liangxiang-avatar-figure-float')
 
     const still = renderDeep(
       <BadgeButton
@@ -154,8 +154,8 @@ describe('LiangbiaoBadge entry', () => {
         buttonRef={null}
       />,
     )
-    const stillFigure = findByAttr(still, 'data-liangbiao-avatar-figure')[0]
-    expect(stillFigure?.props['data-liangbiao-float-ms']).toBe(0)
+    const stillFigure = findByAttr(still, 'data-liangxiang-avatar-figure')[0]
+    expect(stillFigure?.props['data-liangxiang-float-ms']).toBe(0)
     expect(styleOf(stillFigure).animation).toBeUndefined()
   })
 
@@ -204,6 +204,12 @@ describe('free placement', () => {
     // No storage at all (privacy mode / SSR) must not throw.
     expect(loadBadgePosition(viewport, null)).toEqual(defaultBadgePosition(viewport))
     expect(() => saveBadgePosition({ x: 1, y: 2 }, null)).not.toThrow()
+  })
+
+  it('reads the former badge position during the v0.5 migration', () => {
+    const store = new Map([['liangbiao:badge-position:v2', '{"x":44,"y":66}']])
+    const storage = { getItem: (key: string) => store.get(key) ?? null }
+    expect(loadBadgePosition(viewport, storage)).toEqual({ x: 44, y: 66 })
   })
 
   it('clamps a stored point that no longer fits a shrunken window', () => {

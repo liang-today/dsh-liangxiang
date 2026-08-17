@@ -1,5 +1,5 @@
 /**
- * Tiny synthesized sound cues for 梁向 — no audio assets, Web Audio only.
+ * Tiny synthesized sound cues for 梁相 — no audio assets, Web Audio only.
  * 升梁 / 降梁 / 香火增长 / 梁子换态 each play a short tone. Volume is a
  * 4-step cosmetic preference (0=无, 1=小 33%, 2=中 66%, 3=大 100%) persisted
  * in localStorage; it scales the synthesized gain only — it never touches
@@ -10,17 +10,20 @@ import { LIANGZI_STATES } from '../domain/index.ts'
 export type SoundLevel = 0 | 1 | 2 | 3
 
 const LEVEL_GAIN: Record<SoundLevel, number> = { 0: 0, 1: 0.33, 2: 0.66, 3: 1 }
-const STORAGE_KEY = 'liangbiao:sound:level'
-const LEGACY_KEY = 'liangbiao:sound:v1'
+const STORAGE_KEY = 'liangxiang:sound:level'
+const LEGACY_LEVEL_KEY = 'liangbiao:sound:level'
+const LEGACY_ON_OFF_KEY = 'liangbiao:sound:v1'
 
 /** Fresh install / no preference: muted. A stored 1–3 is kept. */
 let level: SoundLevel = 0
 try {
-  const stored = typeof localStorage === 'undefined' ? null : localStorage.getItem(STORAGE_KEY)
+  const stored = typeof localStorage === 'undefined'
+    ? null
+    : localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_LEVEL_KEY)
   if (stored !== null) {
     const parsed = Number(stored)
     if (parsed === 0 || parsed === 1 || parsed === 2 || parsed === 3) level = parsed as SoundLevel
-  } else if (typeof localStorage !== 'undefined' && localStorage.getItem(LEGACY_KEY) === 'off') {
+  } else if (typeof localStorage !== 'undefined' && localStorage.getItem(LEGACY_ON_OFF_KEY) === 'off') {
     level = 0
   }
 } catch {

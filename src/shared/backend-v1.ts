@@ -1,5 +1,5 @@
 /**
- * Liangbiao Backend `/v1` JSON contract, shared by the backend (which serves
+ * Liangxiang Backend `/v1` JSON contract, shared by the backend (which serves
  * it) and the DSH host half (which consumes it). Pure TypeScript: no Node, no
  * DSH, no React.
  *
@@ -53,17 +53,17 @@ export const AUTHORITY_MODES = ['DEV_STAGING_ONLY', 'VERIFIED_PRODUCTION'] as co
 export type BackendAuthorityMode = (typeof AUTHORITY_MODES)[number]
 
 /** Pseudonymous installation id header (NOT DSH authentication). */
-export const INSTALLATION_HEADER = 'x-liangbiao-installation'
+export const INSTALLATION_HEADER = 'x-liangxiang-installation'
 /** Raw Ed25519 public key, base64url (32 bytes). */
-export const PUBLIC_KEY_HEADER = 'x-liangbiao-public-key'
+export const PUBLIC_KEY_HEADER = 'x-liangxiang-public-key'
 /** Ed25519 signature of `communityAuthMessage`, base64url. */
-export const SIGNATURE_HEADER = 'x-liangbiao-signature'
+export const SIGNATURE_HEADER = 'x-liangxiang-signature'
 /** Unix milliseconds used in the signed message. */
-export const TIMESTAMP_HEADER = 'x-liangbiao-timestamp'
+export const TIMESTAMP_HEADER = 'x-liangxiang-timestamp'
 /** Optional SHA-256/base64url of local MAC set (sybil cost, spoofable). */
-export const DEVICE_HEADER = 'x-liangbiao-device'
-/** Shared community admission key when the server has LIANGBIAO_COMMUNITY_KEY. */
-export const COMMUNITY_KEY_HEADER = 'x-liangbiao-community-key'
+export const DEVICE_HEADER = 'x-liangxiang-device'
+/** Shared community admission key when the server has LIANGXIANG_COMMUNITY_KEY. */
+export const COMMUNITY_KEY_HEADER = 'x-liangxiang-community-key'
 
 /** Self-minted installation ids: uuid-ish, url-safe, bounded. */
 const INSTALLATION_ID_PATTERN = /^[A-Za-z0-9._-]{8,64}$/
@@ -77,7 +77,7 @@ export function communityAuthMessage(input: {
   installationId: string
 }): string {
   return [
-    'liangbiao-v1',
+    'liangxiang-v1',
     input.method.toUpperCase(),
     input.path,
     input.timestamp,

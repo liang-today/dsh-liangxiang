@@ -2,19 +2,19 @@
  * Host half: real DSH token observation plus the voting loop, in one of two
  * honestly-labelled authority modes.
  *
- *   LIANGBIAO_BACKEND_URL=local -> LOCAL_FAKE_DEV
+ *   LIANGXIANG_BACKEND_URL=local -> LOCAL_FAKE_DEV
  *     `FakeAuthoritativeLiangService`: everything in this process.
  *
- *   LIANGBIAO_BACKEND_URL unset  -> baked staging URL (DEV_STAGING_ONLY).
+ *   LIANGXIANG_BACKEND_URL unset  -> baked staging URL (DEV_STAGING_ONLY).
  *     First install stays online. The welcome gate may ask the Host to switch
  *     to local; a dead backend is not a silent fallback.
- *     `BackendLiangService`: the online Liangbiao backend owns the spend
+ *     `BackendLiangService`: the online Liangxiang backend owns the spend
  *     ledger, idempotency, the aggregate and the business date; this half
  *     observes tokens (a claim, not a proof), holds the self-minted
  *     pseudonymous installation id, and serves the browser channel.
  *
  * Wiring (all DSH touchpoints via compat/dsh; docs/044):
- *  - `webServer` inject      -> /liangbiao/api routes (state / SSE / vote / history)
+ *  - `webServer` inject      -> /liangxiang/api routes (state / SSE / vote / history)
  *  - `storageDomain` inject  -> hydrate + write-behind persistence + identity
  *  - `sessionProjections`+`sessions` inject -> tokenUsage observation
  *
@@ -24,7 +24,7 @@
  */
 import type { DshHostContext } from '../compat/dsh/host-context.ts'
 import { resolveDshHostServices } from '../compat/dsh/host-services.ts'
-import { openLiangbiaoPersistence, type LiangbiaoPersistenceHandle } from '../compat/dsh/storage.ts'
+import { openLiangxiangPersistence, type LiangxiangPersistenceHandle } from '../compat/dsh/storage.ts'
 import { attachUsageObservation } from '../compat/dsh/usage-observer.ts'
 import { systemClock } from '../shared/business-date.ts'
 import { HOST_PLUGIN_NAME, PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
@@ -34,7 +34,7 @@ import { type CommunityKeypair } from './community-keys.ts'
 import { resolveHostRuntimeConfig } from './config.ts'
 import { FakeAuthoritativeLiangService } from './fake-service.ts'
 import { AuthoritySlot } from './authority-slot.ts'
-import { createLiangbiaoApi } from './routes.ts'
+import { createLiangxiangApi } from './routes.ts'
 import type { LiangHostService } from './service.ts'
 
 export const name = HOST_PLUGIN_NAME
@@ -55,7 +55,7 @@ export function apply(ctx: DshHostContext): void {
     return () => {
       console.log(`[${PLUGIN_PACKAGE_NAME}] host half disposed`)
     }
-  }, 'liangbiao: lifecycle marker')
+  }, 'liangxiang: lifecycle marker')
 
   const { service: serviceConfig, backendUrl, communityKey } = resolveHostRuntimeConfig(process.env, warn)
   const identityRef: { current: CommunityKeypair | null } = { current: null }
@@ -75,7 +75,7 @@ export function apply(ctx: DshHostContext): void {
     : null
   const slot = new AuthoritySlot(online ?? local)
   const service: LiangHostService = slot
-  let persistHandle: LiangbiaoPersistenceHandle | null = null
+  let persistHandle: LiangxiangPersistenceHandle | null = null
 
   console.log(
     `[${PLUGIN_PACKAGE_NAME}] authority mode: ${online === null ? 'LOCAL_FAKE_DEV (in-process)' : `DEV_STAGING_ONLY (${backendUrl as string})`}`
@@ -93,7 +93,7 @@ export function apply(ctx: DshHostContext): void {
 
   ctx.effect(() => () => {
     service.dispose?.()
-  }, 'liangbiao: service lifecycle')
+  }, 'liangxiang: service lifecycle')
 
   // Bounded readiness fallback: if no storage domain hydrates us in time, run
   // memory-only (local mode) / with an ephemeral installation id (online mode)
@@ -103,7 +103,7 @@ export function apply(ctx: DshHostContext): void {
       service.markReadyMemoryOnly('storage domain did not attach within the startup window')
     }, READINESS_FALLBACK_MS)
     return () => clearTimeout(timer)
-  }, 'liangbiao: readiness fallback')
+  }, 'liangxiang: readiness fallback')
 
   // Cadence: local mode publishes its own snapshot here; online mode pulls the
   // backend's published snapshot. Either way the public ratio and the Liangzi
@@ -115,23 +115,23 @@ export function apply(ctx: DshHostContext): void {
       service.tick()
     }, serviceConfig.snapshotRefreshSeconds * 1000)
     return () => clearInterval(interval)
-  }, 'liangbiao: snapshot cadence')
+  }, 'liangxiang: snapshot cadence')
 
   ctx.inject(['webServer'], (scoped: DshHostContext) => {
     const { webServer } = resolveDshHostServices(scoped)
     if (webServer === undefined) return
     scoped.effect(() => {
-      const api = createLiangbiaoApi(service, warn, { chooseLocalMode: enterLocalMode })
+      const api = createLiangxiangApi(service, warn, { chooseLocalMode: enterLocalMode })
       const disposeRoute = webServer.register({
         kind: 'prefix',
-        path: '/liangbiao/api',
+        path: '/liangxiang/api',
         handler: api.handler,
       })
       return () => {
         disposeRoute()
         api.closeAllConnections()
       }
-    }, 'liangbiao: api routes')
+    }, 'liangxiang: api routes')
   })
 
   ctx.inject(['storageDomain'], (scoped: DshHostContext) => {
@@ -139,8 +139,8 @@ export function apply(ctx: DshHostContext): void {
     if (storageDomain === undefined) return
     scoped.effect(() => {
       let disposed = false
-      let handle: LiangbiaoPersistenceHandle | null = null
-      openLiangbiaoPersistence(storageDomain, warn)
+      let handle: LiangxiangPersistenceHandle | null = null
+      openLiangxiangPersistence(storageDomain, warn)
         .then(async (opened) => {
           if (disposed) {
             await opened.close()
@@ -174,7 +174,7 @@ export function apply(ctx: DshHostContext): void {
           })
         }
       }
-    }, 'liangbiao: persistence')
+    }, 'liangxiang: persistence')
   })
 
   ctx.inject(['sessionProjections', 'sessions'], (scoped: DshHostContext) => {
@@ -189,6 +189,6 @@ export function apply(ctx: DshHostContext): void {
         disposeFeed()
         service.setAccountingAvailable(false)
       }
-    }, 'liangbiao: usage observation')
+    }, 'liangxiang: usage observation')
   })
 }

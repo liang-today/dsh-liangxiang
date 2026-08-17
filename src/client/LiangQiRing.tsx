@@ -65,8 +65,8 @@ function StickMark({ index, count, opacity }: { index: number, count: number, op
   const deg = (angle * 180) / Math.PI + 90
   return (
     <g
-      data-liangbiao-incense-mark="one"
-      data-liangbiao-incense-glyph="stick"
+      data-liangxiang-incense-mark="one"
+      data-liangxiang-incense-glyph="stick"
       transform={`translate(${cx} ${cy}) rotate(${deg})`}
       opacity={opacity}
     >
@@ -80,8 +80,8 @@ function MoonMark({ index, count, opacity }: { index: number, count: number, opa
   const { cx, cy } = orbitPoint(index, count, TENS_ORBIT)
   return (
     <g
-      data-liangbiao-incense-mark="ten"
-      data-liangbiao-incense-glyph="moon"
+      data-liangxiang-incense-mark="ten"
+      data-liangxiang-incense-glyph="moon"
       transform={`translate(${cx} ${cy})`}
       opacity={opacity}
     >
@@ -98,8 +98,8 @@ function SunMark({ index, count, opacity }: { index: number, count: number, opac
   const { cx, cy } = orbitPoint(index, count, HUNDREDS_ORBIT)
   return (
     <g
-      data-liangbiao-incense-mark="hundred"
-      data-liangbiao-incense-glyph="sun"
+      data-liangxiang-incense-mark="hundred"
+      data-liangxiang-incense-glyph="sun"
       transform={`translate(${cx} ${cy})`}
       opacity={opacity}
     >
@@ -162,7 +162,7 @@ export function LiangQiRing({
   const ringLabel = `香火环：剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} 当量`
 
   return (
-    <div style={wrapStyle} data-liangbiao-ring="" data-remaining={personal.remainingIncense} data-fill={fill.toFixed(4)}>
+    <div style={wrapStyle} data-liangxiang-ring="" data-remaining={personal.remainingIncense} data-fill={fill.toFixed(4)}>
       <svg
         width={RING_SIZE}
         height={RING_SIZE}
@@ -200,7 +200,7 @@ export function LiangQiRing({
       </div>
       {places.overflow > 0 && (
         <span
-          data-liangbiao-overflow-aura=""
+          data-liangxiang-overflow-aura=""
           aria-hidden="true"
           style={{
             position: 'absolute',
@@ -214,7 +214,7 @@ export function LiangQiRing({
       )}
       {places.overflow > 0 && (
         <span
-          data-liangbiao-incense-overflow=""
+          data-liangxiang-incense-overflow=""
           title={`${personal.remainingIncense.toLocaleString('zh-CN')} 炷`}
           style={{
             position: 'absolute',
@@ -239,7 +239,7 @@ export function LiangQiRing({
       )}
       {footer !== undefined && (
         <span
-          data-liangbiao-ring-footer=""
+          data-liangxiang-ring-footer=""
           style={{
             position: 'absolute',
             top: '100%',
@@ -255,7 +255,7 @@ export function LiangQiRing({
       )}
       {condensedIncense > 0 && (
         <span
-          data-liangbiao-condensed={condensedIncense}
+          data-liangxiang-condensed={condensedIncense}
           role="status"
           style={{
             position: 'absolute',
@@ -270,7 +270,7 @@ export function LiangQiRing({
             fontSize: '11px',
             fontWeight: 600,
             whiteSpace: 'nowrap',
-            animation: reducedMotion ? undefined : 'liangbiao-condense 1.4s ease-out 1',
+            animation: reducedMotion ? undefined : 'liangxiang-condense 1.4s ease-out 1',
           }}
         >
           凝香 +{condensedIncense.toLocaleString('zh-CN')} 炷

@@ -1,6 +1,7 @@
 node_modules/
 lib/
 .dsh-home/
+.liangxiang-backend/
 .liangbiao-backend/
 *.tgz
 .env

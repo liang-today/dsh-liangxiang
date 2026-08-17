@@ -43,6 +43,6 @@ daily_incense_state.{claimed_effective_tokens, used_incense}
 
 ## 出网与隐私
 
-Host 只向配置的 `LIANGBIAO_BACKEND_URL` 发启动/声明/打梁/今日快照与个人状态/梁祠历史请求：bootstrap、token-claims、votes、snapshot、daily-state、history。写载荷里只有 `case_id` / `vote_type` / `request_id` / 一个整数 token 计数 / 业务日 / 假名安装标识；history 是公共只读原始计数，不含 prompt、回复或个人账本。
+Host 只向配置的 `LIANGXIANG_BACKEND_URL` 发启动/声明/打梁/今日快照与个人状态/梁祠历史请求：bootstrap、token-claims、votes、snapshot、daily-state、history。写载荷里只有 `case_id` / `vote_type` / `request_id` / 一个整数 token 计数 / 业务日 / 假名安装标识；history 是公共只读原始计数，不含 prompt、回复或个人账本。
 
 **永不出网**：prompt、模型回复、文件路径、代码、会话内容、API key。详见 [`PRIVACY.md`](PRIVACY.md)。

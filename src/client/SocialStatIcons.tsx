@@ -13,7 +13,7 @@ export function ThreeRealmsIncenseIcon({ size = 18 }: { size?: number }): ReactE
       viewBox="0 0 16 16"
       aria-hidden="true"
       focusable="false"
-      data-liangbiao-incense-icon=""
+      data-liangxiang-incense-icon=""
     >
       {/* 三缕青烟：天 / 人 / 地 */}
       <path
@@ -44,7 +44,7 @@ export function FivePhasePilgrimIcon({ size = 18 }: { size?: number }): ReactEle
       viewBox="0 0 16 16"
       aria-hidden="true"
       focusable="false"
-      data-liangbiao-voter-icon=""
+      data-liangxiang-voter-icon=""
     >
       {/* 唐僧光圈：五行土居中 */}
       <circle

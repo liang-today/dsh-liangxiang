@@ -1,6 +1,6 @@
 # 103 — Test Matrix（RC）
 
-`pnpm test`：**31 个文件 / 392 项，全绿**（2026-08-17，v0.4.0）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
+`pnpm test`：**33 个文件 / 404 项，全绿**（2026-08-18，v0.5.0）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
 
 ## 覆盖分布
 
@@ -48,7 +48,8 @@
 | reduced-motion / 键盘 / focus / Escape / tooltip / 禁用原因 | `client-panel`、`badge`、`client-apply` |
 | 资源清理（timer/listener/abort/SSE/unload） | `host-apply`、`client-apply`、`live-store`、`smoke-clean-profile.sh` |
 | 请求体上限 / 结构化错误 | `backend-http`（413） |
-| 限流 + 限流表有界 | `backend-http` |
+| 限流 + 限流表有界 | `backend-http`、`vote-rate-limit`（12,000 个一次性标识，活跃 key 始终 ≤ 硬上限） |
+| 品牌升级不换身份 | `storage-migration`、`badge`、`shared`（存储域、偏好、环境变量单次兼容） |
 
 ## 非自动化验证（手工/脚本）
 
@@ -61,9 +62,9 @@
 | 梁祠窄屏与键盘 | 720×800；横向月历、Tab/Shift+Tab trap、Escape + 焦点归还 | 通过 |
 | 干净 profile 装 tarball | `smoke:clean-profile` | SMOKE OK |
 | 在线全链路 | `smoke:online` | OK（50 并发只 1 票） |
-| 并发/安全即席审计 60 项 | `/tmp/liangbiao-audit.mjs`（一次性脚本） | 60/60 |
+| 并发/安全即席审计 60 项 | `/tmp/liangxiang-audit.mjs`（一次性脚本） | 60/60 |
 | 依赖漏洞 | `pnpm audit --prod` | 无 |
-| 包内容 | `tar -tzf` | 仅 6 个预期文件 |
+| 包内容 | `tar -tzf` | 仅 7 个预期文件（含 npm 自动加入的 `package.json`、README、LICENSE） |
 
 ## 已知缺口
 

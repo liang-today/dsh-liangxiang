@@ -1,0 +1,32 @@
+[Unit]
+Description=Liangxiang community backend (soft-trust, not verified production)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=liangxiang
+Group=liangxiang
+WorkingDirectory=/opt/liangxiang
+EnvironmentFile=/etc/liangxiang.env
+ExecStart=/usr/bin/node /opt/liangxiang/lib/backend.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+UMask=0077
+ReadWritePaths=/var/lib/liangxiang/data
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 /**
  * FakeAuthoritativeLiangService — the LOCAL DEV/TEST stand-in for the future
- * Liangbiao backend (Decision Gate A = A3, docs/043: production trusted
+ * Liangxiang backend (Decision Gate A = A3, docs/043: production trusted
  * voting is BLOCKED; this adapter is honestly named and must never be
  * wrapped/presented as production authority or verified usage voting).
  *
@@ -42,7 +42,7 @@ import {
   type LiangWeekArchive,
   type VoteResult,
 } from '../domain/index.ts'
-import type { LiangbiaoWireState, WireGlobalCounts, WireVoteRequest } from '../shared/wire.ts'
+import type { LiangxiangWireState, WireGlobalCounts, WireVoteRequest } from '../shared/wire.ts'
 import { WIRE_SCHEMA_VERSION } from '../shared/wire.ts'
 import { createBusinessDateProvider, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import { DEV_CREDIT_SESSION_ID } from './dev-credit.ts'
@@ -173,7 +173,7 @@ export class FakeAuthoritativeLiangService {
   /** Bounded fallback when no storage domain shows up (memory-only mode). */
   markReadyMemoryOnly(reason: string): void {
     if (this.ready) return
-    this.warn(`[dsh-liangbiao] running memory-only (no persistence): ${reason}`)
+    this.warn(`[dsh-liangxiang] running memory-only (no persistence): ${reason}`)
     this.markReady(reason)
   }
 
@@ -209,7 +209,7 @@ export class FakeAuthoritativeLiangService {
       return
     }
     if (!isDshTokenUsageBuckets(value)) {
-      this.warn(`[dsh-liangbiao] ignoring malformed tokenUsage projection for session ${sessionId}`)
+      this.warn(`[dsh-liangxiang] ignoring malformed tokenUsage projection for session ${sessionId}`)
       return
     }
     this.rotateToCurrentDate()
@@ -240,9 +240,9 @@ export class FakeAuthoritativeLiangService {
   /**
    * The vote transaction (synchronous check-and-commit; see module JSDoc).
    */
-  vote(intent: WireVoteRequest): { result: VoteResult, state: LiangbiaoWireState } {
+  vote(intent: WireVoteRequest): { result: VoteResult, state: LiangxiangWireState } {
     this.rotateToCurrentDate()
-    const respond = (result: VoteResult): { result: VoteResult, state: LiangbiaoWireState } =>
+    const respond = (result: VoteResult): { result: VoteResult, state: LiangxiangWireState } =>
       ({ result, state: this.getWireState() })
 
     if (intent.caseId !== this.activeCase.id) {
@@ -369,7 +369,7 @@ export class FakeAuthoritativeLiangService {
     this.publishSnapshot()
   }
 
-  getWireState(): LiangbiaoWireState {
+  getWireState(): LiangxiangWireState {
     this.rotateToCurrentDate()
     const usage = this.dailyUsage.get(this.currentDate) ?? EMPTY_DAILY_USAGE
     const personal = this.derivePersonal()
@@ -446,7 +446,7 @@ export class FakeAuthoritativeLiangService {
     const usage = this.dailyUsage.get(date) ?? EMPTY_DAILY_USAGE
     const earned = Math.floor((usage.inputTokens + usage.outputTokens) / this.config.tokenPerIncense)
     if (this.usedIncenseToday > earned) {
-      this.warn(`[dsh-liangbiao] persisted used incense (${this.usedIncenseToday}) exceeds earned (${earned}); clamping`)
+      this.warn(`[dsh-liangxiang] persisted used incense (${this.usedIncenseToday}) exceeds earned (${earned}); clamping`)
       this.usedIncenseToday = earned
       this.ledgers.set(date, { usedIncense: earned })
       this.persistence?.putLedger(date, { usedIncense: earned })
@@ -558,7 +558,7 @@ export class FakeAuthoritativeLiangService {
       try {
         listener()
       } catch (error) {
-        this.warn(`[dsh-liangbiao] state listener failed: ${error instanceof Error ? error.message : String(error)}`)
+        this.warn(`[dsh-liangxiang] state listener failed: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
   }

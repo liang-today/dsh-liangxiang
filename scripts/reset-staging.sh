@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Reset Liangbiao staging ledgers to "never voted today".
+# Reset Liangxiang staging ledgers to "never voted today".
 #
 # Online (DEV_STAGING_ONLY): wipes the Raspberry Pi SQLite (global 香火/香客/票).
-# Local Host: clears votes / ledgers / aggregates in $DSH_HOME/storages/liangbiao.json
+# Local Host: clears votes / ledgers / aggregates in $DSH_HOME/storages/liangxiang.json
 #             but KEEPS identity + token watermarks + daily_usage so existing
 #             DSH usage is re-claimed as incense after WebUI restart.
 #
@@ -15,10 +15,10 @@
 # otherwise write the old ledger back).
 . "$(dirname "$0")/env.sh"
 
-PI_HOST="${LIANGBIAO_STAGING_SSH:-bean@192.0.2.21}"
-PI_DB='${HOME}/liangbiao-backend/data/liangbiao.sqlite'
-STORAGE="${DSH_HOME}/storages/liangbiao.json"
-LOCAL_BACKEND_DIR="${REPO_ROOT}/.liangbiao-backend"
+PI_HOST="${LIANGXIANG_STAGING_SSH:-bean@192.0.2.21}"
+PI_DB='${HOME}/liangxiang-backend/data/liangxiang.sqlite'
+STORAGE="${DSH_HOME}/storages/liangxiang.json"
+LOCAL_BACKEND_DIR="${REPO_ROOT}/.liangxiang-backend"
 
 do_pi=1
 do_local=1
@@ -60,13 +60,13 @@ reset_pi() {
   echo "== reset Pi sqlite on $PI_HOST =="
   ssh -o BatchMode=yes -o ConnectTimeout=10 "$PI_HOST" "bash -s" <<'REMOTE'
 set -euo pipefail
-systemctl --user stop liangbiao-backend
-rm -f "$HOME/liangbiao-backend/data/liangbiao.sqlite" \
-      "$HOME/liangbiao-backend/data/liangbiao.sqlite-wal" \
-      "$HOME/liangbiao-backend/data/liangbiao.sqlite-shm"
-systemctl --user start liangbiao-backend
+systemctl --user stop liangxiang-backend
+rm -f "$HOME/liangxiang-backend/data/liangxiang.sqlite" \
+      "$HOME/liangxiang-backend/data/liangxiang.sqlite-wal" \
+      "$HOME/liangxiang-backend/data/liangxiang.sqlite-shm"
+systemctl --user start liangxiang-backend
 sleep 1
-systemctl --user is-active liangbiao-backend
+systemctl --user is-active liangxiang-backend
 REMOTE
   curl -fsS "http://192.0.2.21:4180/v1/health"
   echo
@@ -81,11 +81,11 @@ if [ "$do_local" = 1 ]; then
   reset_local_json
   if [ -d "$LOCAL_BACKEND_DIR" ]; then
     rm -f "$LOCAL_BACKEND_DIR"/*.sqlite "$LOCAL_BACKEND_DIR"/*.sqlite-wal "$LOCAL_BACKEND_DIR"/*.sqlite-shm
-    echo "OK: cleared local .liangbiao-backend sqlite (if any)"
+    echo "OK: cleared local .liangxiang-backend sqlite (if any)"
   fi
 fi
 
 echo
 echo "Next: restart WebUI so the Host re-bootstraps an empty case (待开梁)."
 echo "  Ctrl+C the current \`pnpm run dev:web\`, then run it again."
-echo "Do not hand-edit storages/liangbiao.json — use this script."
+echo "Do not hand-edit storages/liangxiang.json — use this script."

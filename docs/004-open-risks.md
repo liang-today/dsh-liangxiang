@@ -8,13 +8,13 @@
 
 - **影响**:全部触点。DSH 根 AGENTS.md 明文首个 tagged release 前自由重命名/重打包、盘上格式可拒旧。
 - **缓解**:全部触点收敛 `compat/dsh`(每触点一个函数);`docs/000` 重勘察清单在每次 DSH 升级时强制执行;账本自带格式版本号,拒读不识别版本而非静默迁移。
-- **观测点**:升级后跑 000 清单 10 项;梁向自身冒烟(加载、注册、记账、端点)。
+- **观测点**:升级后跑 000 清单 10 项;梁相自身冒烟(加载、注册、记账、端点)。
 
 ## R-2 浏览器 bundle 包装格式需树外复刻(C6,最大单点)
 
 - **影响**:`window.__ModuleLoader__.load({id, factory})` banner/footer 与 externals 集来自树内 `packages/client/tsdown.client.ts`,该 preset 不作为 npm 包发布;格式漂移会让 `lib/client.js` 静默无法登记(或 404/执行报错)。
 - **现状**:加载器行为半公开(`packages/client/modules` README + `docs/subsystems/client-modules.md`),格式本身无独立规范文档。
-- **缓解**:包装复刻隔离在本包 `tsdown.config.ts` 一处;构建后冒烟断言(启动 `dsh web` 后 `GET /plugins/dsh-liangbiao/client.js` 200 且浏览器 boot 报告无该 entry 失败);升级 DSH 时 diff `tsdown.client.ts`。
+- **缓解**:包装复刻隔离在本包 `tsdown.config.ts` 一处;构建后冒烟断言(启动 `dsh web` 后 `GET /plugins/dsh-liangxiang/client.js` 200 且浏览器 boot 报告无该 entry 失败);升级 DSH 时 diff `tsdown.client.ts`。
 - **可上游贡献的最小建议**:请求 DSH 把 `clientBundle` preset(或至少 banner/footer 契约)以包形式发布/成文——单文件导出即可,树外插件生态的共同需求。
 
 ## R-3 `shell.overlay` 尚无第一方占用者
@@ -37,7 +37,7 @@
 
 ## R-6 本地 HTTP 端点的信任面
 
-- **影响**:`ctx.webServer.register` 注册的 `/liangbiao/api/*` 与 DSH WebUI 同端口;DSH 对 `/api` 有统一信任检查(`docs/api-gateway.md`),但自注册路由的鉴权姿态需在实现期核对 `dsh-host-webserver` 的 carrier 语义——本地其它进程理论上可调用投票端点。
+- **影响**:`ctx.webServer.register` 注册的 `/liangxiang/api/*` 与 DSH WebUI 同端口;DSH 对 `/api` 有统一信任检查(`docs/api-gateway.md`),但自注册路由的鉴权姿态需在实现期核对 `dsh-host-webserver` 的 carrier 语义——本地其它进程理论上可调用投票端点。
 - **判断**:token→梁签本就是软信任社区机制(项目 AGENTS.md 明文),本地伪造只影响本机账本;香火统计的防滥用属未来后台职责。
 - **缓解**:实现期核对 webserver 信任检查是否覆盖自注册路由;投票端点仅消耗本地梁签,天然限额。
 - **红线**:任何文案不得宣称记账/投票具有密码学保证。
@@ -83,4 +83,4 @@
 2. `shell.overlay` 增加一个第一方最小占用者或 e2e 快照(消解 R-3 的无先例状态)。
 3. 长期:树外 `@Remote` 支持(消解自建通道;DSH 侧已有 `docs/000` 重勘察项 10 跟踪)。
 
-本阶段结论:**存在可用的全局 UI Slot(`shell.overlay`),无需为放置梁向做任何上游修改。**
+本阶段结论:**存在可用的全局 UI Slot(`shell.overlay`),无需为放置梁相做任何上游修改。**

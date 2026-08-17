@@ -73,12 +73,12 @@ export async function warnIfClockSkewed(
 ): Promise<void> {
   const offset = await measureNtpOffsetMs()
   if (offset === null) {
-    warn('[liangbiao-backend] NTP unreachable; relying on OS clock. Enable systemd-timesyncd/chrony on the VPS.')
+    warn('[liangxiang-backend] NTP unreachable; relying on OS clock. Enable systemd-timesyncd/chrony on the VPS.')
     return
   }
   if (Math.abs(offset) >= WARN_OFFSET_MS) {
-    warn(`[liangbiao-backend] OS clock is ${offset}ms off NTP; incense drip and signatures use this clock.`)
+    warn(`[liangxiang-backend] OS clock is ${offset}ms off NTP; incense drip and signatures use this clock.`)
     return
   }
-  warn(`[liangbiao-backend] NTP offset ${offset}ms (ok)`)
+  warn(`[liangxiang-backend] NTP offset ${offset}ms (ok)`)
 }

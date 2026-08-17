@@ -1,0 +1,32 @@
+import { describe, expect, it } from 'vitest'
+import { VoteRateLimiter, VOTE_RATE_WINDOW_MS } from '../src/backend/vote-rate-limit.ts'
+
+describe('hard-bounded vote rate limiter', () => {
+  it('never retains more than the configured number of active identities', () => {
+    const limiter = new VoteRateLimiter(5, 32)
+    for (let index = 0; index < 12_000; index += 1) {
+      limiter.check(`install-${index}`, 1_000)
+    }
+    expect(limiter.activeKeys).toBe(32)
+    expect(limiter.check('install-overflow', 1_000)).toMatchObject({
+      allowed: false,
+      reason: 'active_key_capacity',
+    })
+  })
+
+  it('evicts expired keys and admits new identities after the window', () => {
+    const limiter = new VoteRateLimiter(2, 2)
+    expect(limiter.check('one', 0).allowed).toBe(true)
+    expect(limiter.check('two', 0).allowed).toBe(true)
+    expect(limiter.check('three', 1).allowed).toBe(false)
+    expect(limiter.check('three', VOTE_RATE_WINDOW_MS + 1).allowed).toBe(true)
+    expect(limiter.activeKeys).toBe(1)
+  })
+
+  it('keeps the per-installation request cap', () => {
+    const limiter = new VoteRateLimiter(2, 10)
+    expect(limiter.check('one', 0).allowed).toBe(true)
+    expect(limiter.check('one', 1).allowed).toBe(true)
+    expect(limiter.check('one', 2)).toMatchObject({ allowed: false, reason: 'per_installation' })
+  })
+})

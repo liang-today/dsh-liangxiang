@@ -21,9 +21,9 @@ export const color = {
   buttonPrimaryText: 'var(--dsw-alias-label-primary-foreground, #ffffff)',
   danger: 'var(--dsw-alias-state-error-primary, #d5484f)',
   warn: 'var(--dsw-alias-state-warn-primary, #d8873a)',
-  ritualGold: 'var(--liangbiao-gold, #e2ae54)',
-  ritualEmber: 'var(--liangbiao-ember, #c95f38)',
-  ritualCool: 'var(--liangbiao-cool, #74839f)',
+  ritualGold: 'var(--liangxiang-gold, #e2ae54)',
+  ritualEmber: 'var(--liangxiang-ember, #c95f38)',
+  ritualCool: 'var(--liangxiang-cool, #74839f)',
 } as const
 
 /** LiangQi ring stroke color by fill stage: cool -> warm -> vermilion. */

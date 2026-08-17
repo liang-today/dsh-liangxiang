@@ -48,18 +48,18 @@ export interface LiangAvatarProps {
 
 /** GPU-composited bob: integer-pixel ends, no filter, figure layer only. */
 const AVATAR_MOTION_CSS = `
-@keyframes liangbiao-avatar-pulse {
+@keyframes liangxiang-avatar-pulse {
   0% { transform: scale3d(1, 1, 1); }
   40% { transform: scale3d(1.12, 1.12, 1); }
   100% { transform: scale3d(1, 1, 1); }
 }
-@keyframes liangbiao-avatar-figure-float {
+@keyframes liangxiang-avatar-figure-float {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(0, -4px, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-liangbiao-avatar-figure],
-  [data-liangbiao-avatar] {
+  [data-liangxiang-avatar-figure],
+  [data-liangxiang-avatar] {
     animation: none !important;
   }
 }
@@ -97,7 +97,7 @@ export function LiangAvatar({
     gap: hideLabel ? 0 : '2px',
     overflow: 'visible',
     background: 'transparent',
-    animation: pulse && !reducedMotion ? 'liangbiao-avatar-pulse 0.9s ease-out 1' : undefined,
+    animation: pulse && !reducedMotion ? 'liangxiang-avatar-pulse 0.9s ease-out 1' : undefined,
   }
 
   // Float the figure group only. Never translate a cropped plate / clip box,
@@ -109,7 +109,7 @@ export function LiangAvatar({
     background: 'transparent',
     transform: 'translateZ(0)',
     backfaceVisibility: 'hidden',
-    animation: floating ? `liangbiao-avatar-figure-float ${floatMs}ms ease-in-out infinite` : undefined,
+    animation: floating ? `liangxiang-avatar-figure-float ${floatMs}ms ease-in-out infinite` : undefined,
     willChange: floating ? 'transform' : undefined,
   }
 
@@ -129,11 +129,11 @@ export function LiangAvatar({
   }
 
   return (
-    <div style={wrapStyle} data-liangbiao-avatar={state} data-liangbiao-avatar-chrome={chrome}>
+    <div style={wrapStyle} data-liangxiang-avatar={state} data-liangxiang-avatar-chrome={chrome}>
       <style>{AVATAR_MOTION_CSS}</style>
       <span
-        data-liangbiao-avatar-figure=""
-        data-liangbiao-float-ms={floatMs ?? 0}
+        data-liangxiang-avatar-figure=""
+        data-liangxiang-float-ms={floatMs ?? 0}
         style={figureStyle}
       >
         <img

@@ -1,7 +1,7 @@
 {
-  "name": "dsh-liangbiao",
-  "version": "0.4.0",
-  "description": "梁向 — a DeepSeek Harness WebUI plugin (hover: 今日梁向). Installable dual-half bundle: host plugin row + web client bundle.",
+  "name": "dsh-liangxiang",
+  "version": "0.5.0",
+  "description": "梁相 — a DeepSeek Harness WebUI plugin (hover: 今日梁相). Installable dual-half bundle: host plugin row + web client bundle.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

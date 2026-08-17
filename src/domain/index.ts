@@ -1,5 +1,5 @@
 /**
- * Domain layer: pure Liangbiao V0.1 logic — global Liangzi state policy,
+ * Domain layer: pure Liangxiang V0.1 logic — global Liangzi state policy,
  * personal incense accounting, LiangQi progress, vote vocabulary.
  *
  * Layer boundary, enforced by review: no React, no DSH, no Node imports are

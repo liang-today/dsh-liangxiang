@@ -1,7 +1,7 @@
 /**
- * compat/dsh — liangbiao storage-domain adapter (docs/044 持久化).
+ * compat/dsh — liangxiang storage-domain adapter (docs/044 持久化).
  *
- * Domain `liangbiao` v1 over `ctx.storageDomain.open(spec)`. The spec's
+ * Domain `liangxiang` v1 over `ctx.storageDomain.open(spec)`. The spec's
  * `valueSchema` objects only need `.parse(raw)` at open time (verified:
  * packages/storage/storage-domain/src/spec.ts:29 + src/index.ts:121
  * @ 47f94385), so we pass hand-written validators instead of adding a zod
@@ -27,8 +27,10 @@ import {
 import type { DailyUsageRecord, SessionUsageWatermark } from '../../host/usage-ledger.ts'
 import type { DshKvTable, DshOpenDomain, DshStorageDomainFacility, DshValueSchema } from './host-services.ts'
 
-export const LIANGBIAO_DOMAIN_NAME = 'liangbiao'
-export const LIANGBIAO_DOMAIN_VERSION = 1
+export const LIANGXIANG_DOMAIN_NAME = 'liangxiang'
+export const LIANGXIANG_DOMAIN_VERSION = 1
+/** Read-only migration source used only when the new domain has no identity. */
+export const LEGACY_LIANGBIAO_DOMAIN_NAME = 'liangbiao'
 
 class RecordShapeError extends Error {}
 
@@ -127,9 +129,10 @@ const identitySchema: DshValueSchema = {
   },
 }
 
-const LIANGBIAO_DOMAIN_SPEC = {
-  name: LIANGBIAO_DOMAIN_NAME,
-  version: LIANGBIAO_DOMAIN_VERSION,
+function domainSpec(name: string) {
+  return {
+  name,
+  version: LIANGXIANG_DOMAIN_VERSION,
   tables: {
     watermarks: { valueSchema: watermarkSchema },
     daily_usage: { valueSchema: dailyUsageSchema },
@@ -138,7 +141,11 @@ const LIANGBIAO_DOMAIN_SPEC = {
     votes: { valueSchema: voteSchema },
     identity: { valueSchema: identitySchema },
   },
-} as const
+  } as const
+}
+
+const LIANGXIANG_DOMAIN_SPEC = domainSpec(LIANGXIANG_DOMAIN_NAME)
+const LEGACY_LIANGBIAO_DOMAIN_SPEC = domainSpec(LEGACY_LIANGBIAO_DOMAIN_NAME)
 
 /** Single row key of the identity table. */
 const IDENTITY_KEY = 'installation'
@@ -151,14 +158,14 @@ const IDENTITY_KEY = 'installation'
  * stores. This is NOT DSH authentication and does not verify Token usage
  * (docs/002, docs/043).
  */
-export interface LiangbiaoIdentityPort {
+export interface LiangxiangIdentityPort {
   /** The stored keypair, minting and persisting one on first use. */
   resolve(): Promise<CommunityKeypair>
 }
 
-export interface LiangbiaoPersistenceHandle {
+export interface LiangxiangPersistenceHandle {
   port: LiangPersistencePort
-  identity: LiangbiaoIdentityPort
+  identity: LiangxiangIdentityPort
   close(): Promise<void>
 }
 
@@ -168,17 +175,62 @@ function loadTable<V>(table: DshKvTable, parse: (raw: unknown) => V): Map<string
   return out
 }
 
+const MIGRATED_TABLES = ['watermarks', 'daily_usage', 'ledgers', 'aggregates', 'votes'] as const
+
 /**
- * Open the liangbiao domain and wrap it as the service's persistence port.
+ * Copy the former storage domain before the new identity is resolved. Writes
+ * are idempotent and the identity row lands last, so an interrupted migration
+ * is retried on the next start instead of minting a second community identity.
+ */
+async function migrateLegacyDomain(
+  facility: DshStorageDomainFacility,
+  target: DshOpenDomain,
+  warn: (message: string) => void,
+): Promise<void> {
+  const targetIdentity = target.table('identity')
+  if (targetIdentity.get(IDENTITY_KEY) !== undefined) return
+
+  let legacy: DshOpenDomain | null = null
+  try {
+    legacy = await facility.open(LEGACY_LIANGBIAO_DOMAIN_SPEC)
+    let migrated = 0
+    for (const tableName of MIGRATED_TABLES) {
+      const from = legacy.table(tableName)
+      const to = target.table(tableName)
+      for (const [key, value] of from.entries()) {
+        await to.put(key, value)
+        migrated += 1
+      }
+    }
+    const legacyIdentity = legacy.table('identity').get(IDENTITY_KEY)
+    if (legacyIdentity !== undefined) {
+      await targetIdentity.put(IDENTITY_KEY, legacyIdentity)
+      migrated += 1
+    }
+    if (migrated > 0) {
+      warn(`[dsh-liangxiang] migrated ${migrated} persisted records from the legacy storage domain`)
+    }
+  } catch (error) {
+    warn(
+      `[dsh-liangxiang] legacy storage migration unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  } finally {
+    await legacy?.close()
+  }
+}
+
+/**
+ * Open the liangxiang domain and wrap it as the service's persistence port.
  * @param facility - the DSH storage-domain facility.
  * @param warn - loud sink for write-behind failures.
  * @returns the port plus the close handle (caller owns closing).
  */
-export async function openLiangbiaoPersistence(
+export async function openLiangxiangPersistence(
   facility: DshStorageDomainFacility,
   warn: (message: string) => void,
-): Promise<LiangbiaoPersistenceHandle> {
-  const domain: DshOpenDomain = await facility.open(LIANGBIAO_DOMAIN_SPEC)
+): Promise<LiangxiangPersistenceHandle> {
+  const domain: DshOpenDomain = await facility.open(LIANGXIANG_DOMAIN_SPEC)
+  await migrateLegacyDomain(facility, domain, warn)
   const watermarks = domain.table('watermarks')
   const dailyUsage = domain.table('daily_usage')
   const ledgers = domain.table('ledgers')
@@ -190,7 +242,7 @@ export async function openLiangbiaoPersistence(
     write().then(
       () => undefined,
       (error: unknown) => {
-        warn(`[dsh-liangbiao] persistence write failed (${label}): ${error instanceof Error ? error.message : String(error)}`)
+        warn(`[dsh-liangxiang] persistence write failed (${label}): ${error instanceof Error ? error.message : String(error)}`)
       },
     )
   }
@@ -216,7 +268,7 @@ export async function openLiangbiaoPersistence(
     deleteDailyUsage: (businessDate) => writeBehind('daily_usage-delete', () => dailyUsage.delete(businessDate)),
   }
 
-  const identity: LiangbiaoIdentityPort = {
+  const identity: LiangxiangIdentityPort = {
     async resolve(): Promise<CommunityKeypair> {
       const stored = identityTable.get(IDENTITY_KEY)
       if (stored !== undefined) {

@@ -1,6 +1,6 @@
-# Replace the hostname. Caddy obtains and renews the certificate.
+# Caddy obtains and renews the certificate after DNS and filing are ready.
 # Backend stays on loopback — do not expose :4180 to the public internet.
-liangbiao.example.com {
+api.liang.today {
 	encode gzip
 	reverse_proxy 127.0.0.1:4180
 }

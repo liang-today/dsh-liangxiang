@@ -4,11 +4,11 @@
  * zero-vote WAITING, and 凝香 (+1 incense) token growth.
  */
 import { describe, expect, it } from 'vitest'
-import { createMockLiangbiaoStore } from '../src/client/store.ts'
+import { createMockLiangxiangStore } from '../src/client/store.ts'
 
 describe('default demo seed', () => {
   it('boots the frozen scenario: 83% 夯 / 梁神 / 5 炷 / fill 94%', () => {
-    const store = createMockLiangbiaoStore()
+    const store = createMockLiangxiangStore()
     const { snapshot, personal, activeCase } = store.getSnapshot()
     expect(activeCase.title).toBe('DeepSeek Harness 是夯还是拉')
     expect(snapshot.totalIncense).toBe(12_846)
@@ -22,7 +22,7 @@ describe('default demo seed', () => {
 
 describe('vote flow', () => {
   it('accepted vote: remaining 5->4, fill unchanged, global up +1, new sequence', async () => {
-    const store = createMockLiangbiaoStore()
+    const store = createMockLiangxiangStore()
     const before = store.getSnapshot()
     const result = await store.vote('up')
     expect(result.status).toBe('accepted')
@@ -38,7 +38,7 @@ describe('vote flow', () => {
   })
 
   it('five sticks allow five votes (repeated or mixed); the sixth is rejected', async () => {
-    const store = createMockLiangbiaoStore()
+    const store = createMockLiangxiangStore()
     const directions = ['up', 'down', 'up', 'up', 'down'] as const
     for (const direction of directions) {
       expect((await store.vote(direction)).status).toBe('accepted')
@@ -54,7 +54,7 @@ describe('vote flow', () => {
   })
 
   it('counts a unique voter only on the first accepted vote', async () => {
-    const store = createMockLiangbiaoStore({ usedIncenseToday: 0, effectiveTokensToday: 250_000 })
+    const store = createMockLiangxiangStore({ usedIncenseToday: 0, effectiveTokensToday: 250_000 })
     const before = store.getSnapshot().snapshot.uniqueVoters
     await store.vote('up')
     expect(store.getSnapshot().snapshot.uniqueVoters).toBe(before + 1)
@@ -63,7 +63,7 @@ describe('vote flow', () => {
   })
 
   it('a vote can cross a global threshold: 94.7% -> 95% flips 梁圣 -> 梁祖', async () => {
-    const store = createMockLiangbiaoStore({
+    const store = createMockLiangxiangStore({
       upVotes: 18,
       downVotes: 1,
       uniqueVoters: 2,
@@ -83,7 +83,7 @@ describe('vote flow', () => {
 
 describe('zero-vote seed', () => {
   it('renders WAITING with null ratios', () => {
-    const store = createMockLiangbiaoStore({ upVotes: 0, downVotes: 0, uniqueVoters: 0 })
+    const store = createMockLiangxiangStore({ upVotes: 0, downVotes: 0, uniqueVoters: 0 })
     const { snapshot } = store.getSnapshot()
     expect(snapshot.liangziState).toBe('waiting')
     expect(snapshot.upRatio).toBeNull()
@@ -93,7 +93,7 @@ describe('zero-vote seed', () => {
 
 describe('token growth (凝香)', () => {
   it('+3,000 tokens on a 94% ring: earned +1, remaining +1, fill wraps to 0', () => {
-    const store = createMockLiangbiaoStore()
+    const store = createMockLiangxiangStore()
     const before = store.getSnapshot().personal.tokensToNextIncense
     expect(before).toBe(3_000)
     store.addEffectiveTokens(1_000)
@@ -110,7 +110,7 @@ describe('token growth (凝香)', () => {
   })
 
   it('personal token growth leaves the global snapshot state untouched', () => {
-    const store = createMockLiangbiaoStore({ upVotes: 65, downVotes: 35, uniqueVoters: 10 })
+    const store = createMockLiangxiangStore({ upVotes: 65, downVotes: 35, uniqueVoters: 10 })
     expect(store.getSnapshot().snapshot.liangziState).toBe('liang_zong')
     store.addEffectiveTokens(500_000)
     expect(store.getSnapshot().snapshot.liangziState).toBe('liang_zong')
@@ -119,7 +119,7 @@ describe('token growth (凝香)', () => {
 
 describe('store subscription', () => {
   it('notifies subscribers on every accepted transition and supports unsubscribe', async () => {
-    const store = createMockLiangbiaoStore()
+    const store = createMockLiangxiangStore()
     let notified = 0
     const unsubscribe = store.subscribe(() => {
       notified += 1

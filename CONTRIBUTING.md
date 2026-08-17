@@ -36,7 +36,7 @@ pnpm run verify      # typecheck + lint + test + build
 ```bash
 pnpm run smoke:clean-profile
 pnpm run smoke:online
-node scripts/assert-profile-modules.mjs .dsh-home/profiles/liangbiao-dev
+node scripts/assert-profile-modules.mjs .dsh-home/profiles/liangxiang-dev
 ```
 
 ## 测试规矩

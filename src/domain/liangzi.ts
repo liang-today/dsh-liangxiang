@@ -1,5 +1,5 @@
 /**
- * LiangziStatePolicy — the global side of 梁向.
+ * LiangziStatePolicy — the global side of 梁相.
  *
  * The central 梁子 state is driven ONLY by the global up ratio of accepted
  * votes (AGENTS.md §3). Zero total votes is the WAITING placeholder (待开梁),

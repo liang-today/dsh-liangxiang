@@ -1,5 +1,5 @@
 /**
- * IncenseAccountingPolicy + LiangQi progress — the personal side of 梁向.
+ * IncenseAccountingPolicy + LiangQi progress — the personal side of 梁相.
  *
  * Frozen formulas (AGENTS.md §5):
  *

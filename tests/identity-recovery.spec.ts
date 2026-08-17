@@ -25,7 +25,7 @@ let fixture: BackendFixture | null = null
 function boot(env: Record<string, string | undefined> = {}): BackendFixture {
   fixture?.close()
   fixture = createBackendFixture({
-    LIANGBIAO_REKEY_COOLDOWN_MS: '3600000', // 1 hour for the cooldown cases
+    LIANGXIANG_REKEY_COOLDOWN_MS: '3600000', // 1 hour for the cooldown cases
     ...env,
   })
   return fixture
@@ -101,7 +101,7 @@ describe('re-key (self-serve recovery)', () => {
   })
 
   it('re-keys immediately when the cooldown is disabled (tests/operator config)', () => {
-    const f = boot({ LIANGBIAO_REKEY_COOLDOWN_MS: '0' })
+    const f = boot({ LIANGXIANG_REKEY_COOLDOWN_MS: '0' })
     bind(f, OLD, PK_OLD, FINGERPRINT)
 
     const response = f.service.rekeyIdentity(NEW, PK_NEW, FINGERPRINT, f.clock.now())

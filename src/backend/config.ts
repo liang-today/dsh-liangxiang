@@ -10,10 +10,12 @@ import { DEFAULT_TOKEN_PER_INCENSE } from '../domain/index.ts'
 import { AUTHORITY_MODES, type BackendAuthorityMode } from '../shared/backend-v1.ts'
 import { DEFAULT_BUSINESS_TIMEZONE } from '../shared/business-date.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
+import { readLiangxiangEnv } from '../shared/env.ts'
+import { DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS } from './vote-rate-limit.ts'
 
 export const DEFAULT_BACKEND_PORT = 4180
 export const DEFAULT_BACKEND_HOST = '127.0.0.1'
-export const DEFAULT_BACKEND_DB_PATH = '.liangbiao-backend/liangbiao.sqlite'
+export const DEFAULT_BACKEND_DB_PATH = '.liangxiang-backend/liangxiang.sqlite'
 /**
  * Near-real-time by default: a voter must see their own vote move the public
  * 梁位 within a second, otherwise the loop stops feeling like voting. Snapshot
@@ -59,6 +61,8 @@ export interface BackendConfig {
   caseTitle: string
   /** Per-installation vote rate limit (requests per minute); 0 disables it. */
   voteRateLimitPerMinute: number
+  /** Hard cap on installation keys retained by the in-memory vote limiter. */
+  voteRateLimitMaxKeys: number
   /** Absurd single-claim ceiling (tokens); 0 disables the guard. */
   absurdClaimTokens: number
   /** Device-fingerprint re-key cooldown (ms); 0 disables it. */
@@ -86,7 +90,7 @@ function parseInt_(
   if (raw === undefined || raw.trim() === '') return fallback
   const value = Number(raw)
   if (!Number.isSafeInteger(value) || value < min || value > max) {
-    warn(`[liangbiao-backend] ignoring invalid ${label}=${raw}; using ${fallback}`)
+    warn(`[liangxiang-backend] ignoring invalid ${label}=${raw}; using ${fallback}`)
     return fallback
   }
   return value
@@ -107,69 +111,75 @@ export function resolveBackendConfig(
   env: Record<string, string | undefined>,
   warn: (message: string) => void = (message) => console.warn(message),
 ): BackendConfig {
-  const requestedMode = trimmed(env.LIANGBIAO_AUTHORITY_MODE, 'DEV_STAGING_ONLY')
+  const requestedMode = trimmed(readLiangxiangEnv(env, 'AUTHORITY_MODE'), 'DEV_STAGING_ONLY')
   if (!(AUTHORITY_MODES as readonly string[]).includes(requestedMode)) {
     throw new BackendConfigError(
-      `unknown LIANGBIAO_AUTHORITY_MODE=${requestedMode}; expected one of ${AUTHORITY_MODES.join(', ')}`,
+      `unknown LIANGXIANG_AUTHORITY_MODE=${requestedMode}; expected one of ${AUTHORITY_MODES.join(', ')}`,
     )
   }
   if (requestedMode === 'VERIFIED_PRODUCTION') {
     throw new BackendConfigError(
       'VERIFIED_PRODUCTION is blocked: Decision Gate A = A3 (no server-verifiable identity or Token authority, docs/043). '
-      + 'Run with LIANGBIAO_AUTHORITY_MODE=DEV_STAGING_ONLY.',
+      + 'Run with LIANGXIANG_AUTHORITY_MODE=DEV_STAGING_ONLY.',
     )
   }
-  const timezone = trimmed(env.LIANGBIAO_BUSINESS_TZ, DEFAULT_BUSINESS_TIMEZONE)
+  const timezone = trimmed(readLiangxiangEnv(env, 'BUSINESS_TZ'), DEFAULT_BUSINESS_TIMEZONE)
   // Fail loudly at boot rather than at midnight.
   new Intl.DateTimeFormat('en-CA', { timeZone: timezone })
   return {
     // Narrowed by the membership check + the VERIFIED_PRODUCTION rejection above.
     authorityMode: requestedMode as BackendAuthorityMode,
-    host: trimmed(env.LIANGBIAO_BACKEND_HOST, DEFAULT_BACKEND_HOST),
-    port: parseInt_(env.LIANGBIAO_BACKEND_PORT, DEFAULT_BACKEND_PORT, 'LIANGBIAO_BACKEND_PORT', warn, {
+    host: trimmed(readLiangxiangEnv(env, 'BACKEND_HOST'), DEFAULT_BACKEND_HOST),
+    port: parseInt_(readLiangxiangEnv(env, 'BACKEND_PORT'), DEFAULT_BACKEND_PORT, 'LIANGXIANG_BACKEND_PORT', warn, {
       min: 0,
       max: 65_535,
     }),
-    databasePath: trimmed(env.LIANGBIAO_BACKEND_DB, DEFAULT_BACKEND_DB_PATH),
+    databasePath: trimmed(readLiangxiangEnv(env, 'BACKEND_DB'), DEFAULT_BACKEND_DB_PATH),
     timezone,
     tokenPerIncense: parseInt_(
-      env.LIANGBIAO_TOKEN_PER_INCENSE,
+      readLiangxiangEnv(env, 'TOKEN_PER_INCENSE'),
       DEFAULT_TOKEN_PER_INCENSE,
-      'LIANGBIAO_TOKEN_PER_INCENSE',
+      'LIANGXIANG_TOKEN_PER_INCENSE',
       warn,
     ),
     snapshotRefreshSeconds: parseInt_(
-      env.LIANGBIAO_SNAPSHOT_SECONDS,
+      readLiangxiangEnv(env, 'SNAPSHOT_SECONDS'),
       DEFAULT_SNAPSHOT_REFRESH_SECONDS,
-      'LIANGBIAO_SNAPSHOT_SECONDS',
+      'LIANGXIANG_SNAPSHOT_SECONDS',
       warn,
       { min: MIN_SNAPSHOT_REFRESH_SECONDS, max: MAX_SNAPSHOT_REFRESH_SECONDS },
     ),
-    caseTitle: trimmed(env.LIANGBIAO_CASE_TITLE, DEFAULT_CASE_TITLE),
+    caseTitle: trimmed(readLiangxiangEnv(env, 'CASE_TITLE'), DEFAULT_CASE_TITLE),
     voteRateLimitPerMinute: parseInt_(
-      env.LIANGBIAO_VOTE_RATE_LIMIT,
+      readLiangxiangEnv(env, 'VOTE_RATE_LIMIT'),
       600,
-      'LIANGBIAO_VOTE_RATE_LIMIT',
+      'LIANGXIANG_VOTE_RATE_LIMIT',
       warn,
       { min: 0 },
     ),
+    voteRateLimitMaxKeys: parseInt_(
+      readLiangxiangEnv(env, 'VOTE_RATE_LIMIT_MAX_KEYS'),
+      DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS,
+      'LIANGXIANG_VOTE_RATE_LIMIT_MAX_KEYS',
+      warn,
+    ),
     absurdClaimTokens: parseInt_(
-      env.LIANGBIAO_ABSURD_CLAIM_TOKENS,
+      readLiangxiangEnv(env, 'ABSURD_CLAIM_TOKENS'),
       DEFAULT_ABSURD_CLAIM_TOKENS,
-      'LIANGBIAO_ABSURD_CLAIM_TOKENS',
+      'LIANGXIANG_ABSURD_CLAIM_TOKENS',
       warn,
       { min: 0 },
     ),
     rekeyCooldownMs: parseInt_(
-      env.LIANGBIAO_REKEY_COOLDOWN_MS,
+      readLiangxiangEnv(env, 'REKEY_COOLDOWN_MS'),
       DEFAULT_REKEY_COOLDOWN_MS,
-      'LIANGBIAO_REKEY_COOLDOWN_MS',
+      'LIANGXIANG_REKEY_COOLDOWN_MS',
       warn,
       { min: 0 },
     ),
-    allowUnsigned: trimmed(env.LIANGBIAO_ALLOW_UNSIGNED, '') === '1',
+    allowUnsigned: trimmed(readLiangxiangEnv(env, 'ALLOW_UNSIGNED'), '') === '1',
     communityKey: (() => {
-      const value = env.LIANGBIAO_COMMUNITY_KEY?.trim()
+      const value = readLiangxiangEnv(env, 'COMMUNITY_KEY')?.trim()
       return value === undefined || value === '' ? null : value
     })(),
   }

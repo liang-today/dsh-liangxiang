@@ -4,7 +4,7 @@
 
 约定:
 
-- **分级**:公开 / 半公开 / 私有(定义见 000)。梁向不依赖任何私有触点;表中"私有"行仅记录明确的**不依赖**决定。
+- **分级**:公开 / 半公开 / 私有(定义见 000)。梁相不依赖任何私有触点;表中"私有"行仅记录明确的**不依赖**决定。
 - **适配函数**:计划落在 `src/compat/dsh/` 的具名包装(每触点一个),host/client 业务代码只 import 适配函数。
 - 路径相对 `../deepseek-harness`。
 
@@ -21,9 +21,9 @@
 | H7 | `session/end-seed` 与 `Session.firstLiveSeq`(seed/live 边界) | `types.ts:332`;`index.ts:408` | 公开 | 防 seed 重计的语义依据(R1/R3) | 边界语义变化 | 同 H1 | 水位(R2)仍兜底;重审 R3 |
 | H8 | `ctx.sessions.get/list`;`session/created`/`disposed` | `packages/core/session/src/index.ts:1050-1065,54,64` | 公开 | 会话枚举、基线化时读 `session.seq` | API 更名 | `listLiveSessions(ctx)` | 仅靠 H1 事件内的 `session` 参数 |
 | H9 | `ctx.sessionPersistence.list/readFrom`(历史会话) | `packages/session/session-persistence/src/index.ts:223-240,360` | 公开(能力 seam) | v0.1 非必需(基线化不补记历史);预留给未来核对 | 后端缺席 | `listStoredSessions(ctx)`(暂缓实现) | 不读历史,纯 live 记账 |
-| H10 | `defineDomain` + `ctx.storageDomain.open` | `docs/subsystems/storage.md`;先例 `packages/workspace/workspace/src/index.ts:120` | 公开 | 账本持久化(§4.2) | 域契约/后端配置变化 | `openLiangbiaoDomain(ctx)` | 内存态 + 退出告警(不可静默);数据格式自带版本号 |
-| H11 | `ctx.settings.register` | `packages/settings/settings/README.md`;`src/index.ts:436` | 公开 | 用户偏好 | schema/命名空间约定变化 | `registerLiangbiaoSettings(ctx)` | 偏好回退默认值,功能不受阻 |
-| H12 | `ctx.webServer.register`/`registerUpgrade` | `packages/host/webserver/src/index.ts:94-131` | 公开 | §4.3 三端点(state/events/vote) | 路由 API 变化;前缀冲突策略变化 | `registerLiangbiaoRoutes(ctx, handlers)` | 无同级替代(commands 仅会话绑定);破坏即上报 |
+| H10 | `defineDomain` + `ctx.storageDomain.open` | `docs/subsystems/storage.md`;先例 `packages/workspace/workspace/src/index.ts:120` | 公开 | 账本持久化(§4.2) | 域契约/后端配置变化 | `openLiangxiangDomain(ctx)` | 内存态 + 退出告警(不可静默);数据格式自带版本号 |
+| H11 | `ctx.settings.register` | `packages/settings/settings/README.md`;`src/index.ts:436` | 公开 | 用户偏好 | schema/命名空间约定变化 | `registerLiangxiangSettings(ctx)` | 偏好回退默认值,功能不受阻 |
+| H12 | `ctx.webServer.register`/`registerUpgrade` | `packages/host/webserver/src/index.ts:94-131` | 公开 | §4.3 三端点(state/events/vote) | 路由 API 变化;前缀冲突策略变化 | `registerLiangxiangRoutes(ctx, handlers)` | 无同级替代(commands 仅会话绑定);破坏即上报 |
 | H13 | `dshHomePath` | `packages/util/home-paths/src/index.ts:98` | 公开 | 特殊文件路径(如迁移) | 更名 | 经 H10 间接使用为主 | 直接读 `DSH_HOME` env 语义(同文件契约) |
 | H14 | `ctx.remote.commands.execute` + `ctx.commands.register` | `packages/interaction/commands/src/index.ts:246,296` | 公开 | **不依赖**(记录为次选动作通道) | — | — | — |
 | H15 | ApiProxy 方法表 / `HostFrame` 联合 / `host/remote-event` 白名单 | `packages/host/apiproxy/src/api/events.ts:127-155`;`packages/api/remotes/src/remote-events.ts:17-29` | 半公开(封闭词表) | **不依赖**(明确排除) | — | — | — |
@@ -38,8 +38,8 @@
 | C2 | `shell.overlay` slot(list/root,click-through) | `packages/client/ui-layout/src/client/index.ts:83,126`;渲染 `AppFrame.tsx:193-195` | 公开(SlotMap JSDoc) | 徽章座位 | slot 更名/删除;层 CSS 语义变化(遮挡/不可点) | 同 C1(slot 名与 SlotMap 类型合并均收敛于 `overlay-slot.ts`) | 备选座位 `conversation.composer.dock`(会话内,体验降级);或上游提案新 slot |
 | C3 | inject `hooks` 隔间 + `HostObservable`(`getSnapshot`/`subscribe`) | `packages/client/ui-slots/src/index.ts:378-432`;`renderer.ts:31-34`;绑定 `web-react/src/scoped-slots.tsx:117-126` | 公开 | 快照 observable → `use<Name>` hook | 隔间约定变化 | `makeHooksFace(store)` | 经 inject 回调轮询(最后手段,有界) |
 | C4 | `GlobalStandardProps`(`useSessions`/`useWorkspaces`) | `packages/client/runtime/src/client/index.ts:145-150` | 公开 | 暂不用(root scope 标准席位仅此两项,无 `useProjection`) | — | — | — |
-| C5 | `--dsw-*` 主题 token;`body[data-ds-dark-theme]`;`prefers-reduced-motion` | `packages/client/ui-theme/src/styles/`;`ui-layout/src/client/theme-presenter.ts:12-42` | 公开 | 主题一致与可达性 | token 更名;暗色切换机制变化 | CSS 内聚一个 `liangbiao.css`(变量集中在 `:root` 别名) | 本地回退色板(灰阶),不阻断功能 |
-| C6 | 浏览器 bundle 包装:`window.__ModuleLoader__.load({id, factory})` + externals 懒 CJS 表 | 格式源:`packages/client/tsdown.client.ts:170-273(banner 269-271)`;加载器 `packages/client/modules/src/client/system.ts`、`manifest.ts:9-25` | **半公开**(树内 preset 不发布;加载器行为有包 README) | 树外必须复刻的产物格式 | banner/require 协议变化;externals 集变化 | **已实现**:复刻于 `tsdown.config.ts` 一处(banner/footer/intro、externals 表、NODE_ENV define);`scripts/smoke-clean-profile.sh` 断言产物 banner 与 `/plugins/dsh-liangbiao/client.js` 服务 | 升级时对照 `tsdown.client.ts` 重新复刻;此为最大单点风险(`docs/004` 风险 2) |
+| C5 | `--dsw-*` 主题 token;`body[data-ds-dark-theme]`;`prefers-reduced-motion` | `packages/client/ui-theme/src/styles/`;`ui-layout/src/client/theme-presenter.ts:12-42` | 公开 | 主题一致与可达性 | token 更名;暗色切换机制变化 | CSS 内聚一个 `liangxiang.css`(变量集中在 `:root` 别名) | 本地回退色板(灰阶),不阻断功能 |
+| C6 | 浏览器 bundle 包装:`window.__ModuleLoader__.load({id, factory})` + externals 懒 CJS 表 | 格式源:`packages/client/tsdown.client.ts:170-273(banner 269-271)`;加载器 `packages/client/modules/src/client/system.ts`、`manifest.ts:9-25` | **半公开**(树内 preset 不发布;加载器行为有包 README) | 树外必须复刻的产物格式 | banner/require 协议变化;externals 集变化 | **已实现**:复刻于 `tsdown.config.ts` 一处(banner/footer/intro、externals 表、NODE_ENV define);`scripts/smoke-clean-profile.sh` 断言产物 banner 与 `/plugins/dsh-liangxiang/client.js` 服务 | 升级时对照 `tsdown.client.ts` 重新复刻;此为最大单点风险(`docs/004` 风险 2) |
 | C7 | `dsh.client` 扫描 + `exports["./client"]` + `/plugins/<id>/client.js` | `packages/client/modules/src/index.ts:112-141,344-364` | 公开 | Client 半接入 | 校验错误文案即征兆(载入失败 loud) | **已实现**:package.json 单点;`tests/manifest.spec.ts` 守护清单不漂移 | 无;破坏即上报 |
 
 ## 构建 / 安装触点
@@ -52,22 +52,22 @@
 
 ## 骨架里程碑(v0.1 skeleton)实际使用接口
 
-骨架落地后本节记录**实际接触面**(与上表"计划"列区分)。验证方式:strict typecheck、17 项单元测试、`liangbiao-dev` profile 安装 + `--dump-config`、WebUI 启动探测、干净 profile 冒烟脚本、卸载后消失验证(全部通过,2026-08-15)。
+骨架落地后本节记录**实际接触面**(与上表"计划"列区分)。验证方式:strict typecheck、17 项单元测试、`liangxiang-dev` profile 安装 + `--dump-config`、WebUI 启动探测、干净 profile 冒烟脚本、卸载后消失验证(全部通过,2026-08-15)。
 
 | 触点 | 状态 | 落点 | 备注 |
 |---|---|---|---|
 | C1 `slots.inject`/`slots.register` | **使用中** | `src/compat/dsh/overlay-slot.ts` | 注册形态照 slot catalog 官方示例(`slot-catalog.ts:1474`);处置随 fiber,卸载自动回收(验证:卸载后启动图/路由/日志三处均无残留) |
 | C2 `shell.overlay` | **使用中** | 同上 | SlotMap 类型合并经 `import type {} from '@deepseek-ai/dsh-client-ui-layout/client'`;误写 slot 名会被 TS 拒绝(已验证) |
 | C6 bundle 包装 | **使用中** | `tsdown.config.ts` | banner/footer/intro、externals(PLATFORM_MODULES + runtime store 豁免镜像)、NODE_ENV/import.meta.env define;rolldown 会把 banner 重排为多行,加载语义不变。tsdown 0.22.14 对 `external`/`noExternal` 报 deprecation(新名 `deps.neverBundle`/`alwaysBundle`),为与树内 preset 保持逐字段对应暂不迁移 |
-| C7 `dsh.client` 扫描 | **使用中** | `package.json` + `tests/manifest.spec.ts` | `/plugins/dsh-liangbiao/client.js?rev=<hash>` 已在启动图观测到 |
-| B1 `dsh plugin add` + `dsh.profile.bundles` 对账 | **使用中** | `scripts/dev-install.sh`、`scripts/smoke-clean-profile.sh` | 本地检出以 pnpm link 安装(dev),tarball 以 file: 安装(smoke);`--dump-config` 均出现 `# == dsh-liangbiao` 层 |
+| C7 `dsh.client` 扫描 | **使用中** | `package.json` + `tests/manifest.spec.ts` | `/plugins/dsh-liangxiang/client.js?rev=<hash>` 已在启动图观测到 |
+| B1 `dsh plugin add` + `dsh.profile.bundles` 对账 | **使用中** | `scripts/dev-install.sh`、`scripts/smoke-clean-profile.sh` | 本地检出以 pnpm link 安装(dev),tarball 以 file: 安装(smoke);`--dump-config` 均出现 `# == dsh-liangxiang` 层 |
 | B2 `prepare` 自包含构建 | **已就位,git 安装未实测** | `package.json` `prepare: tsdown` | 本地 `pnpm install` 触发验证过;github: 安装 + `allowBuilds` 流程未跑 |
 | B3 HMR stat-poll | **未验证** | — | 仅开发体验,后续里程碑顺带验证 |
 | cordis `Context.effect` / `Context.inject` / 插件对象形态 | **使用中** | `src/host/index.ts`、`src/client/index.ts`;类型别名在 `src/compat/dsh/{host,client}-context.ts` | 公开;Host 半以嵌套 `ctx.inject` 声明可选服务依赖(cordis 4 顶层 `inject` 只表达必需,`registry.ts:19,104-106`) |
 | H6 `ctx.sessionProjections.onChanged/snapshot`(`tokenUsage`) | **使用中**(真实 Token 里程碑) | `src/compat/dsh/usage-observer.ts` + `host-services.ts` 窄结构类型 | 变更流回调形参含 `Session.firstLiveSeq`(`core/session/src/index.ts:450-472,539`),用于新会话/借入历史判别(docs/041) |
 | H8 `ctx.sessions.list()` | **使用中** | 同上(启动补扫基线化) | — |
-| H10 `defineDomain`/`ctx.storageDomain.open` | **使用中** | `src/compat/dsh/storage.ts`(domain `liangbiao` v1;`valueSchema` 为自写窄校验对象,运行时仅调 `.parse`) | 开失败/服务缺席 → 内存态降级(响亮告警) |
-| H12 `ctx.webServer.register` | **使用中** | `src/host/routes.ts`(单条 prefix 路由 `/liangbiao/api`:state/SSE/vote) | SSE 连接与心跳由插件 disposer 显式清理 |
+| H10 `defineDomain`/`ctx.storageDomain.open` | **使用中** | `src/compat/dsh/storage.ts`(domain `liangxiang` v1;`valueSchema` 为自写窄校验对象,运行时仅调 `.parse`) | 开失败/服务缺席 → 内存态降级(响亮告警) |
+| H12 `ctx.webServer.register` | **使用中** | `src/host/routes.ts`(单条 prefix 路由 `/liangxiang/api`:state/SSE/vote) | SSE 连接与心跳由插件 disposer 显式清理 |
 | H1–H5、H7、H9、H11、H13(raw 事件/持久化历史/settings 等) | **未使用** | — | 上表"计划"列保持有效;V0.1 经 H6 投影通道即满足口径(无目标模型过滤) |
 
 版本事实(骨架实际链接的 DSH 面):

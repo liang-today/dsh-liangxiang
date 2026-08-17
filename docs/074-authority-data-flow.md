@@ -41,7 +41,7 @@ token_remainder/50K    → 香火环 fill
 
 ## 身份
 
-- `x-liangbiao-installation`：Liangbiao **自铸**的 uuid（`inst-<uuid>`），存在 DSH storage domain 的 `identity` 表。
+- `x-liangxiang-installation`：Liangxiang **自铸**的 uuid（`inst-<uuid>`），存在 DSH storage domain 的 `identity` 表。
 - **不复用** DSH 的 `.anonymous-user-id`：那是 DSH 内部值，借用它既不会变成鉴权，又会把内部标识发到网络上。
 - 它是假名标识：可重置、可伪造、可复制。`unique_voters` 的真实含义是**参与过的独立安装数**，不是人数。
 - 无 storage domain 时 Host 用进程内临时 id 并**大声告警**（重启即换池）。

@@ -3,7 +3,7 @@
 #
 # The installation id is an Ed25519 keypair persisted in the DSH storage domain:
 #
-#   $DSH_HOME/storages/liangbiao.json  ->  tables.identity.installation
+#   $DSH_HOME/storages/liangxiang.json  ->  tables.identity.installation
 #
 # It is minted ONCE on first install and reused forever. Copying .dsh-home (or
 # just that JSON) to a second device therefore carries the SAME keypair, so both
@@ -21,18 +21,18 @@
 # the backend rejects the new key with 409 `device_conflict`; in that case also
 # clear the backend row first, e.g.:
 #
-#   sqlite3 /var/lib/liangbiao/data/liangbiao.sqlite \
+#   sqlite3 /var/lib/liangxiang/data/liangxiang.sqlite \
 #     "DELETE FROM community_identity WHERE installation_id='lk_OLD_ID';"
 #
 # Usage:
 #   pnpm run reset:identity
-#   pnpm run reset:identity -- --json /path/to/storages/liangbiao.json
+#   pnpm run reset:identity -- --json /path/to/storages/liangxiang.json
 #
 # After running: restart the WebUI, then confirm the Host log / badge shows a
 # new `lk_…` installation id.
 . "$(dirname "$0")/env.sh"
 
-STORAGE="${LIANGBIAO_STORAGE:-$DSH_HOME/storages/liangbiao.json}"
+STORAGE="${LIANGXIANG_STORAGE:-$DSH_HOME/storages/liangxiang.json}"
 
 case "${1:-}" in
   -h|--help)

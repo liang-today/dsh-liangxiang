@@ -1,15 +1,15 @@
 /**
- * `/liangbiao/api/*` handlers over the DSH web server seam (docs/044):
+ * `/liangxiang/api/*` handlers over the DSH web server seam (docs/044):
  *
- *   GET  /liangbiao/api/state      full wire state
- *   GET  /liangbiao/api/events     SSE push (one frame per revision + heartbeat)
- *   GET  /liangbiao/api/history    full 梁祠 archive or immutable version delta
- *   POST /liangbiao/api/vote       minimal vote intent -> result + fresh state
- *   POST /liangbiao/api/refresh    force host re-read (hover / panel open)
- *   POST /liangbiao/api/reconcile  drop local Token observation, re-read incense
- *   POST /liangbiao/api/local/enter       first-run welcome: switch this Host to local
- *   POST /liangbiao/api/local/cycle-case  LOCAL_FAKE_DEV only: next prepared 梁案
- *   POST /liangbiao/api/dev/credit LOCAL_FAKE_DEV only: simulate Token credit
+ *   GET  /liangxiang/api/state      full wire state
+ *   GET  /liangxiang/api/events     SSE push (one frame per revision + heartbeat)
+ *   GET  /liangxiang/api/history    full 梁祠 archive or immutable version delta
+ *   POST /liangxiang/api/vote       minimal vote intent -> result + fresh state
+ *   POST /liangxiang/api/refresh    force host re-read (hover / panel open)
+ *   POST /liangxiang/api/reconcile  drop local Token observation, re-read incense
+ *   POST /liangxiang/api/local/enter       first-run welcome: switch this Host to local
+ *   POST /liangxiang/api/local/cycle-case  LOCAL_FAKE_DEV only: next prepared 梁案
+ *   POST /liangxiang/api/dev/credit LOCAL_FAKE_DEV only: simulate Token credit
  *
  * The handler validates every request body at the boundary, bounds body
  * size, and owns SSE connection cleanup (`closeAllConnections` runs on
@@ -23,7 +23,7 @@ import type { LiangHostService } from './service.ts'
 const MAX_VOTE_BODY_BYTES = 4096
 const SSE_HEARTBEAT_MS = 25_000
 
-export interface LiangbiaoApi {
+export interface LiangxiangApi {
   handler: (req: IncomingMessage, res: ServerResponse) => Promise<void>
   /** Dispose hook: ends every open SSE stream and clears heartbeats. */
   closeAllConnections: () => void
@@ -75,16 +75,16 @@ function readBoundedBody(req: IncomingMessage): Promise<string> {
   })
 }
 
-export interface LiangbiaoApiOptions {
+export interface LiangxiangApiOptions {
   /** First-run welcome: switch this Host from online to the in-process loop. */
   chooseLocalMode?: () => void
 }
 
-export function createLiangbiaoApi(
+export function createLiangxiangApi(
   service: LiangHostService,
   warn: (message: string) => void,
-  options: LiangbiaoApiOptions = {},
-): LiangbiaoApi {
+  options: LiangxiangApiOptions = {},
+): LiangxiangApi {
   const connections = new Set<SseConnection>()
 
   const dropConnection = (connection: SseConnection): void => {
@@ -111,7 +111,7 @@ export function createLiangbiaoApi(
         try {
           writeFrame(res)
         } catch (error) {
-          warn(`[dsh-liangbiao] SSE write failed: ${error instanceof Error ? error.message : String(error)}`)
+          warn(`[dsh-liangxiang] SSE write failed: ${error instanceof Error ? error.message : String(error)}`)
           dropConnection(connection)
         }
       }),
@@ -149,7 +149,7 @@ export function createLiangbiaoApi(
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      warn(`[dsh-liangbiao] vote could not be resolved: ${message}`)
+      warn(`[dsh-liangxiang] vote could not be resolved: ${message}`)
       writeJson(res, 502, { error: 'vote authority unavailable; retry with the same requestId' })
     }
   }
@@ -186,41 +186,41 @@ export function createLiangbiaoApi(
 
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     /* node:http always sets url on server requests */
-    const url = new URL(req.url ?? '/', 'http://liangbiao.local')
+    const url = new URL(req.url ?? '/', 'http://liangxiang.local')
     const pathname = url.pathname
     if (!service.isReady) {
-      writeJson(res, 503, { error: 'liangbiao host is still starting' })
+      writeJson(res, 503, { error: 'liangxiang host is still starting' })
       return
     }
     const methods: Record<string, string> = {
-      '/liangbiao/api/state': 'GET',
-      '/liangbiao/api/events': 'GET',
-      '/liangbiao/api/history': 'GET',
-      '/liangbiao/api/vote': 'POST',
-      '/liangbiao/api/refresh': 'POST',
-      '/liangbiao/api/reconcile': 'POST',
-      '/liangbiao/api/local/enter': 'POST',
-      '/liangbiao/api/local/cycle-case': 'POST',
-      '/liangbiao/api/dev/credit': 'POST',
+      '/liangxiang/api/state': 'GET',
+      '/liangxiang/api/events': 'GET',
+      '/liangxiang/api/history': 'GET',
+      '/liangxiang/api/vote': 'POST',
+      '/liangxiang/api/refresh': 'POST',
+      '/liangxiang/api/reconcile': 'POST',
+      '/liangxiang/api/local/enter': 'POST',
+      '/liangxiang/api/local/cycle-case': 'POST',
+      '/liangxiang/api/dev/credit': 'POST',
     }
     const expected = methods[pathname]
     if (expected === undefined) {
-      writeJson(res, 404, { error: 'unknown liangbiao route' })
+      writeJson(res, 404, { error: 'unknown liangxiang route' })
       return
     }
     if (req.method !== expected) {
       writeJson(res, 405, { error: `method ${String(req.method)} not allowed` })
       return
     }
-    if (pathname === '/liangbiao/api/state') {
+    if (pathname === '/liangxiang/api/state') {
       writeJson(res, 200, service.getWireState())
       return
     }
-    if (pathname === '/liangbiao/api/events') {
+    if (pathname === '/liangxiang/api/events') {
       handleEvents(req, res)
       return
     }
-    if (pathname === '/liangbiao/api/history') {
+    if (pathname === '/liangxiang/api/history') {
       try {
         const unknown = [...url.searchParams.keys()].filter(key => key !== 'after_version')
         if (unknown.length > 0) throw new Error(`unknown query parameter ${unknown[0]}`)
@@ -239,22 +239,22 @@ export function createLiangbiaoApi(
       }
       return
     }
-    if (pathname === '/liangbiao/api/refresh') {
+    if (pathname === '/liangxiang/api/refresh') {
       await service.refreshNow?.()
       writeJson(res, 200, service.getWireState())
       return
     }
-    if (pathname === '/liangbiao/api/reconcile') {
+    if (pathname === '/liangxiang/api/reconcile') {
       await service.reconcileNow?.()
       writeJson(res, 200, service.getWireState())
       return
     }
-    if (pathname === '/liangbiao/api/local/enter') {
+    if (pathname === '/liangxiang/api/local/enter') {
       options.chooseLocalMode?.()
       writeJson(res, 200, service.getWireState())
       return
     }
-    if (pathname === '/liangbiao/api/local/cycle-case') {
+    if (pathname === '/liangxiang/api/local/cycle-case') {
       const cycle = service.cycleLocalCase
       if (cycle === undefined) {
         writeJson(res, 404, { error: 'local case cycling is not available on this host' })
@@ -264,7 +264,7 @@ export function createLiangbiaoApi(
       writeJson(res, 200, service.getWireState())
       return
     }
-    if (pathname === '/liangbiao/api/dev/credit') {
+    if (pathname === '/liangxiang/api/dev/credit') {
       await handleDevCredit(req, res)
       return
     }

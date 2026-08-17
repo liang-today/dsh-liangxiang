@@ -33,17 +33,17 @@ function fakeHostContext(): {
 
 describe('host half wiring', () => {
   it('exports the plugin display name', () => {
-    expect(name).toBe('liangbiao')
+    expect(name).toBe('liangxiang')
   })
 
   it('installs lifecycle + timers as effects and requests the DSH seams via inject', () => {
-    vi.stubEnv('LIANGBIAO_BACKEND_URL', 'local')
+    vi.stubEnv('LIANGXIANG_BACKEND_URL', 'local')
     vi.useFakeTimers()
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
     const { ctx, disposers, injectedDeps } = fakeHostContext()
     apply(ctx)
 
-    expect(log).toHaveBeenCalledWith('[dsh-liangbiao] host half active')
+    expect(log).toHaveBeenCalledWith('[dsh-liangxiang] host half active')
     // lifecycle marker + service lifecycle + readiness fallback + snapshot cadence.
     expect(disposers.length).toBe(4)
     expect(injectedDeps).toEqual([
@@ -53,7 +53,7 @@ describe('host half wiring', () => {
     ])
 
     for (const dispose of disposers) dispose()
-    expect(log).toHaveBeenCalledWith('[dsh-liangbiao] host half disposed')
+    expect(log).toHaveBeenCalledWith('[dsh-liangxiang] host half disposed')
     expect(vi.getTimerCount()).toBe(0)
     log.mockRestore()
     vi.unstubAllEnvs()

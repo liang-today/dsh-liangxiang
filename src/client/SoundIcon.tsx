@@ -27,7 +27,7 @@ export function SoundIcon({ level }: { level: number }): ReactElement {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      data-liangbiao-sound-icon={waves}
+      data-liangxiang-sound-icon={waves}
     >
       <path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
       {waves === 0

@@ -4,9 +4,9 @@
  * offline, manual refresh reconnect.
  */
 import { describe, expect, it } from 'vitest'
-import { createLiveLiangbiaoStore, type LiveStoreTransport } from '../src/client/live-store.ts'
+import { createLiveLiangxiangStore, type LiveStoreTransport } from '../src/client/live-store.ts'
 import { FakeAuthoritativeLiangService, type LiangServiceConfig } from '../src/host/fake-service.ts'
-import type { LiangbiaoWireState } from '../src/shared/wire.ts'
+import type { LiangxiangWireState } from '../src/shared/wire.ts'
 
 const CONFIG: LiangServiceConfig = {
   timezone: 'Asia/Shanghai',
@@ -30,7 +30,7 @@ function makeService(clock: { now(): number } = { now: () => Date.UTC(2026, 7, 1
 
 interface FakeTransportControls {
   transport: LiveStoreTransport
-  pushFrame(state: LiangbiaoWireState): void
+  pushFrame(state: LiangxiangWireState): void
   emitSseError(): void
   requests: Array<{ path: string, body: string | undefined }>
   failNextFetches(count: number): void
@@ -51,28 +51,28 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
           failCount -= 1
           return Promise.reject(new Error('network down'))
         }
-        if (path === '/liangbiao/api/state') {
+        if (path === '/liangxiang/api/state') {
           return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
         }
-        if (path === '/liangbiao/api/refresh') {
+        if (path === '/liangxiang/api/refresh') {
           service.refreshNow()
           return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
         }
-        if (path === '/liangbiao/api/reconcile') {
+        if (path === '/liangxiang/api/reconcile') {
           service.reconcileNow()
           return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
         }
-        if (path === '/liangbiao/api/history') {
+        if (path === '/liangxiang/api/history') {
           return Promise.resolve(JSON.parse(JSON.stringify(service.history())) as unknown)
         }
-        if (path.startsWith('/liangbiao/api/history?after_version=')) {
+        if (path.startsWith('/liangxiang/api/history?after_version=')) {
           const cursor = Number(new URL(path, 'http://local').searchParams.get('after_version'))
           return Promise.resolve(JSON.parse(JSON.stringify(service.history(cursor))) as unknown)
         }
-        if (path === '/liangbiao/api/local/enter') {
+        if (path === '/liangxiang/api/local/enter') {
           return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
         }
-        if (path === '/liangbiao/api/vote') {
+        if (path === '/liangxiang/api/vote') {
           const intent = JSON.parse(init?.body ?? '{}') as { caseId: string, voteType: 'up' | 'down', requestId: string }
           const outcome = service.vote(intent)
           return Promise.resolve(JSON.parse(JSON.stringify({
@@ -115,11 +115,11 @@ describe('live store', () => {
     let now = Date.UTC(2026, 7, 16, 4)
     const service = makeService({ now: () => now })
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
     expect(store.getHistorySnapshot()).toMatchObject({ status: 'ready', archive: { archiveVersion: 0 } })
-    expect(controls.requests.filter(request => request.path === '/liangbiao/api/history')).toHaveLength(1)
+    expect(controls.requests.filter(request => request.path === '/liangxiang/api/history')).toHaveLength(1)
 
     now = Date.UTC(2026, 7, 17, 4)
     controls.pushFrame(service.getWireState())
@@ -127,7 +127,7 @@ describe('live store', () => {
     const history = store.getHistorySnapshot()
     expect(history).toMatchObject({ status: 'ready', archive: { archiveVersion: 1 } })
     expect(history.archive?.days[0]).toMatchObject({ businessDate: '2026-08-16' })
-    expect(controls.requests.some(request => request.path === '/liangbiao/api/history?after_version=0')).toBe(true)
+    expect(controls.requests.some(request => request.path === '/liangxiang/api/history?after_version=0')).toBe(true)
     store.dispose()
   })
 
@@ -135,7 +135,7 @@ describe('live store', () => {
     let now = Date.UTC(2026, 7, 16, 4)
     const service = makeService({ now: () => now })
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
     now = Date.UTC(2026, 7, 17, 4)
@@ -154,7 +154,7 @@ describe('live store', () => {
   it('bootstraps from /state and derives the demo view', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     expect(store.getSnapshot().connection).toBe('connecting')
     expect(store.getSnapshot().authorityMode).toBe('DEV_STAGING_ONLY')
     store.start()
@@ -170,10 +170,10 @@ describe('live store', () => {
   it('drops stale SSE frames (lower revision) and applies newer ones', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
-    const staleFrame = JSON.parse(JSON.stringify(service.getWireState())) as LiangbiaoWireState
+    const staleFrame = JSON.parse(JSON.stringify(service.getWireState())) as LiangxiangWireState
     // Newer server state: another 50k tokens observed.
     service.observeUsage('s1', {
       uncachedInputTokens: 447_000,
@@ -192,10 +192,10 @@ describe('live store', () => {
   it('accepts a lower revision when the Host process epoch changes', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
-    const restarted = JSON.parse(JSON.stringify(service.getWireState())) as LiangbiaoWireState
+    const restarted = JSON.parse(JSON.stringify(service.getWireState())) as LiangxiangWireState
     restarted.hostEpoch = restarted.hostEpoch + 1
     restarted.revision = 0
     restarted.personal.remainingIncense = 10
@@ -207,7 +207,7 @@ describe('live store', () => {
   it('paints host-observed incense from the wire frame, not a frontend overlay', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
     const before = store.getSnapshot().personal.remainingIncense
@@ -228,14 +228,14 @@ describe('live store', () => {
   it('retries a failed vote once with the SAME request id', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
     controls.failNextFetches(1)
     const result = await store.vote('up')
     expect(result.status).toBe('accepted')
     const voteBodies = controls.requests
-      .filter((request) => request.path === '/liangbiao/api/vote')
+      .filter((request) => request.path === '/liangxiang/api/vote')
       .map((request) => JSON.parse(request.body ?? '{}') as { requestId: string })
     expect(voteBodies).toHaveLength(2)
     expect(voteBodies[0]?.requestId).toBe(voteBodies[1]?.requestId)
@@ -247,7 +247,7 @@ describe('live store', () => {
   it('goes offline after bounded SSE failures; refresh() reconnects', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
     for (let i = 0; i < 5; i += 1) controls.emitSseError()
@@ -265,13 +265,13 @@ describe('live store', () => {
   it('while live, refresh() POSTs /refresh so hover can pick up a new case without waiting', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
     const before = store.getSnapshot().activeCase.id
     store.refresh()
     await settled()
-    expect(controls.requests.some((request) => request.path === '/liangbiao/api/refresh')).toBe(true)
+    expect(controls.requests.some((request) => request.path === '/liangxiang/api/refresh')).toBe(true)
     expect(store.getSnapshot().connection).toBe('live')
     expect(store.getSnapshot().activeCase.id).toBe(before)
     store.dispose()
@@ -280,12 +280,12 @@ describe('live store', () => {
   it('reconcile() POSTs /reconcile to drop local observation and re-read incense', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
     store.reconcile()
     await settled()
-    expect(controls.requests.some((request) => request.path === '/liangbiao/api/reconcile')).toBe(true)
+    expect(controls.requests.some((request) => request.path === '/liangxiang/api/reconcile')).toBe(true)
     expect(store.getSnapshot().connection).toBe('live')
     store.dispose()
   })
@@ -294,7 +294,7 @@ describe('live store', () => {
     const service = makeService()
     const controls = fakeTransport(service)
     controls.failNextFetches(1)
-    const store = createLiveLiangbiaoStore(controls.transport)
+    const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
     const state = store.getSnapshot()

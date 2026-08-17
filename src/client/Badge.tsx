@@ -1,12 +1,12 @@
 /**
- * 梁向 entry + panel container.
+ * 梁相 entry + panel container.
  *
  * `BadgeButton` is the presentational docked entry: the current 梁子 state IS
  * the icon (so the global mood is readable without opening anything), and the
- * hover/focus tooltip stays the frozen `今日梁向`. It is freely placeable —
+ * hover/focus tooltip stays the frozen `今日梁相`. It is freely placeable —
  * drag it anywhere in the frame; the position is remembered per browser.
  *
- * `LiangbiaoBadge` is the stateful container that the overlay slot renders: it
+ * `LiangxiangBadge` is the stateful container that the overlay slot renders: it
  * owns placement, open/close, Escape/outside-click dismissal, focus return,
  * reduced-motion detection, and the transient avatar-pulse / 凝香 /
  * vote-feedback timers. All business state lives in the store.
@@ -30,7 +30,7 @@ import {
 } from './badge-position.ts'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangciModal } from './LiangciModal.tsx'
-import { createLiveLiangbiaoStore } from './live-store.ts'
+import { createLiveLiangxiangStore } from './live-store.ts'
 import { Panel } from './Panel.tsx'
 import { color, font } from './theme.ts'
 import { useThrottleFill } from './use-throttle-fill.ts'
@@ -59,24 +59,24 @@ const buttonStyle: CSSProperties = {
 }
 
 const BADGE_CSS = `
-[data-liangbiao-badge] {
+[data-liangxiang-badge] {
   transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
 }
-[data-liangbiao-badge]:hover,
-[data-liangbiao-badge][aria-expanded="true"] {
+[data-liangxiang-badge]:hover,
+[data-liangxiang-badge][aria-expanded="true"] {
   border-color: color-mix(in srgb, ${color.ritualGold} 66%, ${color.border});
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.26), 0 0 0 3px color-mix(in srgb, ${color.ritualGold} 10%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
-[data-liangbiao-badge][data-dragging="true"] {
+[data-liangxiang-badge][data-dragging="true"] {
   cursor: grabbing;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-[data-liangbiao-badge]:focus-visible,
-[data-liangbiao-badge][aria-expanded="true"]:focus-visible {
+[data-liangxiang-badge]:focus-visible,
+[data-liangxiang-badge][aria-expanded="true"]:focus-visible {
   outline: 2px solid ${color.brand};
   outline-offset: 2px;
 }
-[data-liangbiao-badge-tooltip] {
+[data-liangxiang-badge-tooltip] {
   position: absolute;
   left: 50%;
   bottom: calc(100% + 8px);
@@ -93,14 +93,14 @@ const BADGE_CSS = `
   pointer-events: none;
   transition: opacity 100ms ease, transform 100ms ease;
 }
-[data-liangbiao-badge]:hover [data-liangbiao-badge-tooltip],
-[data-liangbiao-badge]:focus-visible [data-liangbiao-badge-tooltip] {
+[data-liangxiang-badge]:hover [data-liangxiang-badge-tooltip],
+[data-liangxiang-badge]:focus-visible [data-liangxiang-badge-tooltip] {
   opacity: 1;
   transform: translate(-50%, 0);
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-liangbiao-badge],
-  [data-liangbiao-badge-tooltip] { transition: none !important; }
+  [data-liangxiang-badge],
+  [data-liangxiang-badge-tooltip] { transition: none !important; }
 }
 `
 
@@ -120,7 +120,7 @@ export interface BadgeButtonProps {
   buttonRef: RefObject<HTMLButtonElement> | null
 }
 
-/** Keyboard-reachable docked entry; hover and focus both surface `今日梁向`. */
+/** Keyboard-reachable docked entry; hover and focus both surface `今日梁相`. */
 export function BadgeButton({
   open,
   liangziState,
@@ -152,14 +152,14 @@ export function BadgeButton({
         ...buttonStyle,
         cursor: dragging ? 'grabbing' : 'grab',
       }}
-      data-liangbiao-badge=""
-      data-liangbiao-badge-state={liangziState}
+      data-liangxiang-badge=""
+      data-liangxiang-badge-state={liangziState}
       data-dragging={dragging}
     >
       <style>{BADGE_CSS}</style>
       <span
         aria-hidden="true"
-        data-liangbiao-badge-halo=""
+        data-liangxiang-badge-halo=""
         style={{
           position: 'absolute',
           inset: '4px',
@@ -181,7 +181,7 @@ export function BadgeButton({
           liangQiFill={liangQiFill}
         />
       </span>
-      <span aria-hidden="true" data-liangbiao-badge-tooltip="">{HOVER_TEXT}</span>
+      <span aria-hidden="true" data-liangxiang-badge-tooltip="">{HOVER_TEXT}</span>
     </button>
   )
 }
@@ -216,10 +216,10 @@ function useViewport(): { width: number, height: number } {
   return viewport
 }
 
-export function LiangbiaoBadge(): ReactElement {
+export function LiangxiangBadge(): ReactElement {
   // One live connection per mounted badge; disposed on unmount (plugin
   // unload / HMR), so streams and timers never multiply.
-  const [store] = useState(() => createLiveLiangbiaoStore())
+  const [store] = useState(() => createLiveLiangxiangStore())
   useEffect(() => {
     store.start()
     return () => store.dispose()
@@ -229,7 +229,8 @@ export function LiangbiaoBadge(): ReactElement {
   // Default open so the stacked left-dock can stay visible without covering
   // the DSH composer. × / the badge persist the preference per browser.
   const [open, setOpen] = useState<boolean>(() => {
-    if (typeof location !== 'undefined' && location.hash.includes('liangbiao-open')) return true
+    if (typeof location !== 'undefined'
+      && (location.hash.includes('liangxiang-open') || location.hash.includes('liangbiao-open'))) return true
     return loadPanelOpen(typeof localStorage === 'undefined' ? null : localStorage)
   })
   const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
@@ -466,7 +467,7 @@ export function LiangbiaoBadge(): ReactElement {
   useEffect(() => {
     const anchor = anchorRef.current
     if (open && anchor !== null) {
-      const panel = anchor.querySelector<HTMLElement>('[data-liangbiao-panel]')
+      const panel = anchor.querySelector<HTMLElement>('[data-liangxiang-panel]')
       panel?.focus()
     } else if (!open && wasOpen.current) {
       buttonRef.current?.focus()
@@ -492,7 +493,7 @@ export function LiangbiaoBadge(): ReactElement {
         }
       },
       (error: unknown) => {
-        console.warn(`[dsh-liangbiao] 打梁失败: ${error instanceof Error ? error.message : String(error)}`)
+        console.warn(`[dsh-liangxiang] 打梁失败: ${error instanceof Error ? error.message : String(error)}`)
         setVoteFeedback('打梁失败，请稍后重试')
       },
     )
@@ -528,7 +529,7 @@ export function LiangbiaoBadge(): ReactElement {
         top: `${position.y}px`,
         pointerEvents: 'auto',
       }}
-      data-liangbiao-root=""
+      data-liangxiang-root=""
     >
       <BadgeButton
         open={open}

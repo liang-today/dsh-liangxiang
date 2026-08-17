@@ -5,10 +5,10 @@
 import { DEFAULT_TOKEN_PER_INCENSE } from '../domain/index.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
 import { DEFAULT_BUSINESS_TIMEZONE } from '../shared/business-date.ts'
+import { readLiangxiangEnv } from '../shared/env.ts'
 import { normalizeBaseUrl } from './backend-client.ts'
 import { STAGING_BACKEND_URL } from './community-endpoint.ts'
 import type { LiangServiceConfig } from './fake-service.ts'
-import { STAGING_COMMUNITY_KEY } from './staging-defaults.ts'
 
 /**
  * Near-real-time cadence: the public 梁位 must visibly move right after a vote
@@ -23,7 +23,7 @@ export interface HostRuntimeConfig {
   service: LiangServiceConfig
   /**
    * Backend base URL. Default is the closed-beta staging endpoint (online).
-   * `LIANGBIAO_BACKEND_URL=local` (or an unparseable URL) forces LOCAL_FAKE_DEV.
+   * `LIANGXIANG_BACKEND_URL=local` (or an unparseable URL) forces LOCAL_FAKE_DEV.
    * A later welcome-gate choice may still switch to local; a dead backend
    * is not a silent fallback.
    */
@@ -41,7 +41,7 @@ function parsePositiveInt(
   if (raw === undefined || raw.trim() === '') return fallback
   const value = Number(raw)
   if (!Number.isSafeInteger(value) || value <= 0) {
-    warn(`[dsh-liangbiao] ignoring invalid ${label}=${raw}; using ${fallback}`)
+    warn(`[dsh-liangxiang] ignoring invalid ${label}=${raw}; using ${fallback}`)
     return fallback
   }
   return value
@@ -57,26 +57,27 @@ export function resolveHostConfig(
   env: Record<string, string | undefined>,
   warn: (message: string) => void,
 ): LiangServiceConfig {
-  const timezone = env.LIANGBIAO_BUSINESS_TZ?.trim() !== undefined && env.LIANGBIAO_BUSINESS_TZ?.trim() !== ''
-    ? (env.LIANGBIAO_BUSINESS_TZ as string).trim()
+  const timezoneRaw = readLiangxiangEnv(env, 'BUSINESS_TZ')
+  const timezone = timezoneRaw?.trim() !== undefined && timezoneRaw.trim() !== ''
+    ? timezoneRaw.trim()
     : DEFAULT_BUSINESS_TIMEZONE
   const refresh = parsePositiveInt(
-    env.LIANGBIAO_SNAPSHOT_SECONDS,
+    readLiangxiangEnv(env, 'SNAPSHOT_SECONDS'),
     DEFAULT_SNAPSHOT_REFRESH_SECONDS,
-    'LIANGBIAO_SNAPSHOT_SECONDS',
+    'LIANGXIANG_SNAPSHOT_SECONDS',
     warn,
   )
   const snapshotRefreshSeconds = Math.min(Math.max(refresh, MIN_SNAPSHOT_REFRESH_SECONDS), MAX_SNAPSHOT_REFRESH_SECONDS)
-  const seedRaw = env.LIANGBIAO_FAKE_SEED?.trim()
+  const seedRaw = readLiangxiangEnv(env, 'FAKE_SEED')?.trim()
   if (seedRaw !== undefined && seedRaw !== '' && seedRaw !== 'empty' && seedRaw !== 'demo') {
-    warn(`[dsh-liangbiao] ignoring invalid LIANGBIAO_FAKE_SEED=${seedRaw}; using empty`)
+    warn(`[dsh-liangxiang] ignoring invalid LIANGXIANG_FAKE_SEED=${seedRaw}; using empty`)
   }
   return {
     timezone,
     tokenPerIncense: parsePositiveInt(
-      env.LIANGBIAO_TOKEN_PER_INCENSE,
+      readLiangxiangEnv(env, 'TOKEN_PER_INCENSE'),
       DEFAULT_TOKEN_PER_INCENSE,
-      'LIANGBIAO_TOKEN_PER_INCENSE',
+      'LIANGXIANG_TOKEN_PER_INCENSE',
       warn,
     ),
     snapshotRefreshSeconds,
@@ -99,18 +100,16 @@ export function resolveHostRuntimeConfig(
   warn: (message: string) => void,
 ): HostRuntimeConfig {
   const service = resolveHostConfig(env, warn)
-  const communityRaw = env.LIANGBIAO_COMMUNITY_KEY?.trim()
-  const communityKey = communityRaw === undefined || communityRaw === ''
-    ? STAGING_COMMUNITY_KEY
-    : communityRaw
-  const raw = env.LIANGBIAO_BACKEND_URL?.trim()
+  const communityRaw = readLiangxiangEnv(env, 'COMMUNITY_KEY')?.trim()
+  const communityKey = communityRaw === undefined || communityRaw === '' ? null : communityRaw
+  const raw = readLiangxiangEnv(env, 'BACKEND_URL')?.trim()
   if (raw === 'local') return { service, backendUrl: null, communityKey }
   const candidate = raw === undefined || raw === '' ? STAGING_BACKEND_URL : raw
   try {
     return { service, backendUrl: normalizeBaseUrl(candidate), communityKey }
   } catch (error) {
     warn(
-      `[dsh-liangbiao] ignoring invalid LIANGBIAO_BACKEND_URL=${candidate} `
+      `[dsh-liangxiang] ignoring invalid LIANGXIANG_BACKEND_URL=${candidate} `
       + `(${error instanceof Error ? error.message : String(error)}); running in local mode`,
     )
     return { service, backendUrl: null, communityKey }

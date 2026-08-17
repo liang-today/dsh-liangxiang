@@ -6,7 +6,7 @@ DSH 处于 **Developer Preview**：首个 tagged release 前不承诺兼容。�
 
 | 项 | 值 |
 |---|---|
-| 梁向版本 | 0.4.0 |
+| 梁相版本 | 0.5.0 |
 | DSH npm（类型/CLI devDeps） | `@deepseek-ai/dsh@0.1.0-rc.6` |
 | DSH 源码勘察基线 | `47f943859bef60e4160492346772ded9b24f765a`（本地检出 `0.1.0-rc.5`，rc.6 的直接前驱） |
 | Web 界面层 bundle | `@deepseek-ai/dsh-web-app@0.1.0-rc.6` |
@@ -23,7 +23,7 @@ Node 偏差：实测用的是 22.17.0，低于 DSH 声明的 `^22.19.0`。所有
 |---|---|---|---|
 | `shell.overlay` 客户端槽位 | 半公开 | 挂载徽章 | 无入口，Host 仍运行 |
 | `sessionProjections` + `sessions` | 公开投影 API | 观测 `tokenUsage` | 记账不可用（面板照常渲染并提示） |
-| `webServer.register` | 公开 | `/liangbiao/api/*` | 浏览器无通道 → 离线渲染 |
+| `webServer.register` | 公开 | `/liangxiang/api/*` | 浏览器无通道 → 离线渲染 |
 | `storageDomain.open` | 公开 | 水位/日用量/身份持久化 | 内存降级 + 临时身份（大声告警） |
 | 浏览器 bundle 包装格式 | **半公开、最易破** | `window.__ModuleLoader__.load` banner | 客户端加载失败 |
 | `tokenUsage` 四桶语义 | 公开投影字段 | Effective Token 口径 | 载荷不匹配即跳过并告警 |
