@@ -320,7 +320,8 @@ liang_qi_fill -> 0
 tokens_to_next_incense -> 50,000
 ```
 
-UI 可播放一次短暂“凝香 / +1 炷”效果，然后重新开始下一炷进度。
+UI 可播放一次短暂“凝香 / +N 炷”效果；N 取该次状态更新中
+`earned_incense` 的实际增量，然后重新开始下一炷进度。
 
 ---
 
@@ -907,7 +908,7 @@ PERSONAL LIANGQI:
 - tokens_to_next_incense 必须整合在 LiangQi 组件内，不单独增加一整层文案。
 - 投票成功后 remaining_incense -1，因此 LiangQi intensity 可降低。
 - 投票不改变 token_remainder / ring fill。
-- Token 跨过 50K 阈值后 earned/remaining +1，remainder 回绕，播放短暂 +1 炷反馈。
+- Token 一次更新跨过 N 个 50K 阈值后 earned/remaining +N，remainder 回绕，播放短暂 +N 炷反馈。
 
 TOKEN:
 - LIANG_TOKEN_PER_INCENSE = 50000 默认，可配置。
@@ -1294,7 +1295,7 @@ E. token +3000 => earned +1，remaining +1，fill 94%->0%，播放短暂凝香�
 梁气：
 - intensity 随 remaining incense 平滑变化
 - fill 随 token progress 连续变化
-- 满一圈时短暂“凝香 / +1 炷”
+- 本次增长 N 炷时短暂显示“凝香 / +N 炷”
 - 不持续闪烁
 
 Global ratio：
@@ -3566,7 +3567,7 @@ authority 未 VERIFIED：明确 community/dev/soft-trust limitation，绝不能�
 4. 当前个人 5 炷香，梁气旺盛
 5. 香火环显示“再 3,000 Token”且接近满
 6. 使用 DSH 增加 3,000 Token
-7. 环满，凝成 +1 炷，随后环重新开始
+7. 环满，按本次实际增长凝成 +N 炷，随后环重新开始
 8. 连续投夯/拉，remaining 下降，梁气变弱
 9. ring fill 不因投票倒退
 10. global snapshot 跨阈值时梁子状态变化
@@ -3876,7 +3877,7 @@ fill -> 0
 toNext -> 50,000
 ```
 
-播放短暂“凝香 / +1 炷”，随后继续下一圈。
+播放短暂“凝香 / +N 炷”（N 为本次实际增长），随后继续下一圈。
 
 ## 23.4 梁子 WAITING + 五态
 

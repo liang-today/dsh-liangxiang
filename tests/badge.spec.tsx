@@ -5,7 +5,7 @@
  * placement. Placement math lives in `badge-position.ts` and is tested below.
  */
 import { describe, expect, it } from 'vitest'
-import { BadgeButton } from '../src/client/Badge.tsx'
+import { BadgeButton, earnedIncenseGain } from '../src/client/Badge.tsx'
 import {
   BADGE_ICON_SIZE,
   BADGE_MARGIN,
@@ -38,6 +38,13 @@ function renderButton(open: boolean, liangziState: 'waiting' | 'liang_gong' | 'l
 }
 
 describe('LiangbiaoBadge entry', () => {
+  it('preserves the actual incense gain from a multi-stick update', () => {
+    expect(earnedIncenseGain(7, 8)).toBe(1)
+    expect(earnedIncenseGain(7, 13)).toBe(6)
+    expect(earnedIncenseGain(7, 7)).toBe(0)
+    expect(earnedIncenseGain(7, 3)).toBe(0)
+  })
+
   it('is a keyboard-reachable button that opens a dialog', () => {
     const { button } = renderButton(false)
     expect(button.props.type).toBe('button')

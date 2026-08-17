@@ -21,8 +21,8 @@ import { color, font, ringColorForFill } from './theme.ts'
 export interface LiangQiRingProps {
   personal: PersonalLiangQiState
   reducedMotion: boolean
-  /** Transient `+1 炷` condensation feedback (container-timed). */
-  justCondensed: boolean
+  /** Actual incense gained in the latest update; 0 hides the transient feedback. */
+  condensedIncense: number
   /** Overrides `personal.liangQiFill` for the throttle (油门) animation only. */
   fillOverride?: number
   /** Pinned to the ring's bottom edge; the panel passes the 梁位 value. */
@@ -123,7 +123,7 @@ function SunMark({ index, count, opacity }: { index: number, count: number, opac
 export function LiangQiRing({
   personal,
   reducedMotion,
-  justCondensed,
+  condensedIncense,
   fillOverride,
   footer,
   children,
@@ -253,9 +253,9 @@ export function LiangQiRing({
           {footer}
         </span>
       )}
-      {justCondensed && (
+      {condensedIncense > 0 && (
         <span
-          data-liangbiao-condensed=""
+          data-liangbiao-condensed={condensedIncense}
           role="status"
           style={{
             position: 'absolute',
@@ -273,7 +273,7 @@ export function LiangQiRing({
             animation: reducedMotion ? undefined : 'liangbiao-condense 1.4s ease-out 1',
           }}
         >
-          凝香 +1 炷
+          凝香 +{condensedIncense.toLocaleString('zh-CN')} 炷
         </span>
       )}
     </div>

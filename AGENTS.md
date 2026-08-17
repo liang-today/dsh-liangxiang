@@ -366,7 +366,9 @@ liang_qi_fill -> 0
 tokens_to_next_incense -> token_per_incense
 ```
 
-A short “凝香 / +1 炷” animation is allowed. Respect reduced-motion.
+A short “凝香 / +N 炷” animation is allowed. `N` must be the actual incense
+increase carried by that update, including updates that cross multiple sticks.
+Respect reduced-motion.
 
 ---
 

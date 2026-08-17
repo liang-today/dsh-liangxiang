@@ -35,6 +35,11 @@ import { Panel } from './Panel.tsx'
 import { color, font } from './theme.ts'
 import { useThrottleFill } from './use-throttle-fill.ts'
 
+/** Preserve the exact earned-incense jump carried by one authoritative frame. */
+export function earnedIncenseGain(previous: number, current: number): number {
+  return Math.max(0, current - previous)
+}
+
 const buttonStyle: CSSProperties = {
   width: `${BADGE_SIZE}px`,
   height: `${BADGE_SIZE}px`,
@@ -415,10 +420,11 @@ export function LiangbiaoBadge(): ReactElement {
     return () => window.clearTimeout(timer)
   }, [state.snapshot.upVotes, state.snapshot.downVotes])
 
-  // One short 凝香 feedback when a new incense stick is earned. The first
+  // One short 凝香 feedback showing how many incense sticks were earned in
+  // this update. The first
   // live frame is a baseline (Cmd+Shift+R starts at earned=0 then hydrates),
   // never a condensation. Bob / 下一炷 may replay; this overlay must not.
-  const [justCondensed, setJustCondensed] = useState(false)
+  const [condensedIncense, setCondensedIncense] = useState(0)
   const prevEarned = useRef(state.personal.earnedIncenseToday)
   const incenseEarnPrimed = useRef(false)
   useEffect(() => {
@@ -431,12 +437,12 @@ export function LiangbiaoBadge(): ReactElement {
       prevEarned.current = state.personal.earnedIncenseToday
       return undefined
     }
-    const grew = state.personal.earnedIncenseToday > prevEarned.current
+    const gained = earnedIncenseGain(prevEarned.current, state.personal.earnedIncenseToday)
     prevEarned.current = state.personal.earnedIncenseToday
-    if (!grew) return undefined
-    setJustCondensed(true)
+    if (gained === 0) return undefined
+    setCondensedIncense(gained)
     playIncenseEarn()
-    const timer = window.setTimeout(() => setJustCondensed(false), 1400)
+    const timer = window.setTimeout(() => setCondensedIncense(0), 1400)
     return () => window.clearTimeout(timer)
   }, [state.connection, state.personal.earnedIncenseToday])
 
@@ -568,7 +574,7 @@ export function LiangbiaoBadge(): ReactElement {
           onDismissWelcome={onDismissWelcome}
           onChooseLocal={onChooseLocal}
           avatarPulse={avatarPulse}
-          justCondensed={justCondensed}
+          condensedIncense={condensedIncense}
           voteFeedback={voteFeedback}
           positionPulse={positionPulse}
           placement={panelPlacementFor(position, viewport)}

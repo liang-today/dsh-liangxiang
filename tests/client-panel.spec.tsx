@@ -56,6 +56,7 @@ function renderPanel(
     onInsufficientVote?: (voteType: 'up' | 'down') => void
     welcomeVisible?: boolean
     welcomeSeconds?: number
+    condensedIncense?: number
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -72,7 +73,7 @@ function renderPanel(
       onDismissWelcome={() => undefined}
       onChooseLocal={() => undefined}
       avatarPulse={false}
-      justCondensed={false}
+      condensedIncense={extra.condensedIncense ?? 0}
       voteFeedback={voteFeedback}
       onVote={() => undefined}
       onInsufficientVote={extra.onInsufficientVote ?? (() => undefined)}
@@ -144,6 +145,7 @@ describe('four visual regions', () => {
     const caseTitle = findByAttr(tree, 'data-liangbiao-case-title')[0]
     expect(styleOf(findAll(header === undefined ? [] : [header], (node) => node.type === 'h2')[0]).fontSize).toBe('12px')
     expect(styleOf(caseTitle).fontSize).toBe('14px')
+    expect(styleOf(caseTitle).margin).toBe('6px -24px 0')
     expect(styleOf(caseTitle).whiteSpace).toBe('normal')
     expect(styleOf(caseTitle).WebkitLineClamp).toBe(2)
     const dialog = findAll(tree, (node) => node.props.role === 'dialog')[0]
@@ -154,6 +156,13 @@ describe('four visual regions', () => {
 })
 
 describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
+  it('shows the actual incense gain when one update crosses multiple sticks', () => {
+    const tree = renderPanel(demoState(), '', { condensedIncense: 6 })
+    const feedback = findByAttr(tree, 'data-liangbiao-condensed')[0]
+    expect(feedback?.props['data-liangbiao-condensed']).toBe(6)
+    expect(feedback && textContent([feedback])).toBe('凝香 +6 炷')
+  })
+
   it('flanks the 梁子 with the personal numbers and leads with one 梁位 value', () => {
     const tree = renderPanel(demoState())
     const incense = findByAttr(tree, 'data-liangbiao-personal', 'incense')[0]
@@ -409,7 +418,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onDismissWelcome={() => undefined}
         onChooseLocal={() => undefined}
         avatarPulse={false}
-        justCondensed={false}
+        condensedIncense={0}
         voteFeedback=""
         positionPulse
         onVote={() => undefined}
@@ -439,7 +448,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onDismissWelcome={() => undefined}
         onChooseLocal={() => undefined}
         avatarPulse={false}
-        justCondensed={false}
+        condensedIncense={0}
         voteFeedback=""
         positionPulse
         onVote={() => undefined}

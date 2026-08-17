@@ -50,7 +50,7 @@ up_ratio >= 95%         -> 梁祖
 
 - `今日凝香 N 炷` / `下一炷 X 当量` 作为环左右两翼 overlay，禁止单独的"个人成长层"；环/头像/香火点必须居中。
 - 一次选择成功：`remaining -1`，香火环可变弱；**但 remainder/fill/toNext 不变**。
-- Token 跨过 50K：`earned/remaining +1`，remainder 回绕到 0，播放一次短"凝香 +1 炷"。
+- Token 一次更新跨过 N 个 50K 边界：`earned/remaining +N`，remainder 相应回绕，播放一次短"凝香 +N 炷"；N 必须是本次实际增量。
 
 ## Token → 香火
 
