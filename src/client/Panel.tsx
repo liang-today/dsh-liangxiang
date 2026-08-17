@@ -29,6 +29,8 @@ import {
   OFFLINE_REASON,
   PANEL_TITLE,
   PANEL_TITLE_LOCAL,
+  PLUGIN_PACKAGE_NAME,
+  PLUGIN_VERSION,
   CYCLE_LOCAL_CASE_LABEL,
   STAT_LIFETIME_LABEL,
   STAT_TODAY_LABEL,
@@ -66,6 +68,10 @@ export interface PanelProps {
   /** Sound volume step 0-3 (无/小/中/大). */
   soundLevel: number
   onCycleSound: () => void
+  /** Long-press (3s) on the sound icon reveals the version; a revealed pill shows. */
+  versionReveal: boolean
+  onSoundPressStart: () => void
+  onSoundPressEnd: () => void
   /** First-run welcome overlay visibility. */
   welcomeVisible: boolean
   onDismissWelcome: () => void
@@ -484,7 +490,8 @@ function SocialStatHint(props: {
 
 export function Panel(props: PanelProps): ReactElement {
   const {
-    state, reducedMotion, throttle, soundLevel, onCycleSound, welcomeVisible, onDismissWelcome, avatarPulse, justCondensed, voteFeedback,
+    state, reducedMotion, throttle, soundLevel, onCycleSound, versionReveal, onSoundPressStart, onSoundPressEnd,
+    welcomeVisible, onDismissWelcome, avatarPulse, justCondensed, voteFeedback,
     onVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, onCycleLocalCase,
   } = props
@@ -644,6 +651,10 @@ export function Panel(props: PanelProps): ReactElement {
           aria-label={`声音：${['无', '小', '中', '大'][soundLevel] ?? ''}`}
           aria-pressed={soundLevel > 0}
           onClick={onCycleSound}
+          onPointerDown={onSoundPressStart}
+          onPointerUp={onSoundPressEnd}
+          onPointerLeave={onSoundPressEnd}
+          onPointerCancel={onSoundPressEnd}
           style={{
             position: 'absolute',
             top: 0,
@@ -660,6 +671,27 @@ export function Panel(props: PanelProps): ReactElement {
         >
           <SoundIcon level={soundLevel} />
         </button>
+        {versionReveal && (
+          <span
+            role="status"
+            data-liangbiao-version=""
+            style={{
+              position: 'absolute',
+              top: '26px',
+              left: '0px',
+              padding: '2px 8px',
+              borderRadius: '999px',
+              border: `1px solid ${color.border}`,
+              background: color.bgLayer,
+              fontSize: '11px',
+              lineHeight: '16px',
+              color: color.textSecondary,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {PLUGIN_PACKAGE_NAME}@{PLUGIN_VERSION}
+          </span>
+        )}
         <button
           type="button"
           aria-label="关闭面板"
@@ -756,8 +788,8 @@ export function Panel(props: PanelProps): ReactElement {
             <span data-liangbiao-compact="incense">{earnedCompact}</span>
             <span style={flankUnitStyle}> 炷</span>
           </span>
-          <span title={`可打梁 ${remainingExact} 炷`} style={flankUnitStyle}>
-            可打梁 {remainingCompact} 炷
+          <span title={`余 ${remainingExact} 炷`} style={flankUnitStyle}>
+            余 {remainingCompact} 炷
           </span>
         </div>
         <div

@@ -1,6 +1,6 @@
 {
   "name": "dsh-liangbiao",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "梁标 — a DeepSeek Harness WebUI plugin (hover: 今日梁位). Installable dual-half bundle: host plugin row + web client bundle.",
   "type": "module",
   "main": "lib/index.js",

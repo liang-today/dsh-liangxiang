@@ -41,6 +41,9 @@ export const name = HOST_PLUGIN_NAME
 
 const READINESS_FALLBACK_MS = 5_000
 
+/** How often to re-probe the backend after a network-miss fallback to local. */
+const BACKEND_RECHECK_MS = 30_000
+
 const warn = (message: string): void => {
   console.warn(message)
 }
@@ -83,6 +86,16 @@ export function apply(ctx: DshHostContext): void {
   )
 
   const probeAbort = new AbortController()
+  let fellBackToLocal = false
+
+  /** Re-hydrate the online service from the persisted host state (usage + identity). */
+  const hydrateOnlineService = async (): Promise<void> => {
+    if (online === null || persistHandle === null) return
+    const persisted = await persistHandle.port.load()
+    online.hydrateUsage(persisted.watermarks, persisted.dailyUsage, persistHandle.port)
+    online.attachCommunityIdentity(await persistHandle.identity.resolve())
+  }
+
   if (online !== null && backendUrl !== null) {
     void probeBackendHealth(backendUrl, 2_500, fetch, probeAbort.signal).then((ok) => {
       if (ok || probeAbort.signal.aborted) return
@@ -90,12 +103,38 @@ export function apply(ctx: DshHostContext): void {
         `[${PLUGIN_PACKAGE_NAME}] staging backend unreachable (${backendUrl}); `
         + 'falling back to LOCAL_FAKE_DEV — panel title will show 今日梁案（本地）',
       )
-      slot.use(local)
+      // Keep the online service alive so a later re-check can switch back.
+      slot.use(local, false)
+      fellBackToLocal = true
       if (persistHandle !== null) {
         void local.attachPersistence(persistHandle.port)
       }
     })
   }
+
+  // If the fallback was a network miss (not an explicit `=local` config), keep
+  // probing and switch back to online once the backend is reachable again.
+  ctx.effect(() => {
+    if (online === null || backendUrl === null) return () => {}
+    const onlineService = online
+    const url = backendUrl
+    const interval = setInterval(() => {
+      if (!fellBackToLocal) return
+      void probeBackendHealth(url, 2_500, fetch, probeAbort.signal).then(async (ok) => {
+        if (!ok || probeAbort.signal.aborted || !fellBackToLocal) return
+        try {
+          await hydrateOnlineService()
+        } catch (error) {
+          warn(`[${PLUGIN_PACKAGE_NAME}] failed to re-hydrate online service: ${error instanceof Error ? error.message : String(error)}`)
+          return
+        }
+        fellBackToLocal = false
+        slot.use(onlineService)
+        warn(`[${PLUGIN_PACKAGE_NAME}] staging backend reachable again (${url}); switched back to DEV_STAGING_ONLY`)
+      })
+    }, BACKEND_RECHECK_MS)
+    return () => clearInterval(interval)
+  }, 'liangbiao: backend re-check')
 
   ctx.effect(() => () => {
     probeAbort.abort()
