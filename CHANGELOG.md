@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.6-beta — 2026-08-18
+
+- 安装命令回到浮动的 `@beta`，不再钉死某一号。插件本身没有收窄的版本范围。
+- Host 启动时把 DSH profile 的依赖改成 `beta`，并写入 `minimumReleaseAgeExclude: dsh-liangxiang`，避开 pnpm 11 默认 24 小时冷静期。开发用的 `link:` / 非 tarball `file:` 不动。
+
 ## 0.8.5-beta — 2026-08-18
 
 - npm 简介页右侧 Install 栏是网站写死的 `npm i`，无法替换。本版 README 开头直接给出 `dsh plugin add`，并写明右侧那条命令不会进入 DSH。

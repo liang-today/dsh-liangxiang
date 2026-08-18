@@ -22,6 +22,8 @@
  * memory-only) — the client keeps rendering. Every registration is an effect:
  * plugin unload clears routes, SSE connections, subscriptions and timers.
  */
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { DshHostContext } from '../compat/dsh/host-context.ts'
 import { resolveDshHostServices } from '../compat/dsh/host-services.ts'
 import {
@@ -41,6 +43,7 @@ import { resolveHostRuntimeConfig } from './config.ts'
 import { FakeAuthoritativeLiangService } from './fake-service.ts'
 import { AuthoritySlot } from './authority-slot.ts'
 import { createLiangxiangApi } from './routes.ts'
+import { ensureProfileTracksBeta } from './profile-npm-float.ts'
 import type { LiangHostService } from './service.ts'
 
 export const name = HOST_PLUGIN_NAME
@@ -56,6 +59,22 @@ const warn = (message: string): void => {
  * @param ctx - host root context.
  */
 export function apply(ctx: DshHostContext): void {
+  try {
+    const floated = ensureProfileTracksBeta(dirname(fileURLToPath(import.meta.url)), {
+      refresh: false,
+    })
+    if (floated?.changed) {
+      console.log(
+        `[${PLUGIN_PACKAGE_NAME}] profile tracks npm tag ${floated.specifier ?? 'beta'}`
+        + (floated.refreshed ? ' and refreshed' : ''),
+      )
+    }
+  } catch (error) {
+    warn(`[${PLUGIN_PACKAGE_NAME}] could not float the profile npm specifier: ${
+      error instanceof Error ? error.message : String(error)
+    }`)
+  }
+
   ctx.effect(() => {
     console.log(`[${PLUGIN_PACKAGE_NAME}] host half active`)
     return () => {
