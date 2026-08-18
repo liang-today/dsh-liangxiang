@@ -19,7 +19,7 @@ export interface VoteOutcome {
 }
 
 export interface LiangHostService {
-  /** False until the service can answer authoritatively (routes serve 503). */
+  /** False only before the selected authority can emit a wire frame. */
   readonly isReady: boolean
   subscribe: (listener: () => void) => () => void
   getWireState: () => LiangxiangWireState

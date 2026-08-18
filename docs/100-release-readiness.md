@@ -26,8 +26,8 @@
 |---|---|
 | `pnpm run typecheck` | ✅ |
 | `pnpm run lint` | ✅ |
-| `pnpm run test` | ✅ 36 文件 / 444 项 |
-| `pnpm run build` | ✅ Host 152.70 kB（gzip 38.25 kB）；Backend 131.09 kB；Client 940.35 kB（gzip 604.67 kB） |
+| `pnpm run test` | ✅ 36 文件 / 446 项 |
+| `pnpm run build` | ✅ Host 154.63 kB（gzip 38.63 kB）；Backend 131.09 kB；Client 940.35 kB（gzip 604.67 kB） |
 | `pnpm audit --prod` | ✅ 0 个已知漏洞 |
 | `smoke:clean-profile` | ✅ 全新 profile 从候选 tarball 安装；默认在线显式切离线成功，后端不可达时重启仍保持离线，独立本地存档存在 |
 | `smoke:online` | ✅ Host→后端、Token claim、幂等、50 并发仅一票、快照发布（SQLite 事务层；正式签名链另有 Host 集成测试与公网回归） |
@@ -37,7 +37,7 @@
 | MacBook / Mac mini 安装 | ⚠️ 历史 0.8.1-beta.0 在 MacBook 的更新、存储校验、在线界面与版本入口通过；0.8.2-beta 尚未执行真实 profile 安装，Mac mini 仍待设备可达后补验 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
 | npm 公开包复核 | ✅ 历史占位 `dsh-liangxiang@0.8.0` 为 7 文件；当前 `0.8.2-beta` 候选尚未发布 |
-| 0.8.2-beta 候选包 | ✅ 7 文件；SHA-256 `b63e650459ff5dfcd0d9fa3f8ea0c205d4066f0d0efa5cd53c5e12832c79ee1b`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
+| 0.8.2-beta 候选包 | ✅ 7 文件；SHA-256 `08cc1223170ebfacc3ded93dd5147203c92c75a635578c75ec3a9c3c209cafc4`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
 | 香港公网峰值（只读） | ✅ `/v1/health` 1,000 请求 / 1,000 并发新建 TLS 连接，0 失败；测试后 Caddy/Backend 无 warning、内存余量 14 GiB |
 
 npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`，且 registry
@@ -59,7 +59,7 @@ npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`�
 ## 接受的限制
 
 - DSH 当前没有服务器可验证的身份和 Token 权威，仍是社区软信任。
-- DSH RC 依赖闭包存在 rc.6/rc.7 漂移告警，但干净安装与运行时冒烟通过；
+- DSH 开发依赖已钉 `0.1.0-rc.7`；干净安装仍可能看到 DSH 闭包自身的 peer warning，
   详见 [`BUGFIX`](BUGFIX.md) BF-012。
 - 客户端六态美术内联，单文件体积较大。
 - 视觉回归、axe、真实多会话长跑和跨进程 SQLite 压测仍待补；详见

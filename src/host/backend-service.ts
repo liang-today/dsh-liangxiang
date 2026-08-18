@@ -18,7 +18,7 @@
  * balance until the next snapshot arrives.
  */
 import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
-import type { DailyLiangCase, LiangHistoryArchive, VoteResult } from '../domain/index.ts'
+import { DEFAULT_TOKEN_PER_INCENSE, type DailyLiangCase, type LiangHistoryArchive, type VoteResult } from '../domain/index.ts'
 import type {
   V1Bootstrap,
   V1Case,
@@ -27,7 +27,7 @@ import type {
   V1VoteResult,
 } from '../shared/backend-v1.ts'
 import { createBusinessDateProvider, type Clock } from '../shared/business-date.ts'
-import { PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
+import { DEFAULT_CASE_TITLE, PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
 import {
   emptyHistoryArchive,
   historyArchiveToV1,
@@ -35,7 +35,7 @@ import {
   type V1HistoryResponse,
 } from '../shared/history-v1.ts'
 import { WIRE_SCHEMA_VERSION, type LiangxiangWireState, type WireVoteRequest } from '../shared/wire.ts'
-import { BackendClientError, type BackendClient } from './backend-client.ts'
+import { BackendClientError, STARTUP_BOOTSTRAP_TIMEOUT_MS, type BackendClient } from './backend-client.ts'
 import { generateCommunityKeypair, type CommunityKeypair } from './community-keys.ts'
 import type { LiangHostService, VoteOutcome } from './service.ts'
 import { UsageProjection, type UsageProjectionSink } from './usage-projection.ts'
@@ -125,6 +125,13 @@ export class BackendLiangService implements LiangHostService {
   }
 
   get isReady(): boolean {
+    // Connecting/unavailable frames are valid UI. Do not hold DSH or the
+    // browser on the first community round-trip.
+    return true
+  }
+
+  /** True only after a successful community bootstrap. */
+  get hasCommunityAuthority(): boolean {
     return this.bootstrap !== null
   }
 
@@ -156,7 +163,7 @@ export class BackendLiangService implements LiangHostService {
   attachIdentity(installationId: string): void {
     if (this.installationId === installationId) return
     this.installationId = installationId
-    void this.refreshBootstrap()
+    void this.refreshBootstrap({ startup: true })
   }
 
   attachCommunityIdentity(identity: CommunityKeypair): void {
@@ -293,7 +300,7 @@ export class BackendLiangService implements LiangHostService {
     const personal = this.personal
     const snapshot = this.snapshot
     if (bootstrap === null || activeCase === null || personal === null || snapshot === null) {
-      throw new Error('backend state requested before the first successful bootstrap')
+      return this.connectingWireState()
     }
     const usage = this.usage.recordFor(this.businessDate)
     return {
@@ -341,6 +348,53 @@ export class BackendLiangService implements LiangHostService {
     }
   }
 
+  private connectingWireState(): LiangxiangWireState {
+    const businessDate = this.businessDate || new Date(this.hostEpoch).toISOString().slice(0, 10)
+    const usage = this.usage.recordFor(businessDate)
+    return {
+      schemaVersion: WIRE_SCHEMA_VERSION,
+      revision: this.revision,
+      hostEpoch: this.hostEpoch,
+      authorityMode: 'DEV_STAGING_ONLY',
+      authorityAvailable: false,
+      authorityReason: this.authorityReason,
+      snapshotRefreshSeconds: 1,
+      businessDate,
+      archiveVersion: this.archiveVersion,
+      activeCase: {
+        id: 'connecting',
+        businessDate,
+        title: DEFAULT_CASE_TITLE,
+        status: 'active',
+        createdAt: 0,
+        tokenPerIncense: DEFAULT_TOKEN_PER_INCENSE,
+      },
+      global: {
+        caseId: 'connecting',
+        upVotes: 0,
+        downVotes: 0,
+        uniqueVoters: 0,
+        capturedAt: 0,
+        sequence: 0,
+        lifetimeIncense: 0,
+        lifetimeVoters: 0,
+      },
+      personal: {
+        effectiveTokensToday: this.usage.effectiveTokensFor(businessDate),
+        usedIncenseToday: 0,
+        remainingIncense: 0,
+        tokenPerIncense: DEFAULT_TOKEN_PER_INCENSE,
+      },
+      accounting: {
+        available: this.accountingAvailable,
+        inputTokensToday: usage.inputTokens,
+        outputTokensToday: usage.outputTokens,
+        observedAt: usage.observedAt === 0 ? null : usage.observedAt,
+        notice: this.claimNotice,
+      },
+    }
+  }
+
   /** Serve the Host's last-known-good archive, refreshing only when needed. */
   async history(afterVersion?: number): Promise<V1HistoryResponse> {
     if (afterVersion !== undefined && (!Number.isSafeInteger(afterVersion) || afterVersion < 0)) {
@@ -361,20 +415,24 @@ export class BackendLiangService implements LiangHostService {
   }
 
   /** Fetch policy + case + personal state + snapshot in one round trip. */
-  async refreshBootstrap(): Promise<void> {
+  async refreshBootstrap(options?: { startup?: boolean }): Promise<void> {
     const installationId = this.installationId
     if (installationId === null || this.disposed) return
     if (this.bootstrapping !== null) return this.bootstrapping
     if (Date.now() < this.bootstrapBackoffUntil) return
+    const startup = options?.startup === true
+    const readOptions = startup
+      ? { timeoutMs: STARTUP_BOOTSTRAP_TIMEOUT_MS, retry: false }
+      : undefined
     const run = (async (): Promise<void> => {
       try {
         let bootstrap: V1Bootstrap
         try {
-          bootstrap = await this.client.bootstrap(installationId)
+          bootstrap = await this.client.bootstrap(installationId, readOptions)
         } catch (error) {
           if (!(error instanceof BackendClientError) || error.code !== 'admission_required') throw error
           await this.enrollWithPublicTicket(installationId)
-          bootstrap = await this.client.bootstrap(installationId)
+          bootstrap = await this.client.bootstrap(installationId, readOptions)
         }
         this.adoptBootstrap(bootstrap)
         this.setAuthorityAvailable(true)

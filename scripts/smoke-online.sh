@@ -9,6 +9,11 @@
 # after the cadence. Everything runs against a throwaway DB and profile.
 . "$(dirname "$0")/env.sh"
 
+# Do not reuse the developer .dsh-home ledger: a leftover offline preference
+# would make this online smoke start in LOCAL_FAKE_DEV.
+DSH_HOME="$(mktemp -d)"
+export DSH_HOME
+
 BACKEND_PORT="${LIANGXIANG_SMOKE_BACKEND_PORT:-4181}"
 WEB_PORT="${LIANGXIANG_SMOKE_ONLINE_PORT:-3982}"
 ONLINE_PROFILE="${LIANGXIANG_SMOKE_ONLINE_PROFILE:-liangxiang-online-smoke}"
@@ -29,7 +34,7 @@ cleanup() {
     kill -9 "$WEB_PID" 2>/dev/null || true
   fi
   [ -n "$BACKEND_PID" ] && kill "$BACKEND_PID" 2>/dev/null || true
-  rm -rf "${DSH_HOME:?}/profiles/$ONLINE_PROFILE"
+  rm -rf "${DSH_HOME:?}"
 }
 trap cleanup EXIT
 
@@ -102,10 +107,21 @@ WEB_PID=$!
 disown "$WEB_PID" 2>/dev/null || true
 wait_for "http://127.0.0.1:$WEB_PORT/liangxiang/api/state" "host api"
 
-STATE="$(curl -fsS "http://127.0.0.1:$WEB_PORT/liangxiang/api/state")"
-HOST_MODE="$(json_field "$STATE" authorityMode)"
+STATE=""
+CASE_ID=""
+HOST_MODE=""
+for _ in $(seq 1 40); do
+  STATE="$(curl -fsS "http://127.0.0.1:$WEB_PORT/liangxiang/api/state")"
+  HOST_MODE="$(json_field "$STATE" authorityMode)"
+  CASE_ID="$(json_field "$STATE" activeCase.id)"
+  AVAIL="$(json_field "$STATE" authorityAvailable)"
+  if [ "$HOST_MODE" = "DEV_STAGING_ONLY" ] && [ "$AVAIL" = "true" ] && [ "$CASE_ID" != "connecting" ]; then
+    break
+  fi
+  sleep 0.25
+done
 [ "$HOST_MODE" = "DEV_STAGING_ONLY" ] || fail "host reports $HOST_MODE, expected DEV_STAGING_ONLY"
-CASE_ID="$(json_field "$STATE" activeCase.id)"
+[ "$CASE_ID" != "connecting" ] && [ -n "$CASE_ID" ] || fail "host never left the connecting frame"
 echo "host authority_mode=$HOST_MODE case=$CASE_ID"
 
 # The smoke installation claims tokens directly against the backend: a real

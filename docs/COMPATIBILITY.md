@@ -7,9 +7,9 @@ DSH 处于 **Developer Preview**：首个 tagged release 前不承诺兼容。�
 | 项 | 值 |
 |---|---|
 | 梁相版本 | 0.8.2-beta |
-| DSH npm（类型/CLI devDeps） | `@deepseek-ai/dsh@0.1.0-rc.6` |
-| DSH 源码勘察基线 | `47f943859bef60e4160492346772ded9b24f765a`（本地检出 `0.1.0-rc.5`，rc.6 的直接前驱） |
-| Web 界面层 bundle | `@deepseek-ai/dsh-web-app@0.1.0-rc.6` |
+| DSH npm（类型/CLI devDeps） | `@deepseek-ai/dsh@0.1.0-rc.7` |
+| DSH 源码勘察基线 | `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`（tag `dsh-v0.1.0-rc.7`，与社区 master 一致） |
+| Web 界面层 bundle | `@deepseek-ai/dsh-web-app@0.1.0-rc.7` |
 | Node | v22.17.0（DSH 要求 `^22.19.0 \|\| >=24`，见下方偏差说明） |
 | pnpm | 10.33.0 |
 | OS | macOS 26.5.2（darwin 25.5.0） |

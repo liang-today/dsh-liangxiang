@@ -262,6 +262,54 @@ describe('online bootstrap', () => {
     host.dispose()
   })
 
+  it('serves a connecting frame immediately while community bootstrap is still in flight', () => {
+    const client = {
+      baseUrl: 'http://127.0.0.1:9',
+      bootstrap: () => new Promise(() => undefined),
+      dispose: () => undefined,
+    } as unknown as BackendClient
+    const host = new BackendLiangService({
+      client,
+      timezone: 'Asia/Shanghai',
+      clock: createMutableClock(FIXED_NOW),
+      warn: () => undefined,
+    })
+    host.attachIdentity(INSTALLATION)
+    expect(host.isReady).toBe(true)
+    expect(host.hasCommunityAuthority).toBe(false)
+    const wire = parseWireState(JSON.parse(JSON.stringify(host.getWireState())) as unknown)
+    expect(wire.authorityAvailable).toBe(false)
+    expect(wire.activeCase.id).toBe('connecting')
+    expect(wire.authorityMode).toBe('DEV_STAGING_ONLY')
+    host.dispose()
+  })
+
+  it('fails the first community contact in 3s and keeps serving the connecting frame', async () => {
+    const client = createBackendClient({
+      baseUrl: 'http://127.0.0.1:4180',
+      fetchImpl: (_url, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+        })
+      }),
+    })
+    const host = new BackendLiangService({
+      client,
+      timezone: 'Asia/Shanghai',
+      clock: createMutableClock(FIXED_NOW),
+      warn: () => undefined,
+    })
+    host.attachIdentity(INSTALLATION)
+    const started = Date.now()
+    await host.refreshBootstrap({ startup: true })
+    expect(Date.now() - started).toBeLessThan(4_500)
+    expect(host.isReady).toBe(true)
+    expect(host.hasCommunityAuthority).toBe(false)
+    expect(host.getWireState().authorityAvailable).toBe(false)
+    host.dispose()
+    client.dispose()
+  }, 8_000)
+
   it('automatically fetches and consumes a public ticket on a signed first install', async () => {
     const identity = generateCommunityKeypair('host-admission-device')
     const s = await startStack({}, { signedIdentity: identity })
