@@ -67,7 +67,7 @@ pnpm run dev:uninstall                                     # 卸载
   ```
 
   或单次：`npm_config_registry=https://registry.npmmirror.com dsh plugin --profile web add dsh-liangxiang@beta`
-- **社区后端**：`https://api.liang.today` 解析到香港 `182.160.2.201`，由本机 DSH Host 直连，不经 Cloudflare。内地一般可访问，偶发跨境抖动时插件会在 3 秒内放弃等待、进入 DSH 主界面，并显示「无法连接天庭」，后台继续重连。
+- **社区后端**：本机 DSH Host 直连 `https://api.liang.today`。内地一般可访问，偶发跨境抖动时插件会在 3 秒内放弃等待、进入 DSH 主界面，并显示「无法连接天庭」，后台继续重连。
 - **官网 / GitHub**：`liang.today` 是 GitHub Pages；源码自编译依赖 GitHub。这两条在内地可能较慢或不可达，优先走 npm + `@beta`。
 - **离线兜底**：连不上社区时不要改 registry 以外的配置；在梁相案牍手动选离线模式即可本机自玩。
 

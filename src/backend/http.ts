@@ -400,8 +400,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
           writeError(res, 413, 'invalid_request', `request body exceeds ${MAX_BODY_BYTES} bytes`)
           return
         }
-        const message = error instanceof Error ? error.message : String(error)
-        writeError(res, 400, 'invalid_request', `invalid request body: ${message}`)
+        writeError(res, 400, 'invalid_request', 'invalid request')
         return
       }
     }
@@ -554,8 +553,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         writeError(res, 401, 'missing_installation', `installation header invalid: ${error.message}`, error.field)
         return
       }
-      const message = error instanceof Error ? error.message : String(error)
-      writeError(res, 401, 'missing_installation', `installation header invalid: ${message}`, INSTALLATION_HEADER)
+      writeError(res, 401, 'missing_installation', 'installation header invalid', INSTALLATION_HEADER)
       return
     }
 
@@ -572,9 +570,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     let body: unknown
     try {
       body = rawBody === '' ? {} : (JSON.parse(rawBody) as unknown)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      writeError(res, 400, 'invalid_request', `invalid request body: ${message}`)
+    } catch {
+      writeError(res, 400, 'invalid_request', 'invalid request')
       return
     }
 
@@ -685,6 +682,5 @@ function writeValidationError(res: ServerResponse, error: unknown): void {
     writeError(res, 400, 'invalid_request', error.message, error.field)
     return
   }
-  const message = error instanceof Error ? error.message : String(error)
-  writeError(res, 400, 'invalid_request', message)
+  writeError(res, 400, 'invalid_request', 'invalid request')
 }

@@ -225,6 +225,19 @@ describe('routing and boundary validation', () => {
     expect(state.used_incense).toBe(0)
   })
 
+  it('does not echo internal parse errors to the client', async () => {
+    const h = await start()
+    const response = await fetch(`${h.baseUrl}/v1/votes`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', [INSTALLATION_HEADER]: INSTALLATION },
+      body: '{not-json',
+    })
+    expect(response.status).toBe(400)
+    const body = await response.json() as { error: { code: string, message: string } }
+    expect(body.error).toMatchObject({ code: 'invalid_request', message: 'invalid request' })
+    expect(body.error.message).not.toMatch(/JSON|Unexpected|position|SQLite/i)
+  })
+
   it('rate limits vote requests per installation', async () => {
     const h = await start({ voteRateLimitPerMinute: 2 })
     await grant(h, 500_000)

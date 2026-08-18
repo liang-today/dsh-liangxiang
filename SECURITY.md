@@ -32,7 +32,7 @@ SQLite 事务保护。旧共享准入口令通道已经删除。以上控制都�
 
 在仓库提交 issue 并加 `security` 标签，或直接联系维护者。请附：复现步骤、影响、版本（`package.json` 的 version + git commit）、运行模式（`LOCAL_FAKE_DEV` / `DEV_STAGING_ONLY`）。
 
-**报告里不要包含**真实 prompt、源码、密钥或个人数据——按上面的口径，梁相不需要它们就能复现。
+**报告里不要包含**真实 prompt、源码、密钥、个人数据或源站主机地址——按上面的口径，梁相不需要它们就能复现。仓库、文档和讨论只写 `https://api.liang.today`；部署目标放在本机 `.env` 的 `LIANGXIANG_DEPLOY_SSH`，不要写进 git。
 
 ## 处理承诺
 
