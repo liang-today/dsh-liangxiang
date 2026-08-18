@@ -167,7 +167,10 @@ incense.
 
 - Online/community is the default. Offline/local play is selected only by the
   first-run choice, the 梁相案牍 mode action, or the explicit boot default
-  `LIANGXIANG_BACKEND_URL=local`.
+  `LIANGXIANG_BACKEND_URL=local`. The first-run welcome waits for an explicit
+  click; it must not auto-select a mode on a timer.
+- One installation may submit at most 50 incense votes per minute on the
+  community backend (`LIANGXIANG_VOTE_RATE_LIMIT`, default 50).
 - The Host persists the preference. A network outage keeps online selected,
   continues observing Token, locks 夯/拉, and reconnects automatically.
 - Community identity, online claim projection and the shared session high-water

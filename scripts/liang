@@ -193,7 +193,7 @@ case "$1" in
         print_effective_config BUSINESS_TZ Asia/Shanghai
         print_effective_config SNAPSHOT_SECONDS 1
         print_effective_config TOKEN_PER_INCENSE 50000
-        print_effective_config VOTE_RATE_LIMIT 600
+        print_effective_config VOTE_RATE_LIMIT 50
         print_effective_config VOTE_RATE_LIMIT_MAX_KEYS 4096
         print_effective_config ABSURD_CLAIM_TOKENS 25000000
         print_effective_config REKEY_COOLDOWN_MS 1800000

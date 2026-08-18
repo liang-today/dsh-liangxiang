@@ -38,7 +38,7 @@
 
 | 控制 | 实现 |
 |---|---|
-| 投票限流 | 每安装每分钟 `LIANGXIANG_VOTE_RATE_LIMIT`（默认 600，0 关闭）→ 429 |
+| 投票限流 | 每安装每分钟 `LIANGXIANG_VOTE_RATE_LIMIT`（默认 50，0 关闭）→ 429 |
 | 限流表不无界增长 | 投票限流器最多保留 4,096 个活跃安装 key；满载先清过期窗口，仍满则拒绝新 key |
 | 首次登记总量有界 | 入梁券限次数、限有效期；`admission/claim` 使用不按攻击者指纹分桶的服务器全局每分钟上限 |
 | 入梁券库存可运维 | SQLite v5 保存 active/exhausted/revoked/expired 状态；`liang tickets` 查询、发行和作废 |

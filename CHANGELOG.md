@@ -14,6 +14,7 @@
 - 源码仓已从 `liang-today/dsh-liang-meter` 迁移并重命名为 `liang-today/dsh-liangxiang`；`package.json` 的 repository / bugs 地址同步更新。
 - DSH 开发依赖与 Web 界面层统一钉到 `0.1.0-rc.7`；实际使用的 Host/Client 触点与社区 master `99f6f02` 对齐。
 - 在线启动不再等待天庭 bootstrap：Host 立即提供连接中状态，首次探测 3 秒超时后告警并进入主界面，后台继续重连；切回在线仍须先连上。
+- 同一安装每分钟最多提交 50 炷香火；首次欢迎页不再倒计时，必须由用户选择在线或离线；案牍版本按钮只显示版本号。
 
 ## 0.8.1-beta.0 — 2026-08-18
 

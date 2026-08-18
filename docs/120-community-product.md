@@ -118,7 +118,7 @@ DSH Host（每台香客的本机进程）  ──HTTP──>  社区后端
 | 运营改案 | VPS 本机 `node lib/backend-cli.js case publish "…"`：归档当前案并开新案（见 [`122`](122-identity-recovery.md)、[`121`](121-vps-deploy.md)） |
 | 健康页 | `GET /v1/public` 或现有 snapshot：梁位、梁子、香火、香客、业务日——给运营看，也可给落地页用 |
 | 备份 | sqlite 日拷 + 恢复步骤 |
-| 限流 | 面向社区调参（现在默认 600 次/分/安装，演示向） |
+| 限流 | 同一安装每分钟最多 50 炷香火（`LIANGXIANG_VOTE_RATE_LIMIT`） |
 
 ### C3 — 公开推广（有了 C1/C2 再做）
 

@@ -34,6 +34,20 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 `$DSH_HOME/storages/liangxiang.json`，恢复后发送的是同一业务日的单调 claim；夯 / 拉直到
 社区 authority 再次成功响应才解锁。
 
+## 用户怎么升级
+
+先退出 WebUI，再执行对应路径的**同一条安装命令**，然后重启并刷新浏览器。账本不会被删除。
+
+| 来源 | 升级命令 |
+|---|---|
+| npm | `dsh plugin --profile web add dsh-liangxiang@beta`（远程拉最新 `@beta`） |
+| GitHub Release / tarball | 下载新 `dsh-liangxiang-<version>.tgz` 后 `dsh plugin --profile web add ./该文件` |
+| 源码 | `git pull && pnpm install && pnpm run dev:install` |
+
+卸载一律：`dsh plugin --profile web remove dsh-liangxiang`（源码开发 profile 用 `pnpm run dev:uninstall`）。
+
+同版本号重打包时用下面的 `update-plugin.sh`，避免 DSH 报 Already up to date。
+
 ## 一键更新
 
 发行目录附带 `scripts/update-plugin.sh`：

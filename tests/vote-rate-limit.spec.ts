@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { VoteRateLimiter, VOTE_RATE_WINDOW_MS } from '../src/backend/vote-rate-limit.ts'
+import { DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE, VoteRateLimiter, VOTE_RATE_WINDOW_MS } from '../src/backend/vote-rate-limit.ts'
 
 describe('hard-bounded vote rate limiter', () => {
+  it('caps one installation at 50 incense submissions per minute by default', () => {
+    expect(DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE).toBe(50)
+  })
+
   it('never retains more than the configured number of active identities', () => {
     const limiter = new VoteRateLimiter(5, 32)
     for (let index = 0; index < 12_000; index += 1) {
