@@ -9,7 +9,7 @@
  * No personal-growth section, no ranking, no third option.
  * Presentational only (no hooks); the container wires state and callbacks.
  */
-import type { CSSProperties, KeyboardEvent, ReactElement } from 'react'
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement } from 'react'
 import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, formatZhCompactCount, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
@@ -575,12 +575,15 @@ export function Panel(props: PanelProps): ReactElement {
   const offline = state.connection !== 'live'
   const communityUnavailable = state.authorityMode === 'DEV_STAGING_ONLY' && !state.authorityAvailable
   const authorityUnavailable = offline || communityUnavailable
+  const communityUnavailableReason = state.authorityReason === null
+    ? COMMUNITY_UNAVAILABLE_REASON
+    : `无法连接天庭：${state.authorityReason}`
   const outOfIncense = personal.remainingIncense <= 0
   const votingDisabled = outOfIncense || authorityUnavailable
   const disabledReason = offline
     ? OFFLINE_REASON
     : communityUnavailable
-      ? COMMUNITY_UNAVAILABLE_REASON
+      ? communityUnavailableReason
     : outOfIncense
       ? NO_INCENSE_REASON
       : ''
@@ -588,7 +591,7 @@ export function Panel(props: PanelProps): ReactElement {
   const statusLine = offline
     ? OFFLINE_REASON
     : communityUnavailable
-      ? COMMUNITY_UNAVAILABLE_REASON
+      ? communityUnavailableReason
     : !state.accountingAvailable
       ? ACCOUNTING_UNAVAILABLE_HINT
       : absurdNotice
@@ -634,6 +637,12 @@ export function Panel(props: PanelProps): ReactElement {
       tabIndex={-1}
       style={{ ...panelStyle, ...placementStyle(placement) }}
       onKeyDown={onKeyDown}
+      onPointerDownCapture={(event: PointerEvent<HTMLElement>) => {
+        if (!utilityOpen) return
+        const target = event.target
+        if (target instanceof Element && target.closest('[data-liangxiang-utility-slot]') !== null) return
+        onUtilityClose()
+      }}
     >
       <style>{PANEL_CSS}</style>
 

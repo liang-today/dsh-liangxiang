@@ -65,6 +65,34 @@ export const DEVICE_HEADER = 'x-liangxiang-device'
 /** Shared community admission key when the server has LIANGXIANG_COMMUNITY_KEY. */
 export const COMMUNITY_KEY_HEADER = 'x-liangxiang-community-key'
 
+export interface V1AdmissionTicket {
+  ticket_id: string
+  secret: string
+  remaining_claims: number
+  expires_at: number
+}
+
+export interface V1AdmissionTicketsResponse {
+  schema_version: typeof BACKEND_SCHEMA_VERSION
+  server_time: number
+  available_claims: number
+  tickets: V1AdmissionTicket[]
+}
+
+export interface V1AdmissionClaimRequest {
+  ticket_secret: string
+  public_key: string
+  device_fingerprint: string
+}
+
+export interface V1AdmissionClaimResponse {
+  schema_version: typeof BACKEND_SCHEMA_VERSION
+  claimed: boolean
+  installation_id: string
+  ticket_id: string | null
+  server_time: number
+}
+
 /** Self-minted installation ids: uuid-ish, url-safe, bounded. */
 const INSTALLATION_ID_PATTERN = /^[A-Za-z0-9._-]{8,64}$/
 
@@ -280,6 +308,10 @@ export const V1_ERROR_CODES = [
   'invalid_request',
   'missing_installation',
   'invalid_signature',
+  'admission_required',
+  'admission_ticket_invalid',
+  'admission_ticket_exhausted',
+  'admission_rate_limited',
   'device_conflict',
   'rekey_cooldown',
   'identity_rate_limited',
@@ -777,6 +809,91 @@ export function parseV1TokenClaimRequest(raw: unknown): V1TokenClaimRequest {
   return {
     claimed_effective_tokens: requireCount(record.claimed_effective_tokens, 'claim.claimed_effective_tokens'),
     claim_business_date: requireBusinessDate(record.claim_business_date, 'claim.claim_business_date'),
+  }
+}
+
+/** Public available-ticket response (Host boundary). */
+export function parseV1AdmissionTicketsResponse(raw: unknown): V1AdmissionTicketsResponse {
+  const record = asRecord(raw, 'admissionTickets')
+  if (record.schema_version !== BACKEND_SCHEMA_VERSION) {
+    throw new WireError('admissionTickets.schema_version', `unsupported schema version ${String(record.schema_version)}`)
+  }
+  if (!Array.isArray(record.tickets)) throw new WireError('admissionTickets.tickets', 'expected an array')
+  const tickets = record.tickets.map((item, index) => {
+    const ticket = asRecord(item, `admissionTickets.tickets[${index}]`)
+    const remaining = requireCount(ticket.remaining_claims, `admissionTickets.tickets[${index}].remaining_claims`)
+    if (remaining < 1) throw new WireError(`admissionTickets.tickets[${index}].remaining_claims`, 'must be positive')
+    return {
+      ticket_id: requireString(ticket.ticket_id, `admissionTickets.tickets[${index}].ticket_id`),
+      secret: requireString(ticket.secret, `admissionTickets.tickets[${index}].secret`),
+      remaining_claims: remaining,
+      expires_at: requireFinite(ticket.expires_at, `admissionTickets.tickets[${index}].expires_at`),
+    }
+  })
+  return {
+    schema_version: BACKEND_SCHEMA_VERSION,
+    server_time: requireFinite(record.server_time, 'admissionTickets.server_time'),
+    available_claims: requireCount(record.available_claims, 'admissionTickets.available_claims'),
+    tickets,
+  }
+}
+
+/** Signed first-install admission body (backend boundary). */
+export function parseV1AdmissionClaimRequest(raw: unknown): V1AdmissionClaimRequest {
+  const record = asRecord(raw, 'admissionClaim')
+  for (const key of Object.keys(record)) {
+    if (!['ticket_secret', 'public_key', 'device_fingerprint'].includes(key)) {
+      throw new WireError(`admissionClaim.${key}`, 'unknown field')
+    }
+  }
+  return {
+    ticket_secret: requireString(record.ticket_secret, 'admissionClaim.ticket_secret'),
+    public_key: requireString(record.public_key, 'admissionClaim.public_key'),
+    device_fingerprint: requireString(record.device_fingerprint, 'admissionClaim.device_fingerprint'),
+  }
+}
+
+/** Validate a successful first-install admission response. */
+export function parseV1AdmissionClaimResponse(raw: unknown): V1AdmissionClaimResponse {
+  const record = asRecord(raw, 'admissionClaimResponse')
+  if (record.schema_version !== BACKEND_SCHEMA_VERSION) {
+    throw new WireError('admissionClaimResponse.schema_version', `unsupported schema version ${String(record.schema_version)}`)
+  }
+  if (typeof record.claimed !== 'boolean') {
+    throw new WireError('admissionClaimResponse.claimed', 'expected a boolean')
+  }
+  const ticketId = record.ticket_id
+  if (ticketId !== null && typeof ticketId !== 'string') {
+    throw new WireError('admissionClaimResponse.ticket_id', 'expected a string or null')
+  }
+  return {
+    schema_version: BACKEND_SCHEMA_VERSION,
+    claimed: record.claimed,
+    installation_id: parseInstallationId(record.installation_id),
+    ticket_id: ticketId,
+    server_time: requireFinite(record.server_time, 'admissionClaimResponse.server_time'),
+  }
+}
+
+/** Validate a successful same-device identity replacement response. */
+export function parseV1RekeyResponse(raw: unknown): V1RekeyResponse {
+  const record = asRecord(raw, 'rekeyResponse')
+  if (record.schema_version !== BACKEND_SCHEMA_VERSION) {
+    throw new WireError('rekeyResponse.schema_version', `unsupported schema version ${String(record.schema_version)}`)
+  }
+  if (typeof record.rekeyed !== 'boolean') {
+    throw new WireError('rekeyResponse.rekeyed', 'expected a boolean')
+  }
+  const previousInstallationId = record.previous_installation_id
+  if (previousInstallationId !== null && typeof previousInstallationId !== 'string') {
+    throw new WireError('rekeyResponse.previous_installation_id', 'expected a string or null')
+  }
+  return {
+    schema_version: BACKEND_SCHEMA_VERSION,
+    rekeyed: record.rekeyed,
+    installation_id: parseInstallationId(record.installation_id),
+    previous_installation_id: previousInstallationId,
+    server_time: requireFinite(record.server_time, 'rekeyResponse.server_time'),
   }
 }
 

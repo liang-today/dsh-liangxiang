@@ -7,7 +7,7 @@
 
 ```text
 香客浏览器  →  本机 DSH WebUI  →  本机 Host 插件
-                                      │  Ed25519 签名 + 可选社区口令
+                                      │  首次入梁券 + 后续 Ed25519 签名
                                       ▼
                                公网 VPS（Caddy TLS → 127.0.0.1:4180）
 ```
@@ -18,7 +18,8 @@
 |---|---|---|
 | 每次安装生成 Ed25519 密钥对 | 后续请求仍是**同一把私钥**的持有者 | DSH 账号、真人、一人一票 |
 | 设备指纹 = 本机 MAC 集合的 SHA-256 | 同一台机器重装会撞指纹（提高成本） | 反女巫。MAC 可伪造，无 MAC 的 VM 跳过绑定 |
-| `LIANGXIANG_COMMUNITY_KEY` | 扫到端口的路人进不来 | 身份 |
+| 一次性入梁券 | 将首次注册量限制在运营者发行的库存内 | 真人、一人一票；券与指纹都可被有意规避 |
+| `LIANGXIANG_COMMUNITY_KEY` | 旧客户端滚动兼容总闸 | 身份；0.8+ 正式客户端不需要它 |
 | 每分钟最多 50,000 声明 Token（= 1 炷） | 瞬间自报 `1e12` Token 攒不出香火 | DSH 真的跑过。慢速撒谎 Host 仍能按上限注水 |
 | 服务端时钟 + 启动时 NTP 告警 | 香火 drip / 签名时戳用 VPS 时钟 | Host 的 NTP 结果不授权任何东西 |
 
@@ -37,7 +38,7 @@ bash scripts/vps-install.sh
 脚本会：
 
 1. `pnpm install && pnpm run build`
-2. 生成 `LIANGXIANG_COMMUNITY_KEY`（若尚未设置）
+2. 保留/生成旧客户端兼容 `LIANGXIANG_COMMUNITY_KEY`（新客户端不分发）
 3. 安装 systemd 单元 `liangxiang-backend`
 4. 打印 Caddy 片段
 
@@ -58,6 +59,10 @@ LIANGXIANG_BUSINESS_TZ=Asia/Shanghai
 LIANGXIANG_SNAPSHOT_SECONDS=1
 LIANGXIANG_TOKEN_PER_INCENSE=50000
 LIANGXIANG_COMMUNITY_KEY=<openssl rand -hex 32>
+LIANGXIANG_ADMISSION_CLAIM_RATE_LIMIT=120
+LIANGXIANG_ADMISSION_TICKET_TTL_HOURS=24
+LIANGXIANG_ADMISSION_TICKET_MAX_CLAIMS=1
+LIANGXIANG_ADMISSION_PUBLIC_LIST_LIMIT=20
 # 不要设 LIANGXIANG_ALLOW_UNSIGNED
 
 sudo cp deploy/liangxiang-backend.service /etc/systemd/system/
@@ -77,7 +82,7 @@ curl -fsS http://127.0.0.1:4180/v1/health
 
 ```bash
 LIANGXIANG_BACKEND_HOST=0.0.0.0
-# 仍要设 COMMUNITY_KEY；仍不要 ALLOW_UNSIGNED
+# 仍不要 ALLOW_UNSIGNED；首次注册走入梁券
 # 这是明文 HTTP，只适合短测，测完上 TLS
 ```
 
@@ -88,18 +93,26 @@ LIANGXIANG_BACKEND_HOST=0.0.0.0
 ```bash
 # 插件装进自己的 DSH profile 后：
 export LIANGXIANG_BACKEND_URL=https://api.liang.today
-export LIANGXIANG_COMMUNITY_KEY=<与服务器同一把>
 ```
 
-首次启动会在本机存储域生成密钥对；私钥不出网。  
+首次启动会在本机存储域生成密钥对，自动从社区取一张公开入梁券并签名认领；私钥不出网。
 `/v1/health` 与 `/v1/snapshot` 仍可匿名读（落地页 / 运维探活）。投票、claim、bootstrap 必须签名。
 
 ## 5. 多服务器联调
 
-1. VPS 按上面跑起来，记下 HTTPS 源站与社区口令。  
-2. 机器 A、机器 B 各自 DSH 设同一 `LIANGXIANG_BACKEND_URL` 与同一 `LIANGXIANG_COMMUNITY_KEY`。
+1. VPS 按上面跑起来，先运行 `liang tickets issue 1000` 准备库存。
+2. 机器 A、机器 B 各自 DSH 只需使用同一 `LIANGXIANG_BACKEND_URL`；首次安装自动各认领一张券。
 3. 两边都应看到同一今日梁案、同一梁位。  
 4. 同一台物理机重装插件：设备指纹冲突 → `device_conflict`（409）。换网卡 / 虚拟机 / 伪造 MAC 可以绕过，这是已知上限。
+
+库存与发行统一走服务器命令：
+
+```bash
+liang tickets status
+liang tickets list 20
+liang tickets issue 1000 --claims 1 --ttl-hours 24
+liang tickets revoke ticket_<id>
+```
 
 ## 6. 备份与重置
 

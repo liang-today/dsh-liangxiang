@@ -11,6 +11,7 @@ import { LiangxiangBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
 import { createBackendClient } from '../src/host/backend-client.ts'
 import { BackendLiangService } from '../src/host/backend-service.ts'
+import { generateCommunityKeypair, type CommunityKeypair } from '../src/host/community-keys.ts'
 import { wireToViewState } from '../src/client/store.ts'
 import { parseWireState } from '../src/shared/wire.ts'
 import { createMutableClock, DAY_MS, FIXED_NOW } from './helpers/backend.ts'
@@ -52,7 +53,13 @@ function observePro(
 
 async function startStack(
   env: Record<string, string | undefined> = {},
-  hostOptions: { claimDebounceMs?: number, timezone?: string, start?: number } = {},
+  hostOptions: {
+    claimDebounceMs?: number
+    timezone?: string
+    start?: number
+    signedIdentity?: CommunityKeypair
+    existingFingerprintOwner?: CommunityKeypair
+  } = {},
 ): Promise<Stack> {
   const config = resolveBackendConfig(
     {
@@ -66,26 +73,44 @@ async function startStack(
   const clock = createMutableClock(hostOptions.start ?? FIXED_NOW)
   const store = openBackendStore(config.databasePath)
   const backend = new LiangxiangBackendService({ store, config, clock, warn: () => undefined })
+  if (hostOptions.existingFingerprintOwner !== undefined) {
+    const owner = hostOptions.existingFingerprintOwner
+    if (owner.deviceFingerprint === null) throw new Error('existing owner requires a fingerprint')
+    store.upsertIdentity({
+      installation_id: owner.installationId,
+      public_key: owner.publicKey,
+      device_fingerprint: owner.deviceFingerprint,
+      created_at: clock.now(),
+      last_seen_at: clock.now(),
+    })
+  }
+  if (hostOptions.signedIdentity !== undefined) backend.issueAdmissionTickets(1)
   const api = createBackendHttpApi({
     service: backend,
     store,
     voteRateLimitPerMinute: 0,
-    allowUnsigned: true,
+    allowUnsigned: hostOptions.signedIdentity === undefined,
     log: () => undefined,
   })
   await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
   const address = api.server.address()
   if (address === null || typeof address === 'string') throw new Error('backend did not bind a port')
 
+  const identityRef = { current: hostOptions.signedIdentity ?? null }
   const host = new BackendLiangService({
-    client: createBackendClient({ baseUrl: `http://127.0.0.1:${address.port}` }),
+    client: createBackendClient({
+      baseUrl: `http://127.0.0.1:${address.port}`,
+      signer: () => identityRef.current,
+    }),
     timezone: hostOptions.timezone ?? config.timezone,
     clock,
     warn: () => undefined,
     claimDebounceMs: hostOptions.claimDebounceMs ?? 0,
+    identityRef,
   })
   host.setAccountingAvailable(true)
-  host.attachIdentity(INSTALLATION)
+  if (hostOptions.signedIdentity === undefined) host.attachIdentity(INSTALLATION)
+  else host.attachCommunityIdentity(hostOptions.signedIdentity)
   await host.refreshBootstrap()
 
   stack = {
@@ -136,6 +161,29 @@ afterEach(async () => {
 })
 
 describe('online bootstrap', () => {
+  it('automatically fetches and consumes a public ticket on a signed first install', async () => {
+    const identity = generateCommunityKeypair('host-admission-device')
+    const s = await startStack({}, { signedIdentity: identity })
+    expect(s.host.isReady).toBe(true)
+    expect(s.host.installation).toBe(identity.installationId)
+    expect(s.backend.admissionInventory().remainingClaims).toBe(0)
+    expect(frame(s).authorityAvailable).toBe(true)
+    expect(frame(s).authorityReason).toBeNull()
+  })
+
+  it('automatically re-keys a reinstalled device without consuming a public ticket', async () => {
+    const oldIdentity = generateCommunityKeypair('host-reinstall-device')
+    const newIdentity = generateCommunityKeypair('host-reinstall-device')
+    const s = await startStack(
+      { LIANGXIANG_REKEY_COOLDOWN_MS: '0' },
+      { signedIdentity: newIdentity, existingFingerprintOwner: oldIdentity },
+    )
+    expect(s.host.isReady).toBe(true)
+    expect(s.backend.admissionInventory().remainingClaims).toBe(1)
+    expect(frame(s).authorityAvailable).toBe(true)
+    expect(frame(s).authorityReason).toBeNull()
+  })
+
   it('serves a DEV_STAGING_ONLY frame with the backend case and a waiting snapshot', async () => {
     const s = await startStack()
     expect(s.host.isReady).toBe(true)

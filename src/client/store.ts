@@ -28,6 +28,8 @@ export interface LiangxiangViewState {
   connection: ConnectionState
   /** Online authority reachability; independent from browser -> Host SSE. */
   authorityAvailable: boolean
+  /** Safe reason supplied by the Host when the community authority is unavailable. */
+  authorityReason: string | null
   /** Server-authoritative current business date; never browser local time. */
   businessDate: string
   /** Scalar 梁祠 change cursor; archive arrays are fetched separately. */
@@ -66,6 +68,7 @@ export function wireToViewState(wire: LiangxiangWireState, connection: Connectio
   return {
     connection,
     authorityAvailable: wire.authorityAvailable,
+    authorityReason: wire.authorityReason,
     businessDate: wire.businessDate,
     archiveVersion: wire.archiveVersion,
     accountingAvailable: wire.accounting.available,
@@ -114,6 +117,7 @@ export function createOfflineViewState(connection: ConnectionState): LiangxiangV
   return {
     connection,
     authorityAvailable: false,
+    authorityReason: '尚未取得社区状态，正在自动重连',
     businessDate: new Date().toISOString().slice(0, 10),
     archiveVersion: 0,
     accountingAvailable: false,
@@ -204,6 +208,7 @@ export function createMockLiangxiangStore(seed: MockStoreSeed = {}): MockLiangxi
   const buildState = (): LiangxiangViewState => ({
     connection: 'live',
     authorityAvailable: true,
+    authorityReason: null,
     businessDate: activeCase.businessDate,
     archiveVersion: 0,
     accountingAvailable: true,

@@ -150,7 +150,7 @@
 ### 密钥与梁案
 
 - 运营改案 / 解绑只走 VPS CLI（`node lib/backend-cli.js`），HTTP `/v1/admin/*` 关闭。
-- 用户可用自己的私钥 `POST /v1/identity/revoke` 删钥。命中 10 分钟一次（IP+钥）；未命中当攻击，同 IP 30 分钟一次。指纹接管仍保留 24h 冷却。见 [`docs/122-identity-recovery.md`](docs/122-identity-recovery.md)。
+- 用户可用自己的私钥 `POST /v1/identity/revoke` 删钥。命中 10 分钟一次（IP+钥）；未命中当攻击，同 IP 30 分钟一次。指纹接管默认冷却 30 分钟。见 [`docs/122-identity-recovery.md`](docs/122-identity-recovery.md)。
 
 ### 硬刷新不再弹出凝香
 

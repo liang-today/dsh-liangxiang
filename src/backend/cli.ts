@@ -9,6 +9,7 @@
  *   node lib/backend-cli.js case queue list
  *   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "明日题是夯还是拉"
  *   node lib/backend-cli.js identity unbind lk_...
+ *   node lib/backend-cli.js admission status|list|issue|revoke
  */
 import { resolveBackendConfig, BackendConfigError } from './config.ts'
 import { readFileSync } from 'node:fs'
@@ -29,7 +30,11 @@ const usage = `usage:
   node lib/backend-cli.js case queue list
   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "<标题是夯还是拉>"
   node lib/backend-cli.js case queue seed --start YYYY-MM-DD [--limit N] <题库文件>
-  node lib/backend-cli.js identity unbind <installation_id>`
+  node lib/backend-cli.js identity unbind <installation_id>
+  node lib/backend-cli.js admission status
+  node lib/backend-cli.js admission list [--limit N]
+  node lib/backend-cli.js admission issue <数量> [--claims N] [--ttl-hours N]
+  node lib/backend-cli.js admission revoke <ticket_id>`
 
 function stripExec(argv: string[]): string[] {
   let start = 0
@@ -72,6 +77,7 @@ export function runOperatorCli(
     if (topic === 'status') {
       const snapshot = service.snapshotResponse()
       const queue = service.listQueue()
+      const admission = service.admissionInventory()
       io.log(JSON.stringify({
         business_date: snapshot.business_date,
         business_timezone: config.timezone,
@@ -82,12 +88,21 @@ export function runOperatorCli(
           pending: queue.length,
           next: queue[0] ?? null,
         },
+        admission: {
+          active_tickets: admission.activeTickets,
+          remaining_claims: admission.remainingClaims,
+          exhausted_tickets: admission.exhaustedTickets,
+          expired_tickets: admission.expiredTickets,
+          revoked_tickets: admission.revokedTickets,
+          total_tickets: admission.totalTickets,
+        },
       }, null, 2))
       io.log(
         `[liangxiang-ops] status date=${snapshot.business_date} case=${snapshot.active_case.id} `
         + `梁位=${formatLiangPosition(snapshot.global_snapshot.up_votes, snapshot.global_snapshot.down_votes)} `
         + `queue=${queue.length} next=${queue[0]?.publish_on ?? 'fifo'}`,
       )
+      io.log(`[liangxiang-ops] 入梁券 active=${admission.activeTickets} remaining=${admission.remainingClaims}`)
       return 0
     }
     if (topic === 'case' && command === 'publish') {
@@ -170,6 +185,55 @@ export function runOperatorCli(
       const response = service.unbindIdentity(installationId)
       io.log(JSON.stringify(response, null, 2))
       io.log(`[liangxiang-ops] unbind ${installationId} unbound=${String(response.unbound)}`)
+      return 0
+    }
+    if (topic === 'admission' && command === 'status') {
+      const inventory = service.admissionInventory()
+      io.log(JSON.stringify({
+        active_tickets: inventory.activeTickets,
+        remaining_claims: inventory.remainingClaims,
+        exhausted_tickets: inventory.exhaustedTickets,
+        expired_tickets: inventory.expiredTickets,
+        revoked_tickets: inventory.revokedTickets,
+        total_tickets: inventory.totalTickets,
+      }, null, 2))
+      io.log(`[liangxiang-ops] 入梁券 active=${inventory.activeTickets} remaining=${inventory.remainingClaims}`)
+      return 0
+    }
+    if (topic === 'admission' && command === 'list') {
+      if (args[2] !== undefined && args[2] !== '--limit') throw new WireError('limit', 'expected --limit N')
+      const limit = args[2] === '--limit' ? Number(args[3]) : 100
+      const items = service.listAdmissionTickets(limit)
+      io.log(JSON.stringify({ items }, null, 2))
+      io.log(`[liangxiang-ops] 入梁券 listed=${items.length}`)
+      return 0
+    }
+    if (topic === 'admission' && command === 'issue') {
+      const count = Number(args[2])
+      let claims = config.admissionTicketMaxClaims
+      let ttlHours = config.admissionTicketTtlHours
+      for (let cursor = 3; cursor < args.length; cursor += 2) {
+        const flag = args[cursor]
+        const value = Number(args[cursor + 1])
+        if (flag === '--claims') claims = value
+        else if (flag === '--ttl-hours') ttlHours = value
+        else throw new WireError('options', `unknown admission issue option ${String(flag)}`)
+      }
+      const issued = service.issueAdmissionTickets(count, claims, ttlHours)
+      io.log(JSON.stringify({
+        issued: issued.length,
+        max_claims: claims,
+        ttl_hours: ttlHours,
+        expires_at: issued[0]?.expires_at ?? null,
+      }, null, 2))
+      io.log(`[liangxiang-ops] 入梁券 issued=${issued.length} claims=${claims} ttl=${ttlHours}h`)
+      return 0
+    }
+    if (topic === 'admission' && command === 'revoke') {
+      const ticketId = args[2]
+      if (ticketId === undefined || args.length !== 3) throw new WireError('ticket_id', 'expected one ticket id')
+      const revoked = service.revokeAdmissionTicket(ticketId)
+      io.log(JSON.stringify({ ticket_id: ticketId, revoked }, null, 2))
       return 0
     }
     io.error(usage)

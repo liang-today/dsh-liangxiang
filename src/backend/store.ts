@@ -118,6 +118,28 @@ export interface CommunityIdentityRow {
   last_seen_at: number
 }
 
+export type AdmissionTicketStatus = 'active' | 'exhausted' | 'revoked' | 'expired'
+
+export interface AdmissionTicketRow {
+  ticket_id: string
+  secret: string
+  max_claims: number
+  claimed_count: number
+  status: AdmissionTicketStatus
+  created_at: number
+  expires_at: number
+  last_claimed_at: number | null
+}
+
+export interface AdmissionInventory {
+  activeTickets: number
+  remainingClaims: number
+  exhaustedTickets: number
+  expiredTickets: number
+  revokedTickets: number
+  totalTickets: number
+}
+
 export interface VoteRow {
   id: number
   request_id: string
@@ -193,6 +215,14 @@ export interface BackendStore {
   upsertIdentity: (row: CommunityIdentityRow) => void
   /** Delete one community_identity row (operator unbind / rekey takeover). */
   deleteIdentity: (installationId: string) => boolean
+  insertAdmissionTicket: (row: AdmissionTicketRow) => void
+  admissionTicketBySecret: (secret: string) => AdmissionTicketRow | undefined
+  availableAdmissionTickets: (now: number, limit: number) => AdmissionTicketRow[]
+  /** Atomically consume one claim; false means unavailable/lost race. */
+  consumeAdmissionTicket: (secret: string, now: number) => boolean
+  expireAdmissionTickets: (now: number) => number
+  revokeAdmissionTicket: (ticketId: string) => boolean
+  admissionInventory: (now: number) => AdmissionInventory
   /** Most recently opened case strictly before this business date. */
   latestCaseBefore: (businessDate: string) => CaseRow | undefined
   lifetimeTotals: () => { incense: number, voters: number }
@@ -434,6 +464,45 @@ export function openBackendStore(databasePath: string): BackendStore {
   const deleteIdentityStmt = db.prepare(
     'DELETE FROM community_identity WHERE installation_id = ?',
   )
+  const insertAdmissionTicketStmt = db.prepare(
+    `INSERT INTO admission_ticket
+       (ticket_id, secret, max_claims, claimed_count, status, created_at, expires_at, last_claimed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const selectAdmissionTicketBySecret = db.prepare(
+    'SELECT * FROM admission_ticket WHERE secret = ?',
+  )
+  const selectAvailableAdmissionTickets = db.prepare(
+    `SELECT * FROM admission_ticket
+      WHERE status = 'active' AND expires_at > ? AND claimed_count < max_claims
+      ORDER BY created_at, ticket_id
+      LIMIT ?`,
+  )
+  const consumeAdmissionTicketStmt = db.prepare(
+    `UPDATE admission_ticket
+        SET claimed_count = claimed_count + 1,
+            status = CASE WHEN claimed_count + 1 >= max_claims THEN 'exhausted' ELSE 'active' END,
+            last_claimed_at = ?
+      WHERE secret = ? AND status = 'active' AND expires_at > ? AND claimed_count < max_claims`,
+  )
+  const expireAdmissionTicketsStmt = db.prepare(
+    `UPDATE admission_ticket SET status = 'expired'
+      WHERE status = 'active' AND expires_at <= ?`,
+  )
+  const revokeAdmissionTicketStmt = db.prepare(
+    `UPDATE admission_ticket SET status = 'revoked'
+      WHERE ticket_id = ? AND status = 'active'`,
+  )
+  const selectAdmissionInventory = db.prepare(
+    `SELECT
+       COUNT(*) AS total_tickets,
+       COALESCE(SUM(CASE WHEN status = 'active' AND expires_at > ? AND claimed_count < max_claims THEN 1 ELSE 0 END), 0) AS active_tickets,
+       COALESCE(SUM(CASE WHEN status = 'active' AND expires_at > ? THEN max_claims - claimed_count ELSE 0 END), 0) AS remaining_claims,
+       COALESCE(SUM(CASE WHEN status = 'exhausted' THEN 1 ELSE 0 END), 0) AS exhausted_tickets,
+       COALESCE(SUM(CASE WHEN status = 'expired' OR (status = 'active' AND expires_at <= ?) THEN 1 ELSE 0 END), 0) AS expired_tickets,
+       COALESCE(SUM(CASE WHEN status = 'revoked' THEN 1 ELSE 0 END), 0) AS revoked_tickets
+     FROM admission_ticket`,
+  )
 
   return {
     transaction<T>(body: () => T): T {
@@ -608,6 +677,44 @@ export function openBackendStore(databasePath: string): BackendStore {
       )
     },
     deleteIdentity: (installationId) => changed(deleteIdentityStmt.run(installationId)) > 0,
+    insertAdmissionTicket(row) {
+      insertAdmissionTicketStmt.run(
+        row.ticket_id,
+        row.secret,
+        row.max_claims,
+        row.claimed_count,
+        row.status,
+        row.created_at,
+        row.expires_at,
+        row.last_claimed_at,
+      )
+    },
+    admissionTicketBySecret: (secret) =>
+      selectAdmissionTicketBySecret.get(secret) as AdmissionTicketRow | undefined,
+    availableAdmissionTickets: (now, limit) =>
+      selectAvailableAdmissionTickets.all(now, limit) as unknown as AdmissionTicketRow[],
+    consumeAdmissionTicket: (secret, now) =>
+      changed(consumeAdmissionTicketStmt.run(now, secret, now)) > 0,
+    expireAdmissionTickets: (now) => changed(expireAdmissionTicketsStmt.run(now)),
+    revokeAdmissionTicket: (ticketId) => changed(revokeAdmissionTicketStmt.run(ticketId)) > 0,
+    admissionInventory(now) {
+      const row = selectAdmissionInventory.get(now, now, now) as {
+        active_tickets: number | bigint
+        remaining_claims: number | bigint
+        exhausted_tickets: number | bigint
+        expired_tickets: number | bigint
+        revoked_tickets: number | bigint
+        total_tickets: number | bigint
+      }
+      return {
+        activeTickets: Number(row.active_tickets),
+        remainingClaims: Number(row.remaining_claims),
+        exhaustedTickets: Number(row.exhausted_tickets),
+        expiredTickets: Number(row.expired_tickets),
+        revokedTickets: Number(row.revoked_tickets),
+        totalTickets: Number(row.total_tickets),
+      }
+    },
     latestCaseBefore: (businessDate) => selectLatestBefore.get(businessDate) as CaseRow | undefined,
     lifetimeTotals() {
       const incenseRow = selectLifetimeIncense.get() as { incense: number | bigint } | undefined

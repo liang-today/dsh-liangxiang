@@ -35,8 +35,9 @@ node lib/backend-cli.js identity unbind lk_旧id
 
 ### 3. 指纹接管 `POST /v1/identity/rekey`（保留）
 
-同机重铸密钥后，等旧标识静默超过 `LIANGXIANG_REKEY_COOLDOWN_MS`（默认 24h）
-才能接管指纹。旧香火仍不转移。
+同机重铸密钥后，客户端自动请求身份更替；旧标识静默超过
+`LIANGXIANG_REKEY_COOLDOWN_MS`（默认 30 分钟）后才能接管指纹。旧香火仍不转移，
+而且这条路径不消耗入梁券。
 
 ### 4. 频率限制（两条路径共用）
 
@@ -56,13 +57,13 @@ node lib/backend-cli.js identity unbind lk_旧id
 |---|---|---|
 | 干净新设备首次装 | bootstrap 铸新 id | 无需处理 |
 | 用户想扔掉自己的密钥 | `POST /v1/identity/revoke`（自己签） | 10 分钟一次；香火弃号 |
-| 同机重铸密钥 | 指纹仍绑旧 id → `409 device_conflict` | 等 24h 后 re-key，或 VPS 上 CLI `identity unbind` |
+| 同机重铸密钥 | 指纹仍绑旧 id → 自动 re-key | 等 30 分钟冷却；紧急时 VPS 上 CLI `identity unbind` |
 | 随机钥打 revoke/rekey | 公钥未命中 | 该 IP 30 分钟一次，打可疑日志 |
 | 复制了 `.dsh-home` | 与源机器同 id | 目标机 `pnpm run reset:identity` |
 
 ## 配置
 
-- `LIANGXIANG_REKEY_COOLDOWN_MS`：指纹接管冷却（默认 86400000）。`0` 仅测试。
+- `LIANGXIANG_REKEY_COOLDOWN_MS`：指纹接管冷却（默认 1800000，即 30 分钟）。`0` 仅测试。
 
 ## 测试
 

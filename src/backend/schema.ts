@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v4) for the Liangxiang backend.
+ * SQLite schema (v5) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -28,7 +28,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 
-export const BACKEND_SCHEMA_USER_VERSION = 4
+export const BACKEND_SCHEMA_USER_VERSION = 5
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -179,6 +179,21 @@ CREATE INDEX IF NOT EXISTS ix_month_archive_version
   ON liang_month_archive (archive_version, start_date);
 `
 
+const DDL_V5 = `
+CREATE TABLE IF NOT EXISTS admission_ticket (
+  ticket_id        TEXT    PRIMARY KEY,
+  secret           TEXT    NOT NULL UNIQUE,
+  max_claims       INTEGER NOT NULL CHECK (max_claims > 0),
+  claimed_count    INTEGER NOT NULL DEFAULT 0 CHECK (claimed_count >= 0 AND claimed_count <= max_claims),
+  status           TEXT    NOT NULL CHECK (status IN ('active', 'exhausted', 'revoked', 'expired')),
+  created_at       INTEGER NOT NULL,
+  expires_at       INTEGER NOT NULL CHECK (expires_at > created_at),
+  last_claimed_at  INTEGER
+);
+CREATE INDEX IF NOT EXISTS ix_admission_ticket_inventory
+  ON admission_ticket (status, expires_at, created_at);
+`
+
 /** Apply the schema and record its user_version (idempotent). */
 export function migrate(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON')
@@ -193,6 +208,7 @@ export function migrate(db: DatabaseSync): void {
   if (current < 2) db.exec(DDL_V2)
   if (current < 3) db.exec(DDL_V3)
   if (current < 4) db.exec(DDL_V4)
+  if (current < 5) db.exec(DDL_V5)
   if (current !== BACKEND_SCHEMA_USER_VERSION) {
     db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
   }

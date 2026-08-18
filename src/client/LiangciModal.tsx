@@ -336,6 +336,7 @@ function DayCell({
         fontFamily: font.family,
         cursor: 'pointer',
         opacity: future ? 0.58 : 1,
+        overflow: 'hidden',
       }}
     >
       <span style={{ alignSelf: 'flex-start', flex: '0 0 auto', fontSize: compact ? '9px' : '10px', lineHeight: 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
@@ -420,13 +421,26 @@ function WeekCell({
         textAlign: 'left',
         cursor: 'pointer',
         opacity: future ? 0.52 : 1,
+        overflow: 'hidden',
       }}
     >
       <span style={{ display: 'flex', flexDirection: 'column', gap: compact ? '2px' : '4px', minWidth: 0 }}>
         <span style={{ fontSize: '9px', color: color.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
           {week.weekId.slice(5)} · 周梁
         </span>
-        <strong style={{ fontSize: '11px', lineHeight: 1.15, whiteSpace: 'nowrap', color: period === null ? color.textTertiary : stateColor(period.liangziState) }}>
+        <strong
+          title={label}
+          style={{
+            display: 'block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            fontSize: '11px',
+            lineHeight: 1.15,
+            whiteSpace: 'nowrap',
+            color: period === null ? color.textTertiary : stateColor(period.liangziState),
+          }}
+        >
           {label}
         </strong>
         <span aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
@@ -434,7 +448,7 @@ function WeekCell({
             <i key={index} style={{ height: '2px', borderRadius: '2px', background: temporary && index >= (period?.coveredDays ?? 0) ? color.border : color.ritualCool }} />
           ))}
         </span>
-        <span style={{ fontSize: '9px', color: color.textTertiary }}>
+        <span style={{ display: 'block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '9px', color: color.textTertiary }}>
           {period === null ? '—' : temporary ? `截至昨日 · ${period.coveredDays}/7 日` : `封 · ${period.coveredDays}/7 日`}
         </span>
       </span>
@@ -740,9 +754,17 @@ export function LiangciModal({
                 <div
                   data-liangci-scroll=""
                   data-liangci-week-rows={weekRows}
-                  style={{ overflowX: 'auto', overflowY: 'hidden', minHeight: 0, flex: '1 1 0' }}
+                  style={{ overflowX: 'auto', overflowY: 'auto', minHeight: 0, flex: '1 1 0' }}
                 >
-                  <div style={{ minWidth: '794px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <div
+                    style={{
+                      minWidth: '794px',
+                      minHeight: compactCells ? '408px' : `${weekRows * 78 + 24}px`,
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(78px, 1fr)) 130px', gap: '8px', marginBottom: '7px', padding: '0 2px' }}>
                       {WEEKDAY_LABELS.map(label => <span key={label} style={{ textAlign: 'center', fontSize: '10px', fontWeight: 650, color: color.textTertiary, letterSpacing: '1px' }}>周{label}</span>)}
                       <span style={{ textAlign: 'center', fontSize: '10px', fontWeight: 700, color: color.ritualEmber, letterSpacing: '1px' }}>周梁</span>

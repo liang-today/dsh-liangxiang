@@ -40,6 +40,10 @@ export const SNAPSHOT_HISTORY_LIMIT = 200
  * not as a silent "香火不涨" bug. 0 disables the guard.
  */
 export const DEFAULT_ABSURD_CLAIM_TOKENS = 25_000_000
+export const DEFAULT_ADMISSION_CLAIM_RATE_LIMIT = 120
+export const DEFAULT_ADMISSION_TICKET_TTL_HOURS = 24
+export const DEFAULT_ADMISSION_TICKET_MAX_CLAIMS = 1
+export const DEFAULT_ADMISSION_PUBLIC_LIST_LIMIT = 20
 
 /**
  * How long a device fingerprint must sit unused before its binding can be
@@ -47,7 +51,7 @@ export const DEFAULT_ABSURD_CLAIM_TOKENS = 25_000_000
  * balance/votes are forfeited on re-key. 0 disables the cooldown (re-key
  * becomes free — only appropriate for tests).
  */
-export const DEFAULT_REKEY_COOLDOWN_MS = 24 * 60 * 60 * 1000
+export const DEFAULT_REKEY_COOLDOWN_MS = 30 * 60 * 1000
 
 export interface BackendConfig {
   authorityMode: BackendAuthorityMode
@@ -67,6 +71,13 @@ export interface BackendConfig {
   absurdClaimTokens: number
   /** Device-fingerprint re-key cooldown (ms); 0 disables it. */
   rekeyCooldownMs: number
+  /** Server-wide first-install ticket claims per minute; 0 disables it. */
+  admissionClaimRateLimitPerMinute: number
+  /** Operator issue defaults; existing tickets retain their own values. */
+  admissionTicketTtlHours: number
+  admissionTicketMaxClaims: number
+  /** Maximum ticket secrets returned by one public list response. */
+  admissionPublicListLimit: number
   /** When true, HTTP accepts the old unsigned installation header (localhost tests). */
   allowUnsigned: boolean
   /** Shared admission secret; null means not required. */
@@ -176,6 +187,34 @@ export function resolveBackendConfig(
       'LIANGXIANG_REKEY_COOLDOWN_MS',
       warn,
       { min: 0 },
+    ),
+    admissionClaimRateLimitPerMinute: parseInt_(
+      readLiangxiangEnv(env, 'ADMISSION_CLAIM_RATE_LIMIT'),
+      DEFAULT_ADMISSION_CLAIM_RATE_LIMIT,
+      'LIANGXIANG_ADMISSION_CLAIM_RATE_LIMIT',
+      warn,
+      { min: 0, max: 100_000 },
+    ),
+    admissionTicketTtlHours: parseInt_(
+      readLiangxiangEnv(env, 'ADMISSION_TICKET_TTL_HOURS'),
+      DEFAULT_ADMISSION_TICKET_TTL_HOURS,
+      'LIANGXIANG_ADMISSION_TICKET_TTL_HOURS',
+      warn,
+      { min: 1, max: 24 * 365 },
+    ),
+    admissionTicketMaxClaims: parseInt_(
+      readLiangxiangEnv(env, 'ADMISSION_TICKET_MAX_CLAIMS'),
+      DEFAULT_ADMISSION_TICKET_MAX_CLAIMS,
+      'LIANGXIANG_ADMISSION_TICKET_MAX_CLAIMS',
+      warn,
+      { min: 1, max: 10_000 },
+    ),
+    admissionPublicListLimit: parseInt_(
+      readLiangxiangEnv(env, 'ADMISSION_PUBLIC_LIST_LIMIT'),
+      DEFAULT_ADMISSION_PUBLIC_LIST_LIMIT,
+      'LIANGXIANG_ADMISSION_PUBLIC_LIST_LIMIT',
+      warn,
+      { min: 1, max: 1_000 },
     ),
     allowUnsigned: trimmed(readLiangxiangEnv(env, 'ALLOW_UNSIGNED'), '') === '1',
     communityKey: (() => {
