@@ -9,13 +9,12 @@
 先完全退出 WebUI，再写入你的 DSH profile：
 
 ```bash
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.5-beta
+export DSH_HOME="$HOME/.dsh"
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 npx --yes @deepseek-ai/dsh web
 ```
 
-已全局安装 `dsh` 时，把开头的 `npx --yes @deepseek-ai/dsh` 换成 `dsh`。`web` 若不是你的 profile 名，换成实际名字。页面边缘出现「今日梁相」即表示装好。
-
-升级前先退出 WebUI，先 `remove` 再 `add dsh-liangxiang@0.8.5-beta`。只重复 `add @beta` 不会升号：profile 钉着旧精确版本，而且 pnpm 11 会跳过刚发布的标签。卸载：`plugin --profile web remove dsh-liangxiang`。两条命令都加上 `export DSH_HOME="$HOME/.dsh"`。
+已全局安装 `dsh` 时，把开头的 `npx --yes @deepseek-ai/dsh` 换成 `dsh`。`web` 若不是你的 profile 名，换成实际名字。页面边缘出现「今日梁相」即表示装好。升级仍写 `@beta`；卸载用 `plugin --profile web remove dsh-liangxiang`。
 
 官网：[liang.today](https://liang.today/) · 部署指南：[liang.today/guide](https://liang.today/guide/) · 源码：[liang-today/dsh-liangxiang](https://github.com/liang-today/dsh-liangxiang)
 

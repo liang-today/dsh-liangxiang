@@ -7,18 +7,18 @@ profile 里钉着旧精确号（`0.8.3-beta`）或本地 tarball。再执行 `pl
 ```bash
 export DSH_HOME="$HOME/.dsh"
 npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.5-beta
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 ```
 
-不要只写 `@beta`：pnpm 11 的 `minimumReleaseAge` 会跳过刚发布的版本，退回上一号够龄的包（这次就是 0.8.3-beta）。两条命令必须对着日常 `DSH_HOME`。装完看 `$DSH_HOME/profiles/web/package.json` 应是 `0.8.5-beta`。
+两条命令必须对着日常 `DSH_HOME`。装完并启动一次 WebUI 后，`$DSH_HOME/profiles/web/package.json` 的依赖应是浮动的 `beta`，不应再是 `file:…tgz` 或旧精确号。
 
 ## 更新脚本提示没有 `dsh` 命令
 
 没有全局安装 DSH CLI。两种用法等价：
 
 ```bash
-dsh plugin --profile web add ./dsh-liangxiang-0.8.5-beta.tgz
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.5-beta.tgz
+dsh plugin --profile web add ./dsh-liangxiang-0.8.6-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.6-beta.tgz
 ```
 
 `scripts/update-plugin.sh` 现在会在找不到 `dsh` 时自动改用 npx。也可以显式指定：`--dsh npx`。
@@ -28,7 +28,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.5-beta.
 典型日志是：
 
 ```text
-GET https://registry.npmjs.org/dsh-liangxiang-0.8.5-beta.tgz: Not Found - 404
+GET https://registry.npmjs.org/dsh-liangxiang-0.8.6-beta.tgz: Not Found - 404
 ```
 
 这不是包坏了，是 pnpm 把参数当成了 **npm 包名**。DSH 的 `plugin add` 只是把参数转给 pnpm，而且只有以 `./` 或 `../` 开头的路径才会按你当前目录重写。
@@ -37,7 +37,7 @@ GET https://registry.npmjs.org/dsh-liangxiang-0.8.5-beta.tgz: Not Found - 404
 
 ```bash
 # 少了 ./
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-0.8.5-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-0.8.6-beta.tgz
 ```
 
 能装上的写法：
@@ -45,7 +45,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-0.8.5-beta.tg
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.5-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.6-beta.tgz
 ```
 
 ## 本轮运行失败：`Cannot read properties of undefined (reading 'prepare')`

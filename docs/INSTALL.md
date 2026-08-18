@@ -15,28 +15,27 @@ npx --yes @deepseek-ai/dsh …             # 没有全局 dsh 时
 
 ### npm（推荐，可远程拉包）
 
-全新安装请写当前精确版本（pnpm 11 会把刚发布的 `@beta` 当成不够龄而退回旧号）：
+安装和升级都写浮动标签 `@beta`，不要钉死某一号：
 
 ```bash
 export DSH_HOME="$HOME/.dsh"
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.5-beta
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 ```
 
-发布超过 pnpm 冷静期后，也可以写 `dsh-liangxiang@beta`。
+插件本身没有收窄的版本范围。若 profile 还钉着旧精确号或本地 `.tgz`，先 `remove` 再 `add @beta`。Host 启动时会把依赖改回浮动的 `beta`，并在 profile 的 `pnpm-workspace.yaml` 写入：
 
-**案牍仍停在旧号：** 只再 `add @beta` 不够。已写入的精确版本或 `file:…tgz` 会被当成已安装；pnpm 11 解析 `@beta` 时还会跳过刚发布的版本。先卸再写精确号：
-
-```bash
-export DSH_HOME="$HOME/.dsh"
-npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.5-beta
+```yaml
+minimumReleaseAgeExclude:
+  - dsh-liangxiang
 ```
+
+这是为了躲开 pnpm 11 默认 24 小时发布冷静期。未启动过带此逻辑的 Host 时，也可以自己把上面两行加进 `$DSH_HOME/profiles/web/pnpm-workspace.yaml`，再执行一次 `add @beta`。
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 当前 npm 包是 `dsh-liangxiang@0.8.5-beta`。请写 `@beta`；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> 当前 npm 包是 `dsh-liangxiang@0.8.6-beta`。请写 `@beta`；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 
@@ -45,7 +44,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.5-beta
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.5-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.6-beta.tgz
 ```
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
@@ -117,7 +116,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 ```bash
 pnpm pack
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.5-beta.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.6-beta.tgz
 ```
 
 1. **不要**把 in-box bundle（如 `@deepseek-ai/dsh-web-app`）装成 profile 依赖。它只需要出现在 `dsh.profile.bundles` 里；装进 `<profile>/node_modules` 会遮蔽 launcher 的模块回退目录，造成同一个包出现两个实例，工具调用会直接报 `Cannot read properties of undefined (reading 'prepare')`。装完可以跑 `node scripts/assert-profile-modules.mjs <DSH_HOME>/profiles/<profile>` 自检。
