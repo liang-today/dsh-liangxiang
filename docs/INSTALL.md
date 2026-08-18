@@ -15,19 +15,21 @@ npx --yes @deepseek-ai/dsh …             # 没有全局 dsh 时
 
 ### npm（推荐，可远程拉包）
 
-全新安装写 `@beta`，会从 npm 拉当前标签：
+全新安装请写当前精确版本（pnpm 11 会把刚发布的 `@beta` 当成不够龄而退回旧号）：
 
 ```bash
 export DSH_HOME="$HOME/.dsh"
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.5-beta
 ```
 
-**从本地 `.tgz` 换成 npm，或案牍仍停在旧号：** 只再 `add @beta` 不够。DSH 把命令转给 pnpm 后，已有的 `file:…tgz` 依赖会被当成已安装。必须先卸再装：
+发布超过 pnpm 冷静期后，也可以写 `dsh-liangxiang@beta`。
+
+**案牍仍停在旧号：** 只再 `add @beta` 不够。已写入的精确版本或 `file:…tgz` 会被当成已安装；pnpm 11 解析 `@beta` 时还会跳过刚发布的版本。先卸再写精确号：
 
 ```bash
 export DSH_HOME="$HOME/.dsh"
 npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.5-beta
 ```
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`

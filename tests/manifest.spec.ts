@@ -74,7 +74,7 @@ describe('package.json dsh manifests', () => {
     expect(readRootFile('README.md')).not.toMatch(/梁文锋/)
     expect(readRootFile('README.md')).toContain('众香成势，梁子显相')
     expect(readRootFile('README.md')).toContain('https://liang.today/')
-    expect(readRootFile('README.md')).toContain('plugin --profile web add dsh-liangxiang@beta')
+    expect(readRootFile('README.md')).toContain('plugin --profile web add dsh-liangxiang@0.8.5-beta')
     expect(readRootFile('README.md')).toContain('npm i dsh-liangxiang')
   })
 
