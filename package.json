@@ -1,6 +1,6 @@
 {
   "name": "dsh-liangxiang",
-  "version": "0.8.4-beta",
+  "version": "0.8.5-beta",
   "description": "用 DeepSeek Harness 凝聚香火，投下一炷夯或拉；众香汇成梁位，共同显出今日梁相。",
   "homepage": "https://liang.today/",
   "repository": {
@@ -27,6 +27,8 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "README.md",
+    "LICENSE",
     "lib/index.js",
     "lib/client.js",
     "lib/client.js.map",

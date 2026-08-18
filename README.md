@@ -2,22 +2,20 @@
 
 **众香成势，梁子显相。梁相还得梁人出！**
 
-梁相是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 **WebUI 插件**，不是一条可以单独执行的命令。每天一道梁案：用模型烧掉的 Token 凝成香火，投一炷“夯”或“拉”；众人汇成梁位，显出今日梁子。
-
-官网：[liang.today](https://liang.today/) · 源码：[liang-today/dsh-liangxiang](https://github.com/liang-today/dsh-liangxiang) · 安装说明：[部署指南](https://liang.today/guide/)
+梁相是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 **WebUI 插件**，不是普通 npm 依赖。本页右侧自动生成的 `npm i dsh-liangxiang` **不会**把它装进 DSH。
 
 ## 安装
-
-不要运行 `npm i dsh-liangxiang` 或 `npm dsh-liangxiang`。这不是命令行工具，没有可执行入口；npm 会把包名当成子命令，报 `Unknown command: "dsh-liangxiang"`。
 
 先完全退出 WebUI，再写入你的 DSH profile：
 
 ```bash
-dsh plugin --profile web add dsh-liangxiang@beta
-dsh web
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+npx --yes @deepseek-ai/dsh web
 ```
 
-没有全局 `dsh` 时，把开头的 `dsh` 整段换成 `npx --yes @deepseek-ai/dsh`。页面边缘出现「今日梁相」即表示装好。升级与安装同一条命令；卸载用 `remove`。
+已全局安装 `dsh` 时，把开头的 `npx --yes @deepseek-ai/dsh` 换成 `dsh`。`web` 若不是你的 profile 名，换成实际名字。页面边缘出现「今日梁相」即表示装好。升级与安装同一条命令；卸载用 `plugin --profile web remove dsh-liangxiang`。
+
+官网：[liang.today](https://liang.today/) · 部署指南：[liang.today/guide](https://liang.today/guide/) · 源码：[liang-today/dsh-liangxiang](https://github.com/liang-today/dsh-liangxiang)
 
 ## 玩法
 
