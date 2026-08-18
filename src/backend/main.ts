@@ -23,6 +23,7 @@ export function startBackend(env: Record<string, string | undefined> = process.e
     voteRateLimitMaxKeys: config.voteRateLimitMaxKeys,
     allowUnsigned: config.allowUnsigned,
     communityKey: config.communityKey,
+    admissionClaimRateLimitPerMinute: config.admissionClaimRateLimitPerMinute,
   })
 
   service.ensureActiveCase()

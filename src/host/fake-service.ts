@@ -379,6 +379,7 @@ export class FakeAuthoritativeLiangService {
       hostEpoch: this.hostEpoch,
       authorityMode: 'LOCAL_FAKE_DEV',
       authorityAvailable: true,
+      authorityReason: null,
       snapshotRefreshSeconds: this.config.snapshotRefreshSeconds,
       businessDate: this.currentDate,
       archiveVersion: this.archiveVersion,

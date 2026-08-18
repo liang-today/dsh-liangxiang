@@ -33,6 +33,7 @@ import {
   SIGNATURE_HEADER,
   TIMESTAMP_HEADER,
   parseInstallationId,
+  parseV1AdmissionClaimRequest,
   parseV1TokenClaimRequest,
   parseV1VoteRequest,
   type V1ErrorBody,
@@ -40,6 +41,7 @@ import {
 } from '../shared/backend-v1.ts'
 import { authenticateCommunityRequest, CommunityAuthError } from './community-auth.ts'
 import { IdentityRateLimiter, type IdentityRateKind } from './identity-rate-limit.ts'
+import { AdmissionRateLimiter } from './admission-rate-limit.ts'
 import { DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS, VoteRateLimiter } from './vote-rate-limit.ts'
 import type { LiangxiangBackendService } from './service.ts'
 import type { BackendStore } from './store.ts'
@@ -57,6 +59,8 @@ export interface BackendHttpOptions {
   allowUnsigned?: boolean
   /** Shared admission secret; null/undefined means not required. */
   communityKey?: string | null
+  /** Server-wide first-install claims per minute; 0 disables the cap. */
+  admissionClaimRateLimitPerMinute?: number
   log?: (message: string) => void
 }
 
@@ -178,16 +182,10 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
   const voteRateLimitMaxKeys = options.voteRateLimitMaxKeys ?? DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS
   const voteLimiter = new VoteRateLimiter(voteRateLimitPerMinute, voteRateLimitMaxKeys)
   const identityLimiter = new IdentityRateLimiter()
+  const admissionLimiter = new AdmissionRateLimiter(options.admissionClaimRateLimitPerMinute ?? 120)
   const expectedEvents = new ExpectedEventSampler(log)
 
   const authenticate = (req: IncomingMessage, method: string, path: string, rawBody: string): string => {
-    if (communityKey !== null) {
-      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
-        throw new CommunityAuthError(401, 'invalid_signature', 'community key required')
-      }
-    }
-
     const publicKey = headerValue(req, PUBLIC_KEY_HEADER)
     const signature = headerValue(req, SIGNATURE_HEADER)
     const timestamp = headerValue(req, TIMESTAMP_HEADER)
@@ -197,11 +195,38 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       if (!allowUnsigned) {
         throw new CommunityAuthError(401, 'invalid_signature', 'signed identity headers required')
       }
+      if (communityKey !== null) {
+        const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+        if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
+          throw new CommunityAuthError(401, 'invalid_signature', 'community key required')
+        }
+      }
       return parseInstallationId(headerValue(req, INSTALLATION_HEADER))
     }
 
     const installationId = parseInstallationId(headerValue(req, INSTALLATION_HEADER))
     const device = headerValue(req, DEVICE_HEADER) ?? null
+    authenticateCommunityRequest({
+      store,
+      method,
+      path,
+      body: rawBody,
+      installationId,
+      publicKey,
+      signature,
+      timestamp,
+      deviceFingerprint: device,
+      now: Date.now(),
+      skipFingerprintEnforcement: true,
+    })
+    const known = store.identityByInstallation(installationId)
+    const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+    const legacyAdmitted = communityKey !== null
+      && presented !== undefined
+      && communityKeyMatches(communityKey, presented)
+    if (known === undefined && !legacyAdmitted) {
+      throw new CommunityAuthError(401, 'admission_required', '需要入梁券完成首次入群')
+    }
     return authenticateCommunityRequest({
       store,
       method,
@@ -227,12 +252,6 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     publicKey: string
     deviceFingerprint: string
   } => {
-    if (communityKey !== null) {
-      const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-      if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
-        throw new CommunityAuthError(401, 'invalid_signature', 'community key required')
-      }
-    }
     const publicKey = headerValue(req, PUBLIC_KEY_HEADER)
     const signature = headerValue(req, SIGNATURE_HEADER)
     const timestamp = headerValue(req, TIMESTAMP_HEADER)
@@ -257,6 +276,14 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       now: Date.now(),
       skipFingerprintEnforcement: true,
     })
+    const owner = store.identityByFingerprint(deviceFingerprint)
+    const presented = headerValue(req, COMMUNITY_KEY_HEADER)
+    const legacyAdmitted = communityKey !== null
+      && presented !== undefined
+      && communityKeyMatches(communityKey, presented)
+    if (owner === undefined && !legacyAdmitted) {
+      throw new CommunityAuthError(401, 'admission_required', '新设备需要先使用入梁券')
+    }
     return { installationId, publicKey, deviceFingerprint }
   }
 
@@ -311,6 +338,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     const method = req.method ?? 'GET'
     const routes: Record<string, string> = {
       [`${BACKEND_API_PREFIX}/health`]: 'GET',
+      [`${BACKEND_API_PREFIX}/admission/tickets`]: 'GET',
+      [`${BACKEND_API_PREFIX}/admission/claim`]: 'POST',
       [`${BACKEND_API_PREFIX}/bootstrap`]: 'GET',
       [`${BACKEND_API_PREFIX}/snapshot`]: 'GET',
       [`${BACKEND_API_PREFIX}/history`]: 'GET',
@@ -342,6 +371,10 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     if (path === `${BACKEND_API_PREFIX}/snapshot`) {
       // Public read: no installation identity involved.
       writeJson(res, 200, service.snapshotResponse())
+      return
+    }
+    if (path === `${BACKEND_API_PREFIX}/admission/tickets`) {
+      writeJson(res, 200, service.admissionTickets())
       return
     }
     if (path === `${BACKEND_API_PREFIX}/history`) {
@@ -406,7 +439,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       return
     }
 
-    if (path === `${BACKEND_API_PREFIX}/identity/revoke`) {
+    if (path === `${BACKEND_API_PREFIX}/admission/claim`) {
       try {
         const publicKey = headerValue(req, PUBLIC_KEY_HEADER)
         const signature = headerValue(req, SIGNATURE_HEADER)
@@ -414,11 +447,61 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         if (publicKey === undefined || signature === undefined || timestamp === undefined) {
           throw new CommunityAuthError(401, 'invalid_signature', 'signed identity headers required')
         }
-        if (communityKey !== null) {
-          const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-          if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
-            throw new CommunityAuthError(401, 'invalid_signature', 'community key required')
-          }
+        const installationId = parseInstallationId(headerValue(req, INSTALLATION_HEADER))
+        const deviceFingerprint = headerValue(req, DEVICE_HEADER) ?? ''
+        if (deviceFingerprint === '') {
+          throw new CommunityAuthError(400, 'invalid_request', 'a device fingerprint header is required for admission')
+        }
+        authenticateCommunityRequest({
+          store,
+          method,
+          path,
+          body: rawBody,
+          installationId,
+          publicKey,
+          signature,
+          timestamp,
+          deviceFingerprint,
+          now: Date.now(),
+          skipFingerprintEnforcement: true,
+        })
+        const body = parseV1AdmissionClaimRequest(JSON.parse(rawBody) as unknown)
+        if (body.public_key !== publicKey || body.device_fingerprint !== deviceFingerprint) {
+          throw new CommunityAuthError(400, 'invalid_request', 'signed headers do not match admission body')
+        }
+        const decision = admissionLimiter.check(Date.now())
+        if (!decision.allowed) {
+          const seconds = Math.ceil(decision.retryAfterMs / 1000)
+          throw new CommunityAuthError(429, 'admission_rate_limited', `入梁暂忙，请在 ${seconds} 秒后重试`)
+        }
+        const response = service.claimAdmission(
+          installationId,
+          publicKey,
+          deviceFingerprint,
+          body.ticket_secret,
+        )
+        writeJson(res, 200, response)
+        log(
+          `[liangxiang-backend] admission claimed=${String(response.claimed)} `
+          + `${who(req, installationId)} ticket=${response.ticket_id ?? 'existing'}`,
+        )
+      } catch (error) {
+        if (error instanceof CommunityAuthError) {
+          writeError(res, error.httpStatus, error.code, error.message)
+          return
+        }
+        writeValidationError(res, error)
+      }
+      return
+    }
+
+    if (path === `${BACKEND_API_PREFIX}/identity/revoke`) {
+      try {
+        const publicKey = headerValue(req, PUBLIC_KEY_HEADER)
+        const signature = headerValue(req, SIGNATURE_HEADER)
+        const timestamp = headerValue(req, TIMESTAMP_HEADER)
+        if (publicKey === undefined || signature === undefined || timestamp === undefined) {
+          throw new CommunityAuthError(401, 'invalid_signature', 'signed identity headers required')
         }
         const installationId = parseInstallationId(headerValue(req, INSTALLATION_HEADER))
         const device = headerValue(req, DEVICE_HEADER) ?? null
@@ -435,6 +518,9 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
           now: Date.now(),
           skipFingerprintEnforcement: true,
         })
+        if (store.identityByInstallation(installationId) === undefined) {
+          throw new CommunityAuthError(401, 'admission_required', 'identity is not enrolled')
+        }
         if (!gateIdentityMutation(req, res, publicKey, installationId, device, 'revoke')) {
           return
         }
@@ -590,6 +676,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     reset: () => {
       voteLimiter.reset()
       identityLimiter.reset()
+      admissionLimiter.reset()
       expectedEvents.reset()
     },
     rateLimitState: () => ({

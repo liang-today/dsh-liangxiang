@@ -89,6 +89,7 @@ export class BackendLiangService implements LiangHostService {
   private accountingAvailable = false
   /** Last-known reachability of the community authority (history excluded). */
   private authorityAvailable = false
+  private authorityReason: string | null = '尚未完成社区连接'
   private revision = 0
   private readonly hostEpoch = Date.now()
   private readonly listeners = new Set<() => void>()
@@ -237,7 +238,7 @@ export class BackendLiangService implements LiangHostService {
       this.setAuthorityAvailable(true)
       this.bump()
     } catch (error) {
-      this.setAuthorityAvailable(false)
+      this.setAuthorityUnavailable(error)
       this.reportFailure('daily-state', error)
     }
   }
@@ -261,7 +262,7 @@ export class BackendLiangService implements LiangHostService {
       })
       this.setAuthorityAvailable(true)
     } catch (error) {
-      this.setAuthorityAvailable(false)
+      this.setAuthorityUnavailable(error)
       this.reportFailure('vote', error)
       throw error
     }
@@ -298,6 +299,7 @@ export class BackendLiangService implements LiangHostService {
       hostEpoch: this.hostEpoch,
       authorityMode: 'DEV_STAGING_ONLY',
       authorityAvailable: this.authorityAvailable,
+      authorityReason: this.authorityReason,
       snapshotRefreshSeconds: bootstrap.snapshot_refresh_seconds,
       businessDate: this.businessDate,
       archiveVersion: this.archiveVersion,
@@ -363,7 +365,14 @@ export class BackendLiangService implements LiangHostService {
     if (Date.now() < this.bootstrapBackoffUntil) return
     const run = (async (): Promise<void> => {
       try {
-        const bootstrap = await this.client.bootstrap(installationId)
+        let bootstrap: V1Bootstrap
+        try {
+          bootstrap = await this.client.bootstrap(installationId)
+        } catch (error) {
+          if (!(error instanceof BackendClientError) || error.code !== 'admission_required') throw error
+          await this.enrollWithPublicTicket(installationId)
+          bootstrap = await this.client.bootstrap(installationId)
+        }
         this.adoptBootstrap(bootstrap)
         this.setAuthorityAvailable(true)
         this.bootstrapBackoffMs = 0
@@ -372,7 +381,7 @@ export class BackendLiangService implements LiangHostService {
         this.lastClaimSent = -1
         this.scheduleClaim()
       } catch (error) {
-        this.setAuthorityAvailable(false)
+        this.setAuthorityUnavailable(error)
         this.bootstrapBackoffMs = this.bootstrapBackoffMs === 0
           ? 1_000
           : Math.min(this.bootstrapBackoffMs * 2, 30_000)
@@ -406,7 +415,7 @@ export class BackendLiangService implements LiangHostService {
       this.bump()
       if (archiveMoved) void this.refreshHistory()
     } catch (error) {
-      this.setAuthorityAvailable(false)
+      this.setAuthorityUnavailable(error)
       this.reportFailure('snapshot', error)
     }
   }
@@ -562,7 +571,7 @@ export class BackendLiangService implements LiangHostService {
       }
       this.bump()
     } catch (error) {
-      this.setAuthorityAvailable(false)
+      this.setAuthorityUnavailable(error)
       this.reportFailure('token-claim', error)
     }
   }
@@ -585,6 +594,49 @@ export class BackendLiangService implements LiangHostService {
       throw new BackendClientError('installation id is not available yet')
     }
     return installationId
+  }
+
+  /** First install: fetch a public short-lived ticket, claim it, then retry bootstrap. */
+  private async enrollWithPublicTicket(installationId: string): Promise<void> {
+    const identity = this.identityRef.current
+    if (identity === null || identity.deviceFingerprint === null) {
+      throw new BackendClientError(
+        '入梁需要可持久化身份与设备指纹',
+        401,
+        'admission_required',
+      )
+    }
+    const available = await this.client.admissionTickets()
+    if (available.tickets.length === 0 || available.available_claims === 0) {
+      throw new BackendClientError('暂无可用入梁券', 503, 'admission_ticket_exhausted')
+    }
+    let lastError: unknown = null
+    for (const ticket of available.tickets.slice(0, 5)) {
+      try {
+        await this.client.claimAdmission(
+          installationId,
+          ticket.secret,
+          identity.publicKey,
+          identity.deviceFingerprint,
+        )
+        return
+      } catch (error) {
+        lastError = error
+        // A reinstalled profile can present a fresh key on hardware whose
+        // fingerprint still belongs to the retired installation. That is a
+        // re-key, not a new admission: preserve the public ticket and let the
+        // backend apply its cooldown/abuse controls before retrying bootstrap.
+        if (error instanceof BackendClientError && error.code === 'device_conflict') {
+          await this.client.rekeyIdentity(installationId)
+          return
+        }
+        if (error instanceof BackendClientError && error.code === 'admission_ticket_exhausted') continue
+        throw error
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new BackendClientError('可见入梁券均已被领走', 409, 'admission_ticket_exhausted')
   }
 
   private reportFailure(label: string, error: unknown): void {
@@ -613,8 +665,18 @@ export class BackendLiangService implements LiangHostService {
   }
 
   private setAuthorityAvailable(available: boolean): void {
-    if (this.authorityAvailable === available) return
+    const reason = available ? null : this.authorityReason
+    if (this.authorityAvailable === available && this.authorityReason === reason) return
     this.authorityAvailable = available
+    this.authorityReason = reason
+    this.bump()
+  }
+
+  private setAuthorityUnavailable(error: unknown): void {
+    const reason = authorityFailureReason(error)
+    if (!this.authorityAvailable && this.authorityReason === reason) return
+    this.authorityAvailable = false
+    this.authorityReason = reason
     this.bump()
   }
 
@@ -628,6 +690,23 @@ export class BackendLiangService implements LiangHostService {
       }
     }
   }
+}
+
+function authorityFailureReason(error: unknown): string {
+  if (error instanceof BackendClientError) {
+    switch (error.code) {
+      case 'admission_required': return '需要入梁券完成首次入群'
+      case 'admission_ticket_exhausted': return '暂无可用入梁券'
+      case 'admission_rate_limited': return '领券人数过多，请稍后重试'
+      case 'device_conflict': return '本设备已绑定另一份梁相身份'
+      case 'rekey_cooldown': return '身份刚刚使用过，请在重置冷却结束后重试'
+      case 'invalid_signature': return '身份签名未通过'
+      default:
+        if (error.status === null) return '网络不可达或请求超时，正在自动重连'
+        return `社区服务返回 HTTP ${error.status}`
+    }
+  }
+  return '社区服务暂不可用，正在自动重连'
 }
 
 /**

@@ -98,7 +98,7 @@ DSH Host（每台香客的本机进程）  ──HTTP──>  社区后端
 | 后端可被远端 Host 连 | 允许 `LIANGXIANG_BACKEND_HOST=0.0.0.0`；文档写清只应放在 Tailscale/反代后面 | 另一台机器的 DSH Host 设 URL 后能 bootstrap + 投票 |
 | 社区包 | tarball **带上** `lib/backend.js` 或另打 `dsh-liangxiang-community` 运维包；`docker compose`：后端 + 可选 Caddy | `docker compose up` 后 Host 能连 |
 | 安装一条龙 | `docs/INSTALL-COMMUNITY.md`：插件怎么加、`LIANGXIANG_BACKEND_URL` 怎么写、不要把 web-app 装进 profile | 按文档在干净 profile 走通 |
-| 软门闩 | 可选 `LIANGXIANG_COMMUNITY_KEY`：Host 请求带共享密钥，错了 401。不是身份，只挡扫到端口的路人 | 无 key 的客户端进不了社区后端 |
+| 入梁券 | 后端限量发行短期券；新 Host 自动取一张并用 Ed25519 签名认领，之后只靠安装私钥 | 库存有限、同一张单次券只成功一次；仍不等于真人认证 |
 | Pi 配方 | 用现有 Pi 当第一节点：systemd、SQLite 路径、备份、`reset:staging` | 你本机 WebUI 连 Pi，第二台电脑也能连 |
 
 **C1 需要你明确点头的两件事（现在的禁令拦住了推广）：**
@@ -149,7 +149,7 @@ DSH 以后若出现签名用量 / 可验证身份：重跑 Gate A，另开可信
 C1 身份 / 远端绑定 / 社区口令 / VPS 配方已经落地，见 [`121-vps-deploy.md`](121-vps-deploy.md)。
 
 1. 你申请 Linux VPS，按 121 装后端 + Caddy。
-2. 多台 DSH Host 指向同一 `LIANGXIANG_BACKEND_URL` + 同一 `LIANGXIANG_COMMUNITY_KEY` 做联调。
+2. 服务器先准备入梁券，多台 DSH Host 只需指向同一 `LIANGXIANG_BACKEND_URL`，首次启动自动认领。
 3. 手感过了再 C2（默认 URL、首次说明、运营改案）。GitHub Release 仍等你点头。
 
 公网部署的是**社区软信任**，不是可信全网。`VERIFIED_PRODUCTION` 仍然启动即拒。

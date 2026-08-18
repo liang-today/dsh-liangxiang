@@ -62,6 +62,19 @@ describe('identity mutation rate limit', () => {
 })
 
 describe('operator CLI', () => {
+  it('issues tickets and reports the remaining admission inventory', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-tickets-'))
+    const db = join(dir, 'liangxiang.sqlite')
+    const env = { LIANGXIANG_BACKEND_DB: db }
+    const logs: string[] = []
+    const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
+    expect(runOperatorCli(['admission', 'issue', '3', '--claims', '2', '--ttl-hours', '48'], env, io)).toBe(0)
+    expect(runOperatorCli(['admission', 'status'], env, io)).toBe(0)
+    expect(logs.join('\n')).toContain('issued=3')
+    expect(logs.join('\n')).toContain('remaining=6')
+    rmSync(dir, { recursive: true, force: true })
+  })
+
   it('accepts Rocky Linux node-22 argv prefixes', () => {
     const logs: string[] = []
     expect(runOperatorCli(

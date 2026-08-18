@@ -91,6 +91,8 @@ export interface LiangxiangWireState {
    * the backend reconnects and the personal ledger is reconciled.
    */
   authorityAvailable: boolean
+  /** Short safe reason for the latest online-authority failure; never a secret. */
+  authorityReason: string | null
   snapshotRefreshSeconds: number
   businessDate: string
   /** Scalar signal only; 梁祠 arrays use the separate `/api/history` route. */
@@ -226,6 +228,9 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
     authorityAvailable: record.authorityAvailable === undefined
       ? true
       : requireBoolean(record.authorityAvailable, 'state.authorityAvailable'),
+    authorityReason: record.authorityReason === undefined || record.authorityReason === null
+      ? null
+      : requireString(record.authorityReason, 'state.authorityReason'),
     snapshotRefreshSeconds: requireCount(record.snapshotRefreshSeconds, 'state.snapshotRefreshSeconds'),
     businessDate: requireString(record.businessDate, 'state.businessDate'),
     archiveVersion: record.archiveVersion === undefined

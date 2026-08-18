@@ -36,8 +36,8 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 ## 二、从 RC tarball 安装到自己的 profile
 
 ```bash
-pnpm pack                                            # 当前产出 dsh-liangxiang-0.7.2.tgz
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.7.2.tgz
+pnpm pack                                            # 当前产出 dsh-liangxiang-0.8.0.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.0.tgz
 ```
 
 两点注意：
@@ -52,7 +52,7 @@ dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.7.2.tgz
 | 变量 | 作用 |
 |---|---|
 | `LIANGXIANG_BACKEND_URL` | 默认烘焙社区地址（在线）。`local` 强制本地演示 |
-| `LIANGXIANG_COMMUNITY_KEY` | 与后端相同的社区口令；后端设了则 Host 必带 |
+| `LIANGXIANG_COMMUNITY_KEY` | 仅旧客户端兼容；0.8+ 新安装会自动从社区领取并认领入梁券 |
 | `LIANGXIANG_TOKEN_PER_INCENSE` | 每炷香的 Token 数（默认 50,000；调小便于演示） |
 | `LIANGXIANG_SNAPSHOT_SECONDS` | 快照/轮询节奏（默认 1s） |
 | `LIANGXIANG_BUSINESS_TZ` | 业务时区（默认 `Asia/Shanghai`）；在线模式下**后端**的这项才是权威 |

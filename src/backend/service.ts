@@ -38,6 +38,8 @@ import {
   LIANGZI_POLICY_VERSION,
   parseV1PublishCaseRequest,
   type V1Bootstrap,
+  type V1AdmissionClaimResponse,
+  type V1AdmissionTicketsResponse,
   type V1Case,
   type V1PersonalState,
   type V1PersonalStateResponse,
@@ -57,6 +59,8 @@ import { CommunityAuthError } from './community-auth.ts'
 import {
   isUniqueConstraintError,
   type BackendStore,
+  type AdmissionInventory,
+  type AdmissionTicketRow,
   type CaseRow,
   type MonthArchiveRow,
   type IncenseRow,
@@ -249,6 +253,135 @@ export class LiangxiangBackendService {
 
   listQueue(): QueueRow[] {
     return this.store.pendingQueue()
+  }
+
+  /** Public first-install inventory. Secrets are short-lived and claim-limited. */
+  admissionTickets(now = this.clock.now()): V1AdmissionTicketsResponse {
+    this.store.expireAdmissionTickets(now)
+    const inventory = this.store.admissionInventory(now)
+    return {
+      schema_version: BACKEND_SCHEMA_VERSION,
+      server_time: now,
+      available_claims: inventory.remainingClaims,
+      tickets: this.store.availableAdmissionTickets(now, this.config.admissionPublicListLimit).map(ticket => ({
+        ticket_id: ticket.ticket_id,
+        secret: ticket.secret,
+        remaining_claims: ticket.max_claims - ticket.claimed_count,
+        expires_at: ticket.expires_at,
+      })),
+    }
+  }
+
+  /** Atomically consume a ticket and bind the signed installation identity. */
+  claimAdmission(
+    installationId: string,
+    publicKey: string,
+    deviceFingerprint: string,
+    ticketSecret: string,
+    now = this.clock.now(),
+  ): V1AdmissionClaimResponse {
+    return this.store.transaction(() => {
+      const existing = this.store.identityByInstallation(installationId)
+      if (existing !== undefined) {
+        return {
+          schema_version: BACKEND_SCHEMA_VERSION,
+          claimed: false,
+          installation_id: installationId,
+          ticket_id: null,
+          server_time: now,
+        }
+      }
+      const owner = this.store.identityByFingerprint(deviceFingerprint)
+      if (owner !== undefined && owner.installation_id !== installationId) {
+        throw new CommunityAuthError(409, 'device_conflict', 'this device fingerprint is already bound to another installation')
+      }
+      this.store.expireAdmissionTickets(now)
+      const ticket = this.store.admissionTicketBySecret(ticketSecret)
+      if (ticket === undefined) {
+        throw new CommunityAuthError(401, 'admission_ticket_invalid', '入梁券无效')
+      }
+      if (ticket.status !== 'active' || ticket.expires_at <= now || ticket.claimed_count >= ticket.max_claims) {
+        throw new CommunityAuthError(409, 'admission_ticket_exhausted', '入梁券已用尽、失效或过期')
+      }
+      if (!this.store.consumeAdmissionTicket(ticketSecret, now)) {
+        throw new CommunityAuthError(409, 'admission_ticket_exhausted', '入梁券刚刚被其他香客领走')
+      }
+      try {
+        this.store.upsertIdentity({
+          installation_id: installationId,
+          public_key: publicKey,
+          device_fingerprint: deviceFingerprint,
+          created_at: now,
+          last_seen_at: now,
+        })
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          throw new CommunityAuthError(409, 'device_conflict', 'this device fingerprint is already bound to another installation')
+        }
+        throw error
+      }
+      return {
+        schema_version: BACKEND_SCHEMA_VERSION,
+        claimed: true,
+        installation_id: installationId,
+        ticket_id: ticket.ticket_id,
+        server_time: now,
+      }
+    })
+  }
+
+  issueAdmissionTickets(
+    count: number,
+    maxClaims = this.config.admissionTicketMaxClaims,
+    ttlHours = this.config.admissionTicketTtlHours,
+    now = this.clock.now(),
+  ): AdmissionTicketRow[] {
+    if (!Number.isSafeInteger(count) || count < 1 || count > 100_000) {
+      throw new WireError('count', 'expected an integer in [1,100000]')
+    }
+    if (!Number.isSafeInteger(maxClaims) || maxClaims < 1 || maxClaims > 10_000) {
+      throw new WireError('max_claims', 'expected an integer in [1,10000]')
+    }
+    if (!Number.isSafeInteger(ttlHours) || ttlHours < 1 || ttlHours > 24 * 365) {
+      throw new WireError('ttl_hours', 'expected an integer in [1,8760]')
+    }
+    const expiresAt = now + ttlHours * 60 * 60 * 1000
+    return this.store.transaction(() => Array.from({ length: count }, () => {
+      const idPart = randomBytes(8).toString('hex')
+      const secretPart = randomBytes(12).toString('base64url')
+      const row: AdmissionTicketRow = {
+        ticket_id: `ticket_${idPart}`,
+        secret: `LX-${secretPart}`,
+        max_claims: maxClaims,
+        claimed_count: 0,
+        status: 'active',
+        created_at: now,
+        expires_at: expiresAt,
+        last_claimed_at: null,
+      }
+      this.store.insertAdmissionTicket(row)
+      return row
+    }))
+  }
+
+  admissionInventory(now = this.clock.now()): AdmissionInventory {
+    this.store.expireAdmissionTickets(now)
+    return this.store.admissionInventory(now)
+  }
+
+  listAdmissionTickets(limit = 100, now = this.clock.now()): AdmissionTicketRow[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+      throw new WireError('limit', 'expected an integer in [1,1000]')
+    }
+    this.store.expireAdmissionTickets(now)
+    return this.store.availableAdmissionTickets(now, limit)
+  }
+
+  revokeAdmissionTicket(ticketId: string): boolean {
+    if (!/^ticket_[a-f0-9]{16}$/.test(ticketId)) {
+      throw new WireError('ticket_id', 'expected ticket_<16 hex characters>')
+    }
+    return this.store.revokeAdmissionTicket(ticketId)
   }
 
   /**

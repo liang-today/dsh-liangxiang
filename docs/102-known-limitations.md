@@ -1,4 +1,4 @@
-# 102 — Known Limitations（更新至 v0.7.2）
+# 102 — Known Limitations（更新至 v0.8.0）
 
 按严重度排列。**没有未修的 Blocker/High**；以下都是明确接受的限制，不违反冻结不变量。
 
@@ -10,7 +10,7 @@
 
 ## 部署与运维
 
-4. **社区服务仍是软信任**。代码默认监听 `127.0.0.1`，公网仅由 Caddy 在 `https://api.liang.today` 提供 TLS；Ed25519 安装签名与共享闭测口令不能证明真人身份或 Token 真实性。
+4. **社区服务仍是软信任**。代码默认监听 `127.0.0.1`，公网仅由 Caddy 在 `https://api.liang.today` 提供 TLS；短期入梁券与 Ed25519 安装签名限制注册流量，但不能证明真人身份或 Token 真实性。
 5. **RC tarball 不含后端**。`lib/backend.js` 不在包内（插件包只装 Host + Client 两半）；在线模式需要从仓库运行 `pnpm run backend:start`。
 6. **单机 SQLite 后端**。同机双进程共享 SQLite 已通过抢最后一炷与幂等重放测试；不支持跨机器共享数据库或多节点写入。
 7. `node:sqlite` 在 Node 22 仍是实验特性，启动会打印 ExperimentalWarning。

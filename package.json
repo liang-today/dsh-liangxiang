@@ -1,6 +1,6 @@
 {
   "name": "dsh-liangxiang",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "梁相 — a DeepSeek Harness WebUI plugin (hover: 今日梁相). Installable dual-half bundle: host plugin row + web client bundle.",
   "type": "module",
   "main": "lib/index.js",

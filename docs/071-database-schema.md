@@ -1,9 +1,9 @@
-# 071 — Database Schema v4（SQLite）
+# 071 — Database Schema v5（SQLite）
 
-`PRAGMA user_version = 4`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
+`PRAGMA user_version = 5`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
 比例、`liangzi_state`、`earned/remaining/fill` **一律不入库**：它们由 `domain/` 从原始计数派生，存一份就会出现第二个真相源。
 
-迁移轨迹：v2 增加 `community_identity`，v3 增加 `case_queue`，v4 增加梁祠日/周/月永久档案和单调 `archive_version`。旧库启动时逐级建表，不改既有投票账本。
+迁移轨迹：v2 增加 `community_identity`，v3 增加 `case_queue`，v4 增加梁祠永久档案，v5 增加 `admission_ticket`。旧库启动时逐级建表，不改既有投票账本。
 
 ## daily_liang_case
 
@@ -98,6 +98,12 @@ total == 0 → ratio = null/null, liangzi_state = WAITING
 | `created_at` / `last_seen_at` | INTEGER | epoch ms。`created_at` 是香火 drip 的计时原点 |
 
 这不是 DSH 认证。公钥证明「还是这把私钥」；指纹只提高同一台机器反复建号的成本，MAC 可伪造，不是反女巫。
+
+## admission_ticket（v5，入梁券）
+
+`ticket_id` 为主键，`secret` 唯一；`max_claims / claimed_count` 保存可认领总数与已用数，
+`status` 只能是 `active / exhausted / revoked / expired`，并记录创建、过期与最后认领时间。
+认领在 `BEGIN IMMEDIATE` 事务中同时核销券和写入 `community_identity`；并发争抢同一张单次券最多成功一次。
 
 ## case_queue（v3，运营梁案队列）
 

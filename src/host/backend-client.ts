@@ -21,13 +21,19 @@ import {
   TIMESTAMP_HEADER,
   completeV1VoteResponse,
   isMissingVoteSnapshotError,
+  parseV1AdmissionClaimResponse,
+  parseV1AdmissionTicketsResponse,
   parseV1Bootstrap,
   parseV1PersonalStateResponse,
+  parseV1RekeyResponse,
   parseV1SnapshotResponse,
   parseV1VoteEnvelope,
   parseV1VoteResponse,
   type V1Bootstrap,
+  type V1AdmissionClaimResponse,
+  type V1AdmissionTicketsResponse,
   type V1PersonalStateResponse,
+  type V1RekeyResponse,
   type V1SnapshotResponse,
   type V1VoteRequest,
   type V1VoteResponse,
@@ -63,6 +69,14 @@ export interface BackendClientOptions {
 export interface BackendClient {
   readonly baseUrl: string
   bootstrap: (installationId: string) => Promise<V1Bootstrap>
+  admissionTickets: () => Promise<V1AdmissionTicketsResponse>
+  claimAdmission: (
+    installationId: string,
+    ticketSecret: string,
+    publicKey: string,
+    deviceFingerprint: string,
+  ) => Promise<V1AdmissionClaimResponse>
+  rekeyIdentity: (installationId: string) => Promise<V1RekeyResponse>
   submitClaim: (
     installationId: string,
     claimedEffectiveTokens: number,
@@ -171,6 +185,27 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     baseUrl,
     async bootstrap(installationId) {
       return parseV1Bootstrap(await read('/bootstrap', installationId))
+    },
+    async admissionTickets() {
+      return parseV1AdmissionTicketsResponse(await read('/admission/tickets'))
+    },
+    async claimAdmission(installationId, ticketSecret, publicKey, deviceFingerprint) {
+      return parseV1AdmissionClaimResponse(await request('/admission/claim', {
+        method: 'POST',
+        installationId,
+        body: {
+          ticket_secret: ticketSecret,
+          public_key: publicKey,
+          device_fingerprint: deviceFingerprint,
+        },
+      }))
+    },
+    async rekeyIdentity(installationId) {
+      return parseV1RekeyResponse(await request('/identity/rekey', {
+        method: 'POST',
+        installationId,
+        body: {},
+      }))
     },
     async submitClaim(installationId, claimedEffectiveTokens, claimBusinessDate) {
       const payload = await request('/token-claims', {

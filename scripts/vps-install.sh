@@ -40,6 +40,10 @@ LIANGXIANG_BUSINESS_TZ=Asia/Shanghai
 LIANGXIANG_SNAPSHOT_SECONDS=1
 LIANGXIANG_TOKEN_PER_INCENSE=50000
 LIANGXIANG_COMMUNITY_KEY=$KEY
+LIANGXIANG_ADMISSION_CLAIM_RATE_LIMIT=120
+LIANGXIANG_ADMISSION_TICKET_TTL_HOURS=24
+LIANGXIANG_ADMISSION_TICKET_MAX_CLAIMS=1
+LIANGXIANG_ADMISSION_PUBLIC_LIST_LIMIT=20
 EOF
   chmod 640 "$ENV_FILE"
   chown root:liangxiang "$ENV_FILE"
@@ -57,5 +61,6 @@ sleep 1
 curl -fsS http://127.0.0.1:4180/v1/health
 echo
 echo "backend is up. Next: point Caddy at 127.0.0.1:4180 (see deploy/Caddyfile)."
-echo "Give each Host: LIANGXIANG_BACKEND_URL=https://<your-domain> and the community key in $ENV_FILE"
+echo "Prepare admission inventory with: liang tickets issue 1000"
+echo "Give each Host only LIANGXIANG_BACKEND_URL=https://<your-domain>; new installs auto-claim a ticket."
 echo "This is community soft trust, not verified usage voting."

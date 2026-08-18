@@ -29,7 +29,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.7.2'
+export const PLUGIN_VERSION = '0.8.0'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
@@ -120,10 +120,10 @@ export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷�
 export const NO_INCENSE_GAG = '咣当——香炉空了，梁子催你先去攒香'
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
-export const OFFLINE_REASON = '未连上本机 DSH：显示最近状态，正在自动重连'
+export const OFFLINE_REASON = '无法连接天庭：尚未取得社区状态，正在自动重连'
 
 /** Online backend is down; local observation continues but no vote is safe. */
-export const COMMUNITY_UNAVAILABLE_REASON = '社区暂未连通：香火继续凝聚，恢复后自动核对；夯 / 拉暂不可用'
+export const COMMUNITY_UNAVAILABLE_REASON = '无法连接天庭：社区服务暂不可用；香火继续凝聚，夯 / 拉暂不可用'
 
 /** Status line when the DSH accounting seams are absent in this assembly. */
 export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合缺少 token 投影能力'

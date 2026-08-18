@@ -407,7 +407,7 @@ describe('community Ed25519 auth', () => {
     store.close()
   })
 
-  it('accepts a signed bootstrap and binds a device fingerprint once', async () => {
+  it('admits a signed first install with a public ticket and binds its device once', async () => {
     const { generateCommunityKeypair, signRequest } = await import('../src/host/community-keys.ts')
     const {
       DEVICE_HEADER,
@@ -438,44 +438,62 @@ describe('community Ed25519 auth', () => {
     if (address === null || typeof address === 'string') throw new Error('server did not bind a port')
     const baseUrl = `http://127.0.0.1:${address.port}`
 
+    service.issueAdmissionTickets(2)
+    const publicTickets = await fetch(`${baseUrl}/v1/admission/tickets`)
+    expect(publicTickets.status).toBe(200)
+    const ticketBody = await publicTickets.json() as {
+      available_claims: number
+      tickets: Array<{ secret: string }>
+    }
+    expect(ticketBody.available_claims).toBe(2)
+
+    const signedRequest = async (
+      identity: ReturnType<typeof generateCommunityKeypair>,
+      path: string,
+      method: 'GET' | 'POST',
+      body: unknown,
+    ): Promise<Response> => {
+      const rawBody = method === 'POST' ? JSON.stringify(body) : ''
+      const timestamp = Date.now()
+      return fetch(`${baseUrl}${path}`, {
+        method,
+        headers: {
+          [INSTALLATION_HEADER]: identity.installationId,
+          [PUBLIC_KEY_HEADER]: identity.publicKey,
+          [TIMESTAMP_HEADER]: String(timestamp),
+          [SIGNATURE_HEADER]: signRequest({
+            privateKeyPem: identity.privateKeyPem,
+            method,
+            path,
+            timestamp,
+            body: rawBody,
+            installationId: identity.installationId,
+          }),
+          [DEVICE_HEADER]: identity.deviceFingerprint as string,
+          ...method === 'POST' ? { 'content-type': 'application/json' } : {},
+        },
+        ...method === 'POST' ? { body: rawBody } : {},
+      })
+    }
+
     const first = generateCommunityKeypair('device-fingerprint-alpha')
-    const timestamp = Date.now()
-    const signed = await fetch(`${baseUrl}/v1/bootstrap`, {
-      headers: {
-        [INSTALLATION_HEADER]: first.installationId,
-        [PUBLIC_KEY_HEADER]: first.publicKey,
-        [TIMESTAMP_HEADER]: String(timestamp),
-        [SIGNATURE_HEADER]: signRequest({
-          privateKeyPem: first.privateKeyPem,
-          method: 'GET',
-          path: '/v1/bootstrap',
-          timestamp,
-          body: '',
-          installationId: first.installationId,
-        }),
-        [DEVICE_HEADER]: first.deviceFingerprint as string,
-      },
-    })
-    expect(signed.status).toBe(200)
+    const firstClaimBody = {
+      ticket_secret: ticketBody.tickets[0]?.secret,
+      public_key: first.publicKey,
+      device_fingerprint: first.deviceFingerprint,
+    }
+    const admitted = await signedRequest(first, '/v1/admission/claim', 'POST', firstClaimBody)
+    expect(admitted.status).toBe(200)
+    expect(await admitted.json()).toMatchObject({ claimed: true, installation_id: first.installationId })
+    expect((await signedRequest(first, '/v1/bootstrap', 'GET', null)).status).toBe(200)
 
     const second = generateCommunityKeypair('device-fingerprint-alpha')
-    const ts2 = Date.now()
-    const conflict = await fetch(`${baseUrl}/v1/bootstrap`, {
-      headers: {
-        [INSTALLATION_HEADER]: second.installationId,
-        [PUBLIC_KEY_HEADER]: second.publicKey,
-        [TIMESTAMP_HEADER]: String(ts2),
-        [SIGNATURE_HEADER]: signRequest({
-          privateKeyPem: second.privateKeyPem,
-          method: 'GET',
-          path: '/v1/bootstrap',
-          timestamp: ts2,
-          body: '',
-          installationId: second.installationId,
-        }),
-        [DEVICE_HEADER]: second.deviceFingerprint as string,
-      },
-    })
+    const secondClaimBody = {
+      ticket_secret: ticketBody.tickets[1]?.secret,
+      public_key: second.publicKey,
+      device_fingerprint: second.deviceFingerprint,
+    }
+    const conflict = await signedRequest(second, '/v1/admission/claim', 'POST', secondClaimBody)
     expect(conflict.status).toBe(409)
     expect(await conflict.json()).toMatchObject({ error: { code: 'device_conflict' } })
 

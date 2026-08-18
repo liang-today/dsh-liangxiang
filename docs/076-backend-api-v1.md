@@ -6,9 +6,10 @@
 ## 通用
 
 - 错误体：`{ "error": { "code", "message", "field?" } }`，含 `identity_rate_limited`、`rekey_cooldown`、`device_conflict` 等（见 `V1_ERROR_CODES`）。
-- 鉴权（公共只读的 `/health`、`/snapshot`、`/history` 除外）：
+- 鉴权（公共只读的 `/health`、`/snapshot`、`/history`、`/admission/tickets` 除外）：
   - 默认要求 Ed25519 签名头：`x-liangxiang-installation`、`x-liangxiang-public-key`、`x-liangxiang-signature`、`x-liangxiang-timestamp`；可选 `x-liangxiang-device`（MAC 集合哈希）。
-  - 若服务器设了 `LIANGXIANG_COMMUNITY_KEY`，还要带 `x-liangxiang-community-key`。
+  - 未登记安装先从公开列表取得短期入梁券，再签名认领；登记后不再需要券或共享口令。
+  - `LIANGXIANG_COMMUNITY_KEY` 仅允许旧客户端首次登记，已登记客户端不再依赖它。
   - `LIANGXIANG_ALLOW_UNSIGNED=1` 才接受旧的「只有 installation 头」请求，仅供 localhost smoke。
 - 请求体上限 4KB，超限回 **413**（`invalid_request`）并带 `connection: close`——刻意不掐 socket：被掐断的连接与网络故障无法区分，会让投票方在「已拒绝」和「结果未知」之间猜，从而错误重试。
 - 请求日志只含 method/path/status/installation 前 8 字符，绝不含 prompt/回复/路径/密钥。
@@ -17,6 +18,26 @@
 ## GET /v1/health
 
 无需身份。`{ status, authority_mode, business_date }`。
+
+## GET /v1/admission/tickets
+
+公开只读，返回可用认领总数与最多 `LIANGXIANG_ADMISSION_PUBLIC_LIST_LIMIT` 张短期券：
+
+```json
+{ "schema_version": 1, "server_time": 0, "available_claims": 1000,
+  "tickets": [{ "ticket_id": "ticket_…", "secret": "LX-…", "remaining_claims": 1, "expires_at": 0 }] }
+```
+
+## POST /v1/admission/claim
+
+必须用待登记的 Ed25519 私钥签名，且签名头中的公钥/设备指纹必须与 body 完全一致：
+
+```json
+{ "ticket_secret": "LX-…", "public_key": "…", "device_fingerprint": "…" }
+```
+
+后端在一个 SQLite 事务中核销券并写入身份；同一张单次券并发最多成功一次。全服务器认领默认限流 120 次/分钟。
+成功返回 `{ claimed, installation_id, ticket_id, server_time }`；已登记身份重放不重复耗券。
 
 ## GET /v1/bootstrap
 
