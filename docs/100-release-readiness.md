@@ -1,4 +1,4 @@
-# 100 — Release Readiness（v0.8.3-beta 梁相）
+# 100 — Release Readiness（v0.8.4-beta 梁相）
 
 结论：**社区 soft-trust 发布候选可部署**；不得宣传为实名、一人一票、
 可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
@@ -34,14 +34,14 @@
 | 构建配置迁移 | ✅ 迁移前后三个 bundle SHA-256 相同，无弃用警告 |
 | 密钥/命名空间扫描 | ✅ bundle 不含入梁券 secret 或共享准入凭据，仓库只使用 `liangxiang / 梁相` |
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
-| MacBook / Mac mini 安装 | ⚠️ 0.8.3-beta 候选包已放到桌面 `liangxiang` 目录供真实 profile 手工验收；MacBook 日常 profile 与 Mac mini 仍待装完后勾掉 |
+| MacBook / Mac mini 安装 | ⚠️ 0.8.4-beta 候选包已放到桌面 `liangxiang` 目录供真实 profile 手工验收；MacBook 日常 profile 与 Mac mini 仍待装完后勾掉 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
-| npm 公开包复核 | ✅ `0.8.3-beta` 已发布；`latest` 与 `beta` 均指向该版本；历史 `0.8.0` 仍不可覆盖 |
-| 0.8.3-beta 候选包 | ✅ 7 文件；SHA-256 `d0ee40ef3d04cf83dfc3c7a38f70d43df1c905cc90607cd2b77e34baa351e76f`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
+| npm 公开包复核 | ✅ `0.8.4-beta` 已发布；`latest` 与 `beta` 均指向该版本；历史 `0.8.0` 仍不可覆盖 |
+| 0.8.4-beta 候选包 | ✅ 7 文件；SHA-256 `d0ee40ef3d04cf83dfc3c7a38f70d43df1c905cc90607cd2b77e34baa351e76f`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
 | 香港公网峰值（只读） | ✅ `/v1/health` 1,000 请求 / 1,000 并发新建 TLS 连接，0 失败；测试后 Caddy/Backend 无 warning、内存余量 14 GiB |
 
 npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`，且 registry
-拒绝删除首版 `latest` 标签。`0.8.0` 不可覆盖。本版将 `0.8.3-beta` 发到 `beta`
+拒绝删除首版 `latest` 标签。`0.8.0` 不可覆盖。本版将 `0.8.4-beta` 发到 `beta`
 标签，并视需要把 `latest` 也指过来，安装文档仍写 `@beta`。不得把 registry
 默认标签解释为已核验的稳定公投。
 
@@ -53,7 +53,7 @@ npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`�
 2. 旧 SQLite 票、身份与梁祠档案的数量和抽样内容在迁移前后一致。
 3. 本机 MacBook 与独立 Mac mini 均已安装新包；更新路径保留身份，全新安装按设计领取入梁券。
 4. 桌面 `liangxiang` 目录中的 tarball 已按内容、密钥和 SHA-256 审计通过
-   （`dsh-liangxiang-0.8.3-beta.tgz` /
+   （`dsh-liangxiang-0.8.4-beta.tgz` /
    `d0ee40ef3d04cf83dfc3c7a38f70d43df1c905cc90607cd2b77e34baa351e76f`）。
    真实 MacBook / Mac mini profile 安装仍待运营者手工勾掉。
 5. 香港节点先经 `hk-api.liang.today` 旁路验收，再切 `api.liang.today`；
