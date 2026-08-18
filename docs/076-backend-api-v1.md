@@ -17,7 +17,7 @@
 
 ## GET /v1/health
 
-无需身份。`{ status, authority_mode, business_date }`。
+无需身份。`{ status, authority_mode, business_date, version }`。`version` 与 `package.json` / `PLUGIN_VERSION` 相同，供 `liang version` 与探活核对正在运行的程序号。
 
 ## GET /v1/admission/tickets
 

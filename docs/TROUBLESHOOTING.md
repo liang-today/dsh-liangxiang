@@ -94,6 +94,17 @@ DSH 的 `sessionProjections` / `sessions` 没注入（组合里缺插件，或�
 
 Host 与后端之间的请求失败。**用同一个 `request_id` 重试是安全的**（幂等域是 `(installation_id, request_id)`，重放不会二次扣香）；换新 id 才会有二次扣香风险，客户端不会那样做。
 
+## Host 日志在哪里
+
+DSH 控制台不再持续打印梁相日志。精简记录在：
+
+```bash
+"$DSH_HOME/logs/liangxiang.log"
+```
+
+未设置 `DSH_HOME` 时是 `~/.dsh/logs/liangxiang.log`。文件最多 5MB，超出后丢掉最旧的行。
+需要定位问题时把这个文件拿出来即可。
+
 ## Host 日志 `backend GET /bootstrap timed out`
 
 进程在 VPS 上仍可能是 `active`，本机 `curl 127.0.0.1:<port>/v1/health` 也仍可能 200。这表示**外网到该端口被挡住了**（华为云安全组 / 防护），不是梁相又切回了本地。

@@ -44,6 +44,8 @@ export const DEFAULT_ADMISSION_CLAIM_RATE_LIMIT = 120
 export const DEFAULT_ADMISSION_TICKET_TTL_HOURS = 24
 export const DEFAULT_ADMISSION_TICKET_MAX_CLAIMS = 1
 export const DEFAULT_ADMISSION_PUBLIC_LIST_LIMIT = 20
+/** Keep remaining claims at this floor; 0 disables automatic top-up. */
+export const DEFAULT_ADMISSION_INVENTORY_TARGET = 1000
 
 /**
  * How long a device fingerprint must sit unused before its binding can be
@@ -78,6 +80,8 @@ export interface BackendConfig {
   admissionTicketMaxClaims: number
   /** Maximum ticket secrets returned by one public list response. */
   admissionPublicListLimit: number
+  /** Auto-issue until remaining claims reach this number; 0 disables. */
+  admissionInventoryTarget: number
   /** When true, HTTP accepts the old unsigned installation header (localhost tests). */
   allowUnsigned: boolean
 }
@@ -218,6 +222,13 @@ export function resolveBackendConfig(
       'LIANGXIANG_ADMISSION_PUBLIC_LIST_LIMIT',
       warn,
       { min: 1, max: 1_000 },
+    ),
+    admissionInventoryTarget: parseInt_(
+      readLiangxiangEnv(env, 'ADMISSION_INVENTORY_TARGET'),
+      DEFAULT_ADMISSION_INVENTORY_TARGET,
+      'LIANGXIANG_ADMISSION_INVENTORY_TARGET',
+      warn,
+      { min: 0, max: 100_000 },
     ),
     allowUnsigned,
   }

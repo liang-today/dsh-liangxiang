@@ -66,6 +66,7 @@ async function startStack(
       LIANGXIANG_BACKEND_DB: ':memory:',
       LIANGXIANG_SNAPSHOT_SECONDS: '300',
       LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
+      LIANGXIANG_ADMISSION_INVENTORY_TARGET: '0',
       ...env,
     },
     () => undefined,

@@ -12,6 +12,7 @@ usage() {
 梁相服务器命令
 
   liang status                         服务、版本、今日梁案、梁位和下期梁案
+  liang version                        程序版本、部署标记和运行中健康接口版本
   liang logs [行数]                    最近日志（默认 200 行）
   liang logs -f                        持续查看日志（Ctrl+C 退出）
   liang config list                    显示安全配置
@@ -27,6 +28,7 @@ usage() {
   liang tickets list [数量]             查看当前可用入梁券（默认 100）
   liang tickets issue <数量> [参数]      生成入梁券；参数：--claims N --ttl-hours N
   liang tickets revoke <ticket_id>       作废一张尚未耗尽的入梁券
+  liang tickets replenish               把剩余认领次数补到库存目标（默认 1000）
   liang tickets replace --yes [参数]     作废可用券并新发一批；参数：--count N --claims N --ttl-hours N
   liang archive clear --yes              清空历史梁祠（保留今日梁案、身份、入梁券）
 EOF
@@ -89,6 +91,7 @@ config_help() {
   admission-ticket-ttl-hours 1..8760，新券默认有效小时数；默认 24
   admission-ticket-max-claims 1..10000，新券默认可认领次数；默认 1
   admission-public-list-limit 1..1000，公开接口单次最多显示券数；默认 20
+  admission-inventory-target 0..100000，剩余认领低于此数时自动补齐；0 关闭；默认 1000
 
 示例：
   liang config set snapshot-seconds 2
@@ -124,6 +127,9 @@ validate_config() {
       ;;
     ADMISSION_PUBLIC_LIST_LIMIT)
       [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 1 && value <= 1000 ))
+      ;;
+    ADMISSION_INVENTORY_TARGET)
+      [[ "$value" =~ ^[0-9]+$ ]] && (( value <= 100000 ))
       ;;
     BUSINESS_TZ)
       node -e 'new Intl.DateTimeFormat("en", { timeZone: process.argv[1] }).format()' "$value" >/dev/null 2>&1
@@ -174,13 +180,24 @@ replace_config() {
   exit 1
 }
 
+print_version() {
+  local pkg
+  pkg="$(node -p "JSON.parse(require('fs').readFileSync('$PREFIX/package.json','utf8')).version" 2>/dev/null || true)"
+  echo "程序：${pkg:-未知}"
+  echo "部署：$(cat "$PREFIX/VERSION" 2>/dev/null || echo 未标记)"
+  port="$(read_config LIANGXIANG_BACKEND_PORT)"; port="${port:-4180}"
+  echo "健康：$(curl -fsS --max-time 3 "http://127.0.0.1:${port}/v1/health" || echo 不可用)"
+}
+
 case "$1" in
   status)
     echo "服务：$(systemctl is-active "$SERVICE" 2>/dev/null || true) / 开机启动：$(systemctl is-enabled "$SERVICE" 2>/dev/null || true)"
-    echo "版本：$(cat "$PREFIX/VERSION" 2>/dev/null || echo 未标记)"
-    port="$(read_config LIANGXIANG_BACKEND_PORT)"; port="${port:-4180}"
-    echo "健康：$(curl -fsS --max-time 3 "http://127.0.0.1:${port}/v1/health" || echo 不可用)"
+    print_version
     run_backend_cli status
+    ;;
+  version)
+    print_version
+    run_backend_cli version
     ;;
   logs)
     if [[ "${2:-}" == "-f" ]]; then
@@ -204,6 +221,7 @@ case "$1" in
         print_effective_config ADMISSION_TICKET_TTL_HOURS 24
         print_effective_config ADMISSION_TICKET_MAX_CLAIMS 1
         print_effective_config ADMISSION_PUBLIC_LIST_LIMIT 20
+        print_effective_config ADMISSION_INVENTORY_TARGET 1000
         ;;
       help) config_help ;;
       set)
@@ -246,8 +264,9 @@ case "$1" in
       list) run_backend_cli admission list --limit "${3:-100}" ;;
       issue) shift 2; run_backend_cli admission issue "$@" ;;
       revoke) shift 2; run_backend_cli admission revoke "$@" ;;
+      replenish) run_backend_cli admission replenish ;;
       replace) shift 2; run_backend_cli admission replace "$@" ;;
-      *) echo '用法：liang tickets status | list [数量] | issue <数量> [--claims N] [--ttl-hours N] | revoke <ticket_id> | replace --yes [--count N] [--claims N] [--ttl-hours N]' >&2; exit 2 ;;
+      *) echo '用法：liang tickets status | list [数量] | issue <数量> [--claims N] [--ttl-hours N] | revoke <ticket_id> | replenish | replace --yes [--count N] [--claims N] [--ttl-hours N]' >&2; exit 2 ;;
     esac
     ;;
   archive)

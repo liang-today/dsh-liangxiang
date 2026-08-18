@@ -251,8 +251,8 @@ export function createLiveLiangxiangStore(
         try {
           applyWire(JSON.parse(data) as unknown)
           sseErrors = 0
-        } catch (error) {
-          console.warn(`[dsh-liangxiang] dropping malformed SSE frame: ${error instanceof Error ? error.message : String(error)}`)
+        } catch {
+          // Drop a bad frame; the next one or the refresh path recovers.
         }
       },
       onError: () => {
@@ -276,9 +276,8 @@ export function createLiveLiangxiangStore(
         // One full archive per Host connection; subsequent updates are deltas.
         void loadHistory()
       })
-      .catch((error: unknown) => {
+      .catch(() => {
         starting = false
-        console.warn(`[dsh-liangxiang] state bootstrap failed: ${error instanceof Error ? error.message : String(error)}`)
         goOffline()
       })
   }
@@ -297,7 +296,6 @@ export function createLiveLiangxiangStore(
         }
       })
       .catch((error: unknown) => {
-        console.warn(`[dsh-liangxiang] authority mode change failed: ${error instanceof Error ? error.message : String(error)}`)
         throw error
       })
   }
@@ -312,8 +310,8 @@ export function createLiveLiangxiangStore(
       .then((raw) => {
         if (!disposed) applyWire(raw)
       })
-      .catch((error: unknown) => {
-        console.warn(`[dsh-liangxiang] live refresh failed: ${error instanceof Error ? error.message : String(error)}`)
+      .catch(() => {
+        // Refresh is best-effort; the next cadence or reconnect recovers.
       })
       .finally(() => {
         refreshInFlight = false
@@ -366,7 +364,6 @@ export function createLiveLiangxiangStore(
           if (!disposed) applyWire(raw)
         })
         .catch((error: unknown) => {
-          console.warn(`[dsh-liangxiang] reconcile failed: ${error instanceof Error ? error.message : String(error)}`)
           throw error
         })
         .finally(() => {
@@ -381,9 +378,7 @@ export function createLiveLiangxiangStore(
         .then((raw) => {
           if (!disposed) applyWire(raw)
         })
-        .catch((error: unknown) => {
-          console.warn(`[dsh-liangxiang] local case cycle failed: ${error instanceof Error ? error.message : String(error)}`)
-        })
+        .catch(() => undefined)
     },
     getHistorySnapshot: () => historyState,
     subscribeHistory(listener) {

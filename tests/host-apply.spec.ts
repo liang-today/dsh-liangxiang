@@ -1,3 +1,6 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { DshHostContext } from '../src/compat/dsh/host-context.ts'
 import { apply, name } from '../src/host/index.ts'
@@ -37,13 +40,17 @@ describe('host half wiring', () => {
   })
 
   it('installs lifecycle + timers as effects and requests the DSH seams via inject', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-host-apply-'))
+    const logPath = join(dir, 'liangxiang.log')
     vi.stubEnv('LIANGXIANG_BACKEND_URL', 'local')
+    vi.stubEnv('LIANGXIANG_HOST_LOG', logPath)
     vi.useFakeTimers()
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
     const { ctx, disposers, injectedDeps } = fakeHostContext()
     apply(ctx)
 
-    expect(log).toHaveBeenCalledWith('[dsh-liangxiang] host half active')
+    expect(readFileSync(logPath, 'utf8')).toContain('[dsh-liangxiang] host half active')
+    expect(log).not.toHaveBeenCalled()
     // lifecycle marker + service lifecycle + readiness fallback + snapshot cadence.
     expect(disposers.length).toBe(4)
     expect(injectedDeps).toEqual([
@@ -53,10 +60,11 @@ describe('host half wiring', () => {
     ])
 
     for (const dispose of disposers) dispose()
-    expect(log).toHaveBeenCalledWith('[dsh-liangxiang] host half disposed')
+    expect(readFileSync(logPath, 'utf8')).toContain('[dsh-liangxiang] host half disposed')
     expect(vi.getTimerCount()).toBe(0)
     log.mockRestore()
     vi.unstubAllEnvs()
     vi.useRealTimers()
+    rmSync(dir, { recursive: true, force: true })
   })
 })
