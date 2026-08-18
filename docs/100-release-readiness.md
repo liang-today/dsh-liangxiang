@@ -41,9 +41,9 @@
 | 香港公网峰值（只读） | ✅ `/v1/health` 1,000 请求 / 1,000 并发新建 TLS 连接，0 失败；测试后 Caddy/Backend 无 warning、内存余量 14 GiB |
 
 npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`，且 registry
-拒绝删除首版 `latest` 标签；发布口径与安装文档仍统一要求显式使用 `@beta`。
-不得把这个 registry 默认标签解释为正式稳定版或 GitHub Release。当前源码修复版为
-`0.8.3-beta`；必须另行获得 npm 发布授权后才能更新 `beta`，不能覆盖不可变的 `0.8.0`。
+拒绝删除首版 `latest` 标签。`0.8.0` 不可覆盖。本版将 `0.8.3-beta` 发到 `beta`
+标签，并视需要把 `latest` 也指过来，安装文档仍写 `@beta`。不得把 registry
+默认标签解释为已核验的稳定公投。
 
 ## 发布验收
 

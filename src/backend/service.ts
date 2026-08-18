@@ -570,6 +570,31 @@ export class LiangxiangBackendService {
     }
   }
 
+  /**
+   * Operator wipe of 梁祠 history. Keeps today's case, identities, tickets,
+   * incense ledgers, and the unpublished queue. Open WebUI clients must restart
+   * to drop their last-known-good archive cache.
+   */
+  clearHistoryArchives(now = this.clock.now()): {
+    business_date: string
+    days: number
+    weeks: number
+    months: number
+    closed_cases: number
+  } {
+    const businessDate = this.businessDate(now)
+    return this.store.transaction(() => {
+      const cleared = this.store.clearHistoryArchives(businessDate)
+      return {
+        business_date: businessDate,
+        days: cleared.days,
+        weeks: cleared.weeks,
+        months: cleared.months,
+        closed_cases: cleared.closedCases,
+      }
+    })
+  }
+
   /** Initial full archive or immutable rows newer than one cursor. */
   historyResponse(afterVersion?: number, now = this.clock.now()): V1HistoryResponse {
     const activeCase = this.ensureActiveCase(now)

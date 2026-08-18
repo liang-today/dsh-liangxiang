@@ -1,7 +1,7 @@
 {
   "name": "dsh-liangxiang",
   "version": "0.8.3-beta",
-  "description": "梁相 — a DeepSeek Harness WebUI plugin (hover: 今日梁相). Installable dual-half bundle: host plugin row + web client bundle.",
+  "description": "用 DeepSeek Harness 凝聚香火，投下一炷夯或拉；众香汇成梁位，共同显出今日梁相。",
   "homepage": "https://liang.today/",
   "repository": {
     "type": "git",

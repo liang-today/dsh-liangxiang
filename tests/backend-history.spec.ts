@@ -119,4 +119,41 @@ describe('梁祠 backend archive', () => {
       f.close()
     }
   })
+
+  it('operator wipe removes 梁祠 history without touching today', () => {
+    const f = createBackendFixture()
+    try {
+      const installation = 'history-wipe-01'
+      f.service.ensureActiveCase()
+      f.grantIncense(installation, 1)
+      vote(f, installation, 'up', 'history-wipe-0001')
+
+      f.clock.advance(DAY_MS)
+      const today = f.service.ensureActiveCase()
+      expect(parseV1HistoryResponse(f.service.historyResponse()).days).toHaveLength(1)
+
+      const cleared = f.service.clearHistoryArchives()
+      expect(cleared).toMatchObject({
+        business_date: today.business_date,
+        days: 1,
+        weeks: 1,
+        months: 0,
+        closed_cases: 1,
+      })
+      const empty = parseV1HistoryResponse(f.service.historyResponse())
+      expect(empty.days).toEqual([])
+      expect(empty.weeks).toEqual([])
+      expect(empty.months).toEqual([])
+      expect(empty.archiveVersion).toBe(0)
+      expect(f.service.ensureActiveCase().id).toBe(today.id)
+
+      f.clock.advance(DAY_MS)
+      f.service.ensureActiveCase()
+      const after = parseV1HistoryResponse(f.service.historyResponse())
+      expect(after.days).toHaveLength(1)
+      expect(after.days[0]?.businessDate).toBe(today.business_date)
+    } finally {
+      f.close()
+    }
+  })
 })

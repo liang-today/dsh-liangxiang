@@ -166,4 +166,26 @@ describe('operator CLI', () => {
     expect(listLogs.join('\n')).not.toContain('"title": "待清除旧题是夯还是拉"')
     rmSync(dir, { recursive: true, force: true })
   })
+
+  it('refuses archive clear without --yes, then wipes history with it', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-archive-'))
+    const db = join(dir, 'liangxiang.sqlite')
+    const env = { LIANGXIANG_BACKEND_DB: db }
+    const refused: string[] = []
+    expect(runOperatorCli(
+      ['archive', 'clear'],
+      env,
+      { log: (line) => refused.push(line), error: (line) => refused.push(line) },
+    )).toBe(2)
+    expect(refused.join('\n')).toContain('--yes')
+
+    const logs: string[] = []
+    expect(runOperatorCli(
+      ['archive', 'clear', '--yes'],
+      env,
+      { log: (line) => logs.push(line), error: (line) => logs.push(line) },
+    )).toBe(0)
+    expect(logs.join('\n')).toContain('archive cleared')
+    rmSync(dir, { recursive: true, force: true })
+  })
 })

@@ -8,6 +8,8 @@
 - `update-plugin.sh` 在没有全局 `dsh` 时自动改用 `npx --yes @deepseek-ai/dsh`。
 - 本地 tarball 写成 `./dsh-liangxiang-<version>.tgz`。少写 `./` 时 pnpm 会去 npm 拉同名包并报 `ERR_PNPM_FETCH_404`。
 - 安装子命令是 `plugin add`，不是 `web add`。
+- npm 介绍与 [liang.today](https://liang.today/) 对齐：短描述改为官网导语，README 去掉现实人名，仓库地址为 `liang-today/dsh-liangxiang`。
+- 运维新增 `liang archive clear --yes`，用于正式发布前清空历史梁祠。
 
 ## 0.8.2-beta — 2026-08-18
 
