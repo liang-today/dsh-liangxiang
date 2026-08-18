@@ -255,6 +255,31 @@ export class LiangxiangBackendService {
     return this.store.pendingQueue()
   }
 
+  /** Atomically replace the entire pending schedule with a pre-validated dated plan. */
+  replaceQueue(
+    entries: Array<{ title: string, publishOn: string }>,
+    now = this.clock.now(),
+  ): { cleared: number, items: QueueRow[] } {
+    if (entries.length === 0) throw new WireError('queue', 'replacement schedule must not be empty')
+    const dates = new Set<string>()
+    const normalized = entries.map((entry, index) => {
+      const { title } = parseV1PublishCaseRequest({ title: entry.title })
+      if (!isBusinessDate(entry.publishOn)) {
+        throw new WireError(`queue[${index}].publish_on`, 'expected a real YYYY-MM-DD calendar date')
+      }
+      if (dates.has(entry.publishOn)) {
+        throw new WireError(`queue[${index}].publish_on`, `duplicate date ${entry.publishOn}`)
+      }
+      dates.add(entry.publishOn)
+      return { title, publishOn: entry.publishOn }
+    })
+    return this.store.transaction(() => {
+      const cleared = this.store.clearPendingQueue()
+      const items = normalized.map(entry => this.store.enqueueCase(entry.title, entry.publishOn, now))
+      return { cleared, items }
+    })
+  }
+
   /** Public first-install inventory. Secrets are short-lived and claim-limited. */
   admissionTickets(now = this.clock.now()): V1AdmissionTicketsResponse {
     this.store.expireAdmissionTickets(now)

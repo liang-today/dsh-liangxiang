@@ -84,6 +84,11 @@ MODE="$(json_field "$HEALTH" authority_mode)"
 [ "$MODE" = "DEV_STAGING_ONLY" ] || fail "unexpected authority mode: $MODE"
 echo "backend authority_mode=$MODE"
 
+echo "== issue isolated admission ticket =="
+LIANGXIANG_BACKEND_DB="$DB_FILE" \
+  node lib/backend-cli.js admission issue 1 --claims 1 --ttl-hours 1 >/dev/null
+echo "admission ticket ready"
+
 echo "== refuse VERIFIED_PRODUCTION =="
 if LIANGXIANG_AUTHORITY_MODE=VERIFIED_PRODUCTION LIANGXIANG_BACKEND_PORT=0 node lib/backend.js >/dev/null 2>&1; then
   fail "backend booted in VERIFIED_PRODUCTION (Decision Gate A3 must block it)"

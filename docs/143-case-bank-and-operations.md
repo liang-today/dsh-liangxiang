@@ -25,10 +25,15 @@ liang logs -f
 ```bash
 liang cases add --on 2026-08-19 "V4-Pro 写代码是夯还是拉"
 liang cases seed --start 2026-08-19 14
+liang cases replace --start 2026-08-19
 ```
 
 内置题库在 `scripts/case-bank.txt`。`seed` 会跳过已经排队的同名题目和已占用日期，
 再从下一个空闲业务日连续排期。正式使用应至少保持未来 10 道可见排期。
+
+`replace` 会先完整校验内置题库与日期，再在一个 SQLite 事务中删除全部未发布排期、
+按题库顺序连续重建；已发布/已消费的历史行不动。它适合运营者整体换题库，失败时不会
+留下只换了一半的队列。
 
 `liang cases publish "标题"` 会立即结掉今日当前梁案并清零新案票数，只用于临时换案，
 不是日常排期命令。
@@ -38,11 +43,12 @@ liang cases seed --start 2026-08-19 14
 ```bash
 liang config set snapshot-seconds 2
 liang config set vote-rate-limit 300
-liang config set-secret community-key
+# 仅紧急迁移兼容时：liang config set-secret community-key
 ```
 
 配置修改使用固定白名单并先校验输入；原文件备份到 `/var/backups/liangxiang/`。
 命令重启服务并检查本机健康接口，失败会自动恢复原配置。监听地址、数据库路径、
 `ALLOW_UNSIGNED` 与 authority mode 不允许从便捷命令修改，避免误开安全边界。
 
-社区口令只从交互输入读取，不接受命令行参数，防止进入 shell 历史或进程列表。
+正式生产保持社区口令未设置；该兼容命令只供受控紧急迁移。若临时使用，口令只从
+交互输入读取，不接受命令行参数，防止进入 shell 历史或进程列表。

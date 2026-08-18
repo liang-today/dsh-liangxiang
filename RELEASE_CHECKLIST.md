@@ -1,7 +1,7 @@
 # RELEASE_CHECKLIST
 
-本地 RC 与社区 soft-trust 部署共用。仍不 `npm publish`、不建 GitHub
-Release；社区后端更新只能使用 `scripts/deploy.sh`，并保持
+本地 RC 与社区 soft-trust 部署共用。`npm publish` 与 GitHub Release 只有在
+运营者明确下达发布指令后才执行；社区后端更新只能使用 `scripts/deploy.sh`，并保持
 `DEV_STAGING_ONLY` 诚实标注（[`docs/075`](docs/075-backend-decision.md)）。
 
 ## 1. 契约
@@ -46,5 +46,5 @@ Release；社区后端更新只能使用 `scripts/deploy.sh`，并保持
 
 - [ ] 提交（用户明确要求本仓每次改动都提交并推送到 GitHub；这与「不 publish/不 deploy」不冲突）
 - [ ] `scripts/deploy.sh` 部署并由 `scripts/deploy-check.sh` 确认 VERSION、服务名与当前提交一致
-- [ ] Mac 与树莓派先卸载旧 `dsh-liangxiang`，再安装 `dsh-liangxiang`；核对旧安装身份已迁移
+- [ ] 本机 MacBook 与至少一台独立客户端先卸载旧 `dsh-liangxiang`，再安装新包；核对更新路径保留身份，真正清空存储的重装走正式入梁券/rekey
 - [ ] 输出 Final Go/No-Go 与遗留限制

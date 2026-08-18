@@ -228,6 +228,8 @@ export interface BackendStore {
   lifetimeTotals: () => { incense: number, voters: number }
   enqueueCase: (title: string, publishOn: string | null, now: number) => QueueRow
   pendingQueue: () => QueueRow[]
+  /** Delete every not-yet-consumed queue row. Caller may wrap this in a transaction. */
+  clearPendingQueue: () => number
   /** First unused queue row for `today`, else the oldest undated FIFO row. */
   takeQueuedTitle: (today: string, now: number) => string | undefined
   close: () => void
@@ -428,6 +430,7 @@ export function openBackendStore(databasePath: string): BackendStore {
     `SELECT * FROM case_queue WHERE consumed_at IS NULL
       ORDER BY CASE WHEN publish_on IS NULL THEN 1 ELSE 0 END, publish_on, sort_order`,
   )
+  const deleteQueuePending = db.prepare('DELETE FROM case_queue WHERE consumed_at IS NULL')
   const selectQueueForDate = db.prepare(
     `SELECT * FROM case_queue
       WHERE consumed_at IS NULL AND publish_on IS NOT NULL AND publish_on <= ?
@@ -732,6 +735,7 @@ export function openBackendStore(databasePath: string): BackendStore {
       return row
     },
     pendingQueue: () => selectQueuePending.all() as unknown as QueueRow[],
+    clearPendingQueue: () => changed(deleteQueuePending.run()),
     takeQueuedTitle(today, now) {
       const dated = selectQueueForDate.get(today) as QueueRow | undefined
       const row = dated ?? selectQueueFifo.get() as QueueRow | undefined

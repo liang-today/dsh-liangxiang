@@ -60,21 +60,20 @@ ddbaf969f18c1288b6bfc49152ba1bb1b6a7f6cbf6d2c36166b17b0d38cd125b
 
 - `hk-api.liang.today` 与 `api.liang.today`：Let's Encrypt 证书、HTTP→HTTPS、
   健康检查、安全响应头、快照与历史冷通道通过。
-- 未签名 `GET /v1/bootstrap` 返回 401；Mac 与树莓派原有 Ed25519 身份均能
-  完成签名 bootstrap，数据库身份数没有增长。
-- Mac 与树莓派均卸载后重装 `dsh-liangxiang@0.6.0`；安装前后
-  `storages/liangxiang.json` 摘要一致，WebUI Host/Client 实际启动通过。
+- 未签名 `GET /v1/bootstrap` 返回 401；已登记客户端仍能完成签名 bootstrap；
+  清空存储后的独立 Mac mini 则通过公开入梁券完成正式首次登记。
+- 本机 MacBook 与独立 Mac mini 均完成 `dsh-liangxiang@0.8.0` 安装验证；
+  保留存储的更新路径维持 `storages/liangxiang.json`，全新身份走入梁券/rekey，
+  WebUI Host/Client 实际启动通过。
 - 代码库、分发目录和香港活动部署扫描不含旧品牌、旧 IP 或旧端口。
-- 桌面分发包 `dsh-liangxiang-0.6.0.tgz` 的 SHA-256：
-
-```text
-9b92d0bf38a576de2bbdbaa59030624e6721b288436060698b31bafa50af4400
-```
+- 当前桌面分发包为 `dsh-liangxiang-0.8.0.tgz`，SHA-256 为
+  `31a32f2d8a698aeb29c5750598a73e5014b0cf557b383386bc43457a4df0b031`；
+  不沿用迁移期旧包摘要。
 
 ## DNS 切换与回收
 
 `api.liang.today` 的权威 DNS、Cloudflare、Google 与现场路由器均已收敛到香港；
-正式 Let's Encrypt 证书 CN/SAN 正确，Mac 与树莓派通过正式域名读取到同一
+正式 Let's Encrypt 证书 CN/SAN 正确，本机与独立客户端通过正式域名读取到同一
 105 夯 / 18 拉快照和 78/11/2 梁祠档案。
 
 至少保留原节点转发一个完整 TTL 观察窗；确认没有旧流量后，再单独审批移除
@@ -83,7 +82,7 @@ ddbaf969f18c1288b6bfc49152ba1bb1b6a7f6cbf6d2c36166b17b0d38cd125b
 
 ## 后续准入升级（v0.8.0）
 
-共享社区口令已降为旧客户端兼容总闸。新安装走公开 `/v1/admission/tickets` 自动取券，
+共享社区口令已从生产配置删除。新安装走公开 `/v1/admission/tickets` 自动取券，
 再以自身 Ed25519 签名调用 `/v1/admission/claim` 原子认领；成功后不再需要口令。
 服务器用 `liang tickets status/list/issue/revoke` 查询库存、发行与作废入梁券。
 
@@ -92,4 +91,4 @@ ddbaf969f18c1288b6bfc49152ba1bb1b6a7f6cbf6d2c36166b17b0d38cd125b
 - 华为云 CBR 策略确实覆盖系统盘与数据盘，并检查首次备份成功，而不是只看
   “已启用”。
 - 配置费用/流量、磁盘、CPU、内存、5xx 与证书到期告警。
-- 确认每次活动前的入梁券库存与全局认领限流符合预期；共享口令待旧客户端退出后删除。
+- 确认每次活动前的入梁券库存与全局认领限流符合预期；生产共享口令保持未设置。

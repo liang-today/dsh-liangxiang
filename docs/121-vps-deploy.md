@@ -19,7 +19,7 @@
 | 每次安装生成 Ed25519 密钥对 | 后续请求仍是**同一把私钥**的持有者 | DSH 账号、真人、一人一票 |
 | 设备指纹 = 本机 MAC 集合的 SHA-256 | 同一台机器重装会撞指纹（提高成本） | 反女巫。MAC 可伪造，无 MAC 的 VM 跳过绑定 |
 | 一次性入梁券 | 将首次注册量限制在运营者发行的库存内 | 真人、一人一票；券与指纹都可被有意规避 |
-| `LIANGXIANG_COMMUNITY_KEY` | 旧客户端滚动兼容总闸 | 身份；0.8+ 正式客户端不需要它 |
+| `LIANGXIANG_COMMUNITY_KEY` | 代码层紧急迁移兼容；正式生产保持未设置 | 身份；0.8+ 正式客户端不需要它 |
 | 每分钟最多 50,000 声明 Token（= 1 炷） | 瞬间自报 `1e12` Token 攒不出香火 | DSH 真的跑过。慢速撒谎 Host 仍能按上限注水 |
 | 服务端时钟 + 启动时 NTP 告警 | 香火 drip / 签名时戳用 VPS 时钟 | Host 的 NTP 结果不授权任何东西 |
 
@@ -38,7 +38,7 @@ bash scripts/vps-install.sh
 脚本会：
 
 1. `pnpm install && pnpm run build`
-2. 保留/生成旧客户端兼容 `LIANGXIANG_COMMUNITY_KEY`（新客户端不分发）
+2. 正式生产保持 `LIANGXIANG_COMMUNITY_KEY` 未设置；首次登记只走入梁券
 3. 安装 systemd 单元 `liangxiang-backend`
 4. 打印 Caddy 片段
 
@@ -58,7 +58,6 @@ LIANGXIANG_BACKEND_DB=/var/lib/liangxiang/data/liangxiang.sqlite
 LIANGXIANG_BUSINESS_TZ=Asia/Shanghai
 LIANGXIANG_SNAPSHOT_SECONDS=1
 LIANGXIANG_TOKEN_PER_INCENSE=50000
-LIANGXIANG_COMMUNITY_KEY=<openssl rand -hex 32>
 LIANGXIANG_ADMISSION_CLAIM_RATE_LIMIT=120
 LIANGXIANG_ADMISSION_TICKET_TTL_HOURS=24
 LIANGXIANG_ADMISSION_TICKET_MAX_CLAIMS=1
