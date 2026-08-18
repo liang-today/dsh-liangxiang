@@ -17,7 +17,7 @@
   `/liangxiang/api`, `LIANGXIANG_*`, and `liangxiang-backend`. Do not add
   alternate brand namespaces to code, configuration, storage, routes, logs,
   deployments, tests, or documentation.
-- 梁文锋 is referred to as **梁子** in product UI/copy.
+- 产品 UI/copy 中，中央角色统一称为 **梁子**；不直接使用现实人物姓名。
 - DSH WebUI entry Hover / Focus text: **今日梁相**
 - The docked entry's icon IS the current central 梁子 state (one of the five, or
   the 待开梁 placeholder) — never a letter or an abstract logo.

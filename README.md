@@ -18,7 +18,7 @@
 
 每日结案后，今日结果收入梁祠成为日梁，并继续汇成周梁与月梁。三界香火、五行香客、梁相案牍与梁祠共同沿用“现代编年志 × 克制梁祠”的仪式化语言。
 
-> 非 DeepSeek 官方产品，与 DeepSeek 及梁文锋本人无官方关联。梁位是社区软信任玩法，不代表实名人数、真实民意或任何人的本人立场。
+> 梁相是独立社区项目，非 DeepSeek 官方产品。梁位是社区软信任玩法，不代表实名人数、真实民意或任何个人、机构立场。
 
 产品语义冻结于 [`AGENTS.md`](AGENTS.md) 与 [`docs/PRODUCT_FREEZE_V0.1.md`](docs/PRODUCT_FREEZE_V0.1.md);历史勘察文档中的旧模型(梁签、cache-read 10% 权重等)已废弃,见 [`docs/SEMANTIC_CORRECTION_R2.md`](docs/SEMANTIC_CORRECTION_R2.md)。
 
