@@ -63,7 +63,8 @@ DSH Host（每台香客的本机进程）  ──HTTP──>  社区后端
 
 所以社区产品 = **插件装到每人的 DSH** + **所有 Host 指向同一 `LIANGXIANG_BACKEND_URL`**。不需要浏览器 CORS，不需要 DSH 云账号。
 
-现成的第一台社区节点：局域网 Pi（`.env.example` 里已有 `bean@192.0.2.21`）。先局域网/Tailscale，再公网。
+早期局域网节点只作为路径验证；仓库不再保存个人登录名或内网地址。需要复现时，
+由运营者在未提交的 `.env` 中显式配置 `LIANGXIANG_STAGING_SSH` 与健康检查 URL。
 
 ---
 

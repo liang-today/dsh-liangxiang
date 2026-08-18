@@ -15,8 +15,8 @@
 # otherwise write the old ledger back).
 . "$(dirname "$0")/env.sh"
 
-PI_HOST="${LIANGXIANG_STAGING_SSH:-bean@192.0.2.21}"
-PI_DB='${HOME}/liangxiang-backend/data/liangxiang.sqlite'
+PI_HOST="${LIANGXIANG_STAGING_SSH:-}"
+PI_HEALTH_URL="${LIANGXIANG_STAGING_HEALTH_URL:-}"
 STORAGE="${DSH_HOME}/storages/liangxiang.json"
 LOCAL_BACKEND_DIR="${REPO_ROOT}/.liangxiang-backend"
 
@@ -57,6 +57,10 @@ PY
 }
 
 reset_pi() {
+  if [ -z "$PI_HOST" ] || [ -z "$PI_HEALTH_URL" ]; then
+    echo "ERROR: --pi requires LIANGXIANG_STAGING_SSH and LIANGXIANG_STAGING_HEALTH_URL" >&2
+    exit 2
+  fi
   echo "== reset Pi sqlite on $PI_HOST =="
   ssh -o BatchMode=yes -o ConnectTimeout=10 "$PI_HOST" "bash -s" <<'REMOTE'
 set -euo pipefail
@@ -68,7 +72,7 @@ systemctl --user start liangxiang-backend
 sleep 1
 systemctl --user is-active liangxiang-backend
 REMOTE
-  curl -fsS "http://192.0.2.21:4180/v1/health"
+  curl -fsS "$PI_HEALTH_URL"
   echo
 }
 
