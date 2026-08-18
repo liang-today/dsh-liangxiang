@@ -219,7 +219,7 @@ describe('online bootstrap', () => {
     expect(after.liangQiFill).toBeGreaterThan(before.liangQiFill)
   })
 
-  it('上达天听 drops inflated local observation so the panel follows the server ledger', async () => {
+  it('repair-only reconciliation drops inflated local observation so the panel follows the server ledger', async () => {
     const s = await startStack({}, { claimDebounceMs: 60_000 })
     observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     observePro(s.host, SESSION, usage(200_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
@@ -230,7 +230,7 @@ describe('online bootstrap', () => {
     expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(0)
   })
 
-  it('keeps painting new tokens after 上达天听 when the server claim is ahead', async () => {
+  it('keeps painting new tokens after repair reconciliation when the server claim is ahead', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
     observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
@@ -244,7 +244,7 @@ describe('online bootstrap', () => {
     expect(view.personal.remainingIncense).toBe(1)
   })
 
-  it('claims the local suffix on top of the server ledger after 上达天听', async () => {
+  it('claims the local suffix on top of the server ledger after repair reconciliation', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
     observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
@@ -258,7 +258,7 @@ describe('online bootstrap', () => {
     expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(2)
   })
 
-  it('can vote with incense earned after 上达天听 reset the local daily total', async () => {
+  it('can vote with incense earned after repair reconciliation reset the local daily total', async () => {
     const s = await startStack({}, { claimDebounceMs: 0 })
     observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
     observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
@@ -271,7 +271,7 @@ describe('online bootstrap', () => {
     observePro(s.host, SESSION, usage(50_000, 0, 0, 50_000), { kind: 'live', firstLiveSeq: 0 })
     await waitFor(
       () => s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens === 100_000,
-      'the new stick to land after 上达天听',
+      'the new stick to land after repair reconciliation',
     )
     const again = await s.host.vote({ caseId, voteType: 'down', requestId: 'req-e2e-spent02' })
     expect(again.result.status).toBe('accepted')

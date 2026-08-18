@@ -1,5 +1,5 @@
 /**
- * Compact 上达天听 mark: 南天门 + 祥云 + 一纸奏折上达.
+ * Compact repair mark: 南天门 + 祥云 + 一纸账册上达.
  * currentColor so hover/focus follow the control, readable at 14px.
  */
 import type { ReactElement } from 'react'

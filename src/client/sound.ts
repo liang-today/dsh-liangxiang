@@ -5,7 +5,7 @@
  * in localStorage; it scales the synthesized gain only — it never touches
  * system volume.
  */
-import type { LiangziState } from '../domain/index.ts'
+import type { LiangziState, VoteType } from '../domain/index.ts'
 import { LIANGZI_STATES } from '../domain/index.ts'
 export type SoundLevel = 0 | 1 | 2 | 3
 
@@ -101,11 +101,35 @@ export function playVoteDown(): void {
   tone(640, 320, 180, 'triangle', 0.09)
 }
 
-/** Empty incense pool: a short cartoon "wah-wah" instead of a silent click. */
-export function playNoIncense(): void {
-  tone(260, 185, 120, 'square', 0.055)
-  window.setTimeout(() => tone(175, 92, 230, 'sawtooth', 0.045), 95)
-  window.setTimeout(() => tone(110, 82, 160, 'triangle', 0.055), 250)
+export interface NoIncenseTone {
+  delayMs: number
+  freqStart: number
+  freqEnd: number
+  durationMs: number
+  type: OscillatorType
+  gain: number
+}
+
+/** Pure cue score so the two empty-pool directions stay testably distinct. */
+export function noIncenseCue(voteType: VoteType): readonly NoIncenseTone[] {
+  return voteType === 'up'
+    ? [
+        { delayMs: 0, freqStart: 310, freqEnd: 465, durationMs: 95, type: 'square', gain: 0.05 },
+        { delayMs: 76, freqStart: 430, freqEnd: 175, durationMs: 245, type: 'sawtooth', gain: 0.045 },
+      ]
+    : [
+        { delayMs: 0, freqStart: 245, freqEnd: 130, durationMs: 145, type: 'sawtooth', gain: 0.05 },
+        { delayMs: 118, freqStart: 118, freqEnd: 62, durationMs: 255, type: 'triangle', gain: 0.055 },
+      ]
+}
+
+/** Empty pool: 升梁 tries to rise then falls; 降梁 drops in two low steps. */
+export function playNoIncense(voteType: VoteType): void {
+  for (const cue of noIncenseCue(voteType)) {
+    const play = (): void => tone(cue.freqStart, cue.freqEnd, cue.durationMs, cue.type, cue.gain)
+    if (cue.delayMs === 0) play()
+    else window.setTimeout(play, cue.delayMs)
+  }
 }
 
 /** 香火增长 / 凝香: a soft two-note chime. */

@@ -14,13 +14,14 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
-import { HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, PLUGIN_PACKAGE_NAME, PLUGIN_VERSION, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { hasSeenWelcome, markWelcomeSeen, saveAuthorityPreference, WELCOME_TIMEOUT_SECONDS } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
   clampBadgePosition,
+  defaultBadgePosition,
   loadBadgePosition,
   loadPanelOpen,
   panelPlacementFor,
@@ -258,20 +259,23 @@ export function LiangxiangBadge(): ReactElement {
   const longPressTimer = useRef<number | null>(null)
   const revealTimer = useRef<number | null>(null)
   const longPressed = useRef(false)
+  const revealVersionTemporarily = useCallback(() => {
+    setVersionReveal(true)
+    if (revealTimer.current !== null) window.clearTimeout(revealTimer.current)
+    revealTimer.current = window.setTimeout(() => {
+      revealTimer.current = null
+      setVersionReveal(false)
+    }, 3000)
+  }, [])
   const beginSoundLongPress = useCallback(() => {
     longPressed.current = false
     if (longPressTimer.current !== null) window.clearTimeout(longPressTimer.current)
     longPressTimer.current = window.setTimeout(() => {
       longPressTimer.current = null
       longPressed.current = true
-      setVersionReveal(true)
-      if (revealTimer.current !== null) window.clearTimeout(revealTimer.current)
-      revealTimer.current = window.setTimeout(() => {
-        revealTimer.current = null
-        setVersionReveal(false)
-      }, 3000)
+      revealVersionTemporarily()
     }, 3000)
-  }, [])
+  }, [revealVersionTemporarily])
   const endSoundLongPress = useCallback(() => {
     if (longPressTimer.current !== null) {
       window.clearTimeout(longPressTimer.current)
@@ -449,6 +453,7 @@ export function LiangxiangBadge(): ReactElement {
 
   // Transient vote feedback (已上香).
   const [voteFeedback, setVoteFeedback] = useState('')
+  const [utilityOpen, setUtilityOpen] = useState(false)
   const [reconcilePending, setReconcilePending] = useState(false)
   useEffect(() => {
     if (voteFeedback === '') return undefined
@@ -456,7 +461,10 @@ export function LiangxiangBadge(): ReactElement {
     return () => window.clearTimeout(timer)
   }, [voteFeedback])
   useEffect(() => {
-    if (!open) setReconcilePending(false)
+    if (!open) {
+      setUtilityOpen(false)
+      setReconcilePending(false)
+    }
   }, [open])
 
   // The panel stays open until the × (onClose) or Escape (Panel onKeyDown).
@@ -499,8 +507,8 @@ export function LiangxiangBadge(): ReactElement {
     )
   }
 
-  const onInsufficientVote = (_voteType: VoteType): void => {
-    playNoIncense()
+  const onInsufficientVote = (voteType: VoteType): void => {
+    playNoIncense(voteType)
     setVoteFeedback(NO_INCENSE_GAG)
   }
 
@@ -513,9 +521,28 @@ export function LiangxiangBadge(): ReactElement {
   const onReconcileConfirm = (): void => {
     setReconcilePending(false)
     store.reconcile().then(
-      () => setVoteFeedback(RECONCILE_DONE),
-      () => setVoteFeedback('上达天听失败，请稍后重试'),
+      () => {
+        setUtilityOpen(false)
+        setVoteFeedback(RECONCILE_DONE)
+      },
+      () => setVoteFeedback('核对香火失败，请稍后重试'),
     )
+  }
+  const onOpenHomepage = (): void => {
+    setUtilityOpen(false)
+    window.open(HOMEPAGE_URL, '_blank', 'noopener,noreferrer')
+  }
+  const onResetPosition = (): void => {
+    const next = defaultBadgePosition(viewport)
+    saveBadgePosition(next, typeof localStorage === 'undefined' ? null : localStorage)
+    setUtilityOpen(false)
+    setPosition(next)
+    setVoteFeedback('今日梁相已归位')
+  }
+  const onShowVersion = (): void => {
+    setUtilityOpen(false)
+    revealVersionTemporarily()
+    setVoteFeedback(`${PLUGIN_PACKAGE_NAME} · v${PLUGIN_VERSION}`)
   }
 
   return (
@@ -587,10 +614,28 @@ export function LiangxiangBadge(): ReactElement {
             setOpen(false)
           }}
           reconcilePending={reconcilePending}
+          utilityOpen={utilityOpen}
+          onUtilityToggle={() => {
+            if (utilityOpen) {
+              setUtilityOpen(false)
+              setReconcilePending(false)
+            } else {
+              setUtilityOpen(true)
+            }
+          }}
+          onUtilityClose={() => {
+            setUtilityOpen(false)
+            setReconcilePending(false)
+          }}
+          onOpenHomepage={onOpenHomepage}
+          onResetPosition={onResetPosition}
+          onShowVersion={onShowVersion}
           onReconcileAsk={onReconcileAsk}
           onReconcileConfirm={onReconcileConfirm}
           onReconcileCancel={onReconcileCancel}
           onOpenLiangci={() => {
+            setUtilityOpen(false)
+            setReconcilePending(false)
             setLiangciOpen(true)
             void store.loadHistory()
           }}

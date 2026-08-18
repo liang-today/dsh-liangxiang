@@ -29,7 +29,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by the sound-icon long-press easter egg. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.7.0'
+export const PLUGIN_VERSION = '0.7.1'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
@@ -133,6 +133,7 @@ export const ABSURD_CLAIM_NOTICE = 'Token 上报超出合理上限，已限幅�
 
 /** First-run welcome: three plain-language lines (not just screen-reader copy). */
 export const WELCOME_TITLE = '欢迎来到梁相'
+export const WELCOME_TAGLINE = '梁相还得梁人出！'
 export const WELCOME_LINES = [
   '使用 DSH，输入 + 输出每 5 万当量凝成一炷香。',
   '花一炷选择「夯」或「拉」，共同显出今日梁相。',
@@ -144,14 +145,25 @@ export const WELCOME_LOCAL_LABEL = '自己玩（本地）'
 export const WELCOME_PRIVACY_NOTE = '在线模式不收集对话、代码、文件或账号。社区账本只用本机生成的随机安装 ID 区分不同香客，无法识别你是谁。'
 export const WELCOME_DISMISS = '知道了'
 
+/** Region 4 utility drawer. Routine data flow is automatic; this is not sync. */
+export const UTILITY_LABEL = '梁相案牍'
+export const UTILITY_HINT = '主页、核香、归位与版本'
+export const HOMEPAGE_URL = 'https://liang.today/'
+export const UTILITY_HOME_LABEL = '梁相主页'
+export const UTILITY_HOME_HINT = '打开 liang.today'
+export const UTILITY_RECONCILE_LABEL = '核对香火'
+export const UTILITY_RECONCILE_HINT = '仅在香火显示异常时使用'
+export const UTILITY_RESET_LABEL = '入口归位'
+export const UTILITY_RESET_HINT = '把今日梁相移回默认位置'
+export const UTILITY_VERSION_LABEL = '当前版本'
+
 /**
- * Quiet ritual control: drop locally inflated Token observation and re-read
- * the server incense ledger. Not a fifth region, not a third vote option.
+ * Repair-only action: discard unconfirmed local observation and re-read the
+ * server ledger. Normal claims, snapshots, reconnects and archive sync are
+ * automatic; never present this as a routine manual-sync button.
  */
-export const RECONCILE_LABEL = '上达天听'
-export const RECONCILE_HINT = '和天庭重新对账香火数据'
-export const RECONCILE_DONE = '已上达天听'
-export const RECONCILE_CONFIRM_PROMPT = '向服务器重新对账香火？'
+export const RECONCILE_DONE = '香火已按服务器账本核对'
+export const RECONCILE_CONFIRM_PROMPT = '仅在显示异常时核香：放弃本机尚未核对的今日观察，并重新读取服务器账本？'
 export const RECONCILE_CONFIRM_OK = '确认'
 export const RECONCILE_CONFIRM_CANCEL = '取消'
 

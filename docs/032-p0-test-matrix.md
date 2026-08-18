@@ -57,7 +57,7 @@ negative / NaN / Infinity / 非整数 / 溢出 / used>earned / 非法 voteType�
 
 ## UI 结构（Prompt 1 §B 验收）
 
-四区顺序 case/core/vote/social、仅两个投票按钮（夯 · 升梁/拉 · 降梁，等宽标齐）、dialog 标题今日梁案、梁位与梁祖同快照、环居中且两翼 overlay、零票 `--`+待开梁、remaining 0 双按钮 `aria-disabled` 且点击只走本地搞怪反馈、六态头像两两视觉不同、三界香火 / 五行香客 / 上达天听同行、case 区居中且无可见「本地演示」徽标。→ `client-panel.spec.tsx`、`badge.spec.tsx`
+四区顺序 case/core/vote/social、仅两个投票按钮（夯 · 升梁/拉 · 降梁，等宽标齐）、dialog 标题今日梁案、梁位与梁祖同快照、环居中且两翼 overlay、零票 `--`+待开梁、remaining 0 双按钮 `aria-disabled` 且夯/拉使用不同本地声效、六态头像两两视觉不同、三界香火 / 五行香客 / 梁相案牍同行、工具匣四项齐全、case 区居中且无可见「本地演示」徽标。→ `client-panel.spec.tsx`、`badge.spec.tsx`、`sound.spec.ts`
 
 ## 梁位显示：单值、带小数、不越阈值
 
