@@ -28,7 +28,7 @@ usage() {
   liang tickets list [数量]             查看当前可用入梁券（默认 100）
   liang tickets issue <数量> [参数]      生成入梁券；参数：--claims N --ttl-hours N
   liang tickets revoke <ticket_id>       作废一张尚未耗尽的入梁券
-  liang tickets replenish               把剩余认领次数补到库存目标（默认 1000）
+  liang tickets replenish               立刻把剩余认领补到库存目标（默认每天 0 点自动检查）
   liang tickets replace --yes [参数]     作废可用券并新发一批；参数：--count N --claims N --ttl-hours N
   liang archive clear --yes              清空历史梁祠（保留今日梁案、身份、入梁券）
 EOF
@@ -91,7 +91,7 @@ config_help() {
   admission-ticket-ttl-hours 1..8760，新券默认有效小时数；默认 24
   admission-ticket-max-claims 1..10000，新券默认可认领次数；默认 1
   admission-public-list-limit 1..1000，公开接口单次最多显示券数；默认 20
-  admission-inventory-target 0..100000，剩余认领低于此数时自动补齐；0 关闭；默认 1000
+  admission-inventory-target 0..100000，每个业务日 0 点把剩余认领补到此数；0 关闭；默认 1000
 
 示例：
   liang config set snapshot-seconds 2

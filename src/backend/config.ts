@@ -44,7 +44,7 @@ export const DEFAULT_ADMISSION_CLAIM_RATE_LIMIT = 120
 export const DEFAULT_ADMISSION_TICKET_TTL_HOURS = 24
 export const DEFAULT_ADMISSION_TICKET_MAX_CLAIMS = 1
 export const DEFAULT_ADMISSION_PUBLIC_LIST_LIMIT = 20
-/** Keep remaining claims at this floor; 0 disables automatic top-up. */
+/** Remaining-claim floor checked when a new business day opens; 0 disables. */
 export const DEFAULT_ADMISSION_INVENTORY_TARGET = 1000
 
 /**

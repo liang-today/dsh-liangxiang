@@ -204,7 +204,10 @@ describe('operator CLI', () => {
   it('resets today and replaces the admission inventory', () => {
     const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-reset-'))
     const db = join(dir, 'liangxiang.sqlite')
-    const env = { LIANGXIANG_BACKEND_DB: db }
+    const env = {
+      LIANGXIANG_BACKEND_DB: db,
+      LIANGXIANG_ADMISSION_INVENTORY_TARGET: '0',
+    }
     const logs: string[] = []
     const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
     expect(runOperatorCli(['status'], env, io)).toBe(0)

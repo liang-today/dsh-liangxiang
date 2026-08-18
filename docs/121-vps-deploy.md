@@ -98,7 +98,7 @@ export LIANGXIANG_BACKEND_URL=https://api.liang.today
 
 ## 5. 多服务器联调
 
-1. VPS 按上面跑起来。后端会把剩余认领自动补到 1000；也可运行 `liang tickets replenish`。
+1. VPS 按上面跑起来。每个业务日 0 点会把剩余认领补到 1000；也可运行 `liang tickets replenish`。
 2. 机器 A、机器 B 各自 DSH 只需使用同一 `LIANGXIANG_BACKEND_URL`；首次安装自动各认领一张券。
 3. 两边都应看到同一今日梁案、同一梁位。  
 4. 同一台物理机重装插件：设备指纹冲突 → `device_conflict`（409）。换网卡 / 虚拟机 / 伪造 MAC 可以绕过，这是已知上限。

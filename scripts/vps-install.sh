@@ -59,6 +59,6 @@ sleep 1
 curl -fsS http://127.0.0.1:4180/v1/health
 echo
 echo "backend is up. Next: point Caddy at 127.0.0.1:4180 (see deploy/Caddyfile)."
-echo "Admission inventory tops up to 1000 remaining claims automatically; liang tickets replenish to do it now."
+echo "Admission inventory tops up to 1000 remaining claims at each business-day open; liang tickets replenish to do it now."
 echo "Give each Host only LIANGXIANG_BACKEND_URL=https://<your-domain>; new installs auto-claim a ticket."
 echo "This is community soft trust, not verified usage voting."

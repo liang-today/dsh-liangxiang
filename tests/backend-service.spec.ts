@@ -523,13 +523,20 @@ describe('admission inventory top-up', () => {
     expect(f.service.admissionInventory().activeTickets).toBe(5)
   })
 
-  it('tops up from tick and the public ticket list', () => {
+  it('tops up when a new business day opens, not on later ticks or public lists', () => {
     const f = boot({ LIANGXIANG_ADMISSION_INVENTORY_TARGET: '4' })
     f.service.tick()
     expect(f.service.admissionInventory().remainingClaims).toBe(4)
-    const listed = f.service.admissionTickets()
-    expect(listed.available_claims).toBe(4)
-    expect(listed.tickets).toHaveLength(4)
+    const first = f.service.listAdmissionTickets(4)
+    expect(first).toHaveLength(4)
+    f.service.revokeAdmissionTicket(first[0]!.ticket_id)
+    f.service.revokeAdmissionTicket(first[1]!.ticket_id)
+    expect(f.service.admissionInventory().remainingClaims).toBe(2)
+    f.service.tick()
+    expect(f.service.admissionTickets().available_claims).toBe(2)
+    f.clock.advance(DAY_MS)
+    f.service.tick()
+    expect(f.service.admissionInventory().remainingClaims).toBe(4)
   })
 
   it('does nothing when the target is disabled', () => {
