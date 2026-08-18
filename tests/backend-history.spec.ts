@@ -156,4 +156,32 @@ describe('梁祠 backend archive', () => {
       f.close()
     }
   })
+
+  it('operator reset returns today to 待开梁 without opening a second case', () => {
+    const f = createBackendFixture()
+    try {
+      const installation = 'history-reset-01'
+      const today = f.service.ensureActiveCase()
+      f.grantIncense(installation, 2)
+      vote(f, installation, 'up', 'history-reset-0001')
+      vote(f, installation, 'down', 'history-reset-0002')
+      expect(f.service.snapshotResponse().global_snapshot.total_incense).toBe(2)
+
+      const reset = f.service.resetTodayCase()
+      expect(reset.case_id).toBe(today.id)
+      expect(reset.votes).toBe(2)
+      const snapshot = f.service.snapshotResponse().global_snapshot
+      expect(snapshot).toMatchObject({
+        case_id: today.id,
+        up_votes: 0,
+        down_votes: 0,
+        unique_voters: 0,
+        total_incense: 0,
+        liangzi_state: 'waiting',
+      })
+      expect(f.service.ensureActiveCase().id).toBe(today.id)
+    } finally {
+      f.close()
+    }
+  })
 })

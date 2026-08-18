@@ -215,6 +215,18 @@ export interface BackendStore {
     months: number
     closedCases: number
   }
+  /**
+   * Zero today's case back to 待开梁. Caller must own a transaction.
+   * Identities, claimed tokens, tickets, and 梁祠 archives stay.
+   */
+  resetBusinessDate: (businessDate: string, now: number) => {
+    votes: number
+    closedCases: number
+    incenseRows: number
+    activeCaseId: string | undefined
+  }
+  /** Revoke every still-active ticket. Caller may wrap this in a transaction. */
+  revokeActiveAdmissionTickets: () => number
   identityByInstallation: (installationId: string) => CommunityIdentityRow | undefined
   identityByPublicKey: (publicKey: string) => CommunityIdentityRow | undefined
   identityByFingerprint: (fingerprint: string) => CommunityIdentityRow | undefined
@@ -437,6 +449,21 @@ export function openBackendStore(databasePath: string): BackendStore {
   const deleteMonthArchives = db.prepare('DELETE FROM liang_month_archive')
   const resetArchiveVersion = db.prepare(
     'UPDATE liang_archive_meta SET archive_version = 0 WHERE singleton = 1',
+  )
+  const deleteVotesForDate = db.prepare(
+    'DELETE FROM liang_vote WHERE business_date = ?',
+  )
+  const deleteSnapshotsForDate = db.prepare(
+    'DELETE FROM public_liang_snapshot WHERE business_date = ?',
+  )
+  const deleteStatsForDate = db.prepare(
+    'DELETE FROM daily_liang_stats WHERE business_date = ?',
+  )
+  const deleteClosedCasesForDate = db.prepare(
+    `DELETE FROM daily_liang_case WHERE business_date = ? AND status = 'closed'`,
+  )
+  const revokeActiveAdmissionTicketsStmt = db.prepare(
+    `UPDATE admission_ticket SET status = 'revoked' WHERE status = 'active'`,
   )
   const selectLatestBefore = db.prepare(
     `SELECT * FROM daily_liang_case
@@ -703,6 +730,28 @@ export function openBackendStore(databasePath: string): BackendStore {
       resetArchiveVersion.run()
       return { days, weeks, months, closedCases }
     },
+    resetBusinessDate(businessDate, now) {
+      const votes = changed(deleteVotesForDate.run(businessDate))
+      deleteSnapshotsForDate.run(businessDate)
+      deleteStatsForDate.run(businessDate)
+      const closedCases = changed(deleteClosedCasesForDate.run(businessDate))
+      const incenseRows = this.resetUsedIncenseForDate(businessDate, now)
+      const active = this.activeCaseFor(businessDate)
+      if (active !== undefined) {
+        insertStats.run(active.id, businessDate, now)
+        insertSnapshotStmt.run(
+          active.id,
+          1,
+          businessDate,
+          0,
+          0,
+          0,
+          active.liangzi_policy_version,
+          now,
+        )
+      }
+      return { votes, closedCases, incenseRows, activeCaseId: active?.id }
+    },
     identityByInstallation: (installationId) =>
       selectIdentity.get(installationId) as CommunityIdentityRow | undefined,
     identityByPublicKey: (publicKey) =>
@@ -739,6 +788,7 @@ export function openBackendStore(databasePath: string): BackendStore {
       changed(consumeAdmissionTicketStmt.run(now, secret, now)) > 0,
     expireAdmissionTickets: (now) => changed(expireAdmissionTicketsStmt.run(now)),
     revokeAdmissionTicket: (ticketId) => changed(revokeAdmissionTicketStmt.run(ticketId)) > 0,
+    revokeActiveAdmissionTickets: () => changed(revokeActiveAdmissionTicketsStmt.run()),
     admissionInventory(now) {
       const row = selectAdmissionInventory.get(now, now, now) as {
         active_tickets: number | bigint

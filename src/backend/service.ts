@@ -361,32 +361,7 @@ export class LiangxiangBackendService {
     ttlHours = this.config.admissionTicketTtlHours,
     now = this.clock.now(),
   ): AdmissionTicketRow[] {
-    if (!Number.isSafeInteger(count) || count < 1 || count > 100_000) {
-      throw new WireError('count', 'expected an integer in [1,100000]')
-    }
-    if (!Number.isSafeInteger(maxClaims) || maxClaims < 1 || maxClaims > 10_000) {
-      throw new WireError('max_claims', 'expected an integer in [1,10000]')
-    }
-    if (!Number.isSafeInteger(ttlHours) || ttlHours < 1 || ttlHours > 24 * 365) {
-      throw new WireError('ttl_hours', 'expected an integer in [1,8760]')
-    }
-    const expiresAt = now + ttlHours * 60 * 60 * 1000
-    return this.store.transaction(() => Array.from({ length: count }, () => {
-      const idPart = randomBytes(8).toString('hex')
-      const secretPart = randomBytes(12).toString('base64url')
-      const row: AdmissionTicketRow = {
-        ticket_id: `ticket_${idPart}`,
-        secret: `LX-${secretPart}`,
-        max_claims: maxClaims,
-        claimed_count: 0,
-        status: 'active',
-        created_at: now,
-        expires_at: expiresAt,
-        last_claimed_at: null,
-      }
-      this.store.insertAdmissionTicket(row)
-      return row
-    }))
+    return this.store.transaction(() => this.mintAdmissionTickets(count, maxClaims, ttlHours, now))
   }
 
   admissionInventory(now = this.clock.now()): AdmissionInventory {
@@ -568,6 +543,104 @@ export class LiangxiangBackendService {
       active_case: toV1Case(caseRow),
       global_snapshot: this.publishedSnapshot(caseRow, now),
     }
+  }
+
+  /**
+   * Operator wipe of today's votes so the live case returns to 待开梁.
+   * Claimed tokens, identities, tickets, and 梁祠 archives stay.
+   */
+  resetTodayCase(now = this.clock.now()): {
+    business_date: string
+    case_id: string | null
+    title: string | null
+    votes: number
+    closed_cases: number
+    incense_rows: number
+    global_snapshot: V1Snapshot
+  } {
+    const businessDate = this.businessDate(now)
+    return this.store.transaction(() => {
+      const active = this.store.activeCaseFor(businessDate)
+      if (active === undefined) {
+        throw new WireError('case', `no active case on ${businessDate}`)
+      }
+      const cleared = this.store.resetBusinessDate(businessDate, now)
+      const after = this.store.activeCaseFor(businessDate) ?? active
+      return {
+        business_date: businessDate,
+        case_id: cleared.activeCaseId ?? after.id,
+        title: after.title,
+        votes: cleared.votes,
+        closed_cases: cleared.closedCases,
+        incense_rows: cleared.incenseRows,
+        global_snapshot: this.publishedSnapshot(after, now, { publish: false }),
+      }
+    })
+  }
+
+  /**
+   * Revoke every active ticket, then issue a fresh gray-release inventory.
+   */
+  replaceAdmissionTickets(
+    count: number,
+    maxClaims = 1,
+    ttlHours = this.config.admissionTicketTtlHours,
+    now = this.clock.now(),
+  ): {
+    revoked: number
+    issued: number
+    max_claims: number
+    ttl_hours: number
+    expires_at: number | null
+    inventory: ReturnType<LiangxiangBackendService['admissionInventory']>
+  } {
+    return this.store.transaction(() => {
+      this.store.expireAdmissionTickets(now)
+      const revoked = this.store.revokeActiveAdmissionTickets()
+      const tickets = this.mintAdmissionTickets(count, maxClaims, ttlHours, now)
+      return {
+        revoked,
+        issued: tickets.length,
+        max_claims: maxClaims,
+        ttl_hours: ttlHours,
+        expires_at: tickets[0]?.expires_at ?? null,
+        inventory: this.store.admissionInventory(now),
+      }
+    })
+  }
+
+  private mintAdmissionTickets(
+    count: number,
+    maxClaims: number,
+    ttlHours: number,
+    now: number,
+  ): AdmissionTicketRow[] {
+    if (!Number.isSafeInteger(count) || count < 1 || count > 100_000) {
+      throw new WireError('count', 'expected an integer in [1,100000]')
+    }
+    if (!Number.isSafeInteger(maxClaims) || maxClaims < 1 || maxClaims > 10_000) {
+      throw new WireError('max_claims', 'expected an integer in [1,10000]')
+    }
+    if (!Number.isSafeInteger(ttlHours) || ttlHours < 1 || ttlHours > 24 * 365) {
+      throw new WireError('ttl_hours', 'expected an integer in [1,8760]')
+    }
+    const expiresAt = now + ttlHours * 60 * 60 * 1000
+    return Array.from({ length: count }, () => {
+      const idPart = randomBytes(8).toString('hex')
+      const secretPart = randomBytes(12).toString('base64url')
+      const row: AdmissionTicketRow = {
+        ticket_id: `ticket_${idPart}`,
+        secret: `LX-${secretPart}`,
+        max_claims: maxClaims,
+        claimed_count: 0,
+        status: 'active',
+        created_at: now,
+        expires_at: expiresAt,
+        last_claimed_at: null,
+      }
+      this.store.insertAdmissionTicket(row)
+      return row
+    })
   }
 
   /**
