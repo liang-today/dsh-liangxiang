@@ -27,7 +27,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 当前 npm 包是 `dsh-liangxiang@0.8.3-beta`。请写 `@beta`；不要写 `@0.8.0`。
+> 当前 npm 包是 `dsh-liangxiang@0.8.4-beta`。请写 `@beta`；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 
@@ -36,7 +36,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.4-beta.tgz
 ```
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`

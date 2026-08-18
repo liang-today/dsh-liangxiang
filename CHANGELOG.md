@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.4-beta — 2026-08-18
+
+- npm / GitHub 首页 README 改成给安装者看的短说明：是 WebUI 插件、不要 `npm i`、一条 `dsh plugin add`。实现细节留在 `docs/`。
+
 ## 0.8.3-beta — 2026-08-18
 
 ### 版本号、npx 安装与本地包路径
