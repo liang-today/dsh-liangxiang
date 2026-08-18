@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.3-beta — 2026-08-18
+
+### 版本号、npx 安装与本地包路径
+
+- 用户可见改动必须同时升高 `package.json` 与界面 `PLUGIN_VERSION`；本轮升为 `0.8.3-beta`，不再把新行为留在旧号上。
+- `update-plugin.sh` 在没有全局 `dsh` 时自动改用 `npx --yes @deepseek-ai/dsh`。
+- 本地 tarball 必须写成 `./dsh-liangxiang-<version>.tgz`（或绝对路径）。漏掉 `./` 时 pnpm 会去 npm 拉同名包并报 `ERR_PNPM_FETCH_404`。
+- 安装子命令是 `plugin add`，不是 `web add`。
+
 ## 0.8.2-beta — 2026-08-18
 
 ### 独立离线玩法与手动模式配置

@@ -969,6 +969,14 @@ For substantial work:
 7. fix failures before considering the phase complete
 8. update docs when contracts/integration seams change
 
+### Version (HARD RULE — 用户可见改动必须升版本)
+
+Every user-visible product change (UI, Host/Client behavior, install/upgrade
+flow, or community backend contract) must bump `package.json` `version` and
+`PLUGIN_VERSION` in the same change. Never ship new behavior under an old
+version number. Keep both strings identical; `tests/manifest.spec.ts` guards
+this. Historical changelog entries stay frozen.
+
 ### Git (HARD RULE — 每次修复都必须 commit + push)
 
 After every completed change in this repository, **before considering the

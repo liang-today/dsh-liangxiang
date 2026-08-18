@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Install/upgrade a Liangxiang tarball without deleting the DSH storage domain.
+# Works with a global `dsh` or with `npx @deepseek-ai/dsh` (no global CLI).
 set -euo pipefail
 
 TARBALL=""
 PROFILE="${LIANGXIANG_PROFILE:-default}"
-DSH_BIN="${LIANGXIANG_DSH_BIN:-dsh}"
+DSH_BIN="${LIANGXIANG_DSH_BIN:-}"
+DSH_CMD=()
 
 usage() {
-  echo "usage: $0 <dsh-liangxiang-*.tgz> [--profile NAME] [--dsh /path/to/dsh]" >&2
+  echo "usage: $0 <dsh-liangxiang-*.tgz> [--profile NAME] [--dsh dsh|npx|/path/to/dsh]" >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -23,9 +25,38 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$TARBALL" && -f "$TARBALL" ]] || { usage; exit 2; }
-command -v "$DSH_BIN" >/dev/null 2>&1 || { echo "DSH command not found: $DSH_BIN" >&2; exit 1; }
-command -v node >/dev/null 2>&1 || { echo "Node.js command not found" >&2; exit 1; }
-command -v tar >/dev/null 2>&1 || { echo "tar command not found" >&2; exit 1; }
+command -v node >/dev/null 2>&1 || { echo "找不到 Node.js；请先安装 Node 22.19+。" >&2; exit 1; }
+command -v tar >/dev/null 2>&1 || { echo "找不到 tar。" >&2; exit 1; }
+
+resolve_dsh() {
+  local requested="${DSH_BIN}"
+  if [[ "$requested" == "npx" ]]; then
+    command -v npx >/dev/null 2>&1 || { echo "找不到 npx。" >&2; exit 1; }
+    DSH_CMD=(npx --yes @deepseek-ai/dsh)
+    return
+  fi
+  if [[ -n "$requested" ]]; then
+    if [[ -x "$requested" ]] || command -v "$requested" >/dev/null 2>&1; then
+      DSH_CMD=("$requested")
+      return
+    fi
+    echo "找不到指定的 DSH 命令：$requested" >&2
+    exit 1
+  fi
+  if command -v dsh >/dev/null 2>&1; then
+    DSH_CMD=(dsh)
+    return
+  fi
+  if command -v npx >/dev/null 2>&1; then
+    echo "未找到全局 dsh，改用 npx --yes @deepseek-ai/dsh"
+    DSH_CMD=(npx --yes @deepseek-ai/dsh)
+    return
+  fi
+  echo "找不到 dsh。请先 npm i -g @deepseek-ai/dsh，或保证本机有 npx。" >&2
+  exit 1
+}
+
+resolve_dsh
 
 TARBALL="$(cd "$(dirname "$TARBALL")" && pwd)/$(basename "$TARBALL")"
 EXPECTED_VERSION="$(tar -xOf "$TARBALL" package/package.json | node -e '
@@ -35,6 +66,7 @@ EXPECTED_VERSION="$(tar -xOf "$TARBALL" package/package.json | node -e '
 ')" || { echo "不是有效的 dsh-liangxiang 分发包：$TARBALL" >&2; exit 2; }
 if [[ -z "${DSH_HOME:-}" ]]; then
   echo "DSH_HOME 未设置；请先指向正在使用的 DSH 数据目录，避免更新错误的 profile。" >&2
+  echo "常见日常目录：export DSH_HOME=\"\$HOME/.dsh\"" >&2
   exit 2
 fi
 
@@ -72,7 +104,7 @@ if [[ "$STORAGE_FOUND" -eq 0 ]]; then
   echo "未发现既有存储；本次将作为新安装。"
 fi
 
-echo "正在更新 profile '$PROFILE' ..."
+echo "正在更新 profile '$PROFILE'（DSH_HOME=$DSH_HOME，命令：${DSH_CMD[*]}）..."
 # pnpm keys local tarballs by dependency path as well as package version. A
 # rebuilt package at the same path/version may otherwise be reported as "Already up to
 # date" while stale bytes remain installed. Cache by content hash so every
@@ -85,7 +117,7 @@ TARBALL_SHA="$(node -e '
 mkdir -p "$PACKAGE_CACHE"
 CACHED_TARBALL="$PACKAGE_CACHE/dsh-liangxiang-${EXPECTED_VERSION}-${TARBALL_SHA:0:16}.tgz"
 install -m 0600 "$TARBALL" "$CACHED_TARBALL"
-"$DSH_BIN" plugin --profile "$PROFILE" add "$CACHED_TARBALL"
+"${DSH_CMD[@]}" plugin --profile "$PROFILE" add "$CACHED_TARBALL"
 INSTALLED_VERSION="$(node -e '
   const manifest = require(process.argv[1])
   if (manifest.name !== "dsh-liangxiang" || typeof manifest.version !== "string") process.exit(2)
