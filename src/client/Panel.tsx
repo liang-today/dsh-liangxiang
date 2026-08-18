@@ -32,7 +32,6 @@ import {
   OFFLINE_REASON,
   PANEL_TITLE,
   PANEL_TITLE_LOCAL,
-  PLUGIN_PACKAGE_NAME,
   PLUGIN_VERSION,
   CYCLE_LOCAL_CASE_LABEL,
   STAT_LIFETIME_LABEL,
@@ -94,8 +93,6 @@ export interface PanelProps {
   onVersionInfoClose: () => void
   /** First-run welcome overlay visibility. */
   welcomeVisible: boolean
-  /** Seconds remaining before the welcome auto-enters online. */
-  welcomeSeconds: number
   onChooseOnline: () => void
   /** First-run: switch this Host to the in-process local loop. */
   onChooseLocal: () => void
@@ -570,7 +567,7 @@ function SocialStatHint(props: {
 export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionInfoOpen, onVersionInfoClose,
-    welcomeVisible, welcomeSeconds, onChooseOnline, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
+    welcomeVisible, onChooseOnline, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
     onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
     modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
@@ -737,7 +734,7 @@ export function Panel(props: PanelProps): ReactElement {
                 cursor: 'pointer',
               }}
             >
-              {WELCOME_ONLINE_LABEL}（{welcomeSeconds}）
+              {WELCOME_ONLINE_LABEL}
             </button>
             <button
               type="button"
@@ -797,9 +794,7 @@ export function Panel(props: PanelProps): ReactElement {
           >
             <VersionSealIcon size={28} />
             <strong style={{ display: 'block', marginTop: '6px', color: color.textPrimary, fontSize: '15px', letterSpacing: '1px' }}>梁相</strong>
-            <span style={{ display: 'block', marginTop: '5px', color: color.textSecondary, fontSize: '11px' }}>{PLUGIN_PACKAGE_NAME}</span>
             <span data-liangxiang-version-value="" style={{ display: 'block', marginTop: '3px', color: color.ritualEmber, fontSize: '14px', fontWeight: 700 }}>v{PLUGIN_VERSION}</span>
-            <span style={{ display: 'block', marginTop: '3px', color: color.textTertiary, fontSize: '9px' }}>当前安装版本</span>
             <button
               type="button"
               autoFocus
@@ -1208,11 +1203,11 @@ export function Panel(props: PanelProps): ReactElement {
                   <button
                     type="button"
                     data-liangxiang-utility-action="version"
+                    aria-label={`${UTILITY_VERSION_LABEL} v${PLUGIN_VERSION}`}
                     onClick={onShowVersion}
                   >
                     <VersionSealIcon />
-                    <strong style={{ fontSize: '11px' }}>{UTILITY_VERSION_LABEL}</strong>
-                    <span style={{ fontSize: '9px', color: color.textTertiary }}>{PLUGIN_PACKAGE_NAME} · v{PLUGIN_VERSION}</span>
+                    <strong style={{ fontSize: '11px' }}>v{PLUGIN_VERSION}</strong>
                   </button>
                 </div>
                 {reconcilePending && (

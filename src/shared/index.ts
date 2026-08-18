@@ -146,6 +146,7 @@ export const WELCOME_LINES = [
 ]
 export const WELCOME_ONLINE_LABEL = '进入在线'
 export const WELCOME_LOCAL_LABEL = '离线模式'
+export const VOTE_RATE_LIMITED = '打梁过快，每分钟最多 50 炷'
 export const WELCOME_PRIVACY_NOTE = '在线模式不收集对话、代码、文件或账号。社区账本只用本机生成的随机安装 ID 区分不同香客，无法识别你是谁。'
 export const WELCOME_DISMISS = '知道了'
 

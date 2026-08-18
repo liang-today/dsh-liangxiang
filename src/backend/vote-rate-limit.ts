@@ -1,5 +1,7 @@
 /** Hard-bounded in-memory limiter for vote attempts. */
 export const VOTE_RATE_WINDOW_MS = 60_000
+/** Per-installation incense submissions (votes) allowed in one minute. */
+export const DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE = 50
 export const DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS = 4_096
 
 export type VoteRateLimitReason = 'per_installation' | 'active_key_capacity'

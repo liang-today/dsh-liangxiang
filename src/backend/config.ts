@@ -11,7 +11,7 @@ import { AUTHORITY_MODES, type BackendAuthorityMode } from '../shared/backend-v1
 import { DEFAULT_BUSINESS_TIMEZONE } from '../shared/business-date.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
 import { readLiangxiangEnv } from '../shared/env.ts'
-import { DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS } from './vote-rate-limit.ts'
+import { DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS, DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE } from './vote-rate-limit.ts'
 
 export const DEFAULT_BACKEND_PORT = 4180
 export const DEFAULT_BACKEND_HOST = '127.0.0.1'
@@ -166,7 +166,7 @@ export function resolveBackendConfig(
     caseTitle: trimmed(readLiangxiangEnv(env, 'CASE_TITLE'), DEFAULT_CASE_TITLE),
     voteRateLimitPerMinute: parseInt_(
       readLiangxiangEnv(env, 'VOTE_RATE_LIMIT'),
-      600,
+      DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE,
       'LIANGXIANG_VOTE_RATE_LIMIT',
       warn,
       { min: 0 },

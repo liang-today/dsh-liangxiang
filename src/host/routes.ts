@@ -16,7 +16,7 @@
  * plugin dispose so unload leaves no open responses or timers).
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE } from '../shared/index.ts'
+import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE, VOTE_RATE_LIMITED } from '../shared/index.ts'
 import { parseWireVoteRequest, type HostAuthorityPreference } from '../shared/wire.ts'
 import { BackendClientError } from './backend-client.ts'
 import { parseDevCreditBody, resolveDevCreditTokens } from './dev-credit.ts'
@@ -156,7 +156,7 @@ export function createLiangxiangApi(
         writeJson(res, 429, {
           error: {
             code: error.code ?? 'vote_rate_limited',
-            message: '打梁过快，请稍后再试',
+            message: VOTE_RATE_LIMITED,
           },
         })
         return

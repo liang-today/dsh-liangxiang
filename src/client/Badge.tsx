@@ -14,10 +14,10 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
-import { HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_RATE_LIMITED, VOTE_UP_NAME } from '../shared/index.ts'
 import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
-import { hasSeenWelcome, markWelcomeSeen, WELCOME_TIMEOUT_SECONDS } from './welcome.ts'
+import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
@@ -31,7 +31,7 @@ import {
 } from './badge-position.ts'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangciModal } from './LiangciModal.tsx'
-import { createLiveLiangxiangStore } from './live-store.ts'
+import { createLiveLiangxiangStore, LiveTransportError } from './live-store.ts'
 import { Panel } from './Panel.tsx'
 import { color, font } from './theme.ts'
 import { useThrottleFill } from './use-throttle-fill.ts'
@@ -267,7 +267,6 @@ export function LiangxiangBadge(): ReactElement {
     setSoundLevel(next)
     playVolumePreview()
   }, [])
-  const [welcomeSeconds, setWelcomeSeconds] = useState(WELCOME_TIMEOUT_SECONDS)
   const [liangciOpen, setLiangciOpen] = useState(false)
   const closeLiangci = useCallback(() => setLiangciOpen(false), [])
   const selectWelcomeMode = useCallback((preference: HostAuthorityPreference) => {
@@ -283,21 +282,6 @@ export function LiangxiangBadge(): ReactElement {
   }, [store])
   const onChooseOnline = useCallback(() => selectWelcomeMode('online'), [selectWelcomeMode])
   const onChooseLocal = useCallback(() => selectWelcomeMode('local'), [selectWelcomeMode])
-  useEffect(() => {
-    if (!welcomeVisible) return undefined
-    setWelcomeSeconds(WELCOME_TIMEOUT_SECONDS)
-    const startedAt = Date.now()
-    const timer = window.setInterval(() => {
-      const left = WELCOME_TIMEOUT_SECONDS - Math.floor((Date.now() - startedAt) / 1000)
-      if (left <= 0) {
-        window.clearInterval(timer)
-        onChooseOnline()
-        return
-      }
-      setWelcomeSeconds(left)
-    }, 250)
-    return () => window.clearInterval(timer)
-  }, [welcomeVisible, onChooseOnline])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -483,7 +467,9 @@ export function LiangxiangBadge(): ReactElement {
       },
       (error: unknown) => {
         console.warn(`[dsh-liangxiang] 打梁失败: ${error instanceof Error ? error.message : String(error)}`)
-        setVoteFeedback('打梁失败，请稍后重试')
+        setVoteFeedback(error instanceof LiveTransportError && error.status === 429
+          ? VOTE_RATE_LIMITED
+          : '打梁失败，请稍后重试')
       },
     )
   }
@@ -603,7 +589,6 @@ export function LiangxiangBadge(): ReactElement {
           versionInfoOpen={versionInfoOpen}
           onVersionInfoClose={() => setVersionInfoOpen(false)}
           welcomeVisible={welcomeVisible}
-          welcomeSeconds={welcomeSeconds}
           onChooseOnline={onChooseOnline}
           onChooseLocal={onChooseLocal}
           avatarPulse={avatarPulse}

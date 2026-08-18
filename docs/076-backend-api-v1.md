@@ -179,5 +179,5 @@ node lib/backend-cli.js case publish "测试发布：梁相是夯还是拉"
 
 ## 限流
 
-`POST /v1/votes` 按 installation 每分钟 `LIANGXIANG_VOTE_RATE_LIMIT` 次（默认 600，0 关闭），超出 429。
+`POST /v1/votes` 按 installation 每分钟 `LIANGXIANG_VOTE_RATE_LIMIT` 次（默认 50，0 关闭），超出 429。
 这是防误用/防抖，不是安全边界——没有 DSH 身份，限流可以被换密钥对绕过（设备指纹只挡住同一 MAC 集合上的第二次安装）。

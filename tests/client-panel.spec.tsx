@@ -62,7 +62,6 @@ function renderPanel(
     versionInfoOpen?: boolean
     onInsufficientVote?: (voteType: 'up' | 'down') => void
     welcomeVisible?: boolean
-    welcomeSeconds?: number
     condensedIncense?: number
     utilityOpen?: boolean
     modeConfirmOpen?: boolean
@@ -78,7 +77,6 @@ function renderPanel(
       versionInfoOpen={extra.versionInfoOpen ?? false}
       onVersionInfoClose={() => undefined}
       welcomeVisible={extra.welcomeVisible ?? false}
-      welcomeSeconds={extra.welcomeSeconds ?? 10}
       onChooseOnline={() => undefined}
       onChooseLocal={() => undefined}
       avatarPulse={false}
@@ -146,11 +144,10 @@ describe('four visual regions', () => {
   })
 
   it('first-run welcome defaults to online with a local opt-out and privacy note', () => {
-    const tree = renderPanel(demoState(), '', { welcomeVisible: true, welcomeSeconds: 10 })
+    const tree = renderPanel(demoState(), '', { welcomeVisible: true })
     const welcome = findByAttr(tree, 'data-liangxiang-welcome')[0]
     expect(welcome?.props['aria-label']).toBe(WELCOME_TITLE)
-    expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-online'))).toContain(WELCOME_ONLINE_LABEL)
-    expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-online'))).toContain('10')
+    expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-online'))).toBe(WELCOME_ONLINE_LABEL)
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-local'))).toBe(WELCOME_LOCAL_LABEL)
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-tagline'))).toBe(WELCOME_TAGLINE)
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-privacy'))).toBe(WELCOME_PRIVACY_NOTE)
@@ -356,7 +353,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(dialogs).toHaveLength(1)
     expect(dialogs[0]?.props.role).toBe('dialog')
     expect(dialogs[0]?.props['aria-modal']).toBe('true')
-    expect(textContent(dialogs)).toContain(PLUGIN_PACKAGE_NAME)
+    expect(textContent(dialogs)).not.toContain(PLUGIN_PACKAGE_NAME)
     expect(textContent(dialogs)).toContain(`v${PLUGIN_VERSION}`)
     expect(findByAttr(tree, 'data-liangxiang-version-close')).toHaveLength(1)
     expect(findByAttr(tree, 'data-liangxiang-version')).toHaveLength(0)
@@ -442,7 +439,6 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         versionInfoOpen={false}
         onVersionInfoClose={() => undefined}
         welcomeVisible={false}
-        welcomeSeconds={10}
         onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
         avatarPulse={false}
@@ -481,7 +477,6 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         versionInfoOpen={false}
         onVersionInfoClose={() => undefined}
         welcomeVisible={false}
-        welcomeSeconds={10}
         onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
         avatarPulse={false}
@@ -727,7 +722,11 @@ describe('梁相案牍', () => {
     const mode = findByAttr(tree, 'data-liangxiang-utility-action', 'mode')[0]
     expect(mode && textContent([mode])).toContain(UTILITY_MODE_LOCAL_LABEL)
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'reset-position')).toHaveLength(0)
-    expect(findByAttr(tree, 'data-liangxiang-utility-action', 'version')).toHaveLength(1)
+    const version = findByAttr(tree, 'data-liangxiang-utility-action', 'version')[0]
+    expect(version).toBeDefined()
+    expect(textContent(version === undefined ? [] : [version])).toContain(`v${PLUGIN_VERSION}`)
+    expect(textContent(version === undefined ? [] : [version])).not.toContain(PLUGIN_PACKAGE_NAME)
+    expect(textContent(version === undefined ? [] : [version])).not.toContain('当前版本')
   })
 
   it('offers online mode from the isolated local ledger', () => {

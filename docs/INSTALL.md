@@ -1,6 +1,51 @@
 # INSTALL — 安装与运行
 
-前置：Node `^22.19.0 || >=24`、pnpm ≥ 10。插件本身**不需要任何 API key**（只有在 WebUI 里真正和模型对话才需要）。
+前置：Node `^22.19.0 || >=24`。插件本身**不需要任何 API key**（只有在 WebUI 里真正和模型对话才需要）。
+
+全程先**完全退出** DeepSeek Harness WebUI，做完再启动，浏览器刷新一次。卸载和升级都**不删除**香火账本。
+
+## 用户：安装 / 升级 / 卸载
+
+三条路径任选其一。`web` 若不是你的 profile 名，换成实际名字。
+
+### npm（推荐，可远程拉包）
+
+安装和升级是**同一条命令**，DSH 会从 npm 拉当前 `@beta`：
+
+```bash
+dsh plugin --profile web add dsh-liangxiang@beta
+```
+
+卸载：
+
+```bash
+dsh plugin --profile web remove dsh-liangxiang
+```
+
+国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
+
+> 公开 npm 目前仍是 `0.8.0`。未发新包前，这条命令升不到本仓的 `0.8.2-beta`。
+
+### GitHub Release / 本地 tarball
+
+从 [Releases](https://github.com/liang-today/dsh-liangxiang/releases) 或桌面分发目录取得 `dsh-liangxiang-<version>.tgz`。
+
+```bash
+dsh plugin --profile web add ./dsh-liangxiang-<version>.tgz   # 安装或升级
+dsh plugin --profile web remove dsh-liangxiang               # 卸载
+```
+
+同版本号重打包时，用仓库里的 `scripts/update-plugin.sh`，避免 DSH 报 Already up to date。
+
+### 源码（开发 profile，不改日常 `~/.dsh`）
+
+```bash
+git clone https://github.com/liang-today/dsh-liangxiang.git
+cd dsh-liangxiang
+pnpm install && pnpm run dev:install && pnpm run dev:web   # 安装
+git pull && pnpm install && pnpm run dev:install           # 升级
+pnpm run dev:uninstall                                     # 卸载
+```
 
 ## 国内网络
 
@@ -48,22 +93,12 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 离线玩法第一次启用时会创建 `<DSH_HOME>/storages/liangxiang_local.json`，保存离线香火、打梁、梁案进度和梁祠；社区身份与在线投影仍在 `liangxiang.json`。两边不会互相导入。
 
-## 二、安装公开 0.8.0 beta 或本地 0.8.2-beta RC tarball
-
-从 npm beta 通道安装（不会追随未来的 `latest`）：
+## 二、开发者打包注意
 
 ```bash
-dsh plugin --profile <你的 profile> add dsh-liangxiang@beta
-```
-
-也可以从仓库构建本地 tarball：
-
-```bash
-pnpm pack                                            # 当前产出 dsh-liangxiang-0.8.2-beta.tgz
+pnpm pack
 dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.2-beta.tgz
 ```
-
-两点注意：
 
 1. **不要**把 in-box bundle（如 `@deepseek-ai/dsh-web-app`）装成 profile 依赖。它只需要出现在 `dsh.profile.bundles` 里；装进 `<profile>/node_modules` 会遮蔽 launcher 的模块回退目录，造成同一个包出现两个实例，工具调用会直接报 `Cannot read properties of undefined (reading 'prepare')`。装完可以跑 `node scripts/assert-profile-modules.mjs <DSH_HOME>/profiles/<profile>` 自检。
 2. **tarball 不含后端**（`lib/backend.js` 不在包内，插件包只有 Host + Client 两半）。默认在线模式直接连接梁相社区；只有自建社区节点时，才需要从仓库部署后端。
@@ -81,10 +116,4 @@ dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.2-beta.tgz
 | `LIANGXIANG_BACKEND_DB` | 后端 SQLite 路径（默认 `.liangxiang-backend/liangxiang.sqlite`，`:memory:` 可用） |
 | `DSH_HOME` | 脚本默认用项目内 `.dsh-home`，不碰你真实的 `~/.dsh` |
 
-## 四、卸载
-
-```bash
-pnpm run dev:uninstall   # 移除依赖与 bundle 层，并断言 dump-config 里不再出现
-```
-
-重启后徽章与 Host effect 一并消失（注册寿命随插件 fiber）。普通卸载/更新不删除 `liangxiang.json` 或 `liangxiang_local.json`；后端数据就是配置的 SQLite 文件。
+普通卸载/更新不删除 `liangxiang.json` 或 `liangxiang_local.json`；后端数据就是配置的 SQLite 文件。
