@@ -582,10 +582,6 @@ export class BackendLiangService implements LiangHostService {
       return
     }
     if (target <= this.lastClaimSent) return
-    this.warn(
-      `[${PLUGIN_PACKAGE_NAME}] claim submit: local=${locallyObserved} ledger=${ledger} `
-      + `target=${target} date=${businessDate}`,
-    )
     const run = this.claimOnce(installationId, target, businessDate)
     this.claimInFlight = run
     try {

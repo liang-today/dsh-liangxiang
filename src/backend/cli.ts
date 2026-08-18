@@ -16,6 +16,8 @@
 import { resolveBackendConfig, BackendConfigError } from './config.ts'
 import { readFileSync } from 'node:fs'
 import { formatLiangPosition, isBusinessDate } from '../domain/index.ts'
+import { PLUGIN_VERSION } from '../shared/index.ts'
+import { BACKEND_SCHEMA_USER_VERSION } from './schema.ts'
 import { LiangxiangBackendService } from './service.ts'
 import { openBackendStore, type QueueRow } from './store.ts'
 import { parseInstallationId, parseV1PublishCaseRequest } from '../shared/backend-v1.ts'
@@ -28,6 +30,7 @@ export interface OperatorCliIo {
 
 const usage = `usage:
   node lib/backend-cli.js status
+  node lib/backend-cli.js version
   node lib/backend-cli.js case publish "<标题是夯还是拉>"
   node lib/backend-cli.js case queue list
   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "<标题是夯还是拉>"
@@ -38,6 +41,7 @@ const usage = `usage:
   node lib/backend-cli.js admission list [--limit N]
   node lib/backend-cli.js admission issue <数量> [--claims N] [--ttl-hours N]
   node lib/backend-cli.js admission revoke <ticket_id>
+  node lib/backend-cli.js admission replenish
   node lib/backend-cli.js admission replace --yes --count N [--claims N] [--ttl-hours N]
   node lib/backend-cli.js archive clear --yes
   node lib/backend-cli.js case reset --yes`
@@ -65,9 +69,17 @@ export function runOperatorCli(
   const args = stripExec(argv)
   const topic = args[0]
   const command = args[1]
-  if (topic === undefined || (topic !== 'status' && command === undefined)) {
+  if (topic === undefined || (topic !== 'status' && topic !== 'version' && command === undefined)) {
     io.error(usage)
     return 2
+  }
+  if (topic === 'version') {
+    io.log(JSON.stringify({
+      package_version: PLUGIN_VERSION,
+      schema_user_version: BACKEND_SCHEMA_USER_VERSION,
+    }, null, 2))
+    io.log(`[liangxiang-ops] version ${PLUGIN_VERSION}`)
+    return 0
   }
 
   let config
@@ -85,6 +97,8 @@ export function runOperatorCli(
       const queue = service.listQueue()
       const admission = service.admissionInventory()
       io.log(JSON.stringify({
+        package_version: PLUGIN_VERSION,
+        schema_user_version: BACKEND_SCHEMA_USER_VERSION,
         business_date: snapshot.business_date,
         business_timezone: config.timezone,
         active_case: snapshot.active_case,
@@ -315,6 +329,14 @@ export function runOperatorCli(
       io.log(
         `[liangxiang-ops] 入梁券 replaced revoked=${replaced.revoked} issued=${replaced.issued} `
         + `claims=${replaced.max_claims} ttl=${replaced.ttl_hours}h remaining=${replaced.inventory.remainingClaims}`,
+      )
+      return 0
+    }
+    if (topic === 'admission' && command === 'replenish') {
+      const topped = service.replenishAdmissionInventory()
+      io.log(JSON.stringify(topped, null, 2))
+      io.log(
+        `[liangxiang-ops] 入梁券 replenished issued=${topped.issued} remaining=${topped.remaining_claims} target=${topped.target}`,
       )
       return 0
     }

@@ -7,6 +7,7 @@
 
 ```bash
 liang status
+liang version
 liang cases list
 liang config list
 liang config help
@@ -14,8 +15,10 @@ liang logs 200
 liang logs -f
 ```
 
-`liang status` 同时报告 systemd 状态、部署版本、健康检查、业务日期、当前梁案、
-原始夯/拉票数、快照序号、档案版本，以及下一道待发布梁案。`cases list` 显示完整排期。
+`liang version` 报告程序号、`/opt/liangxiang/VERSION` 部署标记，以及运行中
+`/v1/health` 的 `version`。`liang status` 在此之上再报告 systemd 状态、业务日期、
+当前梁案、原始夯/拉票数、快照序号、档案版本，以及下一道待发布梁案。`cases list`
+显示完整排期。
 
 ## 梁案排期
 
@@ -46,13 +49,21 @@ liang cases reset --yes
 
 这会删除今日票、快照和同日已结旧案，保留题目、身份、已声明 Token 和入梁券。
 
-灰度入梁券（例如 1000 张、每张 1 次、7 天有效）用：
+库存默认只补不换：剩余认领低于 `ADMISSION_INVENTORY_TARGET`（默认 1000）时，
+快照节拍和公开取券接口会按默认 TTL/次数补足差额，不作废现有券。立刻补一次：
+
+```bash
+liang tickets replenish
+```
+
+需要整批作废再发（例如改 TTL）时才用：
 
 ```bash
 liang tickets replace --yes --count 1000 --claims 1 --ttl-hours 168
 ```
 
 会先作废当前全部可用券，再发新的一批。已用尽或已作废的历史券不动。
+`liang config set admission-inventory-target 0` 可关闭自动补券。
 
 ## 清空历史梁祠
 

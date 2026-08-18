@@ -43,6 +43,7 @@ import { resolveHostRuntimeConfig } from './config.ts'
 import { FakeAuthoritativeLiangService } from './fake-service.ts'
 import { AuthoritySlot } from './authority-slot.ts'
 import { createLiangxiangApi } from './routes.ts'
+import { createHostFileLog } from './file-log.ts'
 import { ensureProfileTracksBeta } from './profile-npm-float.ts'
 import type { LiangHostService } from './service.ts'
 
@@ -50,21 +51,21 @@ export const name = HOST_PLUGIN_NAME
 
 const READINESS_FALLBACK_MS = 5_000
 
-const warn = (message: string): void => {
-  console.warn(message)
-}
-
 /**
  * Plugin body.
  * @param ctx - host root context.
  */
 export function apply(ctx: DshHostContext): void {
+  const hostLog = createHostFileLog()
+  const warn = (message: string): void => {
+    hostLog.warn(message)
+  }
   try {
     const floated = ensureProfileTracksBeta(dirname(fileURLToPath(import.meta.url)), {
       refresh: false,
     })
     if (floated?.changed) {
-      console.log(
+      hostLog.log(
         `[${PLUGIN_PACKAGE_NAME}] profile tracks npm tag ${floated.specifier ?? 'beta'}`
         + (floated.refreshed ? ' and refreshed' : ''),
       )
@@ -76,9 +77,9 @@ export function apply(ctx: DshHostContext): void {
   }
 
   ctx.effect(() => {
-    console.log(`[${PLUGIN_PACKAGE_NAME}] host half active`)
+    hostLog.log(`[${PLUGIN_PACKAGE_NAME}] host half active`)
     return () => {
-      console.log(`[${PLUGIN_PACKAGE_NAME}] host half disposed`)
+      hostLog.log(`[${PLUGIN_PACKAGE_NAME}] host half disposed`)
     }
   }, 'liangxiang: lifecycle marker')
 
@@ -355,7 +356,7 @@ export function apply(ctx: DshHostContext): void {
           resolveModeStorageReady = null
           modeInitialized = true
           flushPendingObservations()
-          console.log(
+          hostLog.log(
             `[${PLUGIN_PACKAGE_NAME}] authority mode: ${selectedPreference === 'local'
               ? 'LOCAL_FAKE_DEV (isolated local ledger)'
               : `DEV_STAGING_ONLY (${backendUrl})`}`

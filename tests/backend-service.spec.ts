@@ -508,3 +508,38 @@ describe('case queue', () => {
     expect(f.service.listQueue()).toHaveLength(1)
   })
 })
+
+describe('admission inventory top-up', () => {
+  it('issues only the deficit and leaves existing tickets alone', () => {
+    const f = boot({ LIANGXIANG_ADMISSION_INVENTORY_TARGET: '5' })
+    f.service.issueAdmissionTickets(2)
+    const first = f.service.replenishAdmissionInventory()
+    expect(first).toEqual({ issued: 3, remaining_claims: 5, target: 5 })
+    expect(f.service.replenishAdmissionInventory()).toEqual({
+      issued: 0,
+      remaining_claims: 5,
+      target: 5,
+    })
+    expect(f.service.admissionInventory().activeTickets).toBe(5)
+  })
+
+  it('tops up from tick and the public ticket list', () => {
+    const f = boot({ LIANGXIANG_ADMISSION_INVENTORY_TARGET: '4' })
+    f.service.tick()
+    expect(f.service.admissionInventory().remainingClaims).toBe(4)
+    const listed = f.service.admissionTickets()
+    expect(listed.available_claims).toBe(4)
+    expect(listed.tickets).toHaveLength(4)
+  })
+
+  it('does nothing when the target is disabled', () => {
+    const f = boot({ LIANGXIANG_ADMISSION_INVENTORY_TARGET: '0' })
+    expect(f.service.replenishAdmissionInventory()).toEqual({
+      issued: 0,
+      remaining_claims: 0,
+      target: 0,
+    })
+    f.service.tick()
+    expect(f.service.admissionInventory().remainingClaims).toBe(0)
+  })
+})

@@ -14,6 +14,7 @@ STAGE="${LIANGXIANG_DEPLOY_STAGE:-/var/tmp/liangxiang-deploy}"
 cd "$ROOT"
 GIT_SHA="$(git rev-parse --short HEAD)"
 STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+PKG_VERSION="$(node -p 'require("./package.json").version')"
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "refusing deploy: checkout has uncommitted changes" >&2
@@ -43,13 +44,14 @@ rsync -a --delete \
 ssh "$REMOTE" "cd '$STAGE' && CI=1 pnpm install --frozen-lockfile && pnpm run build"
 
 echo "== install ${GIT_SHA} -> ${PREFIX} =="
-ssh "$REMOTE" sudo -n bash -s -- "$PREFIX" "$STAGE" "$GIT_SHA" "$STAMP" <<'REMOTE_SCRIPT'
+ssh "$REMOTE" sudo -n bash -s -- "$PREFIX" "$STAGE" "$GIT_SHA" "$STAMP" "$PKG_VERSION" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 PREFIX="$1"
 STAGE="$2"
 GIT_SHA="$3"
 STAMP="$4"
+PKG_VERSION="$5"
 ENV_FILE="/etc/liangxiang.env"
 SERVICE="liangxiang-backend"
 DATA_DIR="/var/lib/liangxiang/data"
@@ -171,7 +173,7 @@ if ! "$CADDY_BIN" validate --config "$CADDY_CONFIG" || ! systemctl reload caddy;
   exit 1
 fi
 
-printf '%s %s\n' "$GIT_SHA" "$STAMP" > "$PREFIX/VERSION"
+printf '%s %s %s\n' "$PKG_VERSION" "$GIT_SHA" "$STAMP" > "$PREFIX/VERSION"
 trap - EXIT
 REMOTE_SCRIPT
 

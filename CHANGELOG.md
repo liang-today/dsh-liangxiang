@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.7-beta — 2026-08-19
+
+- 入梁券库存低于 1000 次剩余认领时自动补齐，不作废现有券。`liang tickets replenish` 可立刻补一次。
+- `liang version` / `liang status` / `/v1/health` 报告程序版本。部署标记写成 `程序号 git 时间`。
+- Host 不再持续打 DSH 控制台。精简日志写入 `$DSH_HOME/logs/liangxiang.log`，文件最多 5MB。
+
 ## 0.8.6-beta — 2026-08-18
 
 - 安装命令回到浮动的 `@beta`，不再钉死某一号。插件本身没有收窄的版本范围。

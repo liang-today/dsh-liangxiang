@@ -7,7 +7,7 @@
  *   GET  /v1/snapshot        the published global snapshot
  *   GET  /v1/history         immutable 梁祠 archive (full or version delta)
  *   GET  /v1/me/daily-state  cheap personal refresh
- *   GET  /v1/health          liveness + authority mode
+ *   GET  /v1/health          liveness + authority mode + package version
  *   POST /v1/identity/rekey  self-serve fingerprint takeover (rate-limited)
  *   POST /v1/identity/revoke self-serve delete-own-key (rate-limited)
  *
@@ -23,6 +23,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { isIP } from 'node:net'
 import { formatLiangPosition } from '../domain/index.ts'
+import { PLUGIN_VERSION } from '../shared/index.ts'
 import { WireError } from '../shared/wire.ts'
 import {
   BACKEND_API_PREFIX,
@@ -356,6 +357,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         status: 'ok',
         authority_mode: service.authorityMode,
         business_date: service.businessDate(),
+        version: PLUGIN_VERSION,
       })
       return
     }

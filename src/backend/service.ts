@@ -282,7 +282,7 @@ export class LiangxiangBackendService {
 
   /** Public first-install inventory. Secrets are short-lived and claim-limited. */
   admissionTickets(now = this.clock.now()): V1AdmissionTicketsResponse {
-    this.store.expireAdmissionTickets(now)
+    this.replenishAdmissionInventory(now)
     const inventory = this.store.admissionInventory(now)
     return {
       schema_version: BACKEND_SCHEMA_VERSION,
@@ -382,6 +382,45 @@ export class LiangxiangBackendService {
       throw new WireError('ticket_id', 'expected ticket_<16 hex characters>')
     }
     return this.store.revokeAdmissionTicket(ticketId)
+  }
+
+  /**
+   * Issue just enough new tickets to bring remaining claims back to the
+   * configured floor. Does not revoke existing inventory.
+   */
+  replenishAdmissionInventory(now = this.clock.now()): {
+    issued: number
+    remaining_claims: number
+    target: number
+  } {
+    const target = this.config.admissionInventoryTarget
+    if (target <= 0) {
+      this.store.expireAdmissionTickets(now)
+      return {
+        issued: 0,
+        remaining_claims: this.store.admissionInventory(now).remainingClaims,
+        target,
+      }
+    }
+    return this.store.transaction(() => {
+      this.store.expireAdmissionTickets(now)
+      const remaining = this.store.admissionInventory(now).remainingClaims
+      const deficit = target - remaining
+      if (deficit <= 0) {
+        return { issued: 0, remaining_claims: remaining, target }
+      }
+      this.mintAdmissionTickets(
+        deficit,
+        this.config.admissionTicketMaxClaims,
+        this.config.admissionTicketTtlHours,
+        now,
+      )
+      const after = this.store.admissionInventory(now).remainingClaims
+      this.warn(
+        `[liangxiang-backend] admission inventory topped up issued=${deficit} remaining=${after} target=${target}`,
+      )
+      return { issued: deficit, remaining_claims: after, target }
+    })
   }
 
   /**
@@ -858,6 +897,7 @@ export class LiangxiangBackendService {
 
   /** Cadence hook (timer): publish a new snapshot when one is due. */
   tick(now = this.clock.now()): void {
+    this.replenishAdmissionInventory(now)
     const caseRow = this.ensureActiveCase(now)
     this.publishedSnapshot(caseRow, now)
   }

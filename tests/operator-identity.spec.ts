@@ -4,6 +4,7 @@ import { resolveHostRuntimeConfig } from '../src/host/config.ts'
 import { STAGING_BACKEND_URL } from '../src/host/community-endpoint.ts'
 import { LOCAL_CASE_TITLES, nextLocalCaseIndex } from '../src/host/local-cases.ts'
 import { runOperatorCli } from '../src/backend/cli.ts'
+import { PLUGIN_VERSION } from '../src/shared/index.ts'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -65,6 +66,17 @@ describe('identity mutation rate limit', () => {
 })
 
 describe('operator CLI', () => {
+  it('reports the package version without opening the database', () => {
+    const logs: string[] = []
+    expect(runOperatorCli(
+      ['version'],
+      {},
+      { log: (line) => logs.push(line), error: (line) => logs.push(line) },
+    )).toBe(0)
+    expect(logs.join('\n')).toContain(`"package_version": "${PLUGIN_VERSION}"`)
+    expect(logs.join('\n')).toContain(`[liangxiang-ops] version ${PLUGIN_VERSION}`)
+  })
+
   it('issues tickets and reports the remaining admission inventory', () => {
     const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-tickets-'))
     const db = join(dir, 'liangxiang.sqlite')
@@ -116,15 +128,15 @@ describe('operator CLI', () => {
     const logs: string[] = []
     const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
     expect(runOperatorCli(
-      ['case', 'queue', 'seed', '--start', '2026-08-19', '--limit', '3', bank],
+      ['case', 'queue', 'seed', '--start', '2026-08-20', '--limit', '3', bank],
       env,
       io,
     )).toBe(0)
-    expect(logs.join('\n')).toContain('2026-08-19')
-    expect(logs.join('\n')).toContain('2026-08-21')
+    expect(logs.join('\n')).toContain('2026-08-20')
+    expect(logs.join('\n')).toContain('2026-08-22')
     const collision: string[] = []
     expect(runOperatorCli(
-      ['case', 'queue', 'add', '--on', '2026-08-20', '冲突题是夯还是拉'],
+      ['case', 'queue', 'add', '--on', '2026-08-21', '冲突题是夯还是拉'],
       env,
       { log: (line) => collision.push(line), error: (line) => collision.push(line) },
     )).toBe(1)
@@ -207,6 +219,21 @@ describe('operator CLI', () => {
     expect(output).toContain('case reset')
     expect(output).toContain('入梁券 replaced revoked=2 issued=3')
     expect(output).toContain('remaining=3')
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('replenishes remaining claims up to the inventory target', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-replenish-'))
+    const db = join(dir, 'liangxiang.sqlite')
+    const env = {
+      LIANGXIANG_BACKEND_DB: db,
+      LIANGXIANG_ADMISSION_INVENTORY_TARGET: '4',
+    }
+    const logs: string[] = []
+    const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
+    expect(runOperatorCli(['admission', 'issue', '1'], env, io)).toBe(0)
+    expect(runOperatorCli(['admission', 'replenish'], env, io)).toBe(0)
+    expect(logs.join('\n')).toContain('replenished issued=3 remaining=4 target=4')
     rmSync(dir, { recursive: true, force: true })
   })
 })

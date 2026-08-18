@@ -13,7 +13,7 @@ import {
   parseV1Bootstrap,
   parseV1VoteResponse,
 } from '../src/shared/backend-v1.ts'
-import { parseV1HistoryResponse } from '../src/shared/index.ts'
+import { parseV1HistoryResponse, PLUGIN_VERSION } from '../src/shared/index.ts'
 
 const INSTALLATION = 'install-http-0001'
 
@@ -40,6 +40,7 @@ async function start(options: {
       LIANGXIANG_SNAPSHOT_SECONDS: '300',
       LIANGXIANG_TOKEN_PER_INCENSE: String(options.tokenPerIncense ?? 50_000),
       LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
+      LIANGXIANG_ADMISSION_INVENTORY_TARGET: '0',
     },
     () => undefined,
   )
@@ -129,7 +130,11 @@ describe('routing and boundary validation', () => {
     const h = await start()
     const response = await fetch(`${h.baseUrl}/v1/health`)
     expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ status: 'ok', authority_mode: 'DEV_STAGING_ONLY' })
+    expect(await response.json()).toMatchObject({
+      status: 'ok',
+      authority_mode: 'DEV_STAGING_ONLY',
+      version: PLUGIN_VERSION,
+    })
   })
 
   it('rejects a missing or malformed installation header', async () => {
@@ -389,6 +394,7 @@ describe('authority mode guard', () => {
     const config = resolveBackendConfig({}, () => undefined)
     expect(config.authorityMode).toBe('DEV_STAGING_ONLY')
     expect(config.allowUnsigned).toBe(false)
+    expect(config.admissionInventoryTarget).toBe(1000)
   })
 
   it('refuses unsigned mode on a public listen address', () => {
@@ -459,6 +465,7 @@ describe('community Ed25519 auth', () => {
         LIANGXIANG_BACKEND_PORT: '0',
         LIANGXIANG_SNAPSHOT_SECONDS: '300',
         LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
+        LIANGXIANG_ADMISSION_INVENTORY_TARGET: '0',
       },
       () => undefined,
     )
