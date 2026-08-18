@@ -28,6 +28,19 @@ daily_incense_state.{claimed_effective_tokens, used_incense}
 
 投票只动 `used`，不动 `remainder`：所以花香火会让梁气变弱，但**不会**把环的进度倒回去。
 
+## 离线玩法流（用户明确选择后）
+
+```text
+DSH 累计 tokenUsage
+  → 与在线共用 session watermark，只取尚未记过的 delta
+  → liangxiang_local.json / daily_usage
+  → 本机 earned / used / remaining
+  → 本机夯拉聚合与本机快照
+  → 日切写入本机日梁，再按原始票数生成本机周梁/月梁
+```
+
+在线与离线只共享防重高水位，不共享日用量、香火、投票、梁案或梁祠。断网沿在线流等待恢复；只有首次选择、梁相案牍按钮或明确启动默认值可以进入离线流。
+
 ## 谁是权威
 
 | 数据 | 权威 | 备注 |
@@ -40,6 +53,7 @@ daily_incense_state.{claimed_effective_tokens, used_incense}
 | `claimed_effective_tokens` | **无人可验证**（Host 声明） | A3 的核心缺口 |
 | 投票者身份 | **无人可验证**（假名安装标识） | A3 的核心缺口 |
 | 徽章位置 | 浏览器 `localStorage` | 纯外观偏好 |
+| 离线香火、投票、梁祠 | 本机 `liangxiang_local.json` | 只在离线模式内有效，永不上传或合并 |
 
 ## 出网与隐私
 

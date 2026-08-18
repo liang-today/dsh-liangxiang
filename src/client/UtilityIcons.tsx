@@ -25,12 +25,14 @@ export function HomepageIcon({ size = 19 }: IconProps): ReactElement {
   )
 }
 
-export function RestorePositionIcon({ size = 19 }: IconProps): ReactElement {
+export function ModeSwitchIcon({ size = 19, online }: IconProps & { online: boolean }): ReactElement {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden="true" focusable="false" data-liangxiang-utility-icon="restore">
-      <circle cx="10" cy="10" r="6.2" fill="none" stroke="currentColor" strokeWidth="1.35" opacity=".45" />
-      <path fill="currentColor" d="M10 4.6 12 9l-2 1.4L8 9z" />
-      <path fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" d="M10 2.2v2M10 15.8v2M2.2 10h2M15.8 10h2" />
+    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden="true" focusable="false" data-liangxiang-utility-icon="mode">
+      <rect x="2.6" y="5" width="6.5" height="9.7" rx="1.2" fill="currentColor" opacity={online ? '.18' : '.38'} />
+      <path fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round" d="M2.6 5h6.5v9.7H2.6zM4.6 7.4h2.5M4.6 9.7h2.5" />
+      <path fill="currentColor" opacity={online ? '.4' : '.16'} d="M12.1 8.7a3 3 0 0 1 5.3 1.8 2.2 2.2 0 0 1-.2 4.3h-5.4a2.5 2.5 0 0 1 .3-5z" />
+      <path fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" d="M11.8 14.8h5.4M12.1 8.7a3 3 0 0 1 5.3 1.8" />
+      <path fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" d={online ? 'm9.8 10.2 1.5-1.5 1.5 1.5' : 'm12.8 12.7-1.5 1.5-1.5-1.5'} />
     </svg>
   )
 }

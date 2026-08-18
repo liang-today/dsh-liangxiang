@@ -12,10 +12,10 @@ pnpm run dev:web         # 启动 WebUI，默认 http://127.0.0.1:3080
 
 右缘会出现一个圆形入口，图标就是当前梁子状态，悬停显示 `今日梁相`；可以拖到任意位置。
 
-默认是在线（烘焙社区后端）。欢迎页可改用本地。强制本地假账并走 CLI 入账：
+默认是在线（烘焙社区后端）。首次欢迎页或「梁相案牍」可手动切换在线/离线；断网不会自动切换。`LIANGXIANG_BACKEND_URL=local` 只设置尚无保存偏好时的首次离线默认。离线模式可用 CLI 模拟入账：
 
 ```bash
-LIANGXIANG_BACKEND_URL=local pnpm run dev:web   # 终端 A：强制本地假账
+LIANGXIANG_BACKEND_URL=local pnpm run dev:web   # 终端 A：首次默认离线
 pnpm run dev:credit                            # 终端 B：+1 炷
 pnpm run dev:credit -- 9                       # +9 炷
 ```
@@ -33,7 +33,9 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 一键自检：`pnpm run smoke:online`（会断言拒绝 `VERIFIED_PRODUCTION`、claim 折算、幂等只扣一次、50 并发只接受 1 票、快照发布）。
 
-## 二、安装公开 0.8.0 beta 或本地 0.8.1-beta.0 RC tarball
+离线玩法第一次启用时会创建 `<DSH_HOME>/storages/liangxiang_local.json`，保存离线香火、打梁、梁案进度和梁祠；社区身份与在线投影仍在 `liangxiang.json`。两边不会互相导入。
+
+## 二、安装公开 0.8.0 beta 或本地 0.8.2-beta RC tarball
 
 从 npm beta 通道安装（不会追随未来的 `latest`）：
 
@@ -44,8 +46,8 @@ dsh plugin --profile <你的 profile> add dsh-liangxiang@beta
 也可以从仓库构建本地 tarball：
 
 ```bash
-pnpm pack                                            # 当前产出 dsh-liangxiang-0.8.1-beta.0.tgz
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.1-beta.0.tgz
+pnpm pack                                            # 当前产出 dsh-liangxiang-0.8.2-beta.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.2-beta.tgz
 ```
 
 两点注意：
@@ -59,7 +61,7 @@ dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.1-beta.0.tgz
 
 | 变量 | 作用 |
 |---|---|
-| `LIANGXIANG_BACKEND_URL` | 默认烘焙社区地址（在线）。`local` 强制本地演示 |
+| `LIANGXIANG_BACKEND_URL` | 默认烘焙社区地址（在线）。`local` 只设置无持久化偏好时的首次离线默认 |
 | `LIANGXIANG_TOKEN_PER_INCENSE` | 每炷香的 Token 数（默认 50,000；调小便于演示） |
 | `LIANGXIANG_SNAPSHOT_SECONDS` | 快照/轮询节奏（默认 1s） |
 | `LIANGXIANG_BUSINESS_TZ` | 业务时区（默认 `Asia/Shanghai`）；在线模式下**后端**的这项才是权威 |
@@ -72,4 +74,4 @@ dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.1-beta.0.tgz
 pnpm run dev:uninstall   # 移除依赖与 bundle 层，并断言 dump-config 里不再出现
 ```
 
-重启后徽章与 Host effect 一并消失（注册寿命随插件 fiber）。后端数据就是那个 SQLite 文件，删掉即清空。
+重启后徽章与 Host effect 一并消失（注册寿命随插件 fiber）。普通卸载/更新不删除 `liangxiang.json` 或 `liangxiang_local.json`；后端数据就是配置的 SQLite 文件。

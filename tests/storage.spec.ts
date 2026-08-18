@@ -7,6 +7,8 @@ import type {
 } from '../src/compat/dsh/host-services.ts'
 import {
   LIANGXIANG_DOMAIN_NAME,
+  LIANGXIANG_LOCAL_DOMAIN_NAME,
+  openLiangxiangLocalPersistence,
   openLiangxiangPersistence,
 } from '../src/compat/dsh/storage.ts'
 
@@ -53,7 +55,7 @@ describe('liangxiang storage', () => {
       name: LIANGXIANG_DOMAIN_NAME,
       version: 1,
       tables: Object.fromEntries(
-        ['watermarks', 'daily_usage', 'ledgers', 'aggregates', 'votes', 'identity']
+        ['watermarks', 'daily_usage', 'ledgers', 'aggregates', 'votes', 'identity', 'settings']
           .map(name => [name, { valueSchema: { parse: (raw: unknown) => raw } }]),
       ),
     })
@@ -69,14 +71,36 @@ describe('liangxiang storage', () => {
       privateKeyPem: 'current-private',
       deviceFingerprint: 'current-device',
     })
+    await current.table('ledgers').put('2026-08-18', { usedIncense: 1 })
+    await current.table('aggregates').put('local-2026-08-18-0', {
+      upVotes: 1,
+      downVotes: 0,
+      uniqueVoters: 1,
+    })
+    await current.table('watermarks').put('session-shared', { inputHwm: 40_000, outputHwm: 5_000 })
 
     const handle = await openLiangxiangPersistence(facility, () => undefined)
+    const local = await openLiangxiangLocalPersistence(facility, handle, () => undefined)
     const identity = await handle.identity.resolve()
     const persisted = await handle.port.load()
+    const localPersisted = await local.port.load()
 
     expect(identity.installationId).toBe('liangxiang-install-01')
     expect(persisted.dailyUsage.get('2026-08-18')?.inputTokens).toBe(50_000)
-    expect([...facility.domains.keys()]).toEqual([LIANGXIANG_DOMAIN_NAME])
+    expect(localPersisted.dailyUsage.get('2026-08-18')?.inputTokens).toBe(50_000)
+    expect(localPersisted.ledgers.get('2026-08-18')?.usedIncense).toBe(1)
+    expect(localPersisted.aggregates.get('local-2026-08-18-0')?.upVotes).toBe(1)
+    expect(localPersisted.watermarks.get('session-shared')).toEqual({ inputHwm: 40_000, outputHwm: 5_000 })
+    local.port.putWatermark('session-shared', { inputHwm: 50_000, outputHwm: 7_000 })
+    await Promise.resolve()
+    expect((await handle.port.load()).watermarks.get('session-shared')).toEqual({ inputHwm: 50_000, outputHwm: 7_000 })
+    // Migration copies local gameplay without deleting the legacy rollback rows.
+    expect((await handle.port.load()).ledgers.get('2026-08-18')?.usedIncense).toBe(1)
+    expect([...facility.domains.keys()]).toEqual([LIANGXIANG_DOMAIN_NAME, LIANGXIANG_LOCAL_DOMAIN_NAME])
+    expect(handle.settings.getAuthorityPreference()).toBeNull()
+    await handle.settings.setAuthorityPreference('local')
+    expect(handle.settings.getAuthorityPreference()).toBe('local')
+    await local.close()
     await handle.close()
   })
 })

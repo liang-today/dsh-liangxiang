@@ -34,12 +34,14 @@ SQLite  (daily_liang_case / daily_incense_state / liang_vote /
 
 ## 两种 authority 模式（同一套路由）
 
-| `LIANGXIANG_BACKEND_URL` | 服务实现 | wire `authorityMode` |
-|---|---|---|
-| 未设置 | `FakeAuthoritativeLiangService`（进程内） | `LOCAL_FAKE_DEV` |
-| 设置 | `BackendLiangService`（后端为权威） | `DEV_STAGING_ONLY` |
+| 用户选择 | 服务实现 | wire `authorityMode` | 持久化 |
+|---|---|---|---|
+| 在线模式（默认） | `BackendLiangService`（后端为权威） | `DEV_STAGING_ONLY` | 社区身份/在线投影在 `liangxiang.json` |
+| 离线模式（明确选择） | `FakeAuthoritativeLiangService`（进程内） | `LOCAL_FAKE_DEV` | 离线账本/梁祠在按需创建的 `liangxiang_local.json` |
 
-`src/host/service.ts` 的 `LiangHostService` 是两者的公共接口，`routes.ts` 只面向它编程——所以在线化没有改动浏览器 wire，UI 代码零改动。
+`LIANGXIANG_BACKEND_URL=local` 只把首次启动默认值设为离线；之后以 Host 持久化的用户选择为准。梁相案牍里的模式按钮调用受自定义动作头保护的 `POST /liangxiang/api/mode`。断网、健康检查失败与重连不会调用这条路由。切回在线只有在后端 bootstrap 成功后才提交选择。
+
+`src/host/service.ts` 的 `LiangHostService` 是两者的公共接口，`AuthoritySlot` 只在显式选择后换入目标服务。两模式共享 `liangxiang.json` 中的会话高水位以防 Token 重放，但日用量、香火、投票、梁案和梁祠完全分账。
 
 ## 请求时序（在线模式）
 
@@ -68,7 +70,7 @@ cadence 默认 **1 秒**（近实时）：Host 按 cadence 轮询 `/v1/snapshot`
 
 ## 失败姿态
 
-- 后端不可达：Host 保留最近一次成功状态，浏览器照常渲染（SSE 帧继续发），投票返回 502 并提示“用同一 requestId 重试”。
+- 后端不可达：Host 保留最近一次成功状态，浏览器照常渲染（SSE 帧继续发），投票锁定或返回 502；自动重连但绝不切到离线玩法。
 - 投票只在调用方（浏览器 store）做一次有界重试，且**复用同一 `request_id`**；`backend-client.ts` 自身对写请求不重试。
 - 读请求（bootstrap / snapshot / daily-state / history）允许一次有界重试。
 - history 失败只把冷缓存标为 `档案未更新`，保留 last-known-good；今日 case、香火和投票继续工作。

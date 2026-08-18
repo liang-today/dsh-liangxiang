@@ -20,6 +20,7 @@
 | 业务日、`case_id`、`vote_type`、`request_id` | 后端 DB | ✅ | 投票所需的最小意图 |
 | 已消费香火数 / 声明的 token 总数 | 后端 DB | — | 服务端持有 |
 | 徽章位置 | 浏览器 `localStorage` | ❌ | 纯外观偏好 |
+| 离线香火、夯拉、梁案与梁祠 | DSH storage domain (`liangxiang_local.json`) | ❌ | 仅在用户明确选择离线模式后按需创建；永不并入社区 |
 
 ## 日志与错误
 
@@ -30,7 +31,8 @@
 ## 用户能做什么
 
 - 想换身份：删除 `<DSH_HOME>/storages/liangxiang.json` 的 `identity` 表项（会失去当日已投记录的关联，服务端旧记录仍在）。
-- 想完全不出网：首次欢迎页选「改用本地」，或设 `LIANGXIANG_BACKEND_URL=local`。Host 走 `LOCAL_FAKE_DEV`，全程零出网请求。
+- 想完全不出网：首次欢迎页或「梁相案牍」明确选择「离线模式」，也可用 `LIANGXIANG_BACKEND_URL=local` 设首次默认。Host 走 `LOCAL_FAKE_DEV`，全程零出网请求，玩法数据单独保存在 `<DSH_HOME>/storages/liangxiang_local.json`。
+- 想删除离线玩法：先切回在线并备份，然后删除 `liangxiang_local.json`；这不会删除社区身份或社区历史票。普通插件更新不删除两个文件中的任何一个。
 - 想删除服务端数据：删掉后端的 SQLite 文件（`LIANGXIANG_BACKEND_DB`）。localhost 阶段这就是全部数据。
 
 ## 诚实边界

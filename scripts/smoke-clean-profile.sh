@@ -8,6 +8,13 @@
 #  5. tear everything down (bounded waits everywhere)
 . "$(dirname "$0")/env.sh"
 
+# Explicit smoke-only override is applied after env.sh/.env so a developer's
+# normal profile configuration cannot silently change which authority this
+# isolated run is supposed to exercise.
+if [ -n "${LIANGXIANG_SMOKE_BACKEND_URL:-}" ]; then
+  export LIANGXIANG_BACKEND_URL="$LIANGXIANG_SMOKE_BACKEND_URL"
+fi
+
 SMOKE_PROFILE="${LIANGXIANG_SMOKE_PROFILE:-liangxiang-smoke}"
 PORT="${LIANGXIANG_SMOKE_PORT:-3981}"
 SERVER_PID=""
@@ -95,6 +102,53 @@ else
   echo "ERROR: host lifecycle marker missing from boot log" >&2
   cat "$BOOT_LOG" >&2
   exit 1
+fi
+
+if [ -n "${LIANGXIANG_SMOKE_SWITCH_MODE:-}" ]; then
+  case "$LIANGXIANG_SMOKE_SWITCH_MODE" in
+    online|local) ;;
+    *) echo "ERROR: LIANGXIANG_SMOKE_SWITCH_MODE must be online or local" >&2; exit 2 ;;
+  esac
+  MODE_RESPONSE="$(mktemp)"
+  MODE_STATUS=""
+  for _ in $(seq 1 20); do
+    MODE_STATUS="$(curl -sS -o "$MODE_RESPONSE" -w '%{http_code}' -X POST "$BASE/liangxiang/api/mode" \
+      -H 'content-type: application/json' \
+      -H 'x-liangxiang-mode-action: configure' \
+      --data "{\"mode\":\"$LIANGXIANG_SMOKE_SWITCH_MODE\"}" || true)"
+    [ "$MODE_STATUS" = "200" ] && break
+    sleep 0.25
+  done
+  if [ "$MODE_STATUS" != "200" ]; then
+    echo "ERROR: mode selection returned HTTP ${MODE_STATUS:-none}" >&2
+    cat "$MODE_RESPONSE" >&2
+    rm -f "$MODE_RESPONSE"
+    exit 1
+  fi
+  rm -f "$MODE_RESPONSE"
+  echo "explicit mode selection: $LIANGXIANG_SMOKE_SWITCH_MODE"
+fi
+
+if [ -n "${LIANGXIANG_SMOKE_EXPECT_AUTHORITY:-}" ]; then
+  ACTUAL_AUTHORITY="$(curl -sf "$BASE/liangxiang/api/state" | node -e '
+    const value = JSON.parse(require("node:fs").readFileSync(0, "utf8"))
+    if (typeof value.authorityMode !== "string") process.exit(2)
+    process.stdout.write(value.authorityMode)
+  ')"
+  if [ "$ACTUAL_AUTHORITY" != "$LIANGXIANG_SMOKE_EXPECT_AUTHORITY" ]; then
+    echo "ERROR: expected authority $LIANGXIANG_SMOKE_EXPECT_AUTHORITY, got $ACTUAL_AUTHORITY" >&2
+    cat "$BOOT_LOG" >&2
+    exit 1
+  fi
+  echo "authority mode: $ACTUAL_AUTHORITY"
+fi
+
+if [ "${LIANGXIANG_SMOKE_EXPECT_AUTHORITY:-}" = "LOCAL_FAKE_DEV" ]; then
+  test -f "$DSH_HOME/storages/liangxiang_local.json" || {
+    echo "ERROR: LOCAL_FAKE_DEV did not materialize liangxiang_local.json" >&2
+    exit 1
+  }
+  echo "isolated local storage materialized"
 fi
 
 echo "== 5/5 teardown =="

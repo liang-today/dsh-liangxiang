@@ -69,11 +69,9 @@ ddbaf969f18c1288b6bfc49152ba1bb1b6a7f6cbf6d2c36166b17b0d38cd125b
 - 当前桌面分发包为 `dsh-liangxiang-0.8.0.tgz`，SHA-256 为
   `31a32f2d8a698aeb29c5750598a73e5014b0cf557b383386bc43457a4df0b031`；
   不沿用迁移期旧包摘要。
-- 迁移后的静态复核修复候选为 `dsh-liangxiang@0.8.1-beta.0`；MacBook 已完成
-  保留存储更新、在线界面与版本入口复验。Mac mini `192.0.2.86:22` 在本轮
-  超时，恢复可达后仍须补验。候选 tarball SHA-256 为
-  `a00a1cb69dd4aac5200a6d0a206a8fd9f1e51cce9ec51cee6b53e1f6bc4a17da`；
-  不能把不可变的 npm `0.8.0` 与修复后源码视为同一字节。
+- 当前本地功能候选为 `dsh-liangxiang@0.8.2-beta`；迁移后的 0.8.1-beta.0
+  MacBook 复验属于历史证据，0.8.2-beta 仍须在最终打包后补真实 profile 验收。
+  不能把不可变的 npm `0.8.0` 与后续修复源码视为同一字节。
 
 ## DNS 切换与回收
 

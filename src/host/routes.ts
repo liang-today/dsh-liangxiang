@@ -7,7 +7,7 @@
  *   POST /liangxiang/api/vote       minimal vote intent -> result + fresh state
  *   POST /liangxiang/api/refresh    force host re-read (hover / panel open)
  *   POST /liangxiang/api/reconcile  drop local Token observation, re-read incense
- *   POST /liangxiang/api/local/enter       first-run welcome: switch this Host to local
+ *   POST /liangxiang/api/mode              explicit persistent online/offline selection
  *   POST /liangxiang/api/local/cycle-case  LOCAL_FAKE_DEV only: next prepared 梁案
  *   POST /liangxiang/api/dev/credit LOCAL_FAKE_DEV only: simulate Token credit
  *
@@ -16,8 +16,8 @@
  * plugin dispose so unload leaves no open responses or timers).
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { LOCAL_MODE_ACTION_HEADER, LOCAL_MODE_ACTION_VALUE } from '../shared/index.ts'
-import { parseWireVoteRequest } from '../shared/wire.ts'
+import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE } from '../shared/index.ts'
+import { parseWireVoteRequest, type HostAuthorityPreference } from '../shared/wire.ts'
 import { BackendClientError } from './backend-client.ts'
 import { parseDevCreditBody, resolveDevCreditTokens } from './dev-credit.ts'
 import type { LiangHostService } from './service.ts'
@@ -78,14 +78,16 @@ function readBoundedBody(req: IncomingMessage): Promise<string> {
 }
 
 export interface LiangxiangApiOptions {
-  /** First-run welcome: switch this Host from online to the in-process loop. */
-  chooseLocalMode?: () => void
+  /** Manual configuration only; network failure never calls this path. */
+  selectAuthorityMode: (preference: HostAuthorityPreference) => void | Promise<void>
+  /** Lock mutating gameplay routes during the short authority handoff. */
+  isAuthorityModeChanging?: () => boolean
 }
 
 export function createLiangxiangApi(
   service: LiangHostService,
   warn: (message: string) => void,
-  options: LiangxiangApiOptions = {},
+  options: LiangxiangApiOptions,
 ): LiangxiangApi {
   const connections = new Set<SseConnection>()
 
@@ -199,10 +201,6 @@ export function createLiangxiangApi(
     /* node:http always sets url on server requests */
     const url = new URL(req.url ?? '/', 'http://liangxiang.local')
     const pathname = url.pathname
-    if (!service.isReady) {
-      writeJson(res, 503, { error: 'liangxiang host is still starting' })
-      return
-    }
     const methods: Record<string, string> = {
       '/liangxiang/api/state': 'GET',
       '/liangxiang/api/events': 'GET',
@@ -210,7 +208,7 @@ export function createLiangxiangApi(
       '/liangxiang/api/vote': 'POST',
       '/liangxiang/api/refresh': 'POST',
       '/liangxiang/api/reconcile': 'POST',
-      '/liangxiang/api/local/enter': 'POST',
+      '/liangxiang/api/mode': 'POST',
       '/liangxiang/api/local/cycle-case': 'POST',
       '/liangxiang/api/dev/credit': 'POST',
     }
@@ -221,6 +219,13 @@ export function createLiangxiangApi(
     }
     if (req.method !== expected) {
       writeJson(res, 405, { error: `method ${String(req.method)} not allowed` })
+      return
+    }
+    // The mode route is the one startup action that may intentionally arrive
+    // before the active service is ready. Its selector waits for persistent
+    // storage and installs the chosen authority before returning a state.
+    if (!service.isReady && pathname !== '/liangxiang/api/mode') {
+      writeJson(res, 503, { error: 'liangxiang host is still starting' })
       return
     }
     if (pathname === '/liangxiang/api/state') {
@@ -256,34 +261,48 @@ export function createLiangxiangApi(
       return
     }
     if (pathname === '/liangxiang/api/reconcile') {
+      if (options.isAuthorityModeChanging?.() === true) {
+        writeJson(res, 503, { error: 'authority mode is changing; retry after the handoff' })
+        return
+      }
       await service.reconcileNow?.()
       writeJson(res, 200, service.getWireState())
       return
     }
-    if (pathname === '/liangxiang/api/local/enter') {
-      const action = req.headers[LOCAL_MODE_ACTION_HEADER]
+    if (pathname === '/liangxiang/api/mode') {
+      const action = req.headers[AUTHORITY_MODE_ACTION_HEADER]
       const contentType = req.headers['content-type']
-      if (action !== LOCAL_MODE_ACTION_VALUE || typeof contentType !== 'string' || !contentType.startsWith('application/json')) {
-        writeJson(res, 403, { error: 'explicit local-mode action header required' })
+      if (action !== AUTHORITY_MODE_ACTION_VALUE || typeof contentType !== 'string' || !contentType.startsWith('application/json')) {
+        writeJson(res, 403, { error: 'explicit authority-mode action header required' })
         return
       }
       try {
         const raw = await readBoundedBody(req)
         const body = JSON.parse(raw) as unknown
-        if (typeof body !== 'object' || body === null || Array.isArray(body) || Object.keys(body).length !== 0) {
-          throw new Error('expected an empty JSON object')
+        if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+          throw new Error('expected an object')
         }
+        const record = body as Record<string, unknown>
+        if (Object.keys(record).length !== 1 || (record.mode !== 'online' && record.mode !== 'local')) {
+          throw new Error('mode must be online/local and no other fields are allowed')
+        }
+        await options.selectAuthorityMode(record.mode)
       } catch (error) {
         if (error instanceof OversizedBodyError) {
           res.setHeader('connection', 'close')
-          writeJson(res, 413, { error: `local-mode body exceeds ${MAX_VOTE_BODY_BYTES} bytes` })
+          writeJson(res, 413, { error: `authority-mode body exceeds ${MAX_VOTE_BODY_BYTES} bytes` })
           return
         }
-        writeJson(res, 400, { error: `invalid local-mode request: ${error instanceof Error ? error.message : String(error)}` })
+        const message = error instanceof Error ? error.message : String(error)
+        const status = message.includes('无法连接天庭') || message.includes('尚未加载') ? 503 : 400
+        writeJson(res, status, { error: `authority-mode request failed: ${message}` })
         return
       }
-      options.chooseLocalMode?.()
       writeJson(res, 200, service.getWireState())
+      return
+    }
+    if (options.isAuthorityModeChanging?.() === true) {
+      writeJson(res, 503, { error: 'authority mode is changing; retry after the handoff' })
       return
     }
     if (pathname === '/liangxiang/api/local/cycle-case') {

@@ -82,16 +82,26 @@ export interface LiangPersistedState {
   ledgers: Map<string, { usedIncense: number }>
   aggregates: Map<string, GlobalVoteAggregate>
   votes: Map<string, PersistedVoteRecord>
+  caseIndexes: Map<string, { caseIndex: number }>
+  dayArchives: Map<string, LiangDayArchive>
+  weekArchives: Map<string, LiangWeekArchive>
+  monthArchives: Map<string, LiangMonthArchive>
 }
 
 /** Write-behind persistence port (implemented over the DSH storage domain). */
 export interface LiangPersistencePort {
   load(): Promise<LiangPersistedState>
+  /** Wait until every previously queued local-domain write is durable. */
+  flush(): Promise<void>
   putWatermark(sessionId: string, watermark: SessionUsageWatermark): void
   putDailyUsage(businessDate: string, record: DailyUsageRecord): void
   putLedger(businessDate: string, record: { usedIncense: number }): void
   putAggregate(caseId: string, aggregate: GlobalVoteAggregate): void
   putVote(requestId: string, record: PersistedVoteRecord): void
+  putCaseIndex(businessDate: string, record: { caseIndex: number }): void
+  putDayArchive(businessDate: string, archive: LiangDayArchive): void
+  putWeekArchive(weekId: string, archive: LiangWeekArchive): void
+  putMonthArchive(monthId: string, archive: LiangMonthArchive): void
   deleteVote(requestId: string): void
   deleteDailyUsage(businessDate: string): void
 }
@@ -120,6 +130,7 @@ export class FakeAuthoritativeLiangService {
   private ledgers = new Map<string, { usedIncense: number }>()
   private aggregates = new Map<string, GlobalVoteAggregate>()
   private votes = new Map<string, PersistedVoteRecord>()
+  private caseIndexes = new Map<string, { caseIndex: number }>()
   private dayArchives = new Map<string, LiangDayArchive>()
   private weekArchives = new Map<string, LiangWeekArchive>()
   private monthArchives = new Map<string, LiangMonthArchive>()
@@ -164,6 +175,15 @@ export class FakeAuthoritativeLiangService {
     this.ledgers = persisted.ledgers
     this.aggregates = persisted.aggregates
     this.votes = persisted.votes
+    this.caseIndexes = persisted.caseIndexes
+    this.dayArchives = persisted.dayArchives
+    this.weekArchives = persisted.weekArchives
+    this.monthArchives = persisted.monthArchives
+    this.archiveVersion = Math.max(
+      0,
+      ...[...this.dayArchives.values(), ...this.weekArchives.values(), ...this.monthArchives.values()]
+        .map(archive => archive.archiveVersion),
+    )
     this.persistence = port
     this.currentDate = '' // force re-rotation against hydrated maps
     this.rotateToCurrentDate()
@@ -283,7 +303,7 @@ export class FakeAuthoritativeLiangService {
     }
 
     // Commit (no awaits between the check above and the writes below).
-    const firstAcceptedVote = this.usedIncenseToday === 0
+    const firstAcceptedVote = ![...this.votes.values()].some(record => record.caseId === this.activeCase.id)
     this.usedIncenseToday += 1
     this.aggregate = applyAcceptedVote(this.aggregate, intent.voteType, firstAcceptedVote)
     this.aggregates.set(this.activeCase.id, this.aggregate)
@@ -365,6 +385,8 @@ export class FakeAuthoritativeLiangService {
     this.aggregates.set(this.activeCase.id, this.aggregate)
     this.persistence?.putAggregate(this.activeCase.id, this.aggregate)
     this.localCaseIndex = nextLocalCaseIndex(this.localCaseIndex)
+    this.caseIndexes.set(this.currentDate, { caseIndex: this.localCaseIndex })
+    this.persistence?.putCaseIndex(this.currentDate, { caseIndex: this.localCaseIndex })
     this.openLocalCase()
     this.publishSnapshot()
   }
@@ -437,11 +459,19 @@ export class FakeAuthoritativeLiangService {
     if (date === this.currentDate) return
     if (this.currentDate !== '' && this.currentDate < date) {
       this.aggregates.set(this.activeCase.id, this.aggregate)
-      this.finalizeLocalArchives(this.currentDate, date)
+      this.persistence?.putAggregate(this.activeCase.id, this.aggregate)
     }
+    this.finalizePersistedDaysBefore(date)
     this.currentDate = date
-    this.localCaseIndex = 0
+    this.localCaseIndex = this.caseIndexes.get(date)?.caseIndex ?? 0
+    if (this.localCaseIndex < 0 || this.localCaseIndex >= LOCAL_CASE_TITLES.length) {
+      this.localCaseIndex = 0
+    }
+    this.caseIndexes.set(date, { caseIndex: this.localCaseIndex })
+    this.persistence?.putCaseIndex(date, { caseIndex: this.localCaseIndex })
     this.openLocalCase()
+    this.aggregates.set(this.activeCase.id, this.aggregate)
+    this.persistence?.putAggregate(this.activeCase.id, this.aggregate)
     this.usedIncenseToday = this.ledgers.get(date)?.usedIncense ?? 0
     // Hydration guard: a ledger without its usage record would violate
     // used <= earned. Clamp loudly rather than dying or inventing tokens.
@@ -465,19 +495,34 @@ export class FakeAuthoritativeLiangService {
     this.publishSnapshot()
   }
 
-  /** Memory-only mirror of the production rollover contract for local UI QA. */
-  private finalizeLocalArchives(endedDate: string, nextDate: string): void {
-    if (this.dayArchives.has(endedDate)) return
+  /** Recover archives after a Host restart that crossed one or more dates. */
+  private finalizePersistedDaysBefore(nextDate: string): void {
+    const dates = new Set<string>()
+    for (const caseId of this.aggregates.keys()) {
+      const match = /^local-(\d{4}-\d{2}-\d{2})-\d+$/.exec(caseId)
+      if (match?.[1] !== undefined && match[1] < nextDate) dates.add(match[1])
+    }
+    const version = this.archiveVersion + 1
+    let changed = false
+    for (const endedDate of [...dates].sort()) {
+      changed = this.finalizeLocalDay(endedDate, version) || changed
+    }
+    changed = this.finalizeCompletedPeriods(nextDate, version) || changed
+    if (changed) this.archiveVersion = version
+  }
+
+  /** Materialize one immutable local day. Completed periods are handled after all catch-up days. */
+  private finalizeLocalDay(endedDate: string, version: number): boolean {
+    if (this.dayArchives.has(endedDate)) return false
     const cases = LOCAL_CASE_TITLES.flatMap((title, index) => {
       const aggregate = this.aggregates.get(localCaseId(endedDate, index))
       return aggregate === undefined ? [] : [{ title, aggregate }]
     })
-    if (cases.length === 0) return
+    if (cases.length === 0) return false
 
-    const version = this.archiveVersion + 1
     const upVotes = cases.reduce((sum, entry) => sum + entry.aggregate.upVotes, 0)
     const downVotes = cases.reduce((sum, entry) => sum + entry.aggregate.downVotes, 0)
-    this.dayArchives.set(endedDate, {
+    const dayArchive: LiangDayArchive = {
       businessDate: endedDate,
       caseCount: cases.length,
       caseTitles: cases.map(entry => entry.title),
@@ -486,14 +531,21 @@ export class FakeAuthoritativeLiangService {
       aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
       liangziPolicyVersion: LIANGZI_POLICY_VERSION,
       ...deriveArchiveResult(upVotes, downVotes),
-    })
+    }
+    this.dayArchives.set(endedDate, dayArchive)
+    this.persistence?.putDayArchive(endedDate, dayArchive)
+    return true
+  }
 
+  /** Build week/month archives only after every recoverable day has been materialized. */
+  private finalizeCompletedPeriods(nextDate: string, version: number): boolean {
     const allDays = [...this.dayArchives.values()]
+    let changed = false
     for (const day of allDays) {
       const week = isoWeekFor(day.businessDate)
       if (week.endDate < nextDate && !this.weekArchives.has(week.weekId)) {
         const covered = allDays.filter(item => item.businessDate >= week.startDate && item.businessDate <= week.endDate)
-        this.weekArchives.set(week.weekId, {
+        const weekArchive: LiangWeekArchive = {
           weekId: week.weekId,
           startDate: week.startDate,
           endDate: week.endDate,
@@ -503,12 +555,15 @@ export class FakeAuthoritativeLiangService {
           aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
           liangziPolicyVersion: LIANGZI_POLICY_VERSION,
           ...sumDayArchives(covered),
-        })
+        }
+        this.weekArchives.set(week.weekId, weekArchive)
+        this.persistence?.putWeekArchive(week.weekId, weekArchive)
+        changed = true
       }
       const month = monthFor(day.businessDate)
       if (month.endDate < nextDate && !this.monthArchives.has(month.monthId)) {
         const covered = allDays.filter(item => item.businessDate >= month.startDate && item.businessDate <= month.endDate)
-        this.monthArchives.set(month.monthId, {
+        const monthArchive: LiangMonthArchive = {
           monthId: month.monthId,
           startDate: month.startDate,
           endDate: month.endDate,
@@ -518,10 +573,13 @@ export class FakeAuthoritativeLiangService {
           aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
           liangziPolicyVersion: LIANGZI_POLICY_VERSION,
           ...sumDayArchives(covered),
-        })
+        }
+        this.monthArchives.set(month.monthId, monthArchive)
+        this.persistence?.putMonthArchive(month.monthId, monthArchive)
+        changed = true
       }
     }
-    this.archiveVersion = version
+    return changed
   }
 
   private openLocalCase(): void {

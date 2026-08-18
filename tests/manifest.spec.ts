@@ -64,9 +64,9 @@ describe('package.json dsh manifests', () => {
     expect(manifest.homepage).toBe('https://liang.today/')
     expect(manifest.repository).toEqual({
       type: 'git',
-      url: 'git+https://github.com/liang-today/dsh-liang-meter.git',
+      url: 'git+https://github.com/liang-today/dsh-liangxiang.git',
     })
-    expect(manifest.bugs.url).toBe('https://github.com/liang-today/dsh-liang-meter/issues')
+    expect(manifest.bugs.url).toBe('https://github.com/liang-today/dsh-liangxiang/issues')
     expect(manifest.engines.node).toBe('^22.19.0 || >=24')
   })
 

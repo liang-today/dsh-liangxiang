@@ -47,6 +47,10 @@ function memoryState(): LiangPersistedState {
     ledgers: new Map(),
     aggregates: new Map(),
     votes: new Map(),
+    caseIndexes: new Map(),
+    dayArchives: new Map(),
+    weekArchives: new Map(),
+    monthArchives: new Map(),
   }
 }
 
@@ -59,12 +63,21 @@ function memoryPort(state: LiangPersistedState): LiangPersistencePort {
       ledgers: new Map(state.ledgers),
       aggregates: new Map(state.aggregates),
       votes: new Map(state.votes),
+      caseIndexes: new Map(state.caseIndexes),
+      dayArchives: new Map(state.dayArchives),
+      weekArchives: new Map(state.weekArchives),
+      monthArchives: new Map(state.monthArchives),
     }),
+    flush: () => Promise.resolve(),
     putWatermark: (id, wm) => void state.watermarks.set(id, wm),
     putDailyUsage: (date, rec) => void state.dailyUsage.set(date, rec),
     putLedger: (date, rec) => void state.ledgers.set(date, rec),
     putAggregate: (caseId, agg) => void state.aggregates.set(caseId, agg),
     putVote: (requestId, rec) => void state.votes.set(requestId, rec),
+    putCaseIndex: (date, rec) => void state.caseIndexes.set(date, rec),
+    putDayArchive: (date, archive) => void state.dayArchives.set(date, archive),
+    putWeekArchive: (weekId, archive) => void state.weekArchives.set(weekId, archive),
+    putMonthArchive: (monthId, archive) => void state.monthArchives.set(monthId, archive),
     deleteVote: (requestId) => void state.votes.delete(requestId),
     deleteDailyUsage: (date) => void state.dailyUsage.delete(date),
   }
@@ -221,6 +234,62 @@ describe('day rollover', () => {
     service.observeUsage('s1', buckets(150_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
   })
+
+  it('persists the selected local case and resumes it after restart', async () => {
+    const stored = memoryState()
+    const clock = fakeClock(NOON_SHANGHAI)
+    const first = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
+    await first.attachPersistence(memoryPort(stored))
+    first.cycleLocalCase()
+    const selected = first.getWireState().activeCase
+
+    const second = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
+    await second.attachPersistence(memoryPort(stored))
+    expect(second.getWireState().activeCase).toMatchObject({ id: selected.id, title: selected.title })
+  })
+
+  it('recovers and persists local 梁祠 archives when restart crosses midnight', async () => {
+    const stored = memoryState()
+    const firstClock = fakeClock(NOON_SHANGHAI)
+    const first = new FakeAuthoritativeLiangService(BASE_CONFIG, firstClock, () => undefined)
+    await first.attachPersistence(memoryPort(stored))
+    first.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
+    const caseId = first.getWireState().activeCase.id
+    first.vote({ caseId, voteType: 'up', requestId: 'req-local-archive-restart' })
+
+    const second = new FakeAuthoritativeLiangService(BASE_CONFIG, fakeClock(AFTER_MIDNIGHT_SHANGHAI), () => undefined)
+    await second.attachPersistence(memoryPort(stored))
+    const afterRestart = second.history()
+    expect(afterRestart.archive_version).toBe(1)
+    expect(afterRestart.days).toHaveLength(1)
+    expect(afterRestart.days[0]).toMatchObject({ business_date: '2026-08-16', up_votes: 1, down_votes: 0 })
+
+    const third = new FakeAuthoritativeLiangService(BASE_CONFIG, fakeClock(AFTER_MIDNIGHT_SHANGHAI), () => undefined)
+    await third.attachPersistence(memoryPort(stored))
+    expect(third.history()).toEqual(afterRestart)
+  })
+
+  it('builds a recovered completed week only after every stored day is materialized', async () => {
+    const stored = memoryState()
+    stored.aggregates.set('local-2026-08-10-0', { upVotes: 2, downVotes: 0, uniqueVoters: 1 })
+    stored.aggregates.set('local-2026-08-11-0', { upVotes: 0, downVotes: 3, uniqueVoters: 1 })
+    const service = new FakeAuthoritativeLiangService(
+      BASE_CONFIG,
+      fakeClock(AFTER_MIDNIGHT_SHANGHAI),
+      () => undefined,
+    )
+    await service.attachPersistence(memoryPort(stored))
+
+    const history = service.history()
+    expect(history.days).toHaveLength(2)
+    expect(history.weeks).toHaveLength(1)
+    expect(history.weeks[0]).toMatchObject({
+      week_id: '2026-W33',
+      covered_days: 2,
+      up_votes: 2,
+      down_votes: 3,
+    })
+  })
 })
 
 describe('vote transaction', () => {
@@ -280,6 +349,16 @@ describe('vote transaction', () => {
     const { service, caseId } = fundedService(3)
     service.vote({ caseId, voteType: 'up', requestId: 'req-unique-1' })
     service.vote({ caseId, voteType: 'down', requestId: 'req-unique-2' })
+    service.tick()
+    expect(service.getWireState().global.uniqueVoters).toBe(1)
+  })
+
+  it('counts the local player once again after manually cycling to another case', () => {
+    const { service, caseId } = fundedService(2)
+    service.vote({ caseId, voteType: 'up', requestId: 'req-first-case' })
+    service.cycleLocalCase()
+    const nextCaseId = service.getWireState().activeCase.id
+    service.vote({ caseId: nextCaseId, voteType: 'down', requestId: 'req-next-case' })
     service.tick()
     expect(service.getWireState().global.uniqueVoters).toBe(1)
   })

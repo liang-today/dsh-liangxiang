@@ -28,6 +28,9 @@ import {
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
+  MODE_CONFIRM_LOCAL,
+  UTILITY_MODE_LOCAL_LABEL,
+  UTILITY_MODE_ONLINE_LABEL,
   UTILITY_HINT,
   UTILITY_LABEL,
   UTILITY_RECONCILE_HINT,
@@ -62,6 +65,8 @@ function renderPanel(
     welcomeSeconds?: number
     condensedIncense?: number
     utilityOpen?: boolean
+    modeConfirmOpen?: boolean
+    modeChanging?: boolean
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -74,7 +79,7 @@ function renderPanel(
       onVersionInfoClose={() => undefined}
       welcomeVisible={extra.welcomeVisible ?? false}
       welcomeSeconds={extra.welcomeSeconds ?? 10}
-      onDismissWelcome={() => undefined}
+      onChooseOnline={() => undefined}
       onChooseLocal={() => undefined}
       avatarPulse={false}
       condensedIncense={extra.condensedIncense ?? 0}
@@ -87,7 +92,11 @@ function renderPanel(
       onUtilityToggle={() => undefined}
       onUtilityClose={() => undefined}
       onOpenHomepage={() => undefined}
-      onResetPosition={() => undefined}
+      modeConfirmOpen={extra.modeConfirmOpen ?? false}
+      modeChanging={extra.modeChanging ?? false}
+      onModeAsk={() => undefined}
+      onModeConfirm={() => undefined}
+      onModeCancel={() => undefined}
       onShowVersion={() => undefined}
       onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
       onReconcileConfirm={extra.onReconcileConfirm ?? (() => undefined)}
@@ -98,6 +107,10 @@ function renderPanel(
 }
 
 const demoState = (): LiangxiangViewState => createMockLiangxiangStore().getSnapshot()
+const onlineState = (): LiangxiangViewState => ({
+  ...demoState(),
+  authorityMode: 'DEV_STAGING_ONLY',
+})
 
 describe('four visual regions', () => {
   it('places the four-character 梁祠 entry beneath 梁相案牍 inside Region 4', () => {
@@ -151,7 +164,7 @@ describe('four visual regions', () => {
     expect(styleOf(header).textAlign).toBe('center')
     // Local soft-trust stays honest via the attribute + screen-reader summary,
     // not a visible badge next to the title.
-    expect(header === undefined ? '' : textContent([header])).toContain('今日梁案（本地）')
+    expect(header === undefined ? '' : textContent([header])).toContain('今日梁案（离线）')
     expect(header === undefined ? '' : textContent([header])).not.toContain('本地演示')
     const caseTitle = findByAttr(tree, 'data-liangxiang-case-title')[0]
     expect(styleOf(findAll(header === undefined ? [] : [header], (node) => node.type === 'h2')[0]).fontSize).toBe('12px')
@@ -430,7 +443,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onVersionInfoClose={() => undefined}
         welcomeVisible={false}
         welcomeSeconds={10}
-        onDismissWelcome={() => undefined}
+        onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
         avatarPulse={false}
         condensedIncense={0}
@@ -444,7 +457,11 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onUtilityToggle={() => undefined}
         onUtilityClose={() => undefined}
         onOpenHomepage={() => undefined}
-        onResetPosition={() => undefined}
+        modeConfirmOpen={false}
+        modeChanging={false}
+        onModeAsk={() => undefined}
+        onModeConfirm={() => undefined}
+        onModeCancel={() => undefined}
         onShowVersion={() => undefined}
         onReconcileAsk={() => undefined}
         onReconcileConfirm={() => undefined}
@@ -465,7 +482,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onVersionInfoClose={() => undefined}
         welcomeVisible={false}
         welcomeSeconds={10}
-        onDismissWelcome={() => undefined}
+        onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
         avatarPulse={false}
         condensedIncense={0}
@@ -479,7 +496,11 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onUtilityToggle={() => undefined}
         onUtilityClose={() => undefined}
         onOpenHomepage={() => undefined}
-        onResetPosition={() => undefined}
+        modeConfirmOpen={false}
+        modeChanging={false}
+        onModeAsk={() => undefined}
+        onModeConfirm={() => undefined}
+        onModeCancel={() => undefined}
         onShowVersion={() => undefined}
         onReconcileAsk={() => undefined}
         onReconcileConfirm={() => undefined}
@@ -698,13 +719,29 @@ describe('梁相案牍', () => {
     expect(repair && textContent([repair])).toContain(UTILITY_RECONCILE_HINT)
   })
 
-  it('opens a themed four-action drawer and keeps manual核香 as repair-only', () => {
-    const tree = renderPanel(demoState(), '', { utilityOpen: true })
+  it('opens a themed four-action drawer with an explicit offline-mode control', () => {
+    const tree = renderPanel(onlineState(), '', { utilityOpen: true })
     expect(findByAttr(tree, 'data-liangxiang-utility-drawer')).toHaveLength(1)
     expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(4)
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'home')).toHaveLength(1)
-    expect(findByAttr(tree, 'data-liangxiang-utility-action', 'reset-position')).toHaveLength(1)
+    const mode = findByAttr(tree, 'data-liangxiang-utility-action', 'mode')[0]
+    expect(mode && textContent([mode])).toContain(UTILITY_MODE_LOCAL_LABEL)
+    expect(findByAttr(tree, 'data-liangxiang-utility-action', 'reset-position')).toHaveLength(0)
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'version')).toHaveLength(1)
+  })
+
+  it('offers online mode from the isolated local ledger', () => {
+    const tree = renderPanel(demoState(), '', { utilityOpen: true })
+    const mode = findByAttr(tree, 'data-liangxiang-utility-action', 'mode')[0]
+    expect(mode && textContent([mode])).toContain(UTILITY_MODE_ONLINE_LABEL)
+  })
+
+  it('confirms that offline play is manual and isolated before switching', () => {
+    const tree = renderPanel(onlineState(), '', { utilityOpen: true, modeConfirmOpen: true })
+    const confirm = findByAttr(tree, 'data-liangxiang-mode-confirm')[0]
+    expect(confirm?.props.role).toBe('alertdialog')
+    expect(confirm && textContent([confirm])).toContain(MODE_CONFIRM_LOCAL)
+    expect(confirm && textContent([confirm])).toContain('断网不会自动触发')
   })
 })
 
