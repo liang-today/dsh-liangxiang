@@ -993,6 +993,21 @@ Never reintroduce a source-code community passphrase/defaults file. Community
 admission secrets belong only in ignored `.env` files or protected process
 environments; distributable bundles must contain no key.
 
+### Version float (installed profile — intentional)
+
+The shipped Host rewrites the DSH profile it is installed into so the
+`dsh-liangxiang` dependency stays on the floating `@beta` dist-tag and the
+package is exempt from pnpm 11's 24h `minimumReleaseAge`. Rules:
+
+- only this package's dependency specifier and the `minimumReleaseAgeExclude`
+  row in `pnpm-workspace.yaml` are touched; nothing else in the profile changes;
+- startup only edits the manifest — it never runs `pnpm add` (`refresh: false`),
+  so the running `node_modules` is never mutated;
+- developer checkouts (`link:` / non-tarball `file:`) are left alone;
+- set `LIANGXIANG_SKIP_NPM_FLOAT=1` to disable the rewrite entirely.
+
+Implementation: `src/host/profile-npm-float.ts` + `tests/host-profile-npm-float.spec.ts`.
+
 ### Staging deploy (hard rule)
 
 The community staging backend is deployed ONLY through `scripts/deploy.sh`, which
@@ -1006,7 +1021,8 @@ Still never, unless the user explicitly orders it:
 - `npm publish`
 - GitHub Release
 - production / public deploy
-- modifying the user's real DSH profile
+- modifying the user's real DSH profile (dev discipline; the shipped Host's
+  version-float rewrite above is the intentional, scoped exception)
 - patching `../deepseek-harness`
 
 Do not:
