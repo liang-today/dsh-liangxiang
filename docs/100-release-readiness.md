@@ -36,6 +36,8 @@
 | MacBook / Mac mini 安装 | ⚠️ MacBook 0.8.1-beta.0 更新、存储校验、在线界面与版本入口通过；Mac mini `192.168.2.86:22` 当前超时，待设备恢复可达后补验 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
 | npm 公开包复核 | ✅ 历史占位 `dsh-liangxiang@0.8.0` 为 7 文件；当前 `0.8.1-beta.0` 候选尚未发布，避免冒充同版本字节 |
+| 0.8.1-beta.0 候选包 | ✅ 7 个白名单文件；SHA-256 `a00a1cb69dd4aac5200a6d0a206a8fd9f1e51cce9ec51cee6b53e1f6bc4a17da`；未发现个人路径、服务器 IP、私钥、令牌或旧品牌 |
+| 香港公网峰值（只读） | ✅ `/v1/health` 1,000 请求 / 1,000 并发新建 TLS 连接，0 失败；测试后 Caddy/Backend 无 warning、内存余量 14 GiB |
 
 npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`，且 registry
 拒绝删除首版 `latest` 标签；发布口径与安装文档仍统一要求显式使用 `@beta`。
