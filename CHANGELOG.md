@@ -1,15 +1,12 @@
 # Changelog
 
-## 0.8.7-beta — 2026-08-19
-
-- 入梁券库存低于 1000 次剩余认领时自动补齐，不作废现有券。`liang tickets replenish` 可立刻补一次。
-- `liang version` / `liang status` / `/v1/health` 报告程序版本。部署标记写成 `程序号 git 时间`。
-- Host 不再持续打 DSH 控制台。精简日志写入 `$DSH_HOME/logs/liangxiang.log`，文件最多 5MB。
-
 ## 0.8.6-beta — 2026-08-18
 
 - 安装命令回到浮动的 `@beta`，不再钉死某一号。插件本身没有收窄的版本范围。
 - Host 启动时把 DSH profile 的依赖改成 `beta`，并写入 `minimumReleaseAgeExclude: dsh-liangxiang`，避开 pnpm 11 默认 24 小时冷静期。开发用的 `link:` / 非 tarball `file:` 不动。
+- 入梁券在每个业务日 0 点（开当日梁案时）检查库存，剩余认领低于 1000 则只补差额。白天领完不会立刻补。`liang tickets replenish` 可手工补一次。
+- `liang version` / `liang status` / `/v1/health` 报告程序版本。部署标记写成 `程序号 git 时间`。
+- Host 不再持续打 DSH 控制台。精简日志写入 `$DSH_HOME/logs/liangxiang.log`，文件最多 5MB。
 
 ## 0.8.5-beta — 2026-08-18
 

@@ -49,8 +49,9 @@ liang cases reset --yes
 
 这会删除今日票、快照和同日已结旧案，保留题目、身份、已声明 Token 和入梁券。
 
-库存默认只补不换：剩余认领低于 `ADMISSION_INVENTORY_TARGET`（默认 1000）时，
-快照节拍和公开取券接口会按默认 TTL/次数补足差额，不作废现有券。立刻补一次：
+库存默认只补不换：每个业务日 0 点开当日梁案时检查一次
+`ADMISSION_INVENTORY_TARGET`（默认 1000）。不足则按默认 TTL/次数补差额，
+白天领完不会立刻补。手工立刻补一次：
 
 ```bash
 liang tickets replenish
