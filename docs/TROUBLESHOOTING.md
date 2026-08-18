@@ -60,7 +60,7 @@ pnpm --dir <DSH_HOME>/profiles/<profile> remove @deepseek-ai/dsh-web-app   # 保
 
 然后**重启** WebUI（内存里的旧模块图不会自愈）。已经报错的会话不用删：DSH 在加载时会用同 `callId` 的合成错误结果补齐孤立的 tool call（`packages/core/session/src/repair.ts`），重启后旧会话可继续；想干净就新开一个会话。
 
-## 面板显示「未连上梁相服务」
+## 面板显示「无法连接天庭」
 
 Host 通道不可用，或在线 bootstrap 超时。检查：
 
@@ -92,7 +92,7 @@ Host 与后端之间的请求失败。**用同一个 `request_id` 重试是安�
 
 1. 安全组只需公网放行 `80/tcp` 与 `443/tcp`；后端端口 `4180` 必须只监听回环地址。
 2. 本机 `curl -m 5 https://api.liang.today/v1/health` 应在 1 秒内返回 `status":"ok"`。
-3. 面板若写「今日梁案（本地）」，那是欢迎页选了本地，或旧占位帧；连不上时应是「今日梁案」+「未连上梁相服务」。
+3. 面板若写「今日梁案（本地）」，那是欢迎页选了本地，或旧占位帧；连不上时应是「今日梁案」+「无法连接天庭」。
 
 ## 梁位不动
 

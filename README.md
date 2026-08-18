@@ -133,7 +133,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 1. `pnpm install` — 安装工具链与 DSH 类型包/CLI(`prepare` 会顺带构建一次)。
 2. `pnpm run dev:install` — 构建后创建 `liangxiang-dev` profile:先装 `@deepseek-ai/dsh-web-app`(Web 界面层),再以 **pnpm link 方式**装入本地检出;随后自动用 `--dump-config` 断言 `dsh-liangxiang` bundle 层存在。
-3. `pnpm run dev:web` — 启动 WebUI。右缘应出现占位圆点,悬停显示 `今日梁相`;终端出现 `[dsh-liangxiang] host half active`。
+3. `pnpm run dev:web` — 启动 WebUI。右缘应出现当前梁子入口,悬停显示 `今日梁相`;终端出现 `[dsh-liangxiang] host half active`。
 4. 改 Client 代码后 `pnpm run build`(或 `pnpm exec tsdown --watch`):web-app 组合默认挂载的 HMR 会 stat-poll 到 `lib/client.js` 变化并热替换,无需重启;改 Host 代码需重启 `dev:web`。
 5. `pnpm run dev:uninstall` — 移除依赖与 bundle 层,并断言 dump-config 中不再出现;重启后徽章与 Host effect 一并消失(注册寿命随插件 fiber)。
 

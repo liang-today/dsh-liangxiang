@@ -60,6 +60,7 @@ import {
   UTILITY_MODE_ONLINE_HINT,
   UTILITY_MODE_ONLINE_LABEL,
   UTILITY_VERSION_LABEL,
+  WELCOME_DISMISS,
   WELCOME_LINES,
   WELCOME_LOCAL_LABEL,
   WELCOME_ONLINE_LABEL,
@@ -812,7 +813,7 @@ export function Panel(props: PanelProps): ReactElement {
                 cursor: 'pointer',
               }}
             >
-              知道了
+              {WELCOME_DISMISS}
             </button>
           </div>
         </div>

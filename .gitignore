@@ -1,5 +1,5 @@
 node_modules/
-lib/
+/lib/
 .dsh-home/
 .liangxiang-backend/
 *.tgz

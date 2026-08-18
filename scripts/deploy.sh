@@ -6,7 +6,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-REMOTE="${LIANGXIANG_DEPLOY_SSH:-deploy-user@203.0.113.10}"
+# shellcheck source=load-deploy-ssh.sh
+source "$ROOT/scripts/load-deploy-ssh.sh"
 PREFIX="${LIANGXIANG_PREFIX:-/opt/liangxiang}"
 STAGE="${LIANGXIANG_DEPLOY_STAGE:-/var/tmp/liangxiang-deploy}"
 

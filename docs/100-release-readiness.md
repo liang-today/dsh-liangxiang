@@ -26,7 +26,7 @@
 |---|---|
 | `pnpm run typecheck` | ✅ |
 | `pnpm run lint` | ✅ |
-| `pnpm run test` | ✅ 36 文件 / 446 项 |
+| `pnpm run test` | ✅ 36 文件 / 452 项 |
 | `pnpm run build` | ✅ Host 154.63 kB（gzip 38.63 kB）；Backend 131.09 kB；Client 940.35 kB（gzip 604.67 kB） |
 | `pnpm audit --prod` | ✅ 0 个已知漏洞 |
 | `smoke:clean-profile` | ✅ 全新 profile 从候选 tarball 安装；默认在线显式切离线成功，后端不可达时重启仍保持离线，独立本地存档存在 |
@@ -36,7 +36,7 @@
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
 | MacBook / Mac mini 安装 | ⚠️ 0.8.3-beta 候选包已放到桌面 `liangxiang` 目录供真实 profile 手工验收；MacBook 日常 profile 与 Mac mini 仍待装完后勾掉 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
-| npm 公开包复核 | ✅ 历史占位 `dsh-liangxiang@0.8.0` 为 7 文件；当前 `0.8.3-beta` 候选尚未发布 |
+| npm 公开包复核 | ✅ `0.8.3-beta` 已发布；`latest` 与 `beta` 均指向该版本；历史 `0.8.0` 仍不可覆盖 |
 | 0.8.3-beta 候选包 | ✅ 7 文件；SHA-256 `d0ee40ef3d04cf83dfc3c7a38f70d43df1c905cc90607cd2b77e34baa351e76f`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
 | 香港公网峰值（只读） | ✅ `/v1/health` 1,000 请求 / 1,000 并发新建 TLS 连接，0 失败；测试后 Caddy/Backend 无 warning、内存余量 14 GiB |
 

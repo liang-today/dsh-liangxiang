@@ -41,7 +41,7 @@ describe('state frame round-trip', () => {
     // 397,000 effective -> the frozen demo LiangQi numbers.
     expect(view.personal.earnedIncenseToday).toBe(7)
     expect(view.personal.tokenRemainder).toBe(47_000)
-    // demo seed 83% -> 梁祖, derived from the SAME raw counts as the ratios.
+    // demo seed 83% -> 梁神 (liang_shen), derived from the SAME raw counts as the ratios.
     expect(view.snapshot.liangziState).toBe('liang_shen')
     expect(view.snapshot.totalIncense).toBe(12_846)
     expect(view.authorityMode).toBe('LOCAL_FAKE_DEV')
