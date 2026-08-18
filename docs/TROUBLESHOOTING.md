@@ -5,8 +5,8 @@
 没有全局安装 DSH CLI。两种用法等价：
 
 ```bash
-dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
+dsh plugin --profile web add ./dsh-liangxiang-0.8.4-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.4-beta.tgz
 ```
 
 `scripts/update-plugin.sh` 现在会在找不到 `dsh` 时自动改用 npx。也可以显式指定：`--dsh npx`。
@@ -16,7 +16,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.
 典型日志是：
 
 ```text
-GET https://registry.npmjs.org/dsh-liangxiang-0.8.3-beta.tgz: Not Found - 404
+GET https://registry.npmjs.org/dsh-liangxiang-0.8.4-beta.tgz: Not Found - 404
 ```
 
 这不是包坏了，是 pnpm 把参数当成了 **npm 包名**。DSH 的 `plugin add` 只是把参数转给 pnpm，而且只有以 `./` 或 `../` 开头的路径才会按你当前目录重写。
@@ -25,9 +25,7 @@ GET https://registry.npmjs.org/dsh-liangxiang-0.8.3-beta.tgz: Not Found - 404
 
 ```bash
 # 少了 ./
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-0.8.3-beta.tgz
-# 去 npm 拉未发布版本
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.3-beta
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-0.8.4-beta.tgz
 ```
 
 能装上的写法：
@@ -35,7 +33,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.3-beta
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.4-beta.tgz
 ```
 
 ## 本轮运行失败：`Cannot read properties of undefined (reading 'prepare')`
