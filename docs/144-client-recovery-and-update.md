@@ -40,7 +40,7 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 
 | 来源 | 升级命令 |
 |---|---|
-| npm | `dsh plugin --profile web add dsh-liangxiang@beta`（或把 `dsh` 换成 `npx --yes @deepseek-ai/dsh`） |
+| npm | 先 `remove dsh-liangxiang`，再 `add dsh-liangxiang@beta`（本地 tarball 钉住时只 add 不会换源）。没有全局 `dsh` 时把开头换成 `npx --yes @deepseek-ai/dsh` |
 | GitHub Release / tarball | 先 `cd` 到包目录，再 `add ./dsh-liangxiang-<version>.tgz` |
 | 源码 | `git pull && pnpm install && pnpm run dev:install` |
 
