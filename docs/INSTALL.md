@@ -1,6 +1,6 @@
 # INSTALL — 安装与运行
 
-前置：Node ≥ 22（实测 22.17；DSH 官方要求 `^22.19.0 || >=24`）、pnpm ≥ 10。插件本身**不需要任何 API key**（只有在 WebUI 里真正和模型对话才需要）。
+前置：Node `^22.19.0 || >=24`、pnpm ≥ 10。插件本身**不需要任何 API key**（只有在 WebUI 里真正和模型对话才需要）。
 
 ## 一、从仓库开发运行（推荐）
 
@@ -33,7 +33,15 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 一键自检：`pnpm run smoke:online`（会断言拒绝 `VERIFIED_PRODUCTION`、claim 折算、幂等只扣一次、50 并发只接受 1 票、快照发布）。
 
-## 二、从 RC tarball 安装到自己的 profile
+## 二、安装 0.8.0 beta 或本地 RC tarball
+
+从 npm beta 通道安装（不会追随未来的 `latest`）：
+
+```bash
+dsh plugin --profile <你的 profile> add dsh-liangxiang@beta
+```
+
+也可以从仓库构建本地 tarball：
 
 ```bash
 pnpm pack                                            # 当前产出 dsh-liangxiang-0.8.0.tgz
@@ -43,7 +51,7 @@ dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.0.tgz
 两点注意：
 
 1. **不要**把 in-box bundle（如 `@deepseek-ai/dsh-web-app`）装成 profile 依赖。它只需要出现在 `dsh.profile.bundles` 里；装进 `<profile>/node_modules` 会遮蔽 launcher 的模块回退目录，造成同一个包出现两个实例，工具调用会直接报 `Cannot read properties of undefined (reading 'prepare')`。装完可以跑 `node scripts/assert-profile-modules.mjs <DSH_HOME>/profiles/<profile>` 自检。
-2. **tarball 不含后端**（`lib/backend.js` 不在包内，插件包只有 Host + Client 两半）。要在线模式就从仓库跑 `pnpm run backend:start`。
+2. **tarball 不含后端**（`lib/backend.js` 不在包内，插件包只有 Host + Client 两半）。默认在线模式直接连接梁相社区；只有自建社区节点时，才需要从仓库部署后端。
 
 ## 三、环境变量
 
