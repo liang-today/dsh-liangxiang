@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.5-beta — 2026-08-18
+
+- npm 简介页右侧 Install 栏是网站写死的 `npm i`，无法替换。本版 README 开头直接给出 `dsh plugin add`，并写明右侧那条命令不会进入 DSH。
+- 从目录发布，确保 registry 收录 README；`0.8.4-beta` 的包内有 README，但 npm 页面没挂上。
+
 ## 0.8.4-beta — 2026-08-18
 
 - 0.8.3-beta 发布后又改了 Host/Client/后端源码，按版本纪律升号重发包，不再把新行为留在旧号上。
