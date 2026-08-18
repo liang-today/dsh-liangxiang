@@ -1,5 +1,26 @@
 # TROUBLESHOOTING
 
+## 更新脚本提示没有 `dsh` 命令
+
+没有全局安装 DSH CLI。两种用法等价：
+
+```bash
+dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
+```
+
+`scripts/update-plugin.sh` 现在会在找不到 `dsh` 时自动改用 npx。也可以显式指定：`--dsh npx`。
+
+## 本地 tarball 报 `ERR_PNPM_FETCH_404`
+
+路径少了 `./`（或绝对路径），pnpm 把文件名当成 npm 包名去 registry 拉。必须写成：
+
+```bash
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
+```
+
+不要写成 `… web add dsh-liangxiang-0.8.3-beta.tgz`：`web` 是启动 WebUI，安装插件的子命令是 `plugin add`。
+
 ## 本轮运行失败：`Cannot read properties of undefined (reading 'prepare')`
 
 **症状**：DSH 里任何用到工具的回合立刻失败；紧接着同一会话报 `An assistant message with 'tool_calls' must be followed by tool messages responding to each 'tool_call_id'`。

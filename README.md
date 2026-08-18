@@ -43,7 +43,7 @@
 准入：新客户端自动取券并认领一次，之后只凭安装私钥长期连接；旧共享口令
 通道已经从代码与部署配置中删除，入梁券是首次登记的唯一准入。数据与服务位于香港，正式客户端统一连接
 `https://api.liang.today`。npm 已提供历史占位包 `dsh-liangxiang@0.8.0`；本仓当前
-候选是尚未发布的 `0.8.2-beta`。正式更新 beta 标签前仍应显式使用 `@beta` 安装；
+候选是尚未发布的 `0.8.3-beta`。正式更新 beta 标签前仍应显式使用 `@beta` 安装；
 npm registry 为首个版本同时建立了 `latest` 指向。尚未发布
 GitHub Release。迁移实录见
 [`docs/142-hk-migration-report.md`](docs/142-hk-migration-report.md)。

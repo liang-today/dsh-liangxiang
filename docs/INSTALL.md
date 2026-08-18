@@ -6,36 +6,48 @@
 
 ## 用户：安装 / 升级 / 卸载
 
-三条路径任选其一。`web` 若不是你的 profile 名，换成实际名字。
+DSH 有两种用法。全局装过 CLI 就写 `dsh`；否则每次用 `npx --yes @deepseek-ai/dsh` 替换下面的 `dsh`。`web` 若不是你的 profile 名，换成实际名字。
+
+```bash
+dsh …                                    # 全局模式
+npx --yes @deepseek-ai/dsh …             # 没有全局 dsh 时
+```
 
 ### npm（推荐，可远程拉包）
 
-安装和升级是**同一条命令**，DSH 会从 npm 拉当前 `@beta`：
+安装和升级是**同一条命令**，会从 npm 拉当前 `@beta`：
 
 ```bash
 dsh plugin --profile web add dsh-liangxiang@beta
+# 或
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 ```
 
-卸载：
-
-```bash
-dsh plugin --profile web remove dsh-liangxiang
-```
+卸载：`dsh plugin --profile web remove dsh-liangxiang`
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 公开 npm 目前仍是 `0.8.0`。未发新包前，这条命令升不到本仓的 `0.8.2-beta`。
+> 公开 npm 目前仍是 `0.8.0`。未发新包前，这条命令升不到本仓的 `0.8.3-beta`。
 
 ### GitHub Release / 本地 tarball
 
-从 [Releases](https://github.com/liang-today/dsh-liangxiang/releases) 或桌面分发目录取得 `dsh-liangxiang-<version>.tgz`。
+本地文件**必须带 `./` 或绝对路径**。写成 `dsh-liangxiang-0.8.3-beta.tgz`（没有 `./`）时，pnpm 会去 npm 拉这个名字，报 `ERR_PNPM_FETCH_404`。子命令是 `plugin add`，不是 `web add`。
 
 ```bash
-dsh plugin --profile web add ./dsh-liangxiang-<version>.tgz   # 安装或升级
-dsh plugin --profile web remove dsh-liangxiang               # 卸载
+dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
+# 或
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
 ```
 
-同版本号重打包时，用仓库里的 `scripts/update-plugin.sh`，避免 DSH 报 Already up to date。
+桌面目录一键更新（没有全局 `dsh` 时脚本会自动改用 npx）：
+
+```bash
+export DSH_HOME="$HOME/.dsh"
+cd ~/Desktop/liangxiang
+bash ./update-plugin.sh ./dsh-liangxiang-0.8.3-beta.tgz --profile web
+```
+
+卸载：`dsh plugin --profile web remove dsh-liangxiang`
 
 ### 源码（开发 profile，不改日常 `~/.dsh`）
 
@@ -97,7 +109,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 ```bash
 pnpm pack
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.2-beta.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.3-beta.tgz
 ```
 
 1. **不要**把 in-box bundle（如 `@deepseek-ai/dsh-web-app`）装成 profile 依赖。它只需要出现在 `dsh.profile.bundles` 里；装进 `<profile>/node_modules` 会遮蔽 launcher 的模块回退目录，造成同一个包出现两个实例，工具调用会直接报 `Cannot read properties of undefined (reading 'prepare')`。装完可以跑 `node scripts/assert-profile-modules.mjs <DSH_HOME>/profiles/<profile>` 自检。
