@@ -52,7 +52,7 @@ dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.0.tgz
 | 变量 | 作用 |
 |---|---|
 | `LIANGXIANG_BACKEND_URL` | 默认烘焙社区地址（在线）。`local` 强制本地演示 |
-| `LIANGXIANG_COMMUNITY_KEY` | 仅旧客户端兼容；0.8+ 新安装会自动从社区领取并认领入梁券 |
+| `LIANGXIANG_COMMUNITY_KEY` | 仅紧急迁移兼容；正式生产未设置，0.8+ 新安装自动领取并认领入梁券 |
 | `LIANGXIANG_TOKEN_PER_INCENSE` | 每炷香的 Token 数（默认 50,000；调小便于演示） |
 | `LIANGXIANG_SNAPSHOT_SECONDS` | 快照/轮询节奏（默认 1s） |
 | `LIANGXIANG_BUSINESS_TZ` | 业务时区（默认 `Asia/Shanghai`）；在线模式下**后端**的这项才是权威 |

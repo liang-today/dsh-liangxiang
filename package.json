@@ -2,6 +2,23 @@
   "name": "dsh-liangxiang",
   "version": "0.8.0",
   "description": "梁相 — a DeepSeek Harness WebUI plugin (hover: 今日梁相). Installable dual-half bundle: host plugin row + web client bundle.",
+  "homepage": "https://liang.today/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liang-today/dsh-liang-meter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/liang-today/dsh-liang-meter/issues"
+  },
+  "keywords": [
+    "deepseek",
+    "dsh",
+    "plugin",
+    "liangxiang"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24"
+  },
   "type": "module",
   "main": "lib/index.js",
   "exports": {

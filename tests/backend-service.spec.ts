@@ -451,6 +451,41 @@ describe('same-day publish', () => {
 })
 
 describe('case queue', () => {
+  it('atomically replaces every pending row with the dated release plan', () => {
+    const f = boot()
+    f.service.enqueueCase('旧排期一是夯还是拉', '2026-08-17')
+    f.service.enqueueCase('旧排期二是夯还是拉', null)
+
+    const replaced = f.service.replaceQueue([
+      { title: '新排期一是夯还是拉', publishOn: '2026-08-18' },
+      { title: '新排期二是夯还是拉', publishOn: '2026-08-19' },
+    ])
+
+    expect(replaced.cleared).toBe(2)
+    expect(replaced.items.map(row => [row.publish_on, row.title])).toEqual([
+      ['2026-08-18', '新排期一是夯还是拉'],
+      ['2026-08-19', '新排期二是夯还是拉'],
+    ])
+    expect(f.service.listQueue().map(row => [row.publish_on, row.title])).toEqual([
+      ['2026-08-18', '新排期一是夯还是拉'],
+      ['2026-08-19', '新排期二是夯还是拉'],
+    ])
+  })
+
+  it('validates the whole replacement before clearing the live queue', () => {
+    const f = boot()
+    f.service.enqueueCase('应保留的排期是夯还是拉', '2026-08-17')
+
+    expect(() => f.service.replaceQueue([
+      { title: '第一题是夯还是拉', publishOn: '2026-08-18' },
+      { title: '第二题是夯还是拉', publishOn: '2026-08-18' },
+    ])).toThrow('duplicate date')
+
+    expect(f.service.listQueue().map(row => [row.publish_on, row.title])).toEqual([
+      ['2026-08-17', '应保留的排期是夯还是拉'],
+    ])
+  })
+
   it('opens the next day with a dated queue row instead of copying yesterday', () => {
     const f = boot()
     f.service.ensureActiveCase()

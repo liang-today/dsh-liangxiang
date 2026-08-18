@@ -21,6 +21,7 @@ usage() {
   liang cases list                     显示待发布梁案及日期
   liang cases add [--on 日期] "标题"   加入梁案队列
   liang cases seed --start 日期 [数量]  从内置题库连续排期（默认 10 道）
+  liang cases replace --start 日期 [数量] 原子替换全部待发布排期
   liang cases publish "标题"           立即结案并发布新梁案（慎用）
   liang tickets status                  显示可用券、剩余认领次数及历史状态
   liang tickets list [数量]             查看当前可用入梁券（默认 100）
@@ -233,8 +234,16 @@ case "$1" in
         limit="${5:-10}"
         run_backend_cli case queue seed --start "$4" --limit "$limit" "$PREFIX/scripts/case-bank.txt"
         ;;
+      replace)
+        [[ "${3:-}" == "--start" && -n "${4:-}" ]] || { echo "用法：liang cases replace --start YYYY-MM-DD [数量]" >&2; exit 2; }
+        if [[ -n "${5:-}" ]]; then
+          run_backend_cli case queue replace --start "$4" --limit "$5" "$PREFIX/scripts/case-bank.txt"
+        else
+          run_backend_cli case queue replace --start "$4" "$PREFIX/scripts/case-bank.txt"
+        fi
+        ;;
       publish) shift 2; run_backend_cli case publish "$@" ;;
-      *) echo '用法：liang cases list | add [--on YYYY-MM-DD] "标题" | seed --start YYYY-MM-DD [数量] | publish "标题"' >&2; exit 2 ;;
+      *) echo '用法：liang cases list | add [--on YYYY-MM-DD] "标题" | seed/replace --start YYYY-MM-DD [数量] | publish "标题"' >&2; exit 2 ;;
     esac
     ;;
   tickets)

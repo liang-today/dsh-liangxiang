@@ -12,6 +12,10 @@ import { PLUGIN_PACKAGE_NAME, PLUGIN_VERSION } from '../src/shared/index.ts'
 interface Manifest {
   name: string
   version: string
+  homepage: string
+  repository: { type: string, url: string }
+  bugs: { url: string }
+  engines: { node: string }
   type: string
   main: string
   exports: Record<string, unknown>
@@ -35,6 +39,35 @@ describe('package.json dsh manifests', () => {
 
   it('keeps the package/tarball version and visible plugin version in sync', () => {
     expect(manifest.version).toBe(PLUGIN_VERSION)
+  })
+
+  it('keeps every current-facing release document on the package version', () => {
+    const escaped = manifest.version.replaceAll('.', '\\.')
+    const markers: Array<[string, RegExp]> = [
+      ['CHANGELOG.md', new RegExp(`^## ${escaped}\\b`, 'm')],
+      ['SECURITY.md', new RegExp(`梁相 v${escaped}\\b`)],
+      ['docs/100-release-readiness.md', new RegExp(`^# .*v${escaped}\\b`, 'm')],
+      ['docs/102-known-limitations.md', new RegExp(`更新至 v${escaped}`)],
+      ['docs/103-test-matrix.md', new RegExp(`v${escaped}`)],
+      ['docs/142-hk-migration-report.md', new RegExp(`dsh-liangxiang@${escaped}`)],
+      ['docs/COMPATIBILITY.md', new RegExp(`\\| 梁相版本 \\| ${escaped} \\|`)],
+      ['docs/BUGFIX.md', new RegExp('当前版本 `v' + escaped + '`')],
+      ['docs/INSTALL.md', new RegExp(`dsh-liangxiang-${escaped}\\.tgz`)],
+      ['docs/144-client-recovery-and-update.md', new RegExp(`dsh-liangxiang-${escaped}\\.tgz`)],
+    ]
+    for (const [path, marker] of markers) {
+      expect(readRootFile(path), `${path} must identify release ${manifest.version}`).toMatch(marker)
+    }
+  })
+
+  it('publishes npm discovery and compatibility metadata', () => {
+    expect(manifest.homepage).toBe('https://liang.today/')
+    expect(manifest.repository).toEqual({
+      type: 'git',
+      url: 'git+https://github.com/liang-today/dsh-liang-meter.git',
+    })
+    expect(manifest.bugs.url).toBe('https://github.com/liang-today/dsh-liang-meter/issues')
+    expect(manifest.engines.node).toBe('^22.19.0 || >=24')
   })
 
   it('is an ESM package with the host entry as main', () => {

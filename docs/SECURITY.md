@@ -15,7 +15,7 @@
 | 拒绝客户端自报权威字段 | `parseV1VoteRequest` 对 `user_id`/`remaining_incense`/`liangzi_state` 等**报错**而非忽略 |
 | 投票只接受三个字段 | `case_id` / `vote_type` / `request_id` |
 | `request_id` 格式 | `[A-Za-z0-9._-]{8,128}` |
-| 安装标识格式 | `[A-Za-z0-9._-]{8,64}`（拒绝空/过短/超长/路径穿越/注入串/非 latin1） |
+| 安装标识格式 | `[A-Za-z0-9._-]{8,64}`；正式客户端使用 `lk_` + Ed25519 公钥派生标识，拒绝空/过短/超长/路径穿越/注入串/非 latin1 |
 | 请求体上限 | 4KB → **413** + `connection: close`（不掐 socket，避免「已拒绝」与「网络故障」不可区分） |
 | SQL 注入 | 全部 prepared statement；注入串按字面量处理（审计后五张表完好） |
 | 派生值不入库 | 比例/状态/earned/remaining 由 `domain/` 派生，避免第二个真相源 |
@@ -39,7 +39,9 @@
 | 控制 | 实现 |
 |---|---|
 | 投票限流 | 每安装每分钟 `LIANGXIANG_VOTE_RATE_LIMIT`（默认 600，0 关闭）→ 429 |
-| 限流表不无界增长 | 超过 1000 个安装即清扫过期窗口（安装标识是自造的，否则是攻击者可控的内存增长） |
+| 限流表不无界增长 | 投票限流器最多保留 4,096 个活跃安装 key；满载先清过期窗口，仍满则拒绝新 key |
+| 首次登记总量有界 | 入梁券限次数、限有效期；`admission/claim` 使用不按攻击者指纹分桶的服务器全局每分钟上限 |
+| 入梁券库存可运维 | SQLite v5 保存 active/exhausted/revoked/expired 状态；`liang tickets` 查询、发行和作废 |
 | 快照历史有界 | 每梁案保留最新 200 条，发布时同事务裁剪 |
 | 出站请求 | 全部超时可取消（AbortController），读请求最多一次有界重试，写请求**不自动重试** |
 | 资源释放 | `dispose()` abort 在途请求、清 timer、清订阅；SSE 连接在插件卸载时全部关闭 |
@@ -47,6 +49,7 @@
 ## 密钥与日志
 
 - 梁相不读、不存、不发任何 provider 凭据；`.env` 在 `.gitignore` 内。
+- 首次登记使用短期入梁券 + Ed25519 签名；生产 `LIANGXIANG_COMMUNITY_KEY` 保持未设置。
 - 投票日志只含 `method / path / status / installation 前 8 字符 / accepted|rejected`。
 - 错误响应不回显请求体（有断言）。
 - 详见 [`PRIVACY.md`](PRIVACY.md)。
@@ -55,6 +58,11 @@
 
 运行时依赖 **0 个**（只用 `node:http`、`node:sqlite`、React 由 DSH 宿主提供）。`pnpm audit --prod`：无已知漏洞。发布包内容仅 `lib/index.js`、`lib/client.js(.map)`、`cordis.patch.yml`、`README.md`、`LICENSE`、`package.json`。
 
-## 明确未做（因此不要公网暴露）
+## 公网与诚实边界
 
-无 TLS、无鉴权、无配额、无审计日志、无反女巫。后端默认只监听 `127.0.0.1`，公网部署不受支持（[`102`](102-known-limitations.md) 第 4 条）。
+正式社区节点的后端只监听 `127.0.0.1:4180`，公网仅由 Caddy 在
+`https://api.liang.today` 提供 TLS；除健康、公开快照和限量券列表外，业务接口要求
+Ed25519 安装签名。系统有请求体、投票、认领、内存表和票库存边界，也有最小化审计日志。
+
+仍然**没有**实名、真人证明、不可伪造设备指纹或服务器可验证 Token，因此不能反女巫，
+也不能宣传为 secure/verified usage voting。详见 [`102`](102-known-limitations.md) 第 1–4 条。

@@ -128,4 +128,39 @@ describe('operator CLI', () => {
     expect(collision.join('\n')).toContain('already exists')
     rmSync(dir, { recursive: true, force: true })
   })
+
+  it('replaces an existing schedule from the case bank in one command', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-replace-'))
+    const db = join(dir, 'liangxiang.sqlite')
+    const bank = join(dir, 'bank.txt')
+    writeFileSync(bank, '# 发布顺序\n今天明天同题是夯还是拉\n后天新题是夯还是拉\n')
+    const env = { LIANGXIANG_BACKEND_DB: db }
+    const logs: string[] = []
+    const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
+
+    expect(runOperatorCli(
+      ['case', 'queue', 'add', '--on', '2026-08-19', '待清除旧题是夯还是拉'],
+      env,
+      io,
+    )).toBe(0)
+    expect(runOperatorCli(
+      ['case', 'queue', 'replace', '--start', '2026-08-20', bank],
+      env,
+      io,
+    )).toBe(0)
+    const listLogs: string[] = []
+    expect(runOperatorCli(
+      ['case', 'queue', 'list'],
+      env,
+      { log: (line) => listLogs.push(line), error: (line) => listLogs.push(line) },
+    )).toBe(0)
+
+    const output = logs.join('\n')
+    expect(output).toContain('queue replaced cleared=1 added=2')
+    expect(output).toContain('2026-08-20')
+    expect(output).toContain('2026-08-21')
+    expect(output).toContain('今天明天同题是夯还是拉')
+    expect(listLogs.join('\n')).not.toContain('"title": "待清除旧题是夯还是拉"')
+    rmSync(dir, { recursive: true, force: true })
+  })
 })

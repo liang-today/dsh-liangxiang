@@ -8,6 +8,7 @@
  *   node lib/backend-cli.js case publish "新题是夯还是拉"
  *   node lib/backend-cli.js case queue list
  *   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "明日题是夯还是拉"
+ *   node lib/backend-cli.js case queue replace --start YYYY-MM-DD <题库文件>
  *   node lib/backend-cli.js identity unbind lk_...
  *   node lib/backend-cli.js admission status|list|issue|revoke
  */
@@ -30,6 +31,7 @@ const usage = `usage:
   node lib/backend-cli.js case queue list
   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "<标题是夯还是拉>"
   node lib/backend-cli.js case queue seed --start YYYY-MM-DD [--limit N] <题库文件>
+  node lib/backend-cli.js case queue replace --start YYYY-MM-DD [--limit N] <题库文件>
   node lib/backend-cli.js identity unbind <installation_id>
   node lib/backend-cli.js admission status
   node lib/backend-cli.js admission list [--limit N]
@@ -180,6 +182,38 @@ export function runOperatorCli(
       io.log(`[liangxiang-ops] queue seeded=${scheduled.length} first=${scheduled[0]?.publish_on} last=${scheduled.at(-1)?.publish_on}`)
       return 0
     }
+    if (topic === 'case' && command === 'queue' && args[2] === 'replace') {
+      if (args[3] !== '--start' || !isBusinessDate(args[4])) {
+        throw new WireError('start', 'replace requires --start YYYY-MM-DD')
+      }
+      const start = args[4]
+      let cursor = 5
+      let limit: number | null = null
+      if (args[cursor] === '--limit') {
+        limit = Number(args[cursor + 1])
+        cursor += 2
+      }
+      if (limit !== null && (!Number.isSafeInteger(limit) || limit < 1 || limit > 366)) {
+        throw new WireError('limit', 'expected an integer in [1,366]')
+      }
+      const path = args[cursor]
+      if (path === undefined || args.length !== cursor + 1) {
+        throw new WireError('file', 'expected one case-bank file path')
+      }
+      const titles = readCaseBank(path)
+      const selected = limit === null ? titles : titles.slice(0, limit)
+      if (selected.length === 0 || (limit !== null && selected.length < limit)) {
+        throw new Error(`case bank supplied ${selected.length} titles${limit === null ? '' : `; requested ${limit}`}`)
+      }
+      const plan = selected.map((title, index) => ({ title, publishOn: addUtcDays(start, index) }))
+      const replaced = service.replaceQueue(plan)
+      io.log(JSON.stringify(replaced, null, 2))
+      io.log(
+        `[liangxiang-ops] queue replaced cleared=${replaced.cleared} added=${replaced.items.length} `
+        + `first=${replaced.items[0]?.publish_on} last=${replaced.items.at(-1)?.publish_on}`,
+      )
+      return 0
+    }
     if (topic === 'identity' && command === 'unbind') {
       const installationId = parseInstallationId(args[2])
       const response = service.unbindIdentity(installationId)
@@ -245,6 +279,14 @@ export function runOperatorCli(
   } finally {
     store.close()
   }
+}
+
+function readCaseBank(path: string): string[] {
+  return readFileSync(path, 'utf8')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line !== '' && !line.startsWith('#'))
+    .map(title => parseV1PublishCaseRequest({ title }).title)
 }
 
 function addUtcDays(date: string, amount: number): string {
