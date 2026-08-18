@@ -26,6 +26,7 @@ usage() {
   liang tickets list [数量]             查看当前可用入梁券（默认 100）
   liang tickets issue <数量> [参数]      生成入梁券；参数：--claims N --ttl-hours N
   liang tickets revoke <ticket_id>       作废一张尚未耗尽的入梁券
+  liang archive clear --yes              清空历史梁祠（保留今日梁案、身份、入梁券）
 EOF
 }
 
@@ -240,6 +241,15 @@ case "$1" in
       issue) shift 2; run_backend_cli admission issue "$@" ;;
       revoke) shift 2; run_backend_cli admission revoke "$@" ;;
       *) echo '用法：liang tickets status | list [数量] | issue <数量> [--claims N] [--ttl-hours N] | revoke <ticket_id>' >&2; exit 2 ;;
+    esac
+    ;;
+  archive)
+    case "${2:-}" in
+      clear)
+        [[ "${3:-}" == "--yes" ]] || { echo "用法：liang archive clear --yes" >&2; exit 2; }
+        run_backend_cli archive clear --yes
+        ;;
+      *) echo '用法：liang archive clear --yes' >&2; exit 2 ;;
     esac
     ;;
   *) usage; exit 2 ;;

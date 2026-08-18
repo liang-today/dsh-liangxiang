@@ -1,24 +1,29 @@
-# dsh-liangxiang(梁相)
+# 梁相
 
-> **用 DSH 攒香火，一炷夯或拉，共同显出今日梁相。**
+**众香成势，梁子显相。梁相还得梁人出！**
 
-梁相是一个 DeepSeek Harness(DSH)WebUI 插件:
+梁相是一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 社区玩法。每天一道梁案。使用 DeepSeek Harness 凝成香火，投下一炷“夯”或“拉”；众人的选择汇成梁位，决定今天的梁子。日终之后，结果收入梁祠。
 
-- 用 DSH 的 **Input + Output Token** 攒个人香火,默认 **50,000 Token = 1 炷**;
-- 香火就是你的参与库存，**夯与拉共用同一个库存**，一炷香对应一次选择；
-- 对当天唯一的二元梁案选择「夯 / 拉」；按钮为 **夯 · 升梁 / 拉 · 降梁**；
-- **香火环** = 当前剩余香火（旺盛程度）+ 距下一炷的 Token 进度（环形填充）；`LiangQi` 仅保留为内部兼容名；
-- 中央**梁子**只由**本社区节点的夯拉比例**决定:`待开梁`(零票)/ 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖;
-- 面板正中只有一个公开数字 **梁位**(= 社区夯率,6 位小数),每一票都看得见它在动;
-- 底部 **三界香火** = 当前梁案已接受票数，**五行香客** = 至少成功投过一票的独立安装身份数。
-- 底部 **梁相案牍** 收纳主页、异常核香、手动在线/离线模式切换与版本信息；日常同步、重连与档案更新均自动完成。
-- 底部 **进入梁祠** 打开插件内月历：今日进行中、永久日梁、周梁、月梁，以及只统计到昨天的本周/本月暂梁。
+官网：[liang.today](https://liang.today/) · 源码：[liang-today/dsh-liangxiang](https://github.com/liang-today/dsh-liangxiang)
 
-悬停文案恒为 `今日梁相`;入口图标就是当前梁子那一态,可以拖到画面任意位置。
+```bash
+export DSH_HOME="$HOME/.dsh"
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+```
 
-每日结案后，今日结果收入梁祠成为日梁，并继续汇成周梁与月梁。三界香火、五行香客、梁相案牍与梁祠共同沿用“现代编年志 × 克制梁祠”的仪式化语言。
+安装、升级、卸载说明见 [liang.today/guide](https://liang.today/guide/)。
 
-> 梁相是独立社区项目，非 DeepSeek 官方产品。梁位是社区软信任玩法，不代表实名人数、真实民意或任何个人、机构立场。
+- 用 DSH 的 **Input + Output Token** 攒个人香火，默认 **50,000 Token = 1 炷**
+- 香火是参与库存，夯与拉共用；一炷对应一次选择
+- 每天唯一梁案，按钮为 **夯 · 升梁 / 拉 · 降梁**
+- 中央**梁子**只看本社区夯率：`待开梁`（零票）/ 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖
+- 正中公开数字是 **梁位**（社区夯率，6 位小数）
+- **三界香火** = 已接受票数；**五行香客** = 至少成功投过一票的独立安装数
+- **梁祠** 记录日梁、周梁、月梁；今日只显示进行中
+
+悬停文案是 `今日梁相`；入口图标就是当前梁子，可拖到任意位置。
+
+> 梁相是独立社区项目，非 DeepSeek 官方产品。梁位是社区软信任玩法，不代表实名人数、真实民意或任何个人、机构立场。中央角色叫**梁子**，不是现实人物。
 
 产品语义冻结于 [`AGENTS.md`](AGENTS.md) 与 [`docs/PRODUCT_FREEZE_V0.1.md`](docs/PRODUCT_FREEZE_V0.1.md);历史勘察文档中的旧模型(梁签、cache-read 10% 权重等)已废弃,见 [`docs/SEMANTIC_CORRECTION_R2.md`](docs/SEMANTIC_CORRECTION_R2.md)。
 
@@ -42,9 +47,8 @@
 当前社区后端使用“公开短期入梁券 + Ed25519 安装签名”的公网 soft-trust
 准入：新客户端自动取券并认领一次，之后只凭安装私钥长期连接；旧共享口令
 通道已经从代码与部署配置中删除，入梁券是首次登记的唯一准入。数据与服务位于香港，正式客户端统一连接
-`https://api.liang.today`。npm 已提供历史占位包 `dsh-liangxiang@0.8.0`；本仓当前
-候选是尚未发布的 `0.8.3-beta`。正式更新 beta 标签前仍应显式使用 `@beta` 安装；
-npm registry 为首个版本同时建立了 `latest` 指向。尚未发布
+`https://api.liang.today`。当前 npm 包是 `dsh-liangxiang@0.8.3-beta`；请用
+`dsh-liangxiang@beta` 安装。`0.8.0` 仍留在 registry，但不是这一版。尚未发布
 GitHub Release。迁移实录见
 [`docs/142-hk-migration-report.md`](docs/142-hk-migration-report.md)。
 

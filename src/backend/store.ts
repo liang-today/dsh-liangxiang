@@ -205,6 +205,16 @@ export interface BackendStore {
   dayArchives: (afterVersion?: number) => DayArchiveRow[]
   weekArchives: (afterVersion?: number) => WeekArchiveRow[]
   monthArchives: (afterVersion?: number) => MonthArchiveRow[]
+  /**
+   * Wipe 梁祠 history before `keepBusinessDate`. Caller must own a transaction.
+   * Today's case, identities, tickets, incense, and the queue stay.
+   */
+  clearHistoryArchives: (keepBusinessDate: string) => {
+    days: number
+    weeks: number
+    months: number
+    closedCases: number
+  }
   identityByInstallation: (installationId: string) => CommunityIdentityRow | undefined
   identityByPublicKey: (publicKey: string) => CommunityIdentityRow | undefined
   identityByFingerprint: (fingerprint: string) => CommunityIdentityRow | undefined
@@ -409,6 +419,24 @@ export function openBackendStore(databasePath: string): BackendStore {
   )
   const selectMonthArchives = db.prepare(
     'SELECT * FROM liang_month_archive WHERE archive_version > ? ORDER BY start_date',
+  )
+  const deleteOldSnapshots = db.prepare(
+    'DELETE FROM public_liang_snapshot WHERE business_date < ?',
+  )
+  const deleteOldVotes = db.prepare(
+    'DELETE FROM liang_vote WHERE business_date < ?',
+  )
+  const deleteOldStats = db.prepare(
+    'DELETE FROM daily_liang_stats WHERE business_date < ?',
+  )
+  const deleteOldCases = db.prepare(
+    'DELETE FROM daily_liang_case WHERE business_date < ?',
+  )
+  const deleteDayArchives = db.prepare('DELETE FROM liang_day_archive')
+  const deleteWeekArchives = db.prepare('DELETE FROM liang_week_archive')
+  const deleteMonthArchives = db.prepare('DELETE FROM liang_month_archive')
+  const resetArchiveVersion = db.prepare(
+    'UPDATE liang_archive_meta SET archive_version = 0 WHERE singleton = 1',
   )
   const selectLatestBefore = db.prepare(
     `SELECT * FROM daily_liang_case
@@ -664,6 +692,17 @@ export function openBackendStore(databasePath: string): BackendStore {
       selectWeekArchives.all(afterVersion) as unknown as WeekArchiveRow[],
     monthArchives: (afterVersion = -1) =>
       selectMonthArchives.all(afterVersion) as unknown as MonthArchiveRow[],
+    clearHistoryArchives(keepBusinessDate) {
+      deleteOldSnapshots.run(keepBusinessDate)
+      deleteOldVotes.run(keepBusinessDate)
+      deleteOldStats.run(keepBusinessDate)
+      const closedCases = changed(deleteOldCases.run(keepBusinessDate))
+      const days = changed(deleteDayArchives.run())
+      const weeks = changed(deleteWeekArchives.run())
+      const months = changed(deleteMonthArchives.run())
+      resetArchiveVersion.run()
+      return { days, weeks, months, closedCases }
+    },
     identityByInstallation: (installationId) =>
       selectIdentity.get(installationId) as CommunityIdentityRow | undefined,
     identityByPublicKey: (publicKey) =>

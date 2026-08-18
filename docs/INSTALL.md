@@ -27,7 +27,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 公开 npm 目前仍是 `0.8.0`。未发新包前，这条命令升不到本仓的 `0.8.3-beta`。
+> 当前 npm 包是 `dsh-liangxiang@0.8.3-beta`。请写 `@beta`；不要写 `@0.8.0`。
 
 ### GitHub Release / 本地 tarball
 

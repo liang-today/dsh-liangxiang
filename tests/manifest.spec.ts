@@ -12,6 +12,7 @@ import { PLUGIN_PACKAGE_NAME, PLUGIN_VERSION } from '../src/shared/index.ts'
 interface Manifest {
   name: string
   version: string
+  description: string
   homepage: string
   repository: { type: string, url: string }
   bugs: { url: string }
@@ -62,12 +63,17 @@ describe('package.json dsh manifests', () => {
 
   it('publishes npm discovery and compatibility metadata', () => {
     expect(manifest.homepage).toBe('https://liang.today/')
+    expect(manifest.description).toContain('香火')
+    expect(manifest.description).toContain('梁位')
     expect(manifest.repository).toEqual({
       type: 'git',
       url: 'git+https://github.com/liang-today/dsh-liangxiang.git',
     })
     expect(manifest.bugs.url).toBe('https://github.com/liang-today/dsh-liangxiang/issues')
     expect(manifest.engines.node).toBe('^22.19.0 || >=24')
+    expect(readRootFile('README.md')).not.toMatch(/梁文锋/)
+    expect(readRootFile('README.md')).toContain('众香成势，梁子显相')
+    expect(readRootFile('README.md')).toContain('https://liang.today/')
   })
 
   it('is an ESM package with the host entry as main', () => {

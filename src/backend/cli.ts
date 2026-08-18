@@ -11,6 +11,7 @@
  *   node lib/backend-cli.js case queue replace --start YYYY-MM-DD <题库文件>
  *   node lib/backend-cli.js identity unbind lk_...
  *   node lib/backend-cli.js admission status|list|issue|revoke
+  node lib/backend-cli.js archive clear --yes
  */
 import { resolveBackendConfig, BackendConfigError } from './config.ts'
 import { readFileSync } from 'node:fs'
@@ -36,7 +37,8 @@ const usage = `usage:
   node lib/backend-cli.js admission status
   node lib/backend-cli.js admission list [--limit N]
   node lib/backend-cli.js admission issue <数量> [--claims N] [--ttl-hours N]
-  node lib/backend-cli.js admission revoke <ticket_id>`
+  node lib/backend-cli.js admission revoke <ticket_id>
+  node lib/backend-cli.js archive clear --yes`
 
 function stripExec(argv: string[]): string[] {
   let start = 0
@@ -261,6 +263,19 @@ export function runOperatorCli(
         expires_at: issued[0]?.expires_at ?? null,
       }, null, 2))
       io.log(`[liangxiang-ops] 入梁券 issued=${issued.length} claims=${claims} ttl=${ttlHours}h`)
+      return 0
+    }
+    if (topic === 'archive' && command === 'clear') {
+      if (args[2] !== '--yes') {
+        io.error('清空历史梁祠会删除昨日及更早的日/周/月档和对应旧案。今日梁案、身份、入梁券和香火账保留。确认请加 --yes。已打开的 WebUI 需重启后才会看到空梁祠。')
+        return 2
+      }
+      const cleared = service.clearHistoryArchives()
+      io.log(JSON.stringify(cleared, null, 2))
+      io.log(
+        `[liangxiang-ops] archive cleared days=${cleared.days} weeks=${cleared.weeks} `
+        + `months=${cleared.months} closed_cases=${cleared.closed_cases} keep=${cleared.business_date}`,
+      )
       return 0
     }
     if (topic === 'admission' && command === 'revoke') {
