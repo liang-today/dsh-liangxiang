@@ -43,12 +43,10 @@ liang cases replace --start 2026-08-19
 ```bash
 liang config set snapshot-seconds 2
 liang config set vote-rate-limit 300
-# 仅紧急迁移兼容时：liang config set-secret community-key
 ```
 
 配置修改使用固定白名单并先校验输入；原文件备份到 `/var/backups/liangxiang/`。
 命令重启服务并检查本机健康接口，失败会自动恢复原配置。监听地址、数据库路径、
 `ALLOW_UNSIGNED` 与 authority mode 不允许从便捷命令修改，避免误开安全边界。
 
-正式生产保持社区口令未设置；该兼容命令只供受控紧急迁移。若临时使用，口令只从
-交互输入读取，不接受命令行参数，防止进入 shell 历史或进程列表。
+首次登记只使用短期、限量入梁券；服务器没有共享准入口令配置项。

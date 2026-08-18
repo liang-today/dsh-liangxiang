@@ -49,7 +49,7 @@
 ## 密钥与日志
 
 - 梁相不读、不存、不发任何 provider 凭据；`.env` 在 `.gitignore` 内。
-- 首次登记使用短期入梁券 + Ed25519 签名；生产 `LIANGXIANG_COMMUNITY_KEY` 保持未设置。
+- 首次登记只使用短期、限量入梁券，之后只使用 Ed25519 安装签名；没有共享准入口令。
 - 投票日志只含 `method / path / status / installation 前 8 字符 / accepted|rejected`。
 - 错误响应不回显请求体（有断言）。
 - 详见 [`PRIVACY.md`](PRIVACY.md)。

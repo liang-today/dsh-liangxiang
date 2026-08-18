@@ -30,7 +30,6 @@ echo "== build =="
 sudo -u liangxiang -H bash -lc "cd '$PREFIX' && pnpm install && pnpm run build"
 
 if [ ! -f "$ENV_FILE" ]; then
-  KEY="$(openssl rand -hex 32)"
   cat >"$ENV_FILE" <<EOF
 LIANGXIANG_AUTHORITY_MODE=DEV_STAGING_ONLY
 LIANGXIANG_BACKEND_HOST=127.0.0.1
@@ -39,7 +38,6 @@ LIANGXIANG_BACKEND_DB=$DATA/liangxiang.sqlite
 LIANGXIANG_BUSINESS_TZ=Asia/Shanghai
 LIANGXIANG_SNAPSHOT_SECONDS=1
 LIANGXIANG_TOKEN_PER_INCENSE=50000
-LIANGXIANG_COMMUNITY_KEY=$KEY
 LIANGXIANG_ADMISSION_CLAIM_RATE_LIMIT=120
 LIANGXIANG_ADMISSION_TICKET_TTL_HOURS=24
 LIANGXIANG_ADMISSION_TICKET_MAX_CLAIMS=1
@@ -47,7 +45,7 @@ LIANGXIANG_ADMISSION_PUBLIC_LIST_LIMIT=20
 EOF
   chmod 640 "$ENV_FILE"
   chown root:liangxiang "$ENV_FILE"
-  echo "wrote $ENV_FILE (community key generated)"
+  echo "wrote $ENV_FILE (ticket admission only)"
 else
   echo "keeping existing $ENV_FILE"
 fi

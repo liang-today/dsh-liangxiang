@@ -1,4 +1,4 @@
-# 100 — Release Readiness（v0.8.0 梁相）
+# 100 — Release Readiness（v0.8.1-beta.0 梁相）
 
 结论：**社区 soft-trust 发布候选可部署**；不得宣传为实名、一人一票、
 可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
@@ -11,7 +11,7 @@
   环境变量、后端服务、目录、日志、样式标识和文档全部使用新名。
 - 品牌过渡桥已结束：代码、配置、身份、账本、浏览器偏好与部署仅使用
   `liangxiang / LIANGXIANG_*` 命名空间。
-- 首次安装自动领取并认领短期入梁券；生产社区口令已关闭，分发 bundle 不含密钥。
+- 首次安装自动领取并认领短期入梁券；旧共享口令通道已删除，分发 bundle 不含准入凭据。
 - 服务器统一命令可查询、发行、作废入梁券；生产已备足 1,000 次可用认领库存。
 - 投票限流增加活跃 key 硬上限；预期拒绝、重放和 429 日志按原因采样。
 - 香港迁移使用 SQLite 在线一致性备份；部署只有在 health/history 冒烟通过后才写入版本戳。
@@ -25,21 +25,22 @@
 |---|---|
 | `pnpm run typecheck` | ✅ |
 | `pnpm run lint` | ✅ |
-| `pnpm run test` | ✅ 35 文件 / 423 项 |
-| `pnpm run build` | ✅ Host 132.55 kB；Backend 131.48 kB；Client 933.13 kB（gzip 603.16 kB） |
+| `pnpm run test` | ✅ 36 文件 / 435 项 |
+| `pnpm run build` | ✅ Host 133.81 kB（gzip 34.70 kB）；Backend 131.09 kB；Client 934.58 kB（gzip 603.65 kB） |
 | `pnpm audit --prod` | ✅ 0 个已知漏洞 |
-| `smoke:clean-profile` | ✅ 全新 profile 从 `dsh-liangxiang-0.8.0.tgz` 安装并启动 |
-| `smoke:online` | ✅ Host→后端、Token claim、幂等、50 并发仅一票、快照发布 |
+| `smoke:clean-profile` | ✅ 全新 profile 从候选 tarball 安装并启动 |
+| `smoke:online` | ✅ Host→后端、Token claim、幂等、50 并发仅一票、快照发布（SQLite 事务层；正式签名链另有 Host 集成测试与公网回归） |
 | 构建配置迁移 | ✅ 迁移前后三个 bundle SHA-256 相同，无弃用警告 |
-| 密钥/命名空间扫描 | ✅ bundle 不含社区口令，仓库只使用 `liangxiang / 梁相` |
+| 密钥/命名空间扫描 | ✅ bundle 不含入梁券 secret 或共享准入凭据，仓库只使用 `liangxiang / 梁相` |
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
-| MacBook / Mac mini 安装 | ✅ 0.8.0；更新路径保留存储，全新安装经正式入梁券登记，在线 authority 恢复 |
+| MacBook / Mac mini 安装 | ⚠️ MacBook 0.8.1-beta.0 更新、存储校验、在线界面与版本入口通过；Mac mini `192.168.2.86:22` 当前超时，待设备恢复可达后补验 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
-| npm 公开包复核 | ✅ `dsh-liangxiang@0.8.0`，7 文件，SHA-1 `df17b5988420e68eb1eb67c7b4fb56cad649fc0c`；registry 回下载隐私复扫通过 |
+| npm 公开包复核 | ✅ 历史占位 `dsh-liangxiang@0.8.0` 为 7 文件；当前 `0.8.1-beta.0` 候选尚未发布，避免冒充同版本字节 |
 
 npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`，且 registry
 拒绝删除首版 `latest` 标签；发布口径与安装文档仍统一要求显式使用 `@beta`。
-不得把这个 registry 默认标签解释为正式稳定版或 GitHub Release。
+不得把这个 registry 默认标签解释为正式稳定版或 GitHub Release。当前源码修复版为
+`0.8.1-beta.0`；必须另行获得 npm 发布授权后才能更新 `beta`，不能覆盖不可变的 `0.8.0`。
 
 ## 发布验收
 

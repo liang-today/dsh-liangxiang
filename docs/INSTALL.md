@@ -33,7 +33,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 一键自检：`pnpm run smoke:online`（会断言拒绝 `VERIFIED_PRODUCTION`、claim 折算、幂等只扣一次、50 并发只接受 1 票、快照发布）。
 
-## 二、安装 0.8.0 beta 或本地 RC tarball
+## 二、安装公开 0.8.0 beta 或本地 0.8.1-beta.0 RC tarball
 
 从 npm beta 通道安装（不会追随未来的 `latest`）：
 
@@ -44,8 +44,8 @@ dsh plugin --profile <你的 profile> add dsh-liangxiang@beta
 也可以从仓库构建本地 tarball：
 
 ```bash
-pnpm pack                                            # 当前产出 dsh-liangxiang-0.8.0.tgz
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.0.tgz
+pnpm pack                                            # 当前产出 dsh-liangxiang-0.8.1-beta.0.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.1-beta.0.tgz
 ```
 
 两点注意：
@@ -60,7 +60,6 @@ dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.0.tgz
 | 变量 | 作用 |
 |---|---|
 | `LIANGXIANG_BACKEND_URL` | 默认烘焙社区地址（在线）。`local` 强制本地演示 |
-| `LIANGXIANG_COMMUNITY_KEY` | 仅紧急迁移兼容；正式生产未设置，0.8+ 新安装自动领取并认领入梁券 |
 | `LIANGXIANG_TOKEN_PER_INCENSE` | 每炷香的 Token 数（默认 50,000；调小便于演示） |
 | `LIANGXIANG_SNAPSHOT_SECONDS` | 快照/轮询节奏（默认 1s） |
 | `LIANGXIANG_BUSINESS_TZ` | 业务时区（默认 `Asia/Shanghai`）；在线模式下**后端**的这项才是权威 |

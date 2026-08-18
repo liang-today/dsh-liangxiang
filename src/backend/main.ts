@@ -22,7 +22,6 @@ export function startBackend(env: Record<string, string | undefined> = process.e
     voteRateLimitPerMinute: config.voteRateLimitPerMinute,
     voteRateLimitMaxKeys: config.voteRateLimitMaxKeys,
     allowUnsigned: config.allowUnsigned,
-    communityKey: config.communityKey,
     admissionClaimRateLimitPerMinute: config.admissionClaimRateLimitPerMinute,
   })
 
@@ -41,8 +40,7 @@ export function startBackend(env: Record<string, string | undefined> = process.e
       `[liangxiang-backend] listening on http://${config.host}:${config.port}`
       + ` (authority_mode=${config.authorityMode}, tz=${config.timezone},`
       + ` token_per_incense=${config.tokenPerIncense}, snapshot=${config.snapshotRefreshSeconds}s,`
-      + ` unsigned=${config.allowUnsigned ? 'allowed' : 'rejected'},`
-      + ` community_key=${config.communityKey === null ? 'off' : 'on'})`,
+      + ` unsigned=${config.allowUnsigned ? 'allowed' : 'rejected'})`,
     )
     console.log(
       '[liangxiang-backend] COMMUNITY SOFT TRUST: Ed25519 installation keys prove the same'

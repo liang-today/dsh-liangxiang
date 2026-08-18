@@ -20,13 +20,12 @@
  * are structured `{ error: { code, message } }`. Request logs carry only
  * method/path/status/installation prefix — never a prompt, response, path, or key.
  */
-import { timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { isIP } from 'node:net'
 import { formatLiangPosition } from '../domain/index.ts'
 import { WireError } from '../shared/wire.ts'
 import {
   BACKEND_API_PREFIX,
-  COMMUNITY_KEY_HEADER,
   DEVICE_HEADER,
   INSTALLATION_HEADER,
   PUBLIC_KEY_HEADER,
@@ -57,8 +56,6 @@ export interface BackendHttpOptions {
   voteRateLimitMaxKeys?: number
   /** Accept the old unsigned installation header (localhost tests / curl smoke). */
   allowUnsigned?: boolean
-  /** Shared admission secret; null/undefined means not required. */
-  communityKey?: string | null
   /** Server-wide first-install claims per minute; 0 disables the cap. */
   admissionClaimRateLimitPerMinute?: number
   log?: (message: string) => void
@@ -125,9 +122,29 @@ function statusForRejection(reason: string): number {
   return 400
 }
 
-function peerAddress(req: IncomingMessage): string {
-  const raw = req.socket.remoteAddress ?? '?'
+function normalizeAddress(raw: string): string {
   return raw.startsWith('::ffff:') ? raw.slice(7) : raw
+}
+
+function isLoopbackAddress(address: string): boolean {
+  return address === '::1' || address.startsWith('127.')
+}
+
+/**
+ * Trust the proxy address only across the loopback hop used by Caddy. Direct
+ * public callers can forge X-Forwarded-For, so their socket address always
+ * wins. Caddy's reverse proxy supplies the immediate client address by
+ * default; no public caller can make the backend trust this header directly.
+ */
+export function trustedClientAddress(socketAddress: string | undefined, forwardedFor?: string): string {
+  const direct = normalizeAddress(socketAddress ?? '?')
+  if (!isLoopbackAddress(direct) || forwardedFor === undefined || forwardedFor.includes(',')) return direct
+  const candidate = normalizeAddress(forwardedFor.trim())
+  return isIP(candidate) === 0 ? direct : candidate
+}
+
+function peerAddress(req: IncomingMessage): string {
+  return trustedClientAddress(req.socket.remoteAddress, headerValue(req, 'x-forwarded-for'))
 }
 
 function installShort(installationId: string): string {
@@ -142,13 +159,6 @@ function headerValue(req: IncomingMessage, name: string): string | undefined {
   const raw = req.headers[name]
   const value = Array.isArray(raw) ? raw[0] : raw
   return value === undefined || value === '' ? undefined : value
-}
-
-function communityKeyMatches(expected: string, presented: string): boolean {
-  const left = Buffer.from(expected)
-  const right = Buffer.from(presented)
-  if (left.length !== right.length) return false
-  return timingSafeEqual(left, right)
 }
 
 class ExpectedEventSampler {
@@ -177,7 +187,6 @@ class ExpectedEventSampler {
 export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpApi {
   const { service, store, voteRateLimitPerMinute } = options
   const allowUnsigned = options.allowUnsigned === true
-  const communityKey = options.communityKey ?? null
   const log = options.log ?? ((message: string) => console.log(message))
   const voteRateLimitMaxKeys = options.voteRateLimitMaxKeys ?? DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS
   const voteLimiter = new VoteRateLimiter(voteRateLimitPerMinute, voteRateLimitMaxKeys)
@@ -194,12 +203,6 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     if (!signed) {
       if (!allowUnsigned) {
         throw new CommunityAuthError(401, 'invalid_signature', 'signed identity headers required')
-      }
-      if (communityKey !== null) {
-        const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-        if (presented === undefined || !communityKeyMatches(communityKey, presented)) {
-          throw new CommunityAuthError(401, 'invalid_signature', 'community key required')
-        }
       }
       return parseInstallationId(headerValue(req, INSTALLATION_HEADER))
     }
@@ -220,11 +223,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       skipFingerprintEnforcement: true,
     })
     const known = store.identityByInstallation(installationId)
-    const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-    const legacyAdmitted = communityKey !== null
-      && presented !== undefined
-      && communityKeyMatches(communityKey, presented)
-    if (known === undefined && !legacyAdmitted) {
+    if (known === undefined) {
       throw new CommunityAuthError(401, 'admission_required', '需要入梁券完成首次入群')
     }
     return authenticateCommunityRequest({
@@ -276,14 +275,6 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       now: Date.now(),
       skipFingerprintEnforcement: true,
     })
-    const owner = store.identityByFingerprint(deviceFingerprint)
-    const presented = headerValue(req, COMMUNITY_KEY_HEADER)
-    const legacyAdmitted = communityKey !== null
-      && presented !== undefined
-      && communityKeyMatches(communityKey, presented)
-    if (owner === undefined && !legacyAdmitted) {
-      throw new CommunityAuthError(401, 'admission_required', '新设备需要先使用入梁券')
-    }
     return { installationId, publicKey, deviceFingerprint }
   }
 
@@ -421,6 +412,9 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         if (!gateIdentityMutation(req, res, publicKey, installationId, deviceFingerprint, 'rekey')) {
           return
         }
+        if (store.identityByFingerprint(deviceFingerprint) === undefined) {
+          throw new CommunityAuthError(401, 'admission_required', '新设备需要先使用入梁券')
+        }
         const response = service.rekeyIdentity(installationId, publicKey, deviceFingerprint)
         writeJson(res, 200, response)
         if (response.rekeyed) {
@@ -518,11 +512,11 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
           now: Date.now(),
           skipFingerprintEnforcement: true,
         })
-        if (store.identityByInstallation(installationId) === undefined) {
-          throw new CommunityAuthError(401, 'admission_required', 'identity is not enrolled')
-        }
         if (!gateIdentityMutation(req, res, publicKey, installationId, device, 'revoke')) {
           return
+        }
+        if (store.identityByInstallation(installationId) === undefined) {
+          throw new CommunityAuthError(401, 'admission_required', 'identity is not enrolled')
         }
         const response = service.revokeIdentity(installationId)
         writeJson(res, 200, response)
@@ -628,7 +622,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       const message = rateDecision.reason === 'active_key_capacity'
         ? 'server vote limiter is at active-key capacity; retry later'
         : 'too many vote requests; slow down'
-      writeError(res, 429, 'invalid_request', message)
+      writeError(res, 429, 'vote_rate_limited', message)
       expectedEvents.record(
         `vote_rate_limited_${rateDecision.reason ?? 'unknown'}`,
         `[liangxiang-backend] vote 429 reason=${rateDecision.reason ?? 'unknown'} ${who(req, installationId)}`,

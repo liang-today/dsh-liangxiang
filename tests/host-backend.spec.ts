@@ -9,7 +9,7 @@ import { resolveBackendConfig } from '../src/backend/config.ts'
 import { createBackendHttpApi } from '../src/backend/http.ts'
 import { LiangxiangBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
-import { createBackendClient } from '../src/host/backend-client.ts'
+import { BackendClientError, createBackendClient, type BackendClient } from '../src/host/backend-client.ts'
 import { BackendLiangService } from '../src/host/backend-service.ts'
 import { generateCommunityKeypair, type CommunityKeypair } from '../src/host/community-keys.ts'
 import { wireToViewState } from '../src/client/store.ts'
@@ -161,6 +161,107 @@ afterEach(async () => {
 })
 
 describe('online bootstrap', () => {
+  it('tries every ticket returned by the public list instead of stopping after five races', async () => {
+    const identity = generateCommunityKeypair('host-ticket-list-device')
+    const attempts: string[] = []
+    const tickets = Array.from({ length: 6 }, (_unused, index) => ({
+      ticket_id: `ticket_${String(index).padStart(16, '0')}`,
+      secret: `LX-ticket-${index}`,
+      remaining_claims: 1,
+      expires_at: FIXED_NOW + 60_000,
+    }))
+    const client = {
+      admissionTickets: async () => ({
+        schema_version: 1,
+        server_time: FIXED_NOW,
+        available_claims: 6,
+        tickets,
+      }),
+      claimAdmission: async (_installationId: string, secret: string) => {
+        attempts.push(secret)
+        if (attempts.length <= 5) {
+          throw new BackendClientError('ticket raced', 409, 'admission_ticket_exhausted')
+        }
+        return {
+          schema_version: 1,
+          claimed: true,
+          installation_id: identity.installationId,
+          ticket_id: tickets[5]!.ticket_id,
+          server_time: FIXED_NOW,
+        }
+      },
+      dispose: () => undefined,
+    } as unknown as BackendClient
+    const identityRef = { current: identity }
+    const host = new BackendLiangService({
+      client,
+      timezone: 'Asia/Shanghai',
+      clock: createMutableClock(FIXED_NOW),
+      identityRef,
+    })
+    await (host as unknown as { enrollWithPublicTicket(installationId: string): Promise<void> })
+      .enrollWithPublicTicket(identity.installationId)
+    expect(attempts).toHaveLength(6)
+    expect(attempts.at(-1)).toBe(tickets[5]!.secret)
+    host.dispose()
+  })
+
+  it('refreshes the public ticket list after a whole visible page loses its races', async () => {
+    const identity = generateCommunityKeypair('host-ticket-refresh-device')
+    const first = {
+      ticket_id: 'ticket_0000000000000001',
+      secret: 'LX-raced-page-ticket',
+      remaining_claims: 1,
+      expires_at: FIXED_NOW + 60_000,
+    }
+    const second = {
+      ticket_id: 'ticket_0000000000000002',
+      secret: 'LX-refreshed-ticket',
+      remaining_claims: 1,
+      expires_at: FIXED_NOW + 60_000,
+    }
+    let listReads = 0
+    const attempts: string[] = []
+    const client = {
+      admissionTickets: async () => {
+        listReads += 1
+        return {
+          schema_version: 1,
+          server_time: FIXED_NOW,
+          available_claims: 2,
+          tickets: [listReads === 1 ? first : second],
+        }
+      },
+      claimAdmission: async (_installationId: string, secret: string) => {
+        attempts.push(secret)
+        if (secret === first.secret) {
+          throw new BackendClientError('ticket raced', 409, 'admission_ticket_exhausted')
+        }
+        return {
+          schema_version: 1,
+          claimed: true,
+          installation_id: identity.installationId,
+          ticket_id: second.ticket_id,
+          server_time: FIXED_NOW,
+        }
+      },
+      dispose: () => undefined,
+    } as unknown as BackendClient
+    const host = new BackendLiangService({
+      client,
+      timezone: 'Asia/Shanghai',
+      clock: createMutableClock(FIXED_NOW),
+      identityRef: { current: identity },
+    })
+
+    await (host as unknown as { enrollWithPublicTicket(installationId: string): Promise<void> })
+      .enrollWithPublicTicket(identity.installationId)
+
+    expect(listReads).toBe(2)
+    expect(attempts).toEqual([first.secret, second.secret])
+    host.dispose()
+  })
+
   it('automatically fetches and consumes a public ticket on a signed first install', async () => {
     const identity = generateCommunityKeypair('host-admission-device')
     const s = await startStack({}, { signedIdentity: identity })

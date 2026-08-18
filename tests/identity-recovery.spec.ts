@@ -7,8 +7,8 @@
  *   - self-serve re-key: take over the fingerprint after `rekeyCooldownMs` of
  *     inactivity, forfeiting the old identity (its incense/votes stay on the
  *     dead id, never transferred);
- *   - operator unbind: delete the binding immediately (community-key gated at
- *     the HTTP layer).
+ *   - operator unbind: delete the binding immediately through the VPS-local
+ *     CLI; no operator HTTP route is exposed.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { CommunityAuthError } from '../src/backend/community-auth.ts'

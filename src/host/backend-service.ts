@@ -262,7 +262,10 @@ export class BackendLiangService implements LiangHostService {
       })
       this.setAuthorityAvailable(true)
     } catch (error) {
-      this.setAuthorityUnavailable(error)
+      // A vote limiter response proves the authority is reachable; it is a
+      // rejected action, not an outage that should lock the whole panel.
+      if (error instanceof BackendClientError && error.status === 429) this.setAuthorityAvailable(true)
+      else this.setAuthorityUnavailable(error)
       this.reportFailure('vote', error)
       throw error
     }
@@ -606,32 +609,46 @@ export class BackendLiangService implements LiangHostService {
         'admission_required',
       )
     }
-    const available = await this.client.admissionTickets()
-    if (available.tickets.length === 0 || available.available_claims === 0) {
-      throw new BackendClientError('暂无可用入梁券', 503, 'admission_ticket_exhausted')
-    }
     let lastError: unknown = null
-    for (const ticket of available.tickets.slice(0, 5)) {
-      try {
-        await this.client.claimAdmission(
-          installationId,
-          ticket.secret,
-          identity.publicKey,
-          identity.deviceFingerprint,
-        )
-        return
-      } catch (error) {
-        lastError = error
-        // A reinstalled profile can present a fresh key on hardware whose
-        // fingerprint still belongs to the retired installation. That is a
-        // re-key, not a new admission: preserve the public ticket and let the
-        // backend apply its cooldown/abuse controls before retrying bootstrap.
-        if (error instanceof BackendClientError && error.code === 'device_conflict') {
-          await this.client.rekeyIdentity(installationId)
-          return
+    const exhaustedSecrets = new Set<string>()
+    // A public response is only a moment-in-time view. During an install burst
+    // every newcomer may race the same first page, so refresh a bounded number
+    // of times after exhausting what was visible. This neither loops forever
+    // nor turns a transient five/twenty-ticket race into false "no inventory".
+    for (let refresh = 0; refresh < 3; refresh += 1) {
+      const available = await this.client.admissionTickets()
+      if (available.tickets.length === 0 || available.available_claims === 0) {
+        if (refresh === 0) {
+          throw new BackendClientError('暂无可用入梁券', 503, 'admission_ticket_exhausted')
         }
-        if (error instanceof BackendClientError && error.code === 'admission_ticket_exhausted') continue
-        throw error
+        break
+      }
+      for (const ticket of available.tickets) {
+        if (exhaustedSecrets.has(ticket.secret)) continue
+        try {
+          await this.client.claimAdmission(
+            installationId,
+            ticket.secret,
+            identity.publicKey,
+            identity.deviceFingerprint,
+          )
+          return
+        } catch (error) {
+          lastError = error
+          // A reinstalled profile can present a fresh key on hardware whose
+          // fingerprint still belongs to the retired installation. That is a
+          // re-key, not a new admission: preserve the public ticket and let the
+          // backend apply its cooldown/abuse controls before retrying bootstrap.
+          if (error instanceof BackendClientError && error.code === 'device_conflict') {
+            await this.client.rekeyIdentity(installationId)
+            return
+          }
+          if (error instanceof BackendClientError && error.code === 'admission_ticket_exhausted') {
+            exhaustedSecrets.add(ticket.secret)
+            continue
+          }
+          throw error
+        }
       }
     }
     throw lastError instanceof Error

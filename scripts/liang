@@ -14,10 +14,9 @@ usage() {
   liang status                         服务、版本、今日梁案、梁位和下期梁案
   liang logs [行数]                    最近日志（默认 200 行）
   liang logs -f                        持续查看日志（Ctrl+C 退出）
-  liang config list                    显示安全配置（密钥只显示是否已设置）
+  liang config list                    显示安全配置
   liang config help                    显示可修改项和影响
   liang config set <配置名> <值>       校验、备份、修改并安全重启
-  liang config set-secret community-key 交互式修改社区口令（不进命令历史）
   liang cases list                     显示待发布梁案及日期
   liang cases add [--on 日期] "标题"   加入梁案队列
   liang cases seed --start 日期 [数量]  从内置题库连续排期（默认 10 道）
@@ -93,7 +92,7 @@ config_help() {
   liang config set vote-rate-limit 300
 
 主机监听、端口、数据库路径、ALLOW_UNSIGNED 和 authority mode 属于安全边界，
-此命令不允许修改。社区口令请用 set-secret，避免出现在 shell 历史和进程列表。
+此命令不允许修改。首次入群只使用限量、短期的入梁券。
 每次修改都会先备份 /etc/liangxiang.env；若重启或健康检查失败会自动回滚。
 EOF
 }
@@ -202,11 +201,6 @@ case "$1" in
         print_effective_config ADMISSION_TICKET_TTL_HOURS 24
         print_effective_config ADMISSION_TICKET_MAX_CLAIMS 1
         print_effective_config ADMISSION_PUBLIC_LIST_LIMIT 20
-        if [[ -n "$(read_config LIANGXIANG_COMMUNITY_KEY)" ]]; then
-          echo "COMMUNITY_KEY              已设置（已隐藏）"
-        else
-          echo "COMMUNITY_KEY              未设置"
-        fi
         ;;
       help) config_help ;;
       set)
@@ -214,13 +208,6 @@ case "$1" in
         name="$(normalize_config_name "$3")"
         validate_config "$name" "$4" || { echo "配置名或值无效；运行 liang config help" >&2; exit 2; }
         replace_config "$name" "$4"
-        ;;
-      set-secret)
-        [[ "${3:-}" == "community-key" && $# -eq 3 ]] || { echo "用法：liang config set-secret community-key" >&2; exit 2; }
-        read -r -s -p "输入新的社区口令：" secret; echo
-        [[ ${#secret} -ge 24 ]] || { echo "口令至少 24 个字符" >&2; exit 2; }
-        [[ "$secret" =~ ^[A-Za-z0-9._~-]+$ ]] || { echo "口令只能使用字母、数字及 . _ ~ -" >&2; exit 2; }
-        replace_config COMMUNITY_KEY "$secret"
         ;;
       *) config_help; exit 2 ;;
     esac

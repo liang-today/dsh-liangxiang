@@ -108,6 +108,11 @@ const MODAL_CSS = `
   background: color-mix(in srgb, ${color.ritualEmber} 5%, ${color.bgLayer}) !important;
 }
 [data-liangci-scroll] { scrollbar-width: thin; scrollbar-color: ${color.border} transparent; }
+@media (max-height: 680px) {
+  [data-liangci-dialog] { gap: 10px !important; padding: 14px 20px !important; }
+  [data-liangci-detail] { height: 68px !important; flex-basis: 68px !important; padding: 7px 12px !important; }
+  [data-liangci-detail] > div { margin-bottom: 3px !important; }
+}
 @media (max-width: 760px) {
   [data-liangci-dialog] { width: calc(100vw - 20px) !important; padding: 16px !important; }
   [data-liangci-header] { grid-template-columns: 1fr auto !important; }
@@ -343,12 +348,12 @@ function DayCell({
         {day}
       </span>
       {today
-        ? <CurrentDayMark size={compact ? 28 : 38} />
+        ? <CurrentDayMark size={compact ? 24 : 38} />
         : future
-          ? <span aria-hidden="true" style={{ height: compact ? '28px' : '38px' }} />
+          ? <span aria-hidden="true" style={{ height: compact ? '24px' : '38px' }} />
           : archive === undefined
-            ? <EmptyDayMark size={compact ? 28 : 38} />
-            : <ArchiveAvatar state={archive.liangziState} reducedMotion={reducedMotion} size={compact ? 28 : 34} />}
+            ? <EmptyDayMark size={compact ? 24 : 38} />
+            : <ArchiveAvatar state={archive.liangziState} reducedMotion={reducedMotion} size={compact ? 24 : 34} />}
       <span
         style={{
           maxWidth: '100%',
@@ -453,8 +458,8 @@ function WeekCell({
         </span>
       </span>
       {future || period === null
-        ? <EmptyDayMark size={compact ? 30 : 38} />
-        : <ArchiveAvatar state={period.liangziState} reducedMotion={reducedMotion} size={compact ? 30 : 40} />}
+        ? <EmptyDayMark size={compact ? 26 : 38} />
+        : <ArchiveAvatar state={period.liangziState} reducedMotion={reducedMotion} size={compact ? 26 : 40} />}
       {temporary && <span aria-hidden="true" style={{ position: 'absolute', top: '6px', right: '7px', color: color.warn, fontSize: '9px' }}>暂</span>}
     </button>
   )
@@ -754,12 +759,12 @@ export function LiangciModal({
                 <div
                   data-liangci-scroll=""
                   data-liangci-week-rows={weekRows}
-                  style={{ overflowX: 'auto', overflowY: 'auto', minHeight: 0, flex: '1 1 0' }}
+                  style={{ overflowX: 'auto', overflowY: 'hidden', minHeight: 0, flex: '1 1 0' }}
                 >
                   <div
                     style={{
                       minWidth: '794px',
-                      minHeight: compactCells ? '408px' : `${weekRows * 78 + 24}px`,
+                      minHeight: 0,
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',

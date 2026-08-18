@@ -19,7 +19,7 @@
 - [ ] `node scripts/assert-profile-modules.mjs <profile>`（每个 in-box 包单实例）
 - [ ] `pnpm audit --prod` 无已知漏洞
 - [ ] 打包内容审计：仅 `lib/index.js`、`lib/client.js(.map)`、`cordis.patch.yml`、`README.md`、`LICENSE`、`package.json`
-- [ ] 分发包不含社区口令、API key、`.env` 或其他凭据
+- [ ] 分发包不含入梁券 secret、API key、`.env` 或其他凭据
 - [ ] 12k 一次性安装标识洪泛后 limiter 活跃 key 不超过硬上限，拒票/重放日志按原因采样
 
 ## 3. 信任表述

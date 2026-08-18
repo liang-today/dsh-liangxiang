@@ -92,6 +92,22 @@ export function deriveDisplayedProgress(
   }
 }
 
+/**
+ * A hydration/reconciliation jump spanning a whole incense boundary must not
+ * be animated through every intermediate modulo value. That made 下一炷 appear
+ * to jump randomly while the first authoritative state was loading. Small
+ * forward deltas still receive the intended throttle tween.
+ */
+export function shouldSnapThrottle(
+  displayedTokens: number,
+  previousAuthoritativeTokens: number | undefined,
+  nextAuthoritativeTokens: number,
+  tokenPerIncense: number,
+): boolean {
+  if (previousAuthoritativeTokens !== undefined && nextAuthoritativeTokens < previousAuthoritativeTokens) return true
+  return Math.abs(nextAuthoritativeTokens - displayedTokens) >= tokenPerIncense
+}
+
 export function useThrottleFill(
   personal: PersonalLiangQiState,
   reducedMotion: boolean,
@@ -106,10 +122,17 @@ export function useThrottleFill(
     const samples = samplesRef.current
     const last = samples[samples.length - 1]
     if (last === undefined || last.tokens !== effectiveTokensToday) {
-      samples.push({ tokens: effectiveTokensToday, atMs: performance.now() })
+      const sample = { tokens: effectiveTokensToday, atMs: performance.now() }
+      if (shouldSnapThrottle(displayedRef.current, last?.tokens, effectiveTokensToday, tokenPerIncense)) {
+        samples.splice(0, samples.length, sample)
+        displayedRef.current = effectiveTokensToday
+        force()
+        return
+      }
+      samples.push(sample)
       while (samples.length > MAX_SAMPLES) samples.shift()
     }
-  }, [effectiveTokensToday])
+  }, [effectiveTokensToday, tokenPerIncense])
 
   // rAF loop: tween the displayed value toward the extrapolated target.
   useEffect(() => {
@@ -124,7 +147,10 @@ export function useThrottleFill(
       const dt = Math.min(64, nowMs - lastFrame)
       lastFrame = nowMs
       const projected = extrapolateTokens(samplesRef.current, nowMs)
-      const target = projected.tokens
+      // Extrapolation may approach the next boundary, but it may not paint a
+      // newly earned incense before an authoritative usage sample confirms it.
+      const nextBoundary = (Math.floor(effectiveTokensToday / tokenPerIncense) + 1) * tokenPerIncense
+      const target = Math.min(projected.tokens, nextBoundary - 1)
       const current = displayedRef.current
       const k = 1 - Math.exp(-dt / TWEEN_TAU_MS)
       let next = current + (target - current) * k

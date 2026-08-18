@@ -147,7 +147,7 @@ DSH 以后若出现签名用量 / 可验证身份：重跑 Gate A，另开可信
 
 ## 6. 建议的立即顺序
 
-C1 身份 / 远端绑定 / 社区口令 / VPS 配方已经落地，见 [`121-vps-deploy.md`](121-vps-deploy.md)。
+C1 身份 / 远端绑定 / 入梁券 / VPS 配方已经落地，见 [`121-vps-deploy.md`](121-vps-deploy.md)。
 
 1. 你申请 Linux VPS，按 121 装后端 + Caddy。
 2. 服务器先准备入梁券，多台 DSH Host 只需指向同一 `LIANGXIANG_BACKEND_URL`，首次启动自动认领。

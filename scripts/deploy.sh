@@ -61,6 +61,13 @@ fi
 if ! id -u liangxiang >/dev/null 2>&1; then
   useradd --system --home /var/lib/liangxiang --no-create-home --shell /usr/sbin/nologin liangxiang
 fi
+# 0.8 admission is ticket-only. Remove the retired shared-key setting without
+# ever printing its value into deploy output or process arguments.
+ENV_TEMP="$(mktemp /etc/.liangxiang.env.XXXXXX)"
+awk '$0 !~ /^LIANGXIANG_COMMUNITY_KEY=/' "$ENV_FILE" > "$ENV_TEMP"
+chown root:liangxiang "$ENV_TEMP"
+chmod 0640 "$ENV_TEMP"
+mv -f "$ENV_TEMP" "$ENV_FILE"
 install -d -o root -g liangxiang -m 0750 "$PREFIX"
 install -d -o liangxiang -g liangxiang -m 0700 "$DATA_DIR"
 install -d -o root -g root -m 0700 /var/backups/liangxiang
@@ -101,9 +108,13 @@ install -o root -g root -m 0755 "$PREFIX/scripts/liang" /usr/local/bin/liang
 restorecon -F /usr/local/bin/liang
 systemctl daemon-reload
 
-VERIFIED=0
+BACKEND_VERIFIED=0
 rollback() {
-  if [[ "$VERIFIED" -eq 1 ]]; then return; fi
+  # Before health/history pass, a failed candidate must not be left serving.
+  # After they pass, later proxy-install failures restore the previous Caddy
+  # file and deliberately keep the already-healthy backend available. VERSION
+  # remains unstamped so deploy-check still reports the partial deployment.
+  if [[ "$BACKEND_VERIFIED" -eq 1 ]]; then return; fi
   systemctl stop "$SERVICE" >/dev/null 2>&1 || true
 }
 trap rollback EXIT
@@ -136,12 +147,34 @@ curl -fsS --max-time 5 "$BASE_URL/history" | node -e '
   }
   console.log(`history archive_version=${history.archive_version} days=${history.days.length} weeks=${history.weeks.length} months=${history.months.length}`)
 '
+BACKEND_VERIFIED=1
+
+# Keep the checked-in reverse-proxy contract in the same atomic deployment.
+# This is what makes trusted client-IP forwarding auditable instead of a
+# one-off server tweak. Restore the last config if validation/reload fails.
+CADDY_BIN="$(command -v caddy || true)"
+CADDY_CONFIG="/etc/caddy/Caddyfile"
+if [[ -z "$CADDY_BIN" || ! -f "$CADDY_CONFIG" ]]; then
+  echo "refusing deploy: Caddy or $CADDY_CONFIG is missing" >&2
+  exit 1
+fi
+"$CADDY_BIN" validate --config "$PREFIX/deploy/Caddyfile"
+CADDY_BACKUP="/var/backups/liangxiang/Caddyfile-${STAMP//:/-}-pre-${GIT_SHA}"
+cp --preserve=mode,ownership,timestamps "$CADDY_CONFIG" "$CADDY_BACKUP"
+install -o root -g root -m 0644 "$PREFIX/deploy/Caddyfile" "$CADDY_CONFIG"
+"$CADDY_BIN" fmt --overwrite "$CADDY_CONFIG"
+if ! "$CADDY_BIN" validate --config "$CADDY_CONFIG" || ! systemctl reload caddy; then
+  cp --preserve=mode,ownership,timestamps "$CADDY_BACKUP" "$CADDY_CONFIG"
+  systemctl reload caddy || true
+  echo "Caddy update failed and was rolled back: $CADDY_BACKUP" >&2
+  exit 1
+fi
 
 printf '%s %s\n' "$GIT_SHA" "$STAMP" > "$PREFIX/VERSION"
-VERIFIED=1
 trap - EXIT
 REMOTE_SCRIPT
 
 echo "== deployed version =="
 ssh "$REMOTE" "sudo -n cat '$PREFIX/VERSION'"
 ssh "$REMOTE" "sudo -n systemctl is-active liangxiang-backend" && echo
+curl -fsS --max-time 10 https://api.liang.today/v1/health && echo
