@@ -38,13 +38,6 @@ cd "$HOME/Desktop/liangxiang"
 npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
 ```
 
-或：
-
-```bash
-export DSH_HOME="$HOME/.dsh"
-npx --yes @deepseek-ai/dsh plugin --profile web add "file:${HOME}/Desktop/liangxiang/dsh-liangxiang-0.8.3-beta.tgz"
-```
-
 ## 本轮运行失败：`Cannot read properties of undefined (reading 'prepare')`
 
 **症状**：DSH 里任何用到工具的回合立刻失败；紧接着同一会话报 `An assistant message with 'tool_calls' must be followed by tool messages responding to each 'tool_call_id'`。

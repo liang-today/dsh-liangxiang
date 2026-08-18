@@ -31,10 +31,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 
 ### GitHub Release / 本地 tarball
 
-先 `cd` 到安装包所在目录，再写 **`./文件名.tgz`**。少写 `./` 时，pnpm 会去请求
-`https://registry.npmjs.org/dsh-liangxiang-0.8.3-beta.tgz`，报 `ERR_PNPM_FETCH_404`。
-不要写 `dsh-liangxiang@0.8.3-beta`：那是 npm 版本，公开源上还不存在。
-子命令是 `plugin add`，不是 `web add`。
+先进入安装包目录，再写 **`./文件名.tgz`**。少写 `./` 会去 npm 拉这个文件名，报 `ERR_PNPM_FETCH_404`。子命令是 `plugin add`。
 
 ```bash
 export DSH_HOME="$HOME/.dsh"
@@ -42,24 +39,14 @@ cd "$HOME/Desktop/liangxiang"
 npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
 ```
 
-或显式本地协议（不必 `cd`）：
+卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
 
-```bash
-export DSH_HOME="$HOME/.dsh"
-npx --yes @deepseek-ai/dsh plugin --profile web add "file:${HOME}/Desktop/liangxiang/dsh-liangxiang-0.8.3-beta.tgz"
+卸掉再装**不会**自动回到欢迎页。欢迎标记在浏览器 `localStorage`，与插件是否安装无关。重装后在本页控制台执行：
+
+```js
+localStorage.removeItem('liangxiang:welcome:v2')
+location.reload()
 ```
-
-桌面目录一键安装（没有全局 `dsh` 时脚本会自动改用 npx，并且强制 `file:` 协议）：
-
-```bash
-export DSH_HOME="$HOME/.dsh"
-cd ~/Desktop/liangxiang
-bash ./install.sh web
-# 或同版本重装：
-bash ./update-plugin.sh ./dsh-liangxiang-0.8.3-beta.tgz --profile web
-```
-
-卸载：`dsh plugin --profile web remove dsh-liangxiang`
 
 ### 源码（开发 profile，不改日常 `~/.dsh`）
 
