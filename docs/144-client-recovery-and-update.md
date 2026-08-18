@@ -6,10 +6,14 @@
 |---|---|---|---|
 | 在线社区正常 | 本机观察并向社区核对 | 可用（以服务端余额为准） | 无需动作 |
 | 网络或社区后端断开 | 本机继续观察并持久化；界面显示本地凝香进度 | 禁用，避免离线双花 | 自动退避重连，成功后自动上报累计增量并核对余额 |
-| 用户明确选择本地玩法 | 只在本机累计、打梁、归档 | 可用，但只改变本机结果 | 一直保持本地，除非用户主动切回/重启为在线配置 |
+| 用户明确选择离线玩法 | 只在独立本机账本累计、打梁、归档 | 可用，但只改变本机结果 | 一直保持离线，直到用户从梁相案牍主动切回在线 |
 
 断网不是模式选择。代码不得因为健康检查失败、URL 写错、请求超时或服务重启而进入
-`LOCAL_FAKE_DEV`。本地玩法只来自首启选择或明确的 `LIANGXIANG_BACKEND_URL=local`。
+`LOCAL_FAKE_DEV`。离线玩法只来自首启选择、梁相案牍的模式按钮，或尚无保存偏好时明确的 `LIANGXIANG_BACKEND_URL=local`。
+
+选择会写入 `liangxiang.json`，DSH 重启不会自行改回。离线玩法第一次启用时按需创建
+`liangxiang_local.json`，独立保存离线凝香、打梁、梁案序号与梁祠。切回在线必须先成功
+连接社区；失败时保持离线，两个账本都不改。
 
 ## 是否需要刷新页面
 
@@ -30,10 +34,10 @@
 
 ```bash
 export DSH_HOME=/实际使用的/dsh/home
-bash scripts/update-plugin.sh ./dsh-liangxiang-0.8.1-beta.0.tgz --profile <profile名>
+bash scripts/update-plugin.sh ./dsh-liangxiang-0.8.2-beta.tgz --profile <profile名>
 ```
 
-脚本先备份 `storages/liangxiang.json`，再按 tarball 内容 SHA-256 复制到持久化包缓存，并用这个
+脚本先备份并校验 `storages/liangxiang.json` 与存在时的 `storages/liangxiang_local.json`，再按 tarball 内容 SHA-256 复制到持久化包缓存，并用这个
 内容寻址路径执行 DSH 的 `plugin add`。这样即使测试包仍是同一个版本号，内容变化也不会
 被 DSH 的“Already up to date”短路。脚本最后核对分发包版本、已安装模块图和存储摘要。它不执行 `plugin remove`，因为移除 bundle 对升级没有必要，
 也不删除 storage domain、安装密钥、历史水位或浏览器 localStorage。

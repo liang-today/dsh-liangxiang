@@ -46,14 +46,20 @@ import {
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
+  MODE_CONFIRM_CANCEL,
+  MODE_CONFIRM_LOCAL,
+  MODE_CONFIRM_OK,
+  MODE_CONFIRM_ONLINE,
   UTILITY_HINT,
   UTILITY_HOME_HINT,
   UTILITY_HOME_LABEL,
   UTILITY_LABEL,
   UTILITY_RECONCILE_HINT,
   UTILITY_RECONCILE_LABEL,
-  UTILITY_RESET_HINT,
-  UTILITY_RESET_LABEL,
+  UTILITY_MODE_LOCAL_HINT,
+  UTILITY_MODE_LOCAL_LABEL,
+  UTILITY_MODE_ONLINE_HINT,
+  UTILITY_MODE_ONLINE_LABEL,
   UTILITY_VERSION_LABEL,
   WELCOME_LINES,
   WELCOME_LOCAL_LABEL,
@@ -65,7 +71,7 @@ import {
 } from '../shared/index.ts'
 import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
-import { ArchiveDeskIcon, HomepageIcon, RestorePositionIcon, VersionSealIcon } from './UtilityIcons.tsx'
+import { ArchiveDeskIcon, HomepageIcon, ModeSwitchIcon, VersionSealIcon } from './UtilityIcons.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangciIcon } from './LiangciIcon.tsx'
@@ -90,7 +96,7 @@ export interface PanelProps {
   welcomeVisible: boolean
   /** Seconds remaining before the welcome auto-enters online. */
   welcomeSeconds: number
-  onDismissWelcome: () => void
+  onChooseOnline: () => void
   /** First-run: switch this Host to the in-process local loop. */
   onChooseLocal: () => void
   avatarPulse: boolean
@@ -116,7 +122,11 @@ export interface PanelProps {
   onUtilityToggle: () => void
   onUtilityClose: () => void
   onOpenHomepage: () => void
-  onResetPosition: () => void
+  modeConfirmOpen: boolean
+  modeChanging: boolean
+  onModeAsk: () => void
+  onModeConfirm: () => void
+  onModeCancel: () => void
   onShowVersion: () => void
   /** Open the read-only 梁祠 calendar; remains inside Region 4. */
   onOpenLiangci: () => void
@@ -560,9 +570,10 @@ function SocialStatHint(props: {
 export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionInfoOpen, onVersionInfoClose,
-    welcomeVisible, welcomeSeconds, onDismissWelcome, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
+    welcomeVisible, welcomeSeconds, onChooseOnline, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
     onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
-    reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage, onResetPosition,
+    reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
+    modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
     onShowVersion, onOpenLiangci, onCycleLocalCase,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
@@ -574,6 +585,10 @@ export function Panel(props: PanelProps): ReactElement {
   const displayTokensToNext = throttle?.tokensToNext ?? personal.tokensToNextIncense
   const offline = state.connection !== 'live'
   const communityUnavailable = state.authorityMode === 'DEV_STAGING_ONLY' && !state.authorityAvailable
+  const targetMode = state.authorityMode === 'LOCAL_FAKE_DEV' ? 'online' : 'local'
+  const modeLabel = targetMode === 'online' ? UTILITY_MODE_ONLINE_LABEL : UTILITY_MODE_LOCAL_LABEL
+  const modeHint = targetMode === 'online' ? UTILITY_MODE_ONLINE_HINT : UTILITY_MODE_LOCAL_HINT
+  const modePrompt = targetMode === 'online' ? MODE_CONFIRM_ONLINE : MODE_CONFIRM_LOCAL
   const authorityUnavailable = offline || communityUnavailable
   const communityUnavailableReason = state.authorityReason === null
     ? COMMUNITY_UNAVAILABLE_REASON
@@ -606,6 +621,7 @@ export function Panel(props: PanelProps): ReactElement {
     if (event.key === 'Escape') {
       event.stopPropagation()
       if (versionInfoOpen) onVersionInfoClose()
+      else if (modeConfirmOpen) onModeCancel()
       else if (reconcilePending) onReconcileCancel()
       else if (utilityOpen) onUtilityClose()
       else onClose()
@@ -707,7 +723,7 @@ export function Panel(props: PanelProps): ReactElement {
             <button
               type="button"
               data-liangxiang-welcome-online=""
-              onClick={onDismissWelcome}
+              onClick={onChooseOnline}
               style={{
                 flex: 1,
                 border: 'none',
@@ -1156,7 +1172,7 @@ export function Panel(props: PanelProps): ReactElement {
               >
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <strong style={{ fontSize: '12px', letterSpacing: '1px', color: color.textPrimary }}>{UTILITY_LABEL}</strong>
-                  <span style={{ fontSize: '9px', color: color.textTertiary }}>一卷在手 · 各归其位</span>
+                  <span style={{ fontSize: '9px', color: color.textTertiary }}>一卷在手 · 模式分明</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
                   <button
@@ -1180,12 +1196,14 @@ export function Panel(props: PanelProps): ReactElement {
                   </button>
                   <button
                     type="button"
-                    data-liangxiang-utility-action="reset-position"
-                    onClick={onResetPosition}
+                    data-liangxiang-utility-action="mode"
+                    disabled={modeChanging}
+                    aria-label={`${modeLabel}：${modeHint}`}
+                    onClick={onModeAsk}
                   >
-                    <RestorePositionIcon />
-                    <strong style={{ fontSize: '11px' }}>{UTILITY_RESET_LABEL}</strong>
-                    <span style={{ fontSize: '9px', color: color.textTertiary }}>{UTILITY_RESET_HINT}</span>
+                    <ModeSwitchIcon online={targetMode === 'online'} />
+                    <strong style={{ fontSize: '11px' }}>{modeChanging ? '切换中…' : modeLabel}</strong>
+                    <span style={{ fontSize: '9px', color: color.textTertiary }}>{modeHint}</span>
                   </button>
                   <button
                     type="button"
@@ -1210,6 +1228,22 @@ export function Panel(props: PanelProps): ReactElement {
                     <span style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '7px' }}>
                       <button type="button" data-liangxiang-reconcile-cancel="" onClick={onReconcileCancel} style={{ border: `1px solid ${color.border}`, background: color.bgSubtle, color: color.textPrimary, borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontFamily: font.family }}>{RECONCILE_CONFIRM_CANCEL}</button>
                       <button type="button" data-liangxiang-reconcile-ok="" onClick={onReconcileConfirm} style={{ border: 'none', background: color.buttonPrimaryFill, color: color.buttonPrimaryText, borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontFamily: font.family }}>{RECONCILE_CONFIRM_OK}</button>
+                    </span>
+                  </div>
+                )}
+                {modeConfirmOpen && (
+                  <div
+                    role="alertdialog"
+                    aria-label={modePrompt}
+                    data-liangxiang-mode-confirm=""
+                    style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${color.border}` }}
+                  >
+                    <span style={{ display: 'block', fontSize: '10px', color: color.warn, lineHeight: 1.45 }}>
+                      {modePrompt}
+                    </span>
+                    <span style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '7px' }}>
+                      <button type="button" data-liangxiang-mode-cancel="" disabled={modeChanging} onClick={onModeCancel} style={{ border: `1px solid ${color.border}`, background: color.bgSubtle, color: color.textPrimary, borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontFamily: font.family }}>{MODE_CONFIRM_CANCEL}</button>
+                      <button type="button" data-liangxiang-mode-ok="" disabled={modeChanging} onClick={onModeConfirm} style={{ border: 'none', background: color.buttonPrimaryFill, color: color.buttonPrimaryText, borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontFamily: font.family }}>{modeChanging ? '切换中…' : MODE_CONFIRM_OK}</button>
                     </span>
                   </div>
                 )}

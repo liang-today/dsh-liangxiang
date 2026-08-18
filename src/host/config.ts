@@ -6,6 +6,7 @@ import { DEFAULT_TOKEN_PER_INCENSE } from '../domain/index.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
 import { DEFAULT_BUSINESS_TIMEZONE } from '../shared/business-date.ts'
 import { readLiangxiangEnv } from '../shared/env.ts'
+import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { normalizeBaseUrl } from './backend-client.ts'
 import { STAGING_BACKEND_URL } from './community-endpoint.ts'
 import type { LiangServiceConfig } from './fake-service.ts'
@@ -23,12 +24,11 @@ export interface HostRuntimeConfig {
   service: LiangServiceConfig
   /**
    * Backend base URL. Default is the closed-beta staging endpoint (online).
-   * Only `LIANGXIANG_BACKEND_URL=local` forces LOCAL_FAKE_DEV. An invalid URL
-   * falls back to the canonical online endpoint and never changes mode.
-   * A later welcome-gate choice may still switch to local; a dead backend
-   * is not a silent fallback.
+   * Always resolved so an explicit UI change can enter online mode later.
   */
-  backendUrl: string | null
+  backendUrl: string
+  /** Boot default used only until the Host-owned persisted preference exists. */
+  defaultAuthorityPreference: HostAuthorityPreference
 }
 
 function parsePositiveInt(
@@ -86,13 +86,13 @@ export function resolveHostConfig(
 }
 
 /**
- * Resolve the full host runtime configuration, including which authority mode
- * to serve. Online is the default (baked staging URL). `local` or an
- * invalid URL falls back loudly to the canonical online endpoint. Local mode
- * is never an error fallback; it requires an explicit user/config choice.
+ * Resolve the full host runtime configuration. Online is the default. The
+ * special value `local` chooses the initial local preference but still keeps
+ * the canonical URL available for a later explicit UI change. A bad URL never
+ * changes mode; it falls back loudly to the canonical online endpoint.
  * @param env - environment map (injectable for tests).
  * @param warn - loud sink for ignored invalid values.
- * @returns the service config plus the resolved backend URL (or null).
+ * @returns the service config, always-resolved backend URL, and boot default.
  */
 export function resolveHostRuntimeConfig(
   env: Record<string, string | undefined>,
@@ -100,15 +100,25 @@ export function resolveHostRuntimeConfig(
 ): HostRuntimeConfig {
   const service = resolveHostConfig(env, warn)
   const raw = readLiangxiangEnv(env, 'BACKEND_URL')?.trim()
-  if (raw === 'local') return { service, backendUrl: null }
+  if (raw === 'local') {
+    return {
+      service,
+      backendUrl: normalizeBaseUrl(STAGING_BACKEND_URL),
+      defaultAuthorityPreference: 'local',
+    }
+  }
   const candidate = raw === undefined || raw === '' ? STAGING_BACKEND_URL : raw
   try {
-    return { service, backendUrl: normalizeBaseUrl(candidate) }
+    return { service, backendUrl: normalizeBaseUrl(candidate), defaultAuthorityPreference: 'online' }
   } catch (error) {
     warn(
       `[dsh-liangxiang] ignoring invalid LIANGXIANG_BACKEND_URL=${candidate} `
       + `(${error instanceof Error ? error.message : String(error)}); using ${STAGING_BACKEND_URL}`,
     )
-    return { service, backendUrl: normalizeBaseUrl(STAGING_BACKEND_URL) }
+    return {
+      service,
+      backendUrl: normalizeBaseUrl(STAGING_BACKEND_URL),
+      defaultAuthorityPreference: 'online',
+    }
   }
 }

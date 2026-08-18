@@ -11,7 +11,7 @@
 - 中央**梁子**只由**本社区节点的夯拉比例**决定:`待开梁`(零票)/ 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖;
 - 面板正中只有一个公开数字 **梁位**(= 社区夯率,6 位小数),每一票都看得见它在动;
 - 底部 **三界香火** = 当前梁案已接受票数，**五行香客** = 至少成功投过一票的独立安装身份数。
-- 底部 **梁相案牍** 收纳主页、异常核香、入口归位与版本信息；日常同步、重连与档案更新均自动完成。
+- 底部 **梁相案牍** 收纳主页、异常核香、手动在线/离线模式切换与版本信息；日常同步、重连与档案更新均自动完成。
 - 底部 **进入梁祠** 打开插件内月历：今日进行中、永久日梁、周梁、月梁，以及只统计到昨天的本周/本月暂梁。
 
 悬停文案恒为 `今日梁相`;入口图标就是当前梁子那一态,可以拖到画面任意位置。
@@ -26,8 +26,10 @@
 
 | 模式 | 触发 | 权威 | 适用 |
 |---|---|---|---|
-| `LOCAL_FAKE_DEV` | `LIANGXIANG_BACKEND_URL=local`，或首次欢迎页选「改用本地」 | Host 进程内(`FakeAuthoritativeLiangService`) | 单机演示 |
-| `DEV_STAGING_ONLY` | 默认（烘焙社区 URL）；也可显式设 `LIANGXIANG_BACKEND_URL` | 独立 Liangxiang 后端 + SQLite(`/v1/*`) | 社区软信任 |
+| `LOCAL_FAKE_DEV` | 首次欢迎页或梁相案牍明确选「离线模式」；也可用 `LIANGXIANG_BACKEND_URL=local` 设首次默认 | Host 进程内 + 独立 `liangxiang_local.json` | 可长期自玩的单机模式 |
+| `DEV_STAGING_ONLY` | 默认；首次欢迎页或梁相案牍明确选「在线模式」 | 独立 Liangxiang 后端 + SQLite(`/v1/*`) | 社区软信任 |
+
+模式选择会保存在 Host；断网只会锁住在线夯/拉并自动重连，绝不会自动切到离线。两边的香火、打梁和梁祠互不合并；切回在线必须先成功连接社区。
 
 在线链路:DSH Host 观测真实 provider-reported 用量(`tokenUsage` 投影,水位差分防重)→ 作为**声明**上报 `POST /v1/token-claims` → 后端在 DB 事务里原子扣香、幂等去重、更新聚合 → 按 cadence 发布 `public_liang_snapshot` → Host 经 `/liangxiang/api`(state/SSE/vote)推给浏览器。梁祠另走低频 `/v1/history` → `/liangxiang/api/history` 冷通道：首次全量、归档版本变化后仅取增量，秒级 SSE 不重复携带历史数组。
 
@@ -41,7 +43,7 @@
 准入：新客户端自动取券并认领一次，之后只凭安装私钥长期连接；旧共享口令
 通道已经从代码与部署配置中删除，入梁券是首次登记的唯一准入。数据与服务位于香港，正式客户端统一连接
 `https://api.liang.today`。npm 已提供历史占位包 `dsh-liangxiang@0.8.0`；本仓当前
-候选是尚未发布的 `0.8.1-beta.0`。正式更新 beta 标签前仍应显式使用 `@beta` 安装；
+候选是尚未发布的 `0.8.2-beta`。正式更新 beta 标签前仍应显式使用 `@beta` 安装；
 npm registry 为首个版本同时建立了 `latest` 指向。尚未发布
 GitHub Release。迁移实录见
 [`docs/142-hk-migration-report.md`](docs/142-hk-migration-report.md)。

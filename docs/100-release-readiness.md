@@ -1,4 +1,4 @@
-# 100 — Release Readiness（v0.8.1-beta.0 梁相）
+# 100 — Release Readiness（v0.8.2-beta 梁相）
 
 结论：**社区 soft-trust 发布候选可部署**；不得宣传为实名、一人一票、
 可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
@@ -16,6 +16,7 @@
 - 投票限流增加活跃 key 硬上限；预期拒绝、重放和 429 日志按原因采样。
 - 香港迁移使用 SQLite 在线一致性备份；部署只有在 health/history 冒烟通过后才写入版本戳。
 - 断网不再暗切本地玩法：Token 水位继续本地持久化，社区投票锁定，Host 与浏览器均自动重连。
+- 离线模式由用户手动选择并持久化；离线香火、打梁、梁案和梁祠使用独立 `liangxiang_local.json`，与社区账本不混用。
 - 梁祠月历按月份实际使用 4/5/6 周，在固定高度内完整显示且只保留窄屏横向滚动。
 - 香港节点统一 `liang` 运维命令可查询未来排期并原子替换整张未发布题表；客户端提供保留用户存储的一键更新脚本。
 
@@ -25,24 +26,24 @@
 |---|---|
 | `pnpm run typecheck` | ✅ |
 | `pnpm run lint` | ✅ |
-| `pnpm run test` | ✅ 36 文件 / 435 项 |
-| `pnpm run build` | ✅ Host 133.81 kB（gzip 34.70 kB）；Backend 131.09 kB；Client 934.58 kB（gzip 603.65 kB） |
+| `pnpm run test` | ✅ 36 文件 / 444 项 |
+| `pnpm run build` | ✅ Host 152.70 kB（gzip 38.25 kB）；Backend 131.09 kB；Client 940.35 kB（gzip 604.67 kB） |
 | `pnpm audit --prod` | ✅ 0 个已知漏洞 |
-| `smoke:clean-profile` | ✅ 全新 profile 从候选 tarball 安装并启动 |
+| `smoke:clean-profile` | ✅ 全新 profile 从候选 tarball 安装；默认在线显式切离线成功，后端不可达时重启仍保持离线，独立本地存档存在 |
 | `smoke:online` | ✅ Host→后端、Token claim、幂等、50 并发仅一票、快照发布（SQLite 事务层；正式签名链另有 Host 集成测试与公网回归） |
 | 构建配置迁移 | ✅ 迁移前后三个 bundle SHA-256 相同，无弃用警告 |
 | 密钥/命名空间扫描 | ✅ bundle 不含入梁券 secret 或共享准入凭据，仓库只使用 `liangxiang / 梁相` |
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
-| MacBook / Mac mini 安装 | ⚠️ MacBook 0.8.1-beta.0 更新、存储校验、在线界面与版本入口通过；Mac mini `192.168.2.86:22` 当前超时，待设备恢复可达后补验 |
+| MacBook / Mac mini 安装 | ⚠️ 历史 0.8.1-beta.0 在 MacBook 的更新、存储校验、在线界面与版本入口通过；0.8.2-beta 尚未执行真实 profile 安装，Mac mini 仍待设备可达后补验 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
-| npm 公开包复核 | ✅ 历史占位 `dsh-liangxiang@0.8.0` 为 7 文件；当前 `0.8.1-beta.0` 候选尚未发布，避免冒充同版本字节 |
-| 0.8.1-beta.0 候选包 | ✅ 7 个白名单文件；SHA-256 `a00a1cb69dd4aac5200a6d0a206a8fd9f1e51cce9ec51cee6b53e1f6bc4a17da`；未发现个人路径、服务器 IP、私钥、令牌或旧品牌 |
+| npm 公开包复核 | ✅ 历史占位 `dsh-liangxiang@0.8.0` 为 7 文件；当前 `0.8.2-beta` 候选尚未发布 |
+| 0.8.2-beta 候选包 | ✅ 7 文件；SHA-256 `b63e650459ff5dfcd0d9fa3f8ea0c205d4066f0d0efa5cd53c5e12832c79ee1b`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
 | 香港公网峰值（只读） | ✅ `/v1/health` 1,000 请求 / 1,000 并发新建 TLS 连接，0 失败；测试后 Caddy/Backend 无 warning、内存余量 14 GiB |
 
 npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`，且 registry
 拒绝删除首版 `latest` 标签；发布口径与安装文档仍统一要求显式使用 `@beta`。
 不得把这个 registry 默认标签解释为正式稳定版或 GitHub Release。当前源码修复版为
-`0.8.1-beta.0`；必须另行获得 npm 发布授权后才能更新 `beta`，不能覆盖不可变的 `0.8.0`。
+`0.8.2-beta`；必须另行获得 npm 发布授权后才能更新 `beta`，不能覆盖不可变的 `0.8.0`。
 
 ## 发布验收
 

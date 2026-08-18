@@ -14,9 +14,9 @@
  *    the next 1s snapshot poll. No extra background poll loop.
  */
 import type { LiangHistoryArchive, VoteResult, VoteType } from '../domain/index.ts'
-import { parseWireState, parseWireVoteResponse } from '../shared/wire.ts'
+import { parseWireState, parseWireVoteResponse, type HostAuthorityPreference } from '../shared/wire.ts'
 import { mergeHistoryArchive, parseV1HistoryResponse } from '../shared/history-v1.ts'
-import { LOCAL_MODE_ACTION_HEADER, LOCAL_MODE_ACTION_VALUE } from '../shared/index.ts'
+import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE } from '../shared/index.ts'
 import {
   createOfflineViewState,
   wireToViewState,
@@ -29,7 +29,7 @@ const EVENTS_PATH = '/liangxiang/api/events'
 const VOTE_PATH = '/liangxiang/api/vote'
 const REFRESH_PATH = '/liangxiang/api/refresh'
 const RECONCILE_PATH = '/liangxiang/api/reconcile'
-const ENTER_LOCAL_PATH = '/liangxiang/api/local/enter'
+const MODE_PATH = '/liangxiang/api/mode'
 const CYCLE_CASE_PATH = '/liangxiang/api/local/cycle-case'
 const HISTORY_PATH = '/liangxiang/api/history'
 const FETCH_TIMEOUT_MS = 6_000
@@ -97,8 +97,8 @@ export interface LiveLiangxiangStore extends LiangxiangStore {
   reconcile(): Promise<void>
   /** Abort in-flight work and close the stream. */
   dispose(): void
-  /** Ask the Host to switch this process to LOCAL_FAKE_DEV. */
-  chooseLocalMode(): void
+  /** Persist and apply an explicit mode selection; never called by reconnect. */
+  selectAuthorityMode(preference: HostAuthorityPreference): Promise<void>
   /** LOCAL_FAKE_DEV: ask the host to cycle the prepared 今日梁案 list. */
   cycleLocalCase(): void
   /** Independent cold-channel 梁祠 state. */
@@ -133,6 +133,7 @@ export function createLiveLiangxiangStore(
   const listeners = new Set<() => void>()
   let historyState: LiangciHistoryState = { status: 'idle', archive: null, error: null }
   let historyInFlight: Promise<void> | null = null
+  let historyEpoch = 0
   const historyListeners = new Set<() => void>()
 
   const setHistoryState = (next: LiangciHistoryState): void => {
@@ -146,9 +147,10 @@ export function createLiveLiangxiangStore(
     const cursor = historyState.archive?.archiveVersion
     const path = cursor === undefined ? HISTORY_PATH : `${HISTORY_PATH}?after_version=${cursor}`
     if (historyState.archive === null) setHistoryState({ status: 'loading', archive: null, error: null })
+    const epoch = historyEpoch
     const run = transport.fetchJson(path)
       .then((raw) => {
-        if (disposed) return
+        if (disposed || epoch !== historyEpoch) return
         const incoming = parseV1HistoryResponse(raw)
         const archive = mergeHistoryArchive(historyState.archive, incoming)
         setHistoryState({
@@ -158,13 +160,13 @@ export function createLiveLiangxiangStore(
         })
       })
       .catch((error: unknown) => {
-        if (disposed) return
+        if (disposed || epoch !== historyEpoch) return
         const message = error instanceof Error ? error.message : String(error)
         const archive = historyState.archive === null ? null : { ...historyState.archive, stale: true }
         setHistoryState({ status: 'stale', archive, error: `档案未更新：${message}` })
       })
       .finally(() => {
-        historyInFlight = null
+        if (epoch === historyEpoch) historyInFlight = null
       })
     historyInFlight = run
     return run
@@ -193,6 +195,15 @@ export function createLiveLiangxiangStore(
     if (wire.hostEpoch !== lastHostEpoch) {
       lastHostEpoch = wire.hostEpoch
       lastRevision = -1
+    }
+    if (lastWire !== null && wire.authorityMode !== lastWire.authorityMode) {
+      // Each authority owns its own revision and archive cursor. A manual
+      // switch must accept a lower target revision and must never merge the
+      // other authority's 梁祠 rows into this one.
+      lastRevision = -1
+      historyEpoch += 1
+      historyInFlight = null
+      setHistoryState({ status: 'idle', archive: null, error: null })
     }
     if (wire.revision > lastRevision) {
       lastRevision = wire.revision
@@ -272,18 +283,22 @@ export function createLiveLiangxiangStore(
       })
   }
 
-  const enterLocalMode = (): void => {
-    if (disposed || starting) return
-    transport.fetchJson(ENTER_LOCAL_PATH, {
+  const selectAuthorityMode = (preference: HostAuthorityPreference): Promise<void> => {
+    if (disposed) return Promise.reject(new Error('梁相连接已关闭，无法切换模式'))
+    return transport.fetchJson(MODE_PATH, {
       method: 'POST',
-      body: '{}',
-      headers: { [LOCAL_MODE_ACTION_HEADER]: LOCAL_MODE_ACTION_VALUE },
+      body: JSON.stringify({ mode: preference }),
+      headers: { [AUTHORITY_MODE_ACTION_HEADER]: AUTHORITY_MODE_ACTION_VALUE },
     })
       .then((raw) => {
-        if (!disposed) applyWire(raw)
+        if (!disposed) {
+          applyWire(raw)
+          void loadHistory()
+        }
       })
       .catch((error: unknown) => {
-        console.warn(`[dsh-liangxiang] enter local mode failed: ${error instanceof Error ? error.message : String(error)}`)
+        console.warn(`[dsh-liangxiang] authority mode change failed: ${error instanceof Error ? error.message : String(error)}`)
+        throw error
       })
   }
 
@@ -358,9 +373,7 @@ export function createLiveLiangxiangStore(
           reconcileInFlight = false
         })
     },
-    chooseLocalMode: () => {
-      enterLocalMode()
-    },
+    selectAuthorityMode,
     cycleLocalCase: () => {
       if (disposed || starting) return
       if (state.authorityMode !== 'LOCAL_FAKE_DEV') return

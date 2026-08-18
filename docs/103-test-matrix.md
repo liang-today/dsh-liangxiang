@@ -1,6 +1,6 @@
 # 103 — Test Matrix（RC）
 
-`pnpm test`：**36 个文件 / 435 项，全绿**（2026-08-18，v0.8.1-beta.0）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
+`pnpm test`：**36 个文件 / 444 项，全绿**（2026-08-18，v0.8.2-beta）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
 
 ## 覆盖分布
 
@@ -36,6 +36,7 @@
 | 多标签安全 | `backend-http`、`host-backend` |
 | 网络重试安全 | `live-store`、`backend-http` |
 | 断网不切本地、自动重连、离线继续观察凝香 | `host-backend`、`live-store`、`client-panel`、`operator-identity` |
+| 手动模式选择、独立离线账本/梁祠、共享水位防双凝 | `storage`、`host-service`、`host-routes`、`live-store`、`client-panel` |
 | 服务器时钟/业务日权威 | `backend-service`（UTC vs Asia/Shanghai） |
 | Token 边界 0/49,999/50,000/99,999/100,000/397,000/500,000/1M | `domain-token`、`backend-service` |
 | reasoning 不重复 / 四桶口径 | `domain-token`、`host-usage`、`host-backend`（10k+20k+5k+15k=50k） |

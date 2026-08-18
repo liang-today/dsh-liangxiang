@@ -13,12 +13,14 @@ describe('host runtime defaults to online', () => {
     const warnings: string[] = []
     const runtime = resolveHostRuntimeConfig({}, (message) => warnings.push(message))
     expect(runtime.backendUrl).toBe(STAGING_BACKEND_URL)
+    expect(runtime.defaultAuthorityPreference).toBe('online')
     expect(warnings).toEqual([])
   })
 
   it('forces local mode when LIANGXIANG_BACKEND_URL=local', () => {
     const runtime = resolveHostRuntimeConfig({ LIANGXIANG_BACKEND_URL: 'local' }, () => undefined)
-    expect(runtime.backendUrl).toBeNull()
+    expect(runtime.backendUrl).toBe(STAGING_BACKEND_URL)
+    expect(runtime.defaultAuthorityPreference).toBe('local')
   })
 
   it('never turns an invalid online URL into local mode', () => {
@@ -28,6 +30,7 @@ describe('host runtime defaults to online', () => {
       (message) => warnings.push(message),
     )
     expect(runtime.backendUrl).toBe(STAGING_BACKEND_URL)
+    expect(runtime.defaultAuthorityPreference).toBe('online')
     expect(warnings.join('\n')).toContain(`using ${STAGING_BACKEND_URL}`)
   })
 })

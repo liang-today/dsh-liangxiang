@@ -2,9 +2,10 @@
 # Reset Liangxiang staging ledgers to "never voted today".
 #
 # Online (DEV_STAGING_ONLY): wipes the Raspberry Pi SQLite (global 香火/香客/票).
-# Local Host: clears votes / ledgers / aggregates in $DSH_HOME/storages/liangxiang.json
-#             but KEEPS identity + token watermarks + daily_usage so existing
-#             DSH usage is re-claimed as incense after WebUI restart.
+# Offline Host: clears votes / ledgers / aggregates in
+#               $DSH_HOME/storages/liangxiang_local.json, but KEEPS local
+#               daily_usage. Shared token watermarks and community identity in
+#               liangxiang.json are never touched.
 #
 # Usage:
 #   pnpm run reset:staging              # Pi + local Host
@@ -17,7 +18,7 @@
 
 PI_HOST="${LIANGXIANG_STAGING_SSH:-}"
 PI_HEALTH_URL="${LIANGXIANG_STAGING_HEALTH_URL:-}"
-STORAGE="${DSH_HOME}/storages/liangxiang.json"
+STORAGE="${DSH_HOME}/storages/liangxiang_local.json"
 LOCAL_BACKEND_DIR="${REPO_ROOT}/.liangxiang-backend"
 
 do_pi=1
@@ -52,7 +53,7 @@ with open(path, 'w', encoding='utf-8') as fh:
     json.dump(data, fh, ensure_ascii=False, indent=2)
     fh.write('\n')
 print(f'OK: cleared votes/ledgers/aggregates in {path}')
-print('    kept identity, watermarks, daily_usage')
+print('    kept local daily_usage; shared watermarks/community identity were untouched')
 PY
 }
 
@@ -92,4 +93,4 @@ fi
 echo
 echo "Next: restart WebUI so the Host re-bootstraps an empty case (待开梁)."
 echo "  Ctrl+C the current \`pnpm run dev:web\`, then run it again."
-echo "Do not hand-edit storages/liangxiang.json — use this script."
+echo "Do not hand-edit storages/liangxiang_local.json — use this script."

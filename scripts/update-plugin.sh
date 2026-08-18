@@ -38,20 +38,37 @@ if [[ -z "${DSH_HOME:-}" ]]; then
   exit 2
 fi
 
-STORAGE="$DSH_HOME/storages/liangxiang.json"
+STORAGE_ROOT="$DSH_HOME/storages"
 BACKUP_ROOT="$DSH_HOME/backups/liangxiang"
 PROFILE_DIR="$DSH_HOME/profiles/$PROFILE"
 INSTALLED_MANIFEST="$PROFILE_DIR/node_modules/dsh-liangxiang/package.json"
 PACKAGE_CACHE="$DSH_HOME/packages/liangxiang"
-BEFORE="missing"
-if [[ -f "$STORAGE" ]]; then
+storage_snapshot() {
+  local name path
+  for name in liangxiang.json liangxiang_local.json; do
+    path="$STORAGE_ROOT/$name"
+    if [[ -f "$path" ]]; then
+      echo "$name:$(cksum "$path")"
+    else
+      echo "$name:missing"
+    fi
+  done
+}
+
+BEFORE="$(storage_snapshot)"
+STORAGE_FOUND=0
+BACKUP_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+for STORAGE_NAME in liangxiang.json liangxiang_local.json; do
+  STORAGE="$STORAGE_ROOT/$STORAGE_NAME"
+  [[ -f "$STORAGE" ]] || continue
+  STORAGE_FOUND=1
   mkdir -p "$BACKUP_ROOT"
-  BACKUP="$BACKUP_ROOT/liangxiang-$(date -u +%Y%m%dT%H%M%SZ).json"
+  BACKUP="$BACKUP_ROOT/${STORAGE_NAME%.json}-${BACKUP_STAMP}.json"
   cp -p "$STORAGE" "$BACKUP"
   chmod 0600 "$BACKUP" 2>/dev/null || true
-  BEFORE="$(cksum "$STORAGE")"
   echo "已备份用户数据：$BACKUP"
-else
+done
+if [[ "$STORAGE_FOUND" -eq 0 ]]; then
   echo "未发现既有存储；本次将作为新安装。"
 fi
 
@@ -83,8 +100,7 @@ INSTALLED_VERSION="$(node -e '
 }
 node "$(cd "$(dirname "$0")" && pwd)/assert-profile-modules.mjs" "$PROFILE_DIR"
 
-AFTER="missing"
-[[ -f "$STORAGE" ]] && AFTER="$(cksum "$STORAGE")"
+AFTER="$(storage_snapshot)"
 if [[ "$BEFORE" != "$AFTER" ]]; then
   echo "警告：安装过程改变了用户存储；已保留更新前备份，请停止启动并核查。" >&2
   exit 1

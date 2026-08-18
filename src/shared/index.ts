@@ -29,14 +29,14 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.8.1-beta.0'
+export const PLUGIN_VERSION = '0.8.2-beta'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
 
-/** Same-origin Host action guard for the explicit process-wide local-mode switch. */
-export const LOCAL_MODE_ACTION_HEADER = 'x-liangxiang-local-action'
-export const LOCAL_MODE_ACTION_VALUE = 'enter'
+/** Same-origin Host action guard for explicit, persistent authority selection. */
+export const AUTHORITY_MODE_ACTION_HEADER = 'x-liangxiang-mode-action'
+export const AUTHORITY_MODE_ACTION_VALUE = 'configure'
 
 /** Frozen product copy (AGENTS.md): the product name. */
 export const PRODUCT_NAME = '梁相'
@@ -47,8 +47,8 @@ export const HOVER_TEXT = '今日梁相'
 /** Frozen product copy (AGENTS.md §1): the expanded panel title. */
 export const PANEL_TITLE = '今日梁案'
 
-/** Region 1 title when the Host fell back to the in-process local loop. */
-export const PANEL_TITLE_LOCAL = '今日梁案（本地）'
+/** Region 1 title when the user selected the in-process offline loop. */
+export const PANEL_TITLE_LOCAL = '今日梁案（离线）'
 
 /** Local-only control: cycle the prepared 今日梁案 list. Not a fifth region. */
 export const CYCLE_LOCAL_CASE_LABEL = '换一案'
@@ -101,7 +101,7 @@ export const STAT_TODAY_LABEL = '今日'
 export const STAT_LIFETIME_LABEL = '累计'
 
 /** Honest soft-trust note for the LOCAL_FAKE_DEV authority mode (AGENTS.md §16). */
-export const LOCAL_MODE_NOTE = '本地演示模式：香火与打梁均在本机，不代表可信全网结果'
+export const LOCAL_MODE_NOTE = '离线模式：香火、打梁与梁祠档案均只保存在本机，不代表全网结果'
 
 /**
  * Honest community soft-trust note for DEV_STAGING_ONLY: the backend really
@@ -142,24 +142,31 @@ export const WELCOME_LINES = [
   '使用 DSH，输入 + 输出每 5 万当量凝成一炷香。',
   '花一炷选择「夯」或「拉」，共同显出今日梁相。',
   '每日结案后，结果收入梁祠；这是社区软信任玩法。',
-  '本地玩法与社区完全独立，只在你主动选择时启用。',
+  '离线玩法与社区完全独立，只在你主动选择时启用。',
 ]
 export const WELCOME_ONLINE_LABEL = '进入在线'
-export const WELCOME_LOCAL_LABEL = '自己玩（本地）'
+export const WELCOME_LOCAL_LABEL = '离线模式'
 export const WELCOME_PRIVACY_NOTE = '在线模式不收集对话、代码、文件或账号。社区账本只用本机生成的随机安装 ID 区分不同香客，无法识别你是谁。'
 export const WELCOME_DISMISS = '知道了'
 
 /** Region 4 utility drawer. Routine data flow is automatic; this is not sync. */
 export const UTILITY_LABEL = '梁相案牍'
-export const UTILITY_HINT = '主页、核香、归位与版本'
+export const UTILITY_HINT = '主页、核香、模式与版本'
 export const HOMEPAGE_URL = 'https://liang.today/'
 export const UTILITY_HOME_LABEL = '梁相主页'
 export const UTILITY_HOME_HINT = '打开 liang.today'
 export const UTILITY_RECONCILE_LABEL = '核对香火'
 export const UTILITY_RECONCILE_HINT = '仅在香火显示异常时使用'
-export const UTILITY_RESET_LABEL = '入口归位'
-export const UTILITY_RESET_HINT = '把今日梁相移回默认位置'
+export const UTILITY_MODE_ONLINE_LABEL = '在线模式'
+export const UTILITY_MODE_ONLINE_HINT = '切回社区梁案与全网梁位'
+export const UTILITY_MODE_LOCAL_LABEL = '离线模式'
+export const UTILITY_MODE_LOCAL_HINT = '切换为本机独立玩法'
 export const UTILITY_VERSION_LABEL = '当前版本'
+
+export const MODE_CONFIRM_ONLINE = '切回在线模式？离线香火、打梁和梁祠仍保留在本机，不会带入社区。'
+export const MODE_CONFIRM_LOCAL = '切换到离线模式？此后香火、打梁和梁祠只记在本机；断网不会自动触发此操作。'
+export const MODE_CONFIRM_OK = '确认切换'
+export const MODE_CONFIRM_CANCEL = '取消'
 
 /**
  * Repair-only action: discard unconfirmed local observation and re-read the

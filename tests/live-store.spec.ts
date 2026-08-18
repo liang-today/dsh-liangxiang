@@ -69,7 +69,7 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
           const cursor = Number(new URL(path, 'http://local').searchParams.get('after_version'))
           return Promise.resolve(JSON.parse(JSON.stringify(service.history(cursor))) as unknown)
         }
-        if (path === '/liangxiang/api/local/enter') {
+        if (path === '/liangxiang/api/mode') {
           return Promise.resolve(JSON.parse(JSON.stringify(service.getWireState())) as unknown)
         }
         if (path === '/liangxiang/api/vote') {
@@ -167,21 +167,32 @@ describe('live store', () => {
     store.dispose()
   })
 
-  it('switches the process to local mode only through the explicit guarded action', async () => {
+  it('changes authority only through the explicit guarded mode action', async () => {
     const service = makeService()
     const controls = fakeTransport(service)
     const store = createLiveLiangxiangStore(controls.transport)
     store.start()
     await settled()
-    expect(controls.requests.some(request => request.path === '/liangxiang/api/local/enter')).toBe(false)
+    expect(controls.requests.some(request => request.path === '/liangxiang/api/mode')).toBe(false)
 
-    store.chooseLocalMode()
+    await store.selectAuthorityMode('local')
     await settled()
-    const request = controls.requests.find(item => item.path === '/liangxiang/api/local/enter')
+    const request = controls.requests.find(item => item.path === '/liangxiang/api/mode')
     expect(request).toMatchObject({
-      body: '{}',
-      headers: { 'x-liangxiang-local-action': 'enter' },
+      body: '{"mode":"local"}',
+      headers: { 'x-liangxiang-mode-action': 'configure' },
     })
+    store.dispose()
+  })
+
+  it('does not drop an explicit mode choice while the initial state is loading', async () => {
+    const service = makeService()
+    const controls = fakeTransport(service)
+    const store = createLiveLiangxiangStore(controls.transport)
+    store.start()
+    await store.selectAuthorityMode('local')
+    const request = controls.requests.find(item => item.path === '/liangxiang/api/mode')
+    expect(request).toMatchObject({ body: '{"mode":"local"}' })
     store.dispose()
   })
 

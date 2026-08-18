@@ -1,14 +1,14 @@
 {
   "name": "dsh-liangxiang",
-  "version": "0.8.1-beta.0",
+  "version": "0.8.2-beta",
   "description": "梁相 — a DeepSeek Harness WebUI plugin (hover: 今日梁相). Installable dual-half bundle: host plugin row + web client bundle.",
   "homepage": "https://liang.today/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NiYa193/dsh-liang-meter.git"
+    "url": "git+https://github.com/liang-today/dsh-liangxiang.git"
   },
   "bugs": {
-    "url": "https://github.com/NiYa193/dsh-liang-meter/issues"
+    "url": "https://github.com/liang-today/dsh-liangxiang/issues"
   },
   "keywords": [
     "deepseek",

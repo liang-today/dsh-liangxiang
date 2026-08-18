@@ -34,6 +34,9 @@ export const WIRE_SCHEMA_VERSION = 1
 export const AUTHORITY_MODES = ['LOCAL_FAKE_DEV', 'DEV_STAGING_ONLY'] as const
 export type AuthorityMode = (typeof AUTHORITY_MODES)[number]
 
+/** Host-owned manual configuration; never inferred from network reachability. */
+export type HostAuthorityPreference = 'online' | 'local'
+
 export function isAuthorityMode(value: unknown): value is AuthorityMode {
   return typeof value === 'string' && (AUTHORITY_MODES as readonly string[]).includes(value)
 }

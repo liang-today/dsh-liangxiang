@@ -152,14 +152,34 @@ incense.
   `进入梁祠`; both remain inside Region 4 and neither is a fifth region
 - routine Token claims, snapshots, reconnects and archive refresh are automatic;
   never present a routine manual-sync action
-- 梁相案牍 opens a themed 2×2 utility drawer: 梁相主页、核对香火、入口归位、
-  当前版本. 当前版本 opens a compact version-information dialog; the sound
+- 梁相案牍 opens a themed 2×2 utility drawer: 梁相主页、核对香火、在线模式/离线模式、
+  当前版本. The mode action always means switching to the other mode and requires
+  explicit confirmation; network failure, reconnect, refresh and backend restart
+  must never invoke it. 当前版本 opens a compact version-information dialog; the sound
   control has no long-press version gesture. `核对香火` is repair-only: it must warn that unconfirmed local
   observation is discarded before rereading the server ledger
 - destructive identity reset does not belong in this lightweight drawer; it
   requires a separate flow with explicit consequences and confirmation
 - 进入梁祠 opens the read-only in-plugin calendar
 - 进入梁祠 is not a vote, operator control, or external GitHub Pages link
+
+### Explicit online/offline separation
+
+- Online/community is the default. Offline/local play is selected only by the
+  first-run choice, the 梁相案牍 mode action, or the explicit boot default
+  `LIANGXIANG_BACKEND_URL=local`.
+- The Host persists the preference. A network outage keeps online selected,
+  continues observing Token, locks 夯/拉, and reconnects automatically.
+- Community identity, online claim projection and the shared session high-water
+  marks live in `storages/liangxiang.json`.
+- Offline daily usage, spend ledger, aggregates, votes, selected case and all
+  local 梁祠 archives live in the separate, lazily-created
+  `storages/liangxiang_local.json`.
+- The modes never merge incense, votes, cases or archives. Session high-water
+  marks are shared only to ensure one cumulative DSH usage segment cannot mint
+  incense in both modes.
+- Switching back online succeeds only after a valid backend bootstrap; failure
+  leaves offline mode and its data untouched.
 
 ### 梁祠 — immutable history calendar
 

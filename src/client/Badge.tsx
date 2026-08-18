@@ -15,13 +15,13 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
 import { HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { hasSeenWelcome, markWelcomeSeen, WELCOME_TIMEOUT_SECONDS } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
   clampBadgePosition,
-  defaultBadgePosition,
   loadBadgePosition,
   loadPanelOpen,
   panelPlacementFor,
@@ -270,15 +270,19 @@ export function LiangxiangBadge(): ReactElement {
   const [welcomeSeconds, setWelcomeSeconds] = useState(WELCOME_TIMEOUT_SECONDS)
   const [liangciOpen, setLiangciOpen] = useState(false)
   const closeLiangci = useCallback(() => setLiangciOpen(false), [])
-  const onDismissWelcome = useCallback(() => {
-    markWelcomeSeen()
-    setWelcomeVisible(false)
-  }, [])
-  const onChooseLocal = useCallback(() => {
-    markWelcomeSeen()
-    setWelcomeVisible(false)
-    store.chooseLocalMode()
+  const selectWelcomeMode = useCallback((preference: HostAuthorityPreference) => {
+    void store.selectAuthorityMode(preference).then(
+      () => {
+        markWelcomeSeen()
+        setWelcomeVisible(false)
+      },
+      (error: unknown) => {
+        console.warn(`[dsh-liangxiang] welcome mode selection failed: ${error instanceof Error ? error.message : String(error)}`)
+      },
+    )
   }, [store])
+  const onChooseOnline = useCallback(() => selectWelcomeMode('online'), [selectWelcomeMode])
+  const onChooseLocal = useCallback(() => selectWelcomeMode('local'), [selectWelcomeMode])
   useEffect(() => {
     if (!welcomeVisible) return undefined
     setWelcomeSeconds(WELCOME_TIMEOUT_SECONDS)
@@ -287,13 +291,13 @@ export function LiangxiangBadge(): ReactElement {
       const left = WELCOME_TIMEOUT_SECONDS - Math.floor((Date.now() - startedAt) / 1000)
       if (left <= 0) {
         window.clearInterval(timer)
-        onDismissWelcome()
+        onChooseOnline()
         return
       }
       setWelcomeSeconds(left)
     }, 250)
     return () => window.clearInterval(timer)
-  }, [welcomeVisible, onDismissWelcome])
+  }, [welcomeVisible, onChooseOnline])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -428,6 +432,8 @@ export function LiangxiangBadge(): ReactElement {
   const [utilityOpen, setUtilityOpen] = useState(false)
   const [versionInfoOpen, setVersionInfoOpen] = useState(false)
   const [reconcilePending, setReconcilePending] = useState(false)
+  const [modeConfirmOpen, setModeConfirmOpen] = useState(false)
+  const [modeChanging, setModeChanging] = useState(false)
   useEffect(() => {
     if (voteFeedback === '') return undefined
     const timer = window.setTimeout(() => setVoteFeedback(''), 2000)
@@ -438,6 +444,7 @@ export function LiangxiangBadge(): ReactElement {
       setUtilityOpen(false)
       setVersionInfoOpen(false)
       setReconcilePending(false)
+      setModeConfirmOpen(false)
     }
   }, [open])
 
@@ -487,6 +494,7 @@ export function LiangxiangBadge(): ReactElement {
   }
 
   const onReconcileAsk = (): void => {
+    setModeConfirmOpen(false)
     setReconcilePending(true)
   }
   const onReconcileCancel = (): void => {
@@ -497,6 +505,7 @@ export function LiangxiangBadge(): ReactElement {
     store.reconcile().then(
       () => {
         setUtilityOpen(false)
+        setModeConfirmOpen(false)
         setVoteFeedback(RECONCILE_DONE)
       },
       () => setVoteFeedback('核对香火失败，请稍后重试'),
@@ -504,17 +513,38 @@ export function LiangxiangBadge(): ReactElement {
   }
   const onOpenHomepage = (): void => {
     setUtilityOpen(false)
+    setModeConfirmOpen(false)
     window.open(HOMEPAGE_URL, '_blank', 'noopener,noreferrer')
   }
-  const onResetPosition = (): void => {
-    const next = defaultBadgePosition(viewport)
-    saveBadgePosition(next, typeof localStorage === 'undefined' ? null : localStorage)
-    setUtilityOpen(false)
-    setPosition(next)
-    setVoteFeedback('今日梁相已归位')
+  const onModeAsk = (): void => {
+    setReconcilePending(false)
+    setModeConfirmOpen(true)
+  }
+  const onModeCancel = (): void => {
+    if (!modeChanging) setModeConfirmOpen(false)
+  }
+  const onModeConfirm = (): void => {
+    if (modeChanging) return
+    const target: HostAuthorityPreference = state.authorityMode === 'LOCAL_FAKE_DEV' ? 'online' : 'local'
+    setModeChanging(true)
+    store.selectAuthorityMode(target).then(
+      () => {
+        setModeConfirmOpen(false)
+        setUtilityOpen(false)
+        setVoteFeedback(target === 'local'
+          ? '已进入离线模式 · 香火与梁祠只记本机'
+          : '已进入在线模式 · 重新连接天庭')
+      },
+      (error: unknown) => {
+        console.warn(`[dsh-liangxiang] mode change failed: ${error instanceof Error ? error.message : String(error)}`)
+        setModeConfirmOpen(false)
+        setVoteFeedback(target === 'online' ? '无法连接天庭，仍保持离线模式' : '切换离线模式失败，请稍后重试')
+      },
+    ).finally(() => setModeChanging(false))
   }
   const onShowVersion = (): void => {
     setUtilityOpen(false)
+    setModeConfirmOpen(false)
     setVersionInfoOpen(true)
   }
 
@@ -574,7 +604,7 @@ export function LiangxiangBadge(): ReactElement {
           onVersionInfoClose={() => setVersionInfoOpen(false)}
           welcomeVisible={welcomeVisible}
           welcomeSeconds={welcomeSeconds}
-          onDismissWelcome={onDismissWelcome}
+          onChooseOnline={onChooseOnline}
           onChooseLocal={onChooseLocal}
           avatarPulse={avatarPulse}
           condensedIncense={condensedIncense}
@@ -595,6 +625,7 @@ export function LiangxiangBadge(): ReactElement {
             if (utilityOpen) {
               setUtilityOpen(false)
               setReconcilePending(false)
+              setModeConfirmOpen(false)
             } else {
               setVersionInfoOpen(false)
               setUtilityOpen(true)
@@ -603,9 +634,14 @@ export function LiangxiangBadge(): ReactElement {
           onUtilityClose={() => {
             setUtilityOpen(false)
             setReconcilePending(false)
+            setModeConfirmOpen(false)
           }}
           onOpenHomepage={onOpenHomepage}
-          onResetPosition={onResetPosition}
+          modeConfirmOpen={modeConfirmOpen}
+          modeChanging={modeChanging}
+          onModeAsk={onModeAsk}
+          onModeConfirm={onModeConfirm}
+          onModeCancel={onModeCancel}
           onShowVersion={onShowVersion}
           onReconcileAsk={onReconcileAsk}
           onReconcileConfirm={onReconcileConfirm}
@@ -613,6 +649,7 @@ export function LiangxiangBadge(): ReactElement {
           onOpenLiangci={() => {
             setUtilityOpen(false)
             setReconcilePending(false)
+            setModeConfirmOpen(false)
             setLiangciOpen(true)
             void store.loadHistory()
           }}

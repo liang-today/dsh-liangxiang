@@ -4,8 +4,8 @@ import type { LiangHostService, VoteOutcome } from './service.ts'
 import type { V1HistoryResponse } from '../shared/history-v1.ts'
 
 /**
- * Swappable host authority. Online is the default. The welcome gate may ask
- * this slot to switch to the in-process fake; a failed health probe must not.
+ * Swappable host authority. Online is the default. Only an explicit saved
+ * user/config choice may switch this slot; a failed health probe must not.
  */
 export class AuthoritySlot implements LiangHostService {
   private inner: LiangHostService
@@ -27,8 +27,8 @@ export class AuthoritySlot implements LiangHostService {
    * Swap the inner service.
    * @param next - the service to serve next.
    * @param disposePrevious - dispose the outgoing service after the swap. Pass
-   *   `false` to keep it alive (e.g. keep the online service around so a
-   *   network re-check can switch back to it).
+   *   `false` when the caller owns the outgoing service lifecycle during an
+   *   explicit transition.
    */
   use(next: LiangHostService, disposePrevious = true): void {
     if (next === this.inner) return
