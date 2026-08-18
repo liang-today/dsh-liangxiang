@@ -2,15 +2,15 @@
 
 ## 重装后案牍仍是旧版本（例如 0.8.3-beta）
 
-profile 里还钉着本地 tarball（`file:…/dsh-liangxiang-0.8.3-beta.tgz`）。`plugin add dsh-liangxiang@beta` 不会换源。先退出 WebUI，再：
+profile 里钉着旧精确号（`0.8.3-beta`）或本地 tarball。再执行 `plugin add dsh-liangxiang@beta` 时 pnpm 会报 Already up to date，不会去解析新的 `@beta`。先退出 WebUI，再：
 
 ```bash
 export DSH_HOME="$HOME/.dsh"
 npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.5-beta
 ```
 
-两条命令必须对着**日常** `DSH_HOME`。终端里如果已经有别的 `DSH_HOME`，装到的不是 WebUI 在用的那份。装完看 `$DSH_HOME/profiles/web/package.json` 的依赖应是 `0.8.5-beta`，不能再是 `file:…tgz`。
+不要只写 `@beta`：pnpm 11 的 `minimumReleaseAge` 会跳过刚发布的版本，退回上一号够龄的包（这次就是 0.8.3-beta）。两条命令必须对着日常 `DSH_HOME`。装完看 `$DSH_HOME/profiles/web/package.json` 应是 `0.8.5-beta`。
 
 ## 更新脚本提示没有 `dsh` 命令
 
