@@ -648,7 +648,7 @@ describe('region 4: social stats', () => {
     const tree = renderPanel(demoState())
     const incense = findByAttr(tree, 'data-liangxiang-stat', 'incense')[0]
     const voters = findByAttr(tree, 'data-liangxiang-stat', 'voters')[0]
-    expect(incense && textContent([incense])).toContain('1.3万')
+    expect(incense && textContent([incense])).toContain('12,846')
     expect(voters && textContent([voters])).toContain('2,841')
     expect(incense && textContent([incense])).toContain(INCENSE_STAT_LABEL)
     expect(voters && textContent([voters])).toContain(VOTER_STAT_LABEL)
