@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveBackendConfig, BackendConfigError } from '../src/backend/config.ts'
-import { createBackendHttpApi } from '../src/backend/http.ts'
+import { createBackendHttpApi, trustedClientAddress } from '../src/backend/http.ts'
 import { LiangxiangBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
 import {
@@ -240,6 +240,12 @@ describe('routing and boundary validation', () => {
     }
     expect(statuses.slice(0, 2)).toEqual([200, 200])
     expect(statuses.slice(2)).toEqual([429, 429])
+    const limited = await h.post('/v1/votes', {
+      case_id: caseId,
+      vote_type: 'up',
+      request_id: 'req-rate-code-01',
+    })
+    expect(limited.body).toMatchObject({ error: { code: 'vote_rate_limited' } })
   })
 })
 
@@ -370,7 +376,26 @@ describe('authority mode guard', () => {
     const config = resolveBackendConfig({}, () => undefined)
     expect(config.authorityMode).toBe('DEV_STAGING_ONLY')
     expect(config.allowUnsigned).toBe(false)
-    expect(config.communityKey).toBeNull()
+  })
+
+  it('refuses unsigned mode on a public listen address', () => {
+    expect(() => resolveBackendConfig({
+      LIANGXIANG_BACKEND_HOST: '0.0.0.0',
+      LIANGXIANG_ALLOW_UNSIGNED: '1',
+    }, () => undefined)).toThrow(BackendConfigError)
+  })
+})
+
+describe('trusted proxy client address', () => {
+  it('accepts one valid forwarded address only from the loopback proxy hop', () => {
+    expect(trustedClientAddress('127.0.0.1', '198.51.100.181')).toBe('198.51.100.181')
+    expect(trustedClientAddress('::ffff:127.0.0.1', '2001:db8::5')).toBe('2001:db8::5')
+  })
+
+  it('ignores forged, malformed, or chained forwarding from untrusted peers', () => {
+    expect(trustedClientAddress('203.0.113.7', '1.1.1.1')).toBe('203.0.113.7')
+    expect(trustedClientAddress('127.0.0.1', '1.1.1.1, 2.2.2.2')).toBe('127.0.0.1')
+    expect(trustedClientAddress('127.0.0.1', 'not-an-ip')).toBe('127.0.0.1')
   })
 })
 
@@ -502,47 +527,6 @@ describe('community Ed25519 auth', () => {
     store.close()
   })
 
-  it('requires the community key when configured', async () => {
-    const config = resolveBackendConfig(
-      {
-        LIANGXIANG_BACKEND_DB: ':memory:',
-        LIANGXIANG_BACKEND_PORT: '0',
-        LIANGXIANG_SNAPSHOT_SECONDS: '300',
-        LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
-        LIANGXIANG_COMMUNITY_KEY: 'admit-me',
-        LIANGXIANG_ALLOW_UNSIGNED: '1',
-      },
-      () => undefined,
-    )
-    const store = openBackendStore(config.databasePath)
-    const service = new LiangxiangBackendService({ store, config, warn: () => undefined })
-    const api = createBackendHttpApi({
-      service,
-      store,
-      voteRateLimitPerMinute: 0,
-      allowUnsigned: true,
-      communityKey: config.communityKey,
-      log: () => undefined,
-    })
-    await new Promise<void>((resolve) => api.server.listen(0, '127.0.0.1', resolve))
-    const address = api.server.address()
-    if (address === null || typeof address === 'string') throw new Error('server did not bind a port')
-    const missing = await fetch(`http://127.0.0.1:${address.port}/v1/bootstrap`, {
-      headers: { [INSTALLATION_HEADER]: INSTALLATION },
-    })
-    expect(missing.status).toBe(401)
-    const { COMMUNITY_KEY_HEADER } = await import('../src/shared/backend-v1.ts')
-    const ok = await fetch(`http://127.0.0.1:${address.port}/v1/bootstrap`, {
-      headers: {
-        [INSTALLATION_HEADER]: INSTALLATION,
-        [COMMUNITY_KEY_HEADER]: 'admit-me',
-      },
-    })
-    expect(ok.status).toBe(200)
-    await new Promise<void>((resolve) => api.server.close(() => resolve()))
-    api.reset()
-    store.close()
-  })
 })
 
 describe('quiet access log', () => {

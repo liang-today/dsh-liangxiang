@@ -30,11 +30,12 @@
 
 ```bash
 export DSH_HOME=/实际使用的/dsh/home
-bash scripts/update-plugin.sh ./dsh-liangxiang-0.8.0.tgz --profile <profile名>
+bash scripts/update-plugin.sh ./dsh-liangxiang-0.8.1-beta.0.tgz --profile <profile名>
 ```
 
-脚本先备份 `storages/liangxiang.json`，再用 DSH 的 `plugin add` 原位更新同名 bundle，
-最后核对分发包版本、已安装版本和存储摘要。它不执行 `plugin remove`，因为移除 bundle 对升级没有必要，
+脚本先备份 `storages/liangxiang.json`，再按 tarball 内容 SHA-256 复制到持久化包缓存，并用这个
+内容寻址路径执行 DSH 的 `plugin add`。这样即使测试包仍是同一个版本号，内容变化也不会
+被 DSH 的“Already up to date”短路。脚本最后核对分发包版本、已安装模块图和存储摘要。它不执行 `plugin remove`，因为移除 bundle 对升级没有必要，
 也不删除 storage domain、安装密钥、历史水位或浏览器 localStorage。
 
 DSH 的启动方式可能是终端、launchd、systemd 或容器，通用更新脚本不会猜测并强杀进程；

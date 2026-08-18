@@ -16,7 +16,7 @@
 import type { LiangHistoryArchive, VoteResult, VoteType } from '../domain/index.ts'
 import { parseWireState, parseWireVoteResponse } from '../shared/wire.ts'
 import { mergeHistoryArchive, parseV1HistoryResponse } from '../shared/history-v1.ts'
-import { loadAuthorityPreference } from './welcome.ts'
+import { LOCAL_MODE_ACTION_HEADER, LOCAL_MODE_ACTION_VALUE } from '../shared/index.ts'
 import {
   createOfflineViewState,
   wireToViewState,
@@ -42,9 +42,16 @@ const MIN_LIVE_REFRESH_MS = 2_000
 
 /** Injectable transport (real fetch/EventSource in the browser, fakes in tests). */
 export interface LiveStoreTransport {
-  fetchJson(path: string, init?: { method?: string, body?: string }): Promise<unknown>
+  fetchJson(path: string, init?: { method?: string, body?: string, headers?: Record<string, string> }): Promise<unknown>
   openEvents(path: string, handlers: { onFrame(data: string): void, onError(): void }): { close(): void }
   randomRequestId(): string
+}
+
+export class LiveTransportError extends Error {
+  constructor(readonly status: number, path: string) {
+    super(`HTTP ${status} for ${path}`)
+    this.name = 'LiveTransportError'
+  }
 }
 
 function createBrowserTransport(): LiveStoreTransport {
@@ -53,14 +60,15 @@ function createBrowserTransport(): LiveStoreTransport {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
       try {
-        const request: RequestInit = { method: init?.method ?? 'GET', signal: controller.signal }
+        const headers: Record<string, string> = { ...init?.headers }
+        const request: RequestInit = { method: init?.method ?? 'GET', headers, signal: controller.signal }
         if (init?.body !== undefined) {
-          request.headers = { 'content-type': 'application/json' }
+          headers['content-type'] = 'application/json'
           request.body = init.body
         }
         const response = await fetch(path, request)
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status} for ${path}`)
+          throw new LiveTransportError(response.status, path)
         }
         return (await response.json()) as unknown
       } finally {
@@ -256,7 +264,6 @@ export function createLiveLiangxiangStore(
         openStream()
         // One full archive per Host connection; subsequent updates are deltas.
         void loadHistory()
-        if (loadAuthorityPreference() === 'local') enterLocalMode()
       })
       .catch((error: unknown) => {
         starting = false
@@ -267,7 +274,11 @@ export function createLiveLiangxiangStore(
 
   const enterLocalMode = (): void => {
     if (disposed || starting) return
-    transport.fetchJson(ENTER_LOCAL_PATH, { method: 'POST' })
+    transport.fetchJson(ENTER_LOCAL_PATH, {
+      method: 'POST',
+      body: '{}',
+      headers: { [LOCAL_MODE_ACTION_HEADER]: LOCAL_MODE_ACTION_VALUE },
+    })
       .then((raw) => {
         if (!disposed) applyWire(raw)
       })
@@ -300,7 +311,8 @@ export function createLiveLiangxiangStore(
     let raw: unknown
     try {
       raw = await attempt()
-    } catch {
+    } catch (error) {
+      if (error instanceof LiveTransportError && error.status >= 400 && error.status < 500) throw error
       // One bounded retry with the SAME requestId — idempotency, not a new intent.
       await new Promise((resolve) => setTimeout(resolve, VOTE_RETRY_DELAY_MS))
       raw = await attempt()

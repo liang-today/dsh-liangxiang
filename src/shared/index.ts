@@ -29,10 +29,14 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.8.0'
+export const PLUGIN_VERSION = '0.8.1-beta.0'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
+
+/** Same-origin Host action guard for the explicit process-wide local-mode switch. */
+export const LOCAL_MODE_ACTION_HEADER = 'x-liangxiang-local-action'
+export const LOCAL_MODE_ACTION_VALUE = 'enter'
 
 /** Frozen product copy (AGENTS.md): the product name. */
 export const PRODUCT_NAME = '梁相'

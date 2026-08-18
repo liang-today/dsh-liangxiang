@@ -3,7 +3,7 @@
  * accepts a vote but omits `global_snapshot` (the 502 / 「投票失败」 bug).
  */
 import { describe, expect, it } from 'vitest'
-import { createBackendClient } from '../src/host/backend-client.ts'
+import { BackendClientError, createBackendClient } from '../src/host/backend-client.ts'
 import {
   CLAIM_SOURCE_HOST_OBSERVED,
   LIANGZI_POLICY_VERSION,
@@ -246,6 +246,25 @@ describe('createBackendClient.vote snapshot recovery', () => {
     })
     await expect(client.vote('inst-host-0001', intent)).rejects.toBeInstanceOf(WireError)
     expect(calls).toEqual(['http://127.0.0.1:4180/v1/votes'])
+    client.dispose()
+  })
+})
+
+describe('createBackendClient read retry boundary', () => {
+  it('does not retry a deterministic 401 admission response', async () => {
+    let calls = 0
+    const client = createBackendClient({
+      baseUrl: 'http://127.0.0.1:4180',
+      fetchImpl: async () => {
+        calls += 1
+        return jsonResponse({ error: { code: 'admission_required', message: 'ticket required' } }, 401)
+      },
+    })
+    await expect(client.bootstrap('inst-host-0001')).rejects.toMatchObject({
+      status: 401,
+      code: 'admission_required',
+    } satisfies Partial<BackendClientError>)
+    expect(calls).toBe(1)
     client.dispose()
   })
 })

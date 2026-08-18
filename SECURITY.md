@@ -2,10 +2,10 @@
 
 ## 先看清适用范围
 
-梁相 v0.8.0 是 **本地/社区预发（`DEV_STAGING_ONLY`）** 软件。默认后端只
+梁相 v0.8.1-beta.0 是 **本地/社区预发（`DEV_STAGING_ONLY`）** 软件。默认后端只
 监听 `127.0.0.1`；社区节点只通过 Caddy 在 `https://api.liang.today` 提供
 HTTPS，并使用短期入梁券、Ed25519 安装签名、请求体上限、硬容量限流和
-SQLite 事务保护。生产共享口令已经关闭。以上控制都不等于可验证的
+SQLite 事务保护。旧共享准入口令通道已经删除。以上控制都不等于可验证的
 真人身份或可验证 Token 用量（Decision Gate A = A3，见
 [`docs/075-backend-decision.md`](docs/075-backend-decision.md)）。
 

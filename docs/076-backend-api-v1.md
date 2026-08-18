@@ -9,7 +9,7 @@
 - 鉴权（公共只读的 `/health`、`/snapshot`、`/history`、`/admission/tickets` 除外）：
   - 默认要求 Ed25519 签名头：`x-liangxiang-installation`、`x-liangxiang-public-key`、`x-liangxiang-signature`、`x-liangxiang-timestamp`；可选 `x-liangxiang-device`（MAC 集合哈希）。
   - 未登记安装先从公开列表取得短期入梁券，再签名认领；登记后不再需要券或共享口令。
-  - `LIANGXIANG_COMMUNITY_KEY` 只保留为代码层受控迁移兼容；正式生产不配置，首次登记只走入梁券。
+  - 首次登记只走短期、限量入梁券；旧共享口令兼容通道已经删除。
   - `LIANGXIANG_ALLOW_UNSIGNED=1` 才接受旧的「只有 installation 头」请求，仅供 localhost smoke。
 - 请求体上限 4KB，超限回 **413**（`invalid_request`）并带 `connection: close`——刻意不掐 socket：被掐断的连接与网络故障无法区分，会让投票方在「已拒绝」和「结果未知」之间猜，从而错误重试。
 - 请求日志只含 method/path/status/installation 前 8 字符，绝不含 prompt/回复/路径/密钥。

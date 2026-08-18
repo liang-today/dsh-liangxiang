@@ -27,10 +27,8 @@ export interface HostRuntimeConfig {
    * falls back to the canonical online endpoint and never changes mode.
    * A later welcome-gate choice may still switch to local; a dead backend
    * is not a silent fallback.
-   */
+  */
   backendUrl: string | null
-  /** Shared community admission key; sent on every authenticated backend call. */
-  communityKey: string | null
 }
 
 function parsePositiveInt(
@@ -101,18 +99,16 @@ export function resolveHostRuntimeConfig(
   warn: (message: string) => void,
 ): HostRuntimeConfig {
   const service = resolveHostConfig(env, warn)
-  const communityRaw = readLiangxiangEnv(env, 'COMMUNITY_KEY')?.trim()
-  const communityKey = communityRaw === undefined || communityRaw === '' ? null : communityRaw
   const raw = readLiangxiangEnv(env, 'BACKEND_URL')?.trim()
-  if (raw === 'local') return { service, backendUrl: null, communityKey }
+  if (raw === 'local') return { service, backendUrl: null }
   const candidate = raw === undefined || raw === '' ? STAGING_BACKEND_URL : raw
   try {
-    return { service, backendUrl: normalizeBaseUrl(candidate), communityKey }
+    return { service, backendUrl: normalizeBaseUrl(candidate) }
   } catch (error) {
     warn(
       `[dsh-liangxiang] ignoring invalid LIANGXIANG_BACKEND_URL=${candidate} `
       + `(${error instanceof Error ? error.message : String(error)}); using ${STAGING_BACKEND_URL}`,
     )
-    return { service, backendUrl: normalizeBaseUrl(STAGING_BACKEND_URL), communityKey }
+    return { service, backendUrl: normalizeBaseUrl(STAGING_BACKEND_URL) }
   }
 }

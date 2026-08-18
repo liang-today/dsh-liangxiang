@@ -16,7 +16,9 @@
  * plugin dispose so unload leaves no open responses or timers).
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { LOCAL_MODE_ACTION_HEADER, LOCAL_MODE_ACTION_VALUE } from '../shared/index.ts'
 import { parseWireVoteRequest } from '../shared/wire.ts'
+import { BackendClientError } from './backend-client.ts'
 import { parseDevCreditBody, resolveDevCreditTokens } from './dev-credit.ts'
 import type { LiangHostService } from './service.ts'
 
@@ -148,6 +150,15 @@ export function createLiangxiangApi(
         state: outcome.state,
       })
     } catch (error) {
+      if (error instanceof BackendClientError && error.status === 429) {
+        writeJson(res, 429, {
+          error: {
+            code: error.code ?? 'vote_rate_limited',
+            message: '打梁过快，请稍后再试',
+          },
+        })
+        return
+      }
       const message = error instanceof Error ? error.message : String(error)
       warn(`[dsh-liangxiang] vote could not be resolved: ${message}`)
       writeJson(res, 502, { error: 'vote authority unavailable; retry with the same requestId' })
@@ -250,6 +261,27 @@ export function createLiangxiangApi(
       return
     }
     if (pathname === '/liangxiang/api/local/enter') {
+      const action = req.headers[LOCAL_MODE_ACTION_HEADER]
+      const contentType = req.headers['content-type']
+      if (action !== LOCAL_MODE_ACTION_VALUE || typeof contentType !== 'string' || !contentType.startsWith('application/json')) {
+        writeJson(res, 403, { error: 'explicit local-mode action header required' })
+        return
+      }
+      try {
+        const raw = await readBoundedBody(req)
+        const body = JSON.parse(raw) as unknown
+        if (typeof body !== 'object' || body === null || Array.isArray(body) || Object.keys(body).length !== 0) {
+          throw new Error('expected an empty JSON object')
+        }
+      } catch (error) {
+        if (error instanceof OversizedBodyError) {
+          res.setHeader('connection', 'close')
+          writeJson(res, 413, { error: `local-mode body exceeds ${MAX_VOTE_BODY_BYTES} bytes` })
+          return
+        }
+        writeJson(res, 400, { error: `invalid local-mode request: ${error instanceof Error ? error.message : String(error)}` })
+        return
+      }
       options.chooseLocalMode?.()
       writeJson(res, 200, service.getWireState())
       return

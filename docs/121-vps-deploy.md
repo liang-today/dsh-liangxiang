@@ -19,7 +19,6 @@
 | 每次安装生成 Ed25519 密钥对 | 后续请求仍是**同一把私钥**的持有者 | DSH 账号、真人、一人一票 |
 | 设备指纹 = 本机 MAC 集合的 SHA-256 | 同一台机器重装会撞指纹（提高成本） | 反女巫。MAC 可伪造，无 MAC 的 VM 跳过绑定 |
 | 一次性入梁券 | 将首次注册量限制在运营者发行的库存内 | 真人、一人一票；券与指纹都可被有意规避 |
-| `LIANGXIANG_COMMUNITY_KEY` | 代码层紧急迁移兼容；正式生产保持未设置 | 身份；0.8+ 正式客户端不需要它 |
 | 每分钟最多 50,000 声明 Token（= 1 炷） | 瞬间自报 `1e12` Token 攒不出香火 | DSH 真的跑过。慢速撒谎 Host 仍能按上限注水 |
 | 服务端时钟 + 启动时 NTP 告警 | 香火 drip / 签名时戳用 VPS 时钟 | Host 的 NTP 结果不授权任何东西 |
 
@@ -38,7 +37,7 @@ bash scripts/vps-install.sh
 脚本会：
 
 1. `pnpm install && pnpm run build`
-2. 正式生产保持 `LIANGXIANG_COMMUNITY_KEY` 未设置；首次登记只走入梁券
+2. 首次登记只走短期、限量入梁券；不存在共享准入口令
 3. 安装 systemd 单元 `liangxiang-backend`
 4. 打印 Caddy 片段
 
@@ -145,7 +144,7 @@ sudo journalctl -u liangxiang-backend -f
 - `vote … rejected …` / `deny 401 …` — 票被拒或鉴权失败；同原因一分钟内采样，避免攻击造成日志放大
 - `publish archived=… opened=… title=…` — 运营发布了新梁案
 
-不会刷：`/v1/health`、`/v1/snapshot`、`/v1/me/daily-state`、幂等重放和重复拒票。身份只打前 12 字符，不打私钥/社区口令。
+不会刷：`/v1/health`、`/v1/snapshot`、`/v1/me/daily-state`、幂等重放和重复拒票。身份只打前 12 字符，不打私钥或入梁券 secret。
 
 ## 8. 测试发布新梁案
 
@@ -176,7 +175,7 @@ pnpm run publish:case -- "测试发布：梁相是夯还是拉"
 
 ## 9. 不要做的事
 
-- 不要 `npm publish`
+- 未经维护者明确授权，不要再次 `npm publish` 或改变 dist-tag
 - 不要声称 verified / 可信全网 / 一人一票
 - 不要把 Host 的 NTP 查询结果当成香火授权
 - 不要开 `LIANGXIANG_ALLOW_UNSIGNED=1` 上公网

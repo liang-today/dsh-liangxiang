@@ -14,7 +14,7 @@
 
 | 禁令 | 现状 |
 |---|---|
-| 不 `npm publish` | 遵守 |
+| 未经维护者明确授权不再次 `npm publish` | 已有 0.8.0 beta 占位包；后续发布仍需单独授权 |
 | 不 GitHub Release | 遵守 |
 | 不公网 production deploy | 遵守 |
 | 不改用户真实 DSH profile | 遵守 |

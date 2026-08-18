@@ -80,8 +80,6 @@ export interface BackendConfig {
   admissionPublicListLimit: number
   /** When true, HTTP accepts the old unsigned installation header (localhost tests). */
   allowUnsigned: boolean
-  /** Shared admission secret; null means not required. */
-  communityKey: string | null
 }
 
 export class BackendConfigError extends Error {
@@ -137,10 +135,15 @@ export function resolveBackendConfig(
   const timezone = trimmed(readLiangxiangEnv(env, 'BUSINESS_TZ'), DEFAULT_BUSINESS_TIMEZONE)
   // Fail loudly at boot rather than at midnight.
   new Intl.DateTimeFormat('en-CA', { timeZone: timezone })
+  const host = trimmed(readLiangxiangEnv(env, 'BACKEND_HOST'), DEFAULT_BACKEND_HOST)
+  const allowUnsigned = trimmed(readLiangxiangEnv(env, 'ALLOW_UNSIGNED'), '') === '1'
+  if (allowUnsigned && host !== '127.0.0.1' && host !== '::1' && host !== 'localhost') {
+    throw new BackendConfigError('LIANGXIANG_ALLOW_UNSIGNED=1 is permitted only on a loopback backend host')
+  }
   return {
     // Narrowed by the membership check + the VERIFIED_PRODUCTION rejection above.
     authorityMode: requestedMode as BackendAuthorityMode,
-    host: trimmed(readLiangxiangEnv(env, 'BACKEND_HOST'), DEFAULT_BACKEND_HOST),
+    host,
     port: parseInt_(readLiangxiangEnv(env, 'BACKEND_PORT'), DEFAULT_BACKEND_PORT, 'LIANGXIANG_BACKEND_PORT', warn, {
       min: 0,
       max: 65_535,
@@ -216,10 +219,6 @@ export function resolveBackendConfig(
       warn,
       { min: 1, max: 1_000 },
     ),
-    allowUnsigned: trimmed(readLiangxiangEnv(env, 'ALLOW_UNSIGNED'), '') === '1',
-    communityKey: (() => {
-      const value = readLiangxiangEnv(env, 'COMMUNITY_KEY')?.trim()
-      return value === undefined || value === '' ? null : value
-    })(),
+    allowUnsigned,
   }
 }

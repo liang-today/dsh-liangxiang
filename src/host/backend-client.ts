@@ -13,7 +13,6 @@
  */
 import {
   BACKEND_API_PREFIX,
-  COMMUNITY_KEY_HEADER,
   DEVICE_HEADER,
   INSTALLATION_HEADER,
   PUBLIC_KEY_HEADER,
@@ -62,8 +61,6 @@ export interface BackendClientOptions {
   fetchImpl?: typeof fetch
   /** Live community keypair; null until the Host has minted/loaded identity. */
   signer?: () => CommunityKeypair | null
-  /** Shared admission secret when the community backend requires one. */
-  communityKey?: string | null
 }
 
 export interface BackendClient {
@@ -135,10 +132,6 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
           headers[DEVICE_HEADER] = identity.deviceFingerprint
         }
       }
-      const communityKey = options.communityKey?.trim()
-      if (communityKey !== undefined && communityKey !== '') {
-        headers[COMMUNITY_KEY_HEADER] = communityKey
-      }
       const request: RequestInit = { method: init.method, headers, signal: controller.signal }
       if (init.body !== undefined) request.body = rawBody
       const response = await doFetch(`${baseUrl}${BACKEND_API_PREFIX}${path}`, request)
@@ -174,6 +167,7 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
         : { method: 'GET', installationId })
     } catch (error) {
       if (disposed) throw error
+      if (error instanceof BackendClientError && error.status !== null && error.status < 500) throw error
       await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS))
       return request(path, installationId === undefined
         ? { method: 'GET' }

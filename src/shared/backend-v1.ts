@@ -62,9 +62,6 @@ export const SIGNATURE_HEADER = 'x-liangxiang-signature'
 export const TIMESTAMP_HEADER = 'x-liangxiang-timestamp'
 /** Optional SHA-256/base64url of local MAC set (sybil cost, spoofable). */
 export const DEVICE_HEADER = 'x-liangxiang-device'
-/** Shared community admission key when the server has LIANGXIANG_COMMUNITY_KEY. */
-export const COMMUNITY_KEY_HEADER = 'x-liangxiang-community-key'
-
 export interface V1AdmissionTicket {
   ticket_id: string
   secret: string
@@ -295,7 +292,7 @@ export interface V1RekeyResponse {
   server_time: number
 }
 
-/** POST /v1/admin/identity/unbind response (operator, community key). */
+/** CLI-only identity unbind response (there is no public operator HTTP route). */
 export interface V1UnbindResponse {
   schema_version: typeof BACKEND_SCHEMA_VERSION
   installation_id: string
@@ -312,6 +309,7 @@ export const V1_ERROR_CODES = [
   'admission_ticket_invalid',
   'admission_ticket_exhausted',
   'admission_rate_limited',
+  'vote_rate_limited',
   'device_conflict',
   'rekey_cooldown',
   'identity_rate_limited',

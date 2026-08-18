@@ -1,3 +1,18 @@
+{
+	# Runtime reverse-proxy errors can otherwise echo request headers into the
+	# journal. Keep pseudonymous identity/signature material out of operations
+	# logs while retaining the method, path, status and client address.
+	log default {
+		format filter {
+			request>headers>X-Liangxiang-Public-Key delete
+			request>headers>X-Liangxiang-Signature delete
+			request>headers>X-Liangxiang-Installation delete
+			request>headers>X-Liangxiang-Device delete
+			request>headers>X-Liangxiang-Timestamp delete
+		}
+	}
+}
+
 # hk-api is the pre-cutover verification name. Keep it as a diagnostic alias
 # after api.liang.today moves to Hong Kong. The backend remains loopback-only.
 api.liang.today, hk-api.liang.today {
@@ -18,6 +33,8 @@ api.liang.today, hk-api.liang.today {
 	}
 
 	reverse_proxy 127.0.0.1:4180 {
+		# Caddy's reverse_proxy supplies the immediate client in
+		# X-Forwarded-For. The backend trusts it only across this loopback hop.
 		transport http {
 			dial_timeout 3s
 			response_header_timeout 10s

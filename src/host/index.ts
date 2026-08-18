@@ -57,7 +57,7 @@ export function apply(ctx: DshHostContext): void {
     }
   }, 'liangxiang: lifecycle marker')
 
-  const { service: serviceConfig, backendUrl, communityKey } = resolveHostRuntimeConfig(process.env, warn)
+  const { service: serviceConfig, backendUrl } = resolveHostRuntimeConfig(process.env, warn)
   const identityRef: { current: CommunityKeypair | null } = { current: null }
   const local = new FakeAuthoritativeLiangService(serviceConfig, systemClock, warn)
   const online = backendUrl !== null
@@ -65,7 +65,6 @@ export function apply(ctx: DshHostContext): void {
       client: createBackendClient({
         baseUrl: backendUrl,
         signer: () => identityRef.current,
-        communityKey,
       }),
       timezone: serviceConfig.timezone,
       clock: systemClock,

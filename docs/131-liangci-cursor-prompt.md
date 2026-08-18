@@ -274,7 +274,7 @@ Host 发现 business_date / archive_version 变化
 - 不修改用户真实 DSH profile，不修改 `../deepseek-harness`，不做 npm publish、GitHub Release 或生产部署。
 - 后端有改动时，按仓库规则用 `scripts/deploy-check.sh` 判断 staging 是否陈旧；除非用户明确授权部署，不要自行部署。
 - 跑完整相关 typecheck、lint、unit、integration、UI/backend tests 与 `./scripts/validate.sh`，失败必须修复。
-- 完成后按 `AGENTS.md` 强制要求 commit 并 push；永远不要把社区口令写进源码或分发包。
+- 完成后按 `AGENTS.md` 强制要求 commit 并 push；永远不要把入梁券 secret 或其他凭据写进源码或分发包。
 
 ## 十一、完成标准
 

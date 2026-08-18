@@ -40,6 +40,9 @@ fi
 
 STORAGE="$DSH_HOME/storages/liangxiang.json"
 BACKUP_ROOT="$DSH_HOME/backups/liangxiang"
+PROFILE_DIR="$DSH_HOME/profiles/$PROFILE"
+INSTALLED_MANIFEST="$PROFILE_DIR/node_modules/dsh-liangxiang/package.json"
+PACKAGE_CACHE="$DSH_HOME/packages/liangxiang"
 BEFORE="missing"
 if [[ -f "$STORAGE" ]]; then
   mkdir -p "$BACKUP_ROOT"
@@ -53,8 +56,19 @@ else
 fi
 
 echo "正在更新 profile '$PROFILE' ..."
-"$DSH_BIN" plugin --profile "$PROFILE" add "$TARBALL"
-INSTALLED_MANIFEST="$DSH_HOME/profiles/$PROFILE/node_modules/dsh-liangxiang/package.json"
+# pnpm keys local tarballs by dependency path as well as package version. A
+# rebuilt package at the same path/version may otherwise be reported as "Already up to
+# date" while stale bytes remain installed. Cache by content hash so every
+# distinct artifact gets a distinct, persistent dependency path.
+TARBALL_SHA="$(node -e '
+  const { createHash } = require("node:crypto")
+  const { readFileSync } = require("node:fs")
+  process.stdout.write(createHash("sha256").update(readFileSync(process.argv[1])).digest("hex"))
+' "$TARBALL")"
+mkdir -p "$PACKAGE_CACHE"
+CACHED_TARBALL="$PACKAGE_CACHE/dsh-liangxiang-${EXPECTED_VERSION}-${TARBALL_SHA:0:16}.tgz"
+install -m 0600 "$TARBALL" "$CACHED_TARBALL"
+"$DSH_BIN" plugin --profile "$PROFILE" add "$CACHED_TARBALL"
 INSTALLED_VERSION="$(node -e '
   const manifest = require(process.argv[1])
   if (manifest.name !== "dsh-liangxiang" || typeof manifest.version !== "string") process.exit(2)
@@ -67,6 +81,7 @@ INSTALLED_VERSION="$(node -e '
   echo "版本校验失败：期望 ${EXPECTED_VERSION}，实际 ${INSTALLED_VERSION}" >&2
   exit 1
 }
+node "$(cd "$(dirname "$0")" && pwd)/assert-profile-modules.mjs" "$PROFILE_DIR"
 
 AFTER="missing"
 [[ -f "$STORAGE" ]] && AFTER="$(cksum "$STORAGE")"

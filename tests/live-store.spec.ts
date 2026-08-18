@@ -32,7 +32,7 @@ interface FakeTransportControls {
   transport: LiveStoreTransport
   pushFrame(state: LiangxiangWireState): void
   emitSseError(): void
-  requests: Array<{ path: string, body: string | undefined }>
+  requests: Array<{ path: string, body: string | undefined, headers: Record<string, string> | undefined }>
   failNextFetches(count: number): void
   streamsOpened: number
 }
@@ -46,7 +46,7 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
     streamsOpened: 0,
     transport: {
       fetchJson(path, init) {
-        controls.requests.push({ path, body: init?.body })
+        controls.requests.push({ path, body: init?.body, headers: init?.headers })
         if (failCount > 0) {
           failCount -= 1
           return Promise.reject(new Error('network down'))
@@ -164,6 +164,24 @@ describe('live store', () => {
     expect(state.snapshot.liangziState).toBe('liang_shen')
     expect(state.personal.remainingIncense).toBe(7)
     expect(controls.streamsOpened).toBe(1)
+    store.dispose()
+  })
+
+  it('switches the process to local mode only through the explicit guarded action', async () => {
+    const service = makeService()
+    const controls = fakeTransport(service)
+    const store = createLiveLiangxiangStore(controls.transport)
+    store.start()
+    await settled()
+    expect(controls.requests.some(request => request.path === '/liangxiang/api/local/enter')).toBe(false)
+
+    store.chooseLocalMode()
+    await settled()
+    const request = controls.requests.find(item => item.path === '/liangxiang/api/local/enter')
+    expect(request).toMatchObject({
+      body: '{}',
+      headers: { 'x-liangxiang-local-action': 'enter' },
+    })
     store.dispose()
   })
 

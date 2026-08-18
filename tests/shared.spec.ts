@@ -41,6 +41,6 @@ describe('shared frozen copy', () => {
   it('reads only the canonical LIANGXIANG configuration namespace', () => {
     expect(readLiangxiangEnv({ LIANGXIANG_BACKEND_URL: 'https://api.liang.today' }, 'BACKEND_URL'))
       .toBe('https://api.liang.today')
-    expect(readLiangxiangEnv({}, 'COMMUNITY_KEY')).toBeUndefined()
+    expect(readLiangxiangEnv({}, 'BACKEND_URL')).toBeUndefined()
   })
 })

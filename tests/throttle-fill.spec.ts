@@ -9,6 +9,7 @@ import {
   deriveDisplayedProgress,
   estimateTokensPerSec,
   extrapolateTokens,
+  shouldSnapThrottle,
 } from '../src/client/use-throttle-fill.ts'
 
 describe('estimateTokensPerSec', () => {
@@ -74,5 +75,19 @@ describe('deriveDisplayedProgress', () => {
   it('floors fractional tokens and clamps negatives to zero', () => {
     expect(deriveDisplayedProgress(25_000.9, 50_000)).toEqual({ fill: 25_000 / 50_000, tokensToNext: 25_000 })
     expect(deriveDisplayedProgress(-5, 50_000)).toEqual({ fill: 0, tokensToNext: 50_000 })
+  })
+})
+
+describe('shouldSnapThrottle', () => {
+  it('snaps first hydration jumps that cross an incense boundary', () => {
+    expect(shouldSnapThrottle(0, 0, 3_514_120, 50_000)).toBe(true)
+  })
+
+  it('keeps the presentation tween for small forward deltas', () => {
+    expect(shouldSnapThrottle(10_000, 10_000, 25_000, 50_000)).toBe(false)
+  })
+
+  it('snaps backward reconciliation instead of animating stale progress', () => {
+    expect(shouldSnapThrottle(90_000, 90_000, 40_000, 50_000)).toBe(true)
   })
 })
