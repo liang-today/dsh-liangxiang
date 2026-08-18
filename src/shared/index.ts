@@ -28,8 +28,8 @@ export {
 /** npm package name: the loader row `name`, the client bundle id, and the `/plugins/<id>/client.js` route segment. */
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
-/** Installed package version, surfaced by the sound-icon long-press easter egg. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.7.1'
+/** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
+export const PLUGIN_VERSION = '0.7.2'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'

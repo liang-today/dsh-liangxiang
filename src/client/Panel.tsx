@@ -83,10 +83,9 @@ export interface PanelProps {
   /** Sound volume step 0-3 (无/小/中/大). */
   soundLevel: number
   onCycleSound: () => void
-  /** Long-press (3s) on the sound icon reveals the version; a revealed pill shows. */
-  versionReveal: boolean
-  onSoundPressStart: () => void
-  onSoundPressEnd: () => void
+  /** Version details are exposed only from 梁相案牍. */
+  versionInfoOpen: boolean
+  onVersionInfoClose: () => void
   /** First-run welcome overlay visibility. */
   welcomeVisible: boolean
   /** Seconds remaining before the welcome auto-enters online. */
@@ -560,7 +559,7 @@ function SocialStatHint(props: {
 
 export function Panel(props: PanelProps): ReactElement {
   const {
-    state, reducedMotion, throttle, soundLevel, onCycleSound, versionReveal, onSoundPressStart, onSoundPressEnd,
+    state, reducedMotion, throttle, soundLevel, onCycleSound, versionInfoOpen, onVersionInfoClose,
     welcomeVisible, welcomeSeconds, onDismissWelcome, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
     onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage, onResetPosition,
@@ -603,7 +602,8 @@ export function Panel(props: PanelProps): ReactElement {
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
       event.stopPropagation()
-      if (reconcilePending) onReconcileCancel()
+      if (versionInfoOpen) onVersionInfoClose()
+      else if (reconcilePending) onReconcileCancel()
       else if (utilityOpen) onUtilityClose()
       else onClose()
     }
@@ -737,6 +737,67 @@ export function Panel(props: PanelProps): ReactElement {
         </div>
       )}
 
+      {versionInfoOpen && (
+        <div
+          data-liangxiang-version-backdrop=""
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 6,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '18px',
+            borderRadius: '18px',
+            background: 'rgba(10, 8, 7, 0.34)',
+            backdropFilter: 'blur(3px)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="版本信息"
+            data-liangxiang-version-dialog=""
+            style={{
+              width: '100%',
+              padding: '16px',
+              border: `1px solid color-mix(in srgb, ${color.ritualGold} 34%, ${color.border})`,
+              borderRadius: '14px',
+              background: `linear-gradient(180deg, color-mix(in srgb, ${color.ritualGold} 10%, ${color.bgLayer}), ${color.bgLayer})`,
+              boxShadow: '0 18px 42px rgba(0, 0, 0, 0.28)',
+              textAlign: 'center',
+              boxSizing: 'border-box',
+            }}
+          >
+            <VersionSealIcon size={28} />
+            <strong style={{ display: 'block', marginTop: '6px', color: color.textPrimary, fontSize: '15px', letterSpacing: '1px' }}>梁相</strong>
+            <span style={{ display: 'block', marginTop: '5px', color: color.textSecondary, fontSize: '11px' }}>{PLUGIN_PACKAGE_NAME}</span>
+            <span data-liangxiang-version-value="" style={{ display: 'block', marginTop: '3px', color: color.ritualEmber, fontSize: '14px', fontWeight: 700 }}>v{PLUGIN_VERSION}</span>
+            <span style={{ display: 'block', marginTop: '3px', color: color.textTertiary, fontSize: '9px' }}>当前安装版本</span>
+            <button
+              type="button"
+              autoFocus
+              data-liangxiang-version-close=""
+              onClick={onVersionInfoClose}
+              style={{
+                marginTop: '13px',
+                minWidth: '84px',
+                padding: '6px 12px',
+                border: 'none',
+                borderRadius: '8px',
+                background: color.buttonPrimaryFill,
+                color: color.buttonPrimaryText,
+                font: `600 11px/16px ${font.family}`,
+                cursor: 'pointer',
+              }}
+            >
+              知道了
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Region 1 — 今日梁案 */}
       <header
         data-liangxiang-region="case"
@@ -791,10 +852,6 @@ export function Panel(props: PanelProps): ReactElement {
           aria-label={`声音：${['无', '小', '中', '大'][soundLevel] ?? ''}`}
           aria-pressed={soundLevel > 0}
           onClick={onCycleSound}
-          onPointerDown={onSoundPressStart}
-          onPointerUp={onSoundPressEnd}
-          onPointerLeave={onSoundPressEnd}
-          onPointerCancel={onSoundPressEnd}
           style={{
             position: 'absolute',
             top: 0,
@@ -811,27 +868,6 @@ export function Panel(props: PanelProps): ReactElement {
         >
           <SoundIcon level={soundLevel} />
         </button>
-        {versionReveal && (
-          <span
-            role="status"
-            data-liangxiang-version=""
-            style={{
-              position: 'absolute',
-              top: '26px',
-              left: '0px',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              border: `1px solid ${color.border}`,
-              background: color.bgLayer,
-              fontSize: '11px',
-              lineHeight: '16px',
-              color: color.textSecondary,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {PLUGIN_PACKAGE_NAME}@{PLUGIN_VERSION}
-          </span>
-        )}
         <button
           type="button"
           aria-label="关闭面板"
