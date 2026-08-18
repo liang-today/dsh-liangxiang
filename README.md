@@ -48,8 +48,8 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 准入：新客户端自动取券并认领一次，之后只凭安装私钥长期连接；旧共享口令
 通道已经从代码与部署配置中删除，入梁券是首次登记的唯一准入。数据与服务位于香港，正式客户端统一连接
 `https://api.liang.today`。当前 npm 包是 `dsh-liangxiang@0.8.3-beta`；请用
-`dsh-liangxiang@beta` 安装。`0.8.0` 仍留在 registry，但不是这一版。尚未发布
-GitHub Release。迁移实录见
+`dsh-liangxiang@beta` 安装。`0.8.0` 仍留在 registry，但不是这一版。GitHub
+Release 与 npm 同步发布。迁移实录见
 [`docs/142-hk-migration-report.md`](docs/142-hk-migration-report.md)。
 
 ## 文档导航

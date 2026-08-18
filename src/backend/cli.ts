@@ -38,7 +38,9 @@ const usage = `usage:
   node lib/backend-cli.js admission list [--limit N]
   node lib/backend-cli.js admission issue <数量> [--claims N] [--ttl-hours N]
   node lib/backend-cli.js admission revoke <ticket_id>
-  node lib/backend-cli.js archive clear --yes`
+  node lib/backend-cli.js admission replace --yes --count N [--claims N] [--ttl-hours N]
+  node lib/backend-cli.js archive clear --yes
+  node lib/backend-cli.js case reset --yes`
 
 function stripExec(argv: string[]): string[] {
   let start = 0
@@ -107,6 +109,19 @@ export function runOperatorCli(
         + `queue=${queue.length} next=${queue[0]?.publish_on ?? 'fifo'}`,
       )
       io.log(`[liangxiang-ops] 入梁券 active=${admission.activeTickets} remaining=${admission.remainingClaims}`)
+      return 0
+    }
+    if (topic === 'case' && command === 'reset') {
+      if (args[2] !== '--yes') {
+        io.error('清空今日统计会删除今天的票、快照和同日已结旧案，梁子回到待开梁。身份、入梁券和已声明 Token 保留。确认请加 --yes。')
+        return 2
+      }
+      const reset = service.resetTodayCase()
+      io.log(JSON.stringify(reset, null, 2))
+      io.log(
+        `[liangxiang-ops] case reset date=${reset.business_date} case=${reset.case_id ?? '-'} `
+        + `votes=${reset.votes} 梁位=--`,
+      )
       return 0
     }
     if (topic === 'case' && command === 'publish') {
@@ -275,6 +290,31 @@ export function runOperatorCli(
       io.log(
         `[liangxiang-ops] archive cleared days=${cleared.days} weeks=${cleared.weeks} `
         + `months=${cleared.months} closed_cases=${cleared.closed_cases} keep=${cleared.business_date}`,
+      )
+      return 0
+    }
+    if (topic === 'admission' && command === 'replace') {
+      if (!args.includes('--yes')) {
+        io.error('会作废当前全部可用入梁券，再发一批新券。确认请加 --yes。')
+        return 2
+      }
+      let count = 1000
+      let claims = 1
+      let ttlHours = config.admissionTicketTtlHours
+      for (let cursor = 2; cursor < args.length; cursor += 1) {
+        const flag = args[cursor]
+        if (flag === '--yes') continue
+        const value = Number(args[cursor + 1])
+        if (flag === '--count') { count = value; cursor += 1 }
+        else if (flag === '--claims') { claims = value; cursor += 1 }
+        else if (flag === '--ttl-hours') { ttlHours = value; cursor += 1 }
+        else throw new WireError('options', `unknown admission replace option ${String(flag)}`)
+      }
+      const replaced = service.replaceAdmissionTickets(count, claims, ttlHours)
+      io.log(JSON.stringify(replaced, null, 2))
+      io.log(
+        `[liangxiang-ops] 入梁券 replaced revoked=${replaced.revoked} issued=${replaced.issued} `
+        + `claims=${replaced.max_claims} ttl=${replaced.ttl_hours}h remaining=${replaced.inventory.remainingClaims}`,
       )
       return 0
     }

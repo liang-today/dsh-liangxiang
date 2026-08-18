@@ -10,6 +10,7 @@
 - 安装子命令是 `plugin add`，不是 `web add`。
 - npm 介绍与 [liang.today](https://liang.today/) 对齐：短描述改为官网导语，README 去掉现实人名，仓库地址为 `liang-today/dsh-liangxiang`。
 - 运维新增 `liang archive clear --yes`，用于正式发布前清空历史梁祠。
+- 运维新增 `liang cases reset --yes`（今日回到待开梁）和 `liang tickets replace --yes`（作废可用券后按数量/次数重发）。
 
 ## 0.8.2-beta — 2026-08-18
 

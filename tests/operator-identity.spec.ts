@@ -188,4 +188,25 @@ describe('operator CLI', () => {
     expect(logs.join('\n')).toContain('archive cleared')
     rmSync(dir, { recursive: true, force: true })
   })
+
+  it('resets today and replaces the admission inventory', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-reset-'))
+    const db = join(dir, 'liangxiang.sqlite')
+    const env = { LIANGXIANG_BACKEND_DB: db }
+    const logs: string[] = []
+    const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
+    expect(runOperatorCli(['status'], env, io)).toBe(0)
+    expect(runOperatorCli(['admission', 'issue', '2', '--claims', '9'], env, io)).toBe(0)
+    expect(runOperatorCli(['case', 'reset', '--yes'], env, io)).toBe(0)
+    expect(runOperatorCli(
+      ['admission', 'replace', '--yes', '--count', '3', '--claims', '1', '--ttl-hours', '48'],
+      env,
+      io,
+    )).toBe(0)
+    const output = logs.join('\n')
+    expect(output).toContain('case reset')
+    expect(output).toContain('入梁券 replaced revoked=2 issued=3')
+    expect(output).toContain('remaining=3')
+    rmSync(dir, { recursive: true, force: true })
+  })
 })
