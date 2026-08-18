@@ -34,7 +34,7 @@
 | 构建配置迁移 | ✅ 迁移前后三个 bundle SHA-256 相同，无弃用警告 |
 | 密钥/命名空间扫描 | ✅ bundle 不含入梁券 secret 或共享准入凭据，仓库只使用 `liangxiang / 梁相` |
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
-| MacBook / Mac mini 安装 | ⚠️ 历史 0.8.1-beta.0 在 MacBook 的更新、存储校验、在线界面与版本入口通过；0.8.2-beta 尚未执行真实 profile 安装，Mac mini 仍待设备可达后补验 |
+| MacBook / Mac mini 安装 | ⚠️ 0.8.2-beta 候选包已放到桌面 `liangxiang` 目录供真实 profile 手工验收；MacBook 日常 profile 与 Mac mini 仍待装完后勾掉 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
 | npm 公开包复核 | ✅ 历史占位 `dsh-liangxiang@0.8.0` 为 7 文件；当前 `0.8.2-beta` 候选尚未发布 |
 | 0.8.2-beta 候选包 | ✅ 7 文件；SHA-256 `08cc1223170ebfacc3ded93dd5147203c92c75a635578c75ec3a9c3c209cafc4`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
@@ -52,7 +52,10 @@ npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`�
 1. 当前提交已推送；社区服务器 `VERSION` 与该提交一致。
 2. 旧 SQLite 票、身份与梁祠档案的数量和抽样内容在迁移前后一致。
 3. 本机 MacBook 与独立 Mac mini 均已安装新包；更新路径保留身份，全新安装按设计领取入梁券。
-4. 桌面 `liangxiang` 目录中的 tarball 通过内容、密钥和 SHA-256 审计。
+4. 桌面 `liangxiang` 目录中的 tarball 已按内容、密钥和 SHA-256 审计通过
+   （`dsh-liangxiang-0.8.2-beta.tgz` /
+   `08cc1223170ebfacc3ded93dd5147203c92c75a635578c75ec3a9c3c209cafc4`）。
+   真实 MacBook / Mac mini profile 安装仍待运营者手工勾掉。
 5. 香港节点先经 `hk-api.liang.today` 旁路验收，再切 `api.liang.today`；
    原节点作为只读限时回滚点，不得与新节点同时接收写入。
 
