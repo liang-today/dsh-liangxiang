@@ -10,7 +10,7 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement } from 'react'
-import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, formatZhCompactCount, type VoteType } from '../domain/index.ts'
+import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
   ACCOUNTING_UNAVAILABLE_HINT,
@@ -1093,7 +1093,7 @@ export function Panel(props: PanelProps): ReactElement {
           <ThreeRealmsIncenseIcon size={18} />
           <span style={statCopyStyle}>
             <span data-liangxiang-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
-            <strong style={statValueStyle}>{formatZhCompactCount(snapshot.totalIncense)}</strong>
+            <strong style={statValueStyle}>{snapshot.totalIncense.toLocaleString('zh-CN')}</strong>
           </span>
           <SocialStatHint
             kind="incense"
@@ -1111,7 +1111,7 @@ export function Panel(props: PanelProps): ReactElement {
           <FivePhasePilgrimIcon size={18} />
           <span style={statCopyStyle}>
             <span data-liangxiang-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
-            <strong style={statValueStyle}>{formatZhCompactCount(snapshot.uniqueVoters)}</strong>
+            <strong style={statValueStyle}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
           </span>
           <SocialStatHint
             kind="voters"
