@@ -13,7 +13,9 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 npx --yes @deepseek-ai/dsh web
 ```
 
-已全局安装 `dsh` 时，把开头的 `npx --yes @deepseek-ai/dsh` 换成 `dsh`。`web` 若不是你的 profile 名，换成实际名字。页面边缘出现「今日梁相」即表示装好。升级与安装同一条命令；卸载用 `plugin --profile web remove dsh-liangxiang`。
+已全局安装 `dsh` 时，把开头的 `npx --yes @deepseek-ai/dsh` 换成 `dsh`。`web` 若不是你的 profile 名，换成实际名字。页面边缘出现「今日梁相」即表示装好。
+
+升级前先退出 WebUI。若以前用本地 `.tgz` 装过，必须先 `remove` 再 `add dsh-liangxiang@beta`，只重复 add 不会离开旧包。卸载：`plugin --profile web remove dsh-liangxiang`。两条命令都加上 `export DSH_HOME="$HOME/.dsh"`。
 
 官网：[liang.today](https://liang.today/) · 部署指南：[liang.today/guide](https://liang.today/guide/) · 源码：[liang-today/dsh-liangxiang](https://github.com/liang-today/dsh-liangxiang)
 

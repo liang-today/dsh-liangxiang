@@ -1,5 +1,17 @@
 # TROUBLESHOOTING
 
+## 重装后案牍仍是旧版本（例如 0.8.3-beta）
+
+profile 里还钉着本地 tarball（`file:…/dsh-liangxiang-0.8.3-beta.tgz`）。`plugin add dsh-liangxiang@beta` 不会换源。先退出 WebUI，再：
+
+```bash
+export DSH_HOME="$HOME/.dsh"
+npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+```
+
+两条命令必须对着**日常** `DSH_HOME`。终端里如果已经有别的 `DSH_HOME`，装到的不是 WebUI 在用的那份。装完看 `$DSH_HOME/profiles/web/package.json` 的依赖应是 `0.8.5-beta`，不能再是 `file:…tgz`。
+
 ## 更新脚本提示没有 `dsh` 命令
 
 没有全局安装 DSH CLI。两种用法等价：

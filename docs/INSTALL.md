@@ -15,15 +15,22 @@ npx --yes @deepseek-ai/dsh …             # 没有全局 dsh 时
 
 ### npm（推荐，可远程拉包）
 
-安装和升级是**同一条命令**，会从 npm 拉当前 `@beta`：
+全新安装写 `@beta`，会从 npm 拉当前标签：
 
 ```bash
-dsh plugin --profile web add dsh-liangxiang@beta
-# 或
+export DSH_HOME="$HOME/.dsh"
 npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 ```
 
-卸载：`dsh plugin --profile web remove dsh-liangxiang`
+**从本地 `.tgz` 换成 npm，或案牍仍停在旧号：** 只再 `add @beta` 不够。DSH 把命令转给 pnpm 后，已有的 `file:…tgz` 依赖会被当成已安装。必须先卸再装：
+
+```bash
+export DSH_HOME="$HOME/.dsh"
+npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+```
+
+卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
