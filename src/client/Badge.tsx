@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import type { LiangziState, VoteType } from '../domain/index.ts'
-import { HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, PLUGIN_PACKAGE_NAME, PLUGIN_VERSION, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
+import { HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_UP_NAME } from '../shared/index.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { hasSeenWelcome, markWelcomeSeen, saveAuthorityPreference, WELCOME_TIMEOUT_SECONDS } from './welcome.ts'
 import {
@@ -80,8 +80,6 @@ const BADGE_CSS = `
 [data-liangxiang-badge-tooltip] {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translate(-50%, 3px);
   padding: 4px 8px;
   border: 1px solid ${color.border};
   border-radius: 8px;
@@ -94,9 +92,22 @@ const BADGE_CSS = `
   pointer-events: none;
   transition: opacity 100ms ease, transform 100ms ease;
 }
+[data-liangxiang-badge][data-tooltip-side="above"] [data-liangxiang-badge-tooltip] {
+  bottom: calc(100% + 8px);
+  transform: translate(-50%, 3px);
+}
+[data-liangxiang-badge][data-tooltip-side="below"] [data-liangxiang-badge-tooltip] {
+  top: calc(100% + 8px);
+  transform: translate(-50%, -3px);
+}
 [data-liangxiang-badge]:hover [data-liangxiang-badge-tooltip],
 [data-liangxiang-badge]:focus-visible [data-liangxiang-badge-tooltip] {
   opacity: 1;
+}
+[data-liangxiang-badge][data-tooltip-side="above"]:hover [data-liangxiang-badge-tooltip],
+[data-liangxiang-badge][data-tooltip-side="above"]:focus-visible [data-liangxiang-badge-tooltip],
+[data-liangxiang-badge][data-tooltip-side="below"]:hover [data-liangxiang-badge-tooltip],
+[data-liangxiang-badge][data-tooltip-side="below"]:focus-visible [data-liangxiang-badge-tooltip] {
   transform: translate(-50%, 0);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -113,6 +124,8 @@ export interface BadgeButtonProps {
   liangQiFill?: number
   reducedMotion?: boolean
   dragging?: boolean
+  /** Keep the hover label on the opposite side from the expanded panel. */
+  tooltipSide?: 'above' | 'below'
   onToggle: () => void
   onEscape: () => void
   /** Hover / keyboard focus: probe the host for a newer 梁案. */
@@ -128,6 +141,7 @@ export function BadgeButton({
   liangQiFill = 1,
   reducedMotion = false,
   dragging = false,
+  tooltipSide = 'above',
   onToggle,
   onEscape,
   onProbeLatest,
@@ -156,6 +170,7 @@ export function BadgeButton({
       data-liangxiang-badge=""
       data-liangxiang-badge-state={liangziState}
       data-dragging={dragging}
+      data-tooltip-side={tooltipSide}
     >
       <style>{BADGE_CSS}</style>
       <span
@@ -251,47 +266,6 @@ export function LiangxiangBadge(): ReactElement {
     const next = cycleSoundLevel()
     setSoundLevel(next)
     playVolumePreview()
-  }, [])
-  // Long-press (3s) on the sound icon reveals the installed version — a hidden
-  // dev / easter-egg gesture. A long-press also swallows the release click so it
-  // never cycles the volume.
-  const [versionReveal, setVersionReveal] = useState(false)
-  const longPressTimer = useRef<number | null>(null)
-  const revealTimer = useRef<number | null>(null)
-  const longPressed = useRef(false)
-  const revealVersionTemporarily = useCallback(() => {
-    setVersionReveal(true)
-    if (revealTimer.current !== null) window.clearTimeout(revealTimer.current)
-    revealTimer.current = window.setTimeout(() => {
-      revealTimer.current = null
-      setVersionReveal(false)
-    }, 3000)
-  }, [])
-  const beginSoundLongPress = useCallback(() => {
-    longPressed.current = false
-    if (longPressTimer.current !== null) window.clearTimeout(longPressTimer.current)
-    longPressTimer.current = window.setTimeout(() => {
-      longPressTimer.current = null
-      longPressed.current = true
-      revealVersionTemporarily()
-    }, 3000)
-  }, [revealVersionTemporarily])
-  const endSoundLongPress = useCallback(() => {
-    if (longPressTimer.current !== null) {
-      window.clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }, [])
-  const onSoundClick = useCallback(() => {
-    if (longPressed.current) {
-      longPressed.current = false
-      return
-    }
-    onCycleSound()
-  }, [onCycleSound])
-  useEffect(() => () => {
-    if (longPressTimer.current !== null) window.clearTimeout(longPressTimer.current)
-    if (revealTimer.current !== null) window.clearTimeout(revealTimer.current)
   }, [])
   const [welcomeSeconds, setWelcomeSeconds] = useState(WELCOME_TIMEOUT_SECONDS)
   const [liangciOpen, setLiangciOpen] = useState(false)
@@ -454,6 +428,7 @@ export function LiangxiangBadge(): ReactElement {
   // Transient vote feedback (已上香).
   const [voteFeedback, setVoteFeedback] = useState('')
   const [utilityOpen, setUtilityOpen] = useState(false)
+  const [versionInfoOpen, setVersionInfoOpen] = useState(false)
   const [reconcilePending, setReconcilePending] = useState(false)
   useEffect(() => {
     if (voteFeedback === '') return undefined
@@ -463,6 +438,7 @@ export function LiangxiangBadge(): ReactElement {
   useEffect(() => {
     if (!open) {
       setUtilityOpen(false)
+      setVersionInfoOpen(false)
       setReconcilePending(false)
     }
   }, [open])
@@ -541,9 +517,10 @@ export function LiangxiangBadge(): ReactElement {
   }
   const onShowVersion = (): void => {
     setUtilityOpen(false)
-    revealVersionTemporarily()
-    setVoteFeedback(`${PLUGIN_PACKAGE_NAME} · v${PLUGIN_VERSION}`)
+    setVersionInfoOpen(true)
   }
+
+  const placement = panelPlacementFor(position, viewport)
 
   return (
     <div
@@ -564,6 +541,7 @@ export function LiangxiangBadge(): ReactElement {
         liangQiFill={throttle.fill}
         reducedMotion={reducedMotion}
         dragging={dragging}
+        tooltipSide={placement.stack === 'above' ? 'below' : 'above'}
         onToggle={() => {
           if (suppressClick.current) {
             suppressClick.current = false
@@ -593,10 +571,9 @@ export function LiangxiangBadge(): ReactElement {
           reducedMotion={reducedMotion}
           throttle={throttle}
           soundLevel={soundLevel}
-          onCycleSound={onSoundClick}
-          versionReveal={versionReveal}
-          onSoundPressStart={beginSoundLongPress}
-          onSoundPressEnd={endSoundLongPress}
+          onCycleSound={onCycleSound}
+          versionInfoOpen={versionInfoOpen}
+          onVersionInfoClose={() => setVersionInfoOpen(false)}
           welcomeVisible={welcomeVisible}
           welcomeSeconds={welcomeSeconds}
           onDismissWelcome={onDismissWelcome}
@@ -605,12 +582,13 @@ export function LiangxiangBadge(): ReactElement {
           condensedIncense={condensedIncense}
           voteFeedback={voteFeedback}
           positionPulse={positionPulse}
-          placement={panelPlacementFor(position, viewport)}
+          placement={placement}
           onVote={onVote}
           onInsufficientVote={onInsufficientVote}
           onClose={() => {
             if (welcomeVisible) return
             savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
+            setVersionInfoOpen(false)
             setOpen(false)
           }}
           reconcilePending={reconcilePending}
@@ -620,6 +598,7 @@ export function LiangxiangBadge(): ReactElement {
               setUtilityOpen(false)
               setReconcilePending(false)
             } else {
+              setVersionInfoOpen(false)
               setUtilityOpen(true)
             }
           }}

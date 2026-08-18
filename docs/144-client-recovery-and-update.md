@@ -30,7 +30,7 @@
 
 ```bash
 export DSH_HOME=/实际使用的/dsh/home
-bash scripts/update-plugin.sh ./dsh-liangxiang-0.7.1.tgz --profile <profile名>
+bash scripts/update-plugin.sh ./dsh-liangxiang-0.7.2.tgz --profile <profile名>
 ```
 
 脚本先备份 `storages/liangxiang.json`，再用 DSH 的 `plugin add` 原位更新同名 bundle，

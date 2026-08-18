@@ -56,7 +56,7 @@ function renderPanel(
     onReconcileAsk?: () => void
     onReconcileConfirm?: () => void
     onReconcileCancel?: () => void
-    versionReveal?: boolean
+    versionInfoOpen?: boolean
     onInsufficientVote?: (voteType: 'up' | 'down') => void
     welcomeVisible?: boolean
     welcomeSeconds?: number
@@ -70,9 +70,8 @@ function renderPanel(
       reducedMotion={false}
       soundLevel={0}
       onCycleSound={() => undefined}
-      versionReveal={extra.versionReveal ?? false}
-      onSoundPressStart={() => undefined}
-      onSoundPressEnd={() => undefined}
+      versionInfoOpen={extra.versionInfoOpen ?? false}
+      onVersionInfoClose={() => undefined}
       welcomeVisible={extra.welcomeVisible ?? false}
       welcomeSeconds={extra.welcomeSeconds ?? 10}
       onDismissWelcome={() => undefined}
@@ -338,11 +337,16 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(textContent(tree)).not.toContain('可打梁')
   })
 
-  it('reveals the installed version pill when the sound icon is long-pressed', () => {
-    const tree = renderPanel(demoState(), '', { versionReveal: true })
-    const pills = findByAttr(tree, 'data-liangxiang-version')
-    expect(pills.length).toBe(1)
-    expect(textContent(pills)).toBe(`${PLUGIN_PACKAGE_NAME}@${PLUGIN_VERSION}`)
+  it('shows installed version details only in the dedicated version dialog', () => {
+    const tree = renderPanel(demoState(), '', { versionInfoOpen: true })
+    const dialogs = findByAttr(tree, 'data-liangxiang-version-dialog')
+    expect(dialogs).toHaveLength(1)
+    expect(dialogs[0]?.props.role).toBe('dialog')
+    expect(dialogs[0]?.props['aria-modal']).toBe('true')
+    expect(textContent(dialogs)).toContain(PLUGIN_PACKAGE_NAME)
+    expect(textContent(dialogs)).toContain(`v${PLUGIN_VERSION}`)
+    expect(findByAttr(tree, 'data-liangxiang-version-close')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangxiang-version')).toHaveLength(0)
   })
 
   it('compacts flank counts so thousands stay short (and keeps exact values in the tooltip / SR)', () => {
@@ -422,9 +426,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         reducedMotion={false}
         soundLevel={0}
         onCycleSound={() => undefined}
-        versionReveal={false}
-        onSoundPressStart={() => undefined}
-        onSoundPressEnd={() => undefined}
+        versionInfoOpen={false}
+        onVersionInfoClose={() => undefined}
         welcomeVisible={false}
         welcomeSeconds={10}
         onDismissWelcome={() => undefined}
@@ -458,9 +461,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         reducedMotion
         soundLevel={0}
         onCycleSound={() => undefined}
-        versionReveal={false}
-        onSoundPressStart={() => undefined}
-        onSoundPressEnd={() => undefined}
+        versionInfoOpen={false}
+        onVersionInfoClose={() => undefined}
         welcomeVisible={false}
         welcomeSeconds={10}
         onDismissWelcome={() => undefined}

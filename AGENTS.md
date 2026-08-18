@@ -153,7 +153,8 @@ incense.
 - routine Token claims, snapshots, reconnects and archive refresh are automatic;
   never present a routine manual-sync action
 - 梁相案牍 opens a themed 2×2 utility drawer: 梁相主页、核对香火、入口归位、
-  当前版本. `核对香火` is repair-only: it must warn that unconfirmed local
+  当前版本. 当前版本 opens a compact version-information dialog; the sound
+  control has no long-press version gesture. `核对香火` is repair-only: it must warn that unconfirmed local
   observation is discarded before rereading the server ledger
 - destructive identity reset does not belong in this lightweight drawer; it
   requires a separate flow with explicit consequences and confirmation
