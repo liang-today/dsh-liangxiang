@@ -4,6 +4,16 @@
 
 DSH 源码检出位置(相对本仓库根):`../deepseek-harness`。本仓库任何开发活动不得修改该检出。
 
+## 现行钉住（2026-08-18 重勘察）
+
+| 项 | 值 |
+|---|---|
+| 社区 / 本地检出 | `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`（`dsh-v0.1.0-rc.7`，与 `origin/master` 一致） |
+| 梁相 npm / CLI 钉住 | `@deepseek-ai/dsh@0.1.0-rc.7` 及同版本 client 类型包、`dsh-web-app` |
+| 对梁相实际触点 | rc.6 → rc.7 无破坏性接口变化；唯一相关类型收窄是未使用的 `StreamChunk.finish.replayState` |
+
+下面表格是 2026-08-16 首次集成勘察的历史基线（`docs/001`–`044` 的行号仍相对该提交）。升级后以本节和 [`COMPATIBILITY`](COMPATIBILITY.md) 为准。
+
 ## 版本基线
 
 | 项 | 值 | 采集方式 |

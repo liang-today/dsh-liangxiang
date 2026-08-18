@@ -148,4 +148,4 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 ### 版本基线注意
 
-DSH 处于预发布(首个 tagged release 前无兼容承诺)。本骨架的类型/CLI devDeps 钉在 npm `0.1.0-rc.6`,源码勘察基线是本地检出 `47f94385`(`0.1.0-rc.5`,rc.6 的直接前驱);升级任一侧前先按 `docs/000` 的重勘察清单核对,重点是 `docs/003` C6 行(浏览器 bundle 包装格式,树内 preset 不发布,本包在 `tsdown.config.ts` 复刻)。
+DSH 处于预发布(首个 tagged release 前无兼容承诺)。本骨架的类型/CLI devDeps 钉在 npm `0.1.0-rc.7`,源码勘察基线是本地检出 `99f6f02`(`dsh-v0.1.0-rc.7`);升级任一侧前先按 `docs/000` 的重勘察清单核对,重点是 `docs/003` C6 行(浏览器 bundle 包装格式,树内 preset 不发布,本包在 `tsdown.config.ts` 复刻)。

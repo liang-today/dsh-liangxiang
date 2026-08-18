@@ -72,9 +72,9 @@
 
 版本事实(骨架实际链接的 DSH 面):
 
-- 类型与 CLI devDependencies 来自 npm:`@deepseek-ai/dsh`、`dsh-client-runtime`、`dsh-client-ui-slots`、`dsh-client-ui-layout` 均钉 **`0.1.0-rc.6`**;`@deepseek-ai/cordis` 钉 **`4.0.1`**。npm 上无 `0.1.0-rc.5`;rc.6 系从本勘察基线 `47f94385`(root manifest 标 rc.5)所在 master 发布的直接后继。源码级证据仍以 `47f94385` 检出为准,升级任一侧前按 `docs/000` 重勘察清单核对。
+- 类型与 CLI devDependencies 来自 npm:`@deepseek-ai/dsh`、`dsh-client-runtime`、`dsh-client-ui-slots`、`dsh-client-ui-layout` 均钉 **`0.1.0-rc.7`**;`@deepseek-ai/cordis` 钉 **`4.0.1`**。现行源码基线是本地/社区 `99f6f02`（`dsh-v0.1.0-rc.7`）。`docs/001`–`044` 的行号仍相对首次勘察提交 `47f94385`；升级任一侧前按 `docs/000` 重勘察清单核对。
 - 运行时零依赖:Host 半产物无 import,Client 半仅 `require("react/jsx-runtime")`(加载器模块表内)。所有 `@deepseek-ai/*` import 均为 type-only,构建期擦除。
-- 开发环:CLI 以 devDependency 运行(`pnpm exec dsh`),`DSH_HOME` 默认指向项目本地 `.dsh-home`;dev/smoke profile 需另装 `@deepseek-ai/dsh-web-app`(in-box 名在启动时优先从 CLI 安装解析)。本机 Node 22.17.0 低于 DSH 声明的 `^22.19.0`,rc.6 CLI 实测可用;profile 依赖 `koffi@3.1.5` 的构建脚本被 pnpm 默认拦截,WebUI 启动与本插件不受影响。
+- 开发环:CLI 以 devDependency 运行(`pnpm exec dsh`),`DSH_HOME` 默认指向项目本地 `.dsh-home`;dev/smoke profile 需另装 `@deepseek-ai/dsh-web-app`(in-box 名在启动时优先从 CLI 安装解析)。本机 Node 22.17.0 低于 DSH 声明的 `^22.19.0`,rc.7 CLI 按源码对照可用;profile 依赖 `koffi@3.1.5` 的构建脚本被 pnpm 默认拦截,WebUI 启动与本插件不受影响。
 
 ## 汇总
 

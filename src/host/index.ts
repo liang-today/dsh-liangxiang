@@ -82,7 +82,10 @@ export function apply(ctx: DshHostContext): void {
     })
   const slot = new AuthoritySlot(local)
   const service: LiangHostService = slot
-  let online: BackendLiangService | null = null
+  let online: BackendLiangService | null = defaultAuthorityPreference === 'online'
+    ? createOnlineService()
+    : null
+  if (online !== null) slot.use(online, false)
   let coreHandle: LiangxiangPersistenceHandle | null = null
   let localHandle: LiangxiangLocalPersistenceHandle | null = null
   let ensureLocalPersistence: (() => Promise<LiangxiangLocalPersistenceHandle>) | null = null
@@ -190,7 +193,7 @@ export function apply(ctx: DshHostContext): void {
       const candidate = createOnlineService()
       await hydrateOnline(candidate, core)
       await candidate.refreshBootstrap()
-      if (!candidate.isReady) {
+      if (!candidate.hasCommunityAuthority) {
         candidate.dispose()
         throw new Error('无法连接天庭，在线模式尚未启用；当前仍保持离线模式')
       }
@@ -311,15 +314,15 @@ export function apply(ctx: DshHostContext): void {
           selectedPreference = core.settings.getAuthorityPreference() ?? defaultAuthorityPreference
 
           if (selectedPreference === 'online') {
-            const candidate = createOnlineService()
+            const candidate = online ?? createOnlineService()
             const previousOnline = online
             online = candidate
             slot.use(candidate, false)
             if (previousOnline !== null && previousOnline !== candidate) previousOnline.dispose()
             await hydrateOnline(candidate, core)
-            // Bootstrap failure keeps online selected and locked, never falls
-            // into local play. The cadence retries it automatically.
-            await candidate.refreshBootstrap()
+            // Do not await 天庭. A 3s first attempt runs in the background;
+            // failure keeps online selected and locked, and the cadence retries.
+            void candidate.refreshBootstrap({ startup: true })
           } else {
             const localPersistence = await openLocal()
             await local.attachPersistence(localPersistence.port)

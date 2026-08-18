@@ -59,9 +59,9 @@
 
 ### BF-012 DSH RC 依赖基线出现漂移警告
 
-- 现状：仓库钉住 rc.6，干净 profile 安装时部分依赖解析到 rc.7，并产生大量 peer dependency 警告；本轮运行时冒烟仍通过。
-- 风险：兼容矩阵没有覆盖一个完全一致的依赖闭包，后续 DSH 升级可能让半公开接缝先于测试失效。
-- 建议：统一一个 DSH RC 基线，重跑 `compat/dsh`、工具调用、干净安装与在线 smoke，再更新 `docs/COMPATIBILITY.md`。
+- 现状：仓库已统一钉住 `0.1.0-rc.7`（CLI、client 类型包、`dsh-web-app`）。干净安装仍可能因 DSH 自己的 rc 闭包打出 peer warning。
+- 风险：预发布无兼容承诺；后续 DSH 升级仍可能让半公开接缝先于测试失效。
+- 建议：每次升 RC 后重跑 `compat/dsh`、工具调用、干净安装与在线 smoke，并更新 `docs/COMPATIBILITY.md`。
 
 ## 已关闭
 

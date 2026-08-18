@@ -42,6 +42,8 @@ import { parseV1HistoryResponse, type ParsedHistoryArchive } from '../shared/his
 
 const DEFAULT_TIMEOUT_MS = 6_000
 const READ_RETRY_DELAY_MS = 300
+/** First community contact must fail fast so DSH startup is not held. */
+export const STARTUP_BOOTSTRAP_TIMEOUT_MS = 3_000
 
 export class BackendClientError extends Error {
   readonly status: number | null
@@ -63,9 +65,14 @@ export interface BackendClientOptions {
   signer?: () => CommunityKeypair | null
 }
 
+export interface BackendReadOptions {
+  timeoutMs?: number
+  retry?: boolean
+}
+
 export interface BackendClient {
   readonly baseUrl: string
-  bootstrap: (installationId: string) => Promise<V1Bootstrap>
+  bootstrap: (installationId: string, options?: BackendReadOptions) => Promise<V1Bootstrap>
   admissionTickets: () => Promise<V1AdmissionTicketsResponse>
   claimAdmission: (
     installationId: string,
@@ -104,12 +111,13 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
 
   const request = async (
     path: string,
-    init: { method: 'GET' | 'POST', installationId?: string, body?: unknown, acceptStatus?: (status: number) => boolean },
+    init: { method: 'GET' | 'POST', installationId?: string, body?: unknown, acceptStatus?: (status: number) => boolean, timeoutMs?: number },
   ): Promise<unknown> => {
     if (disposed) throw new BackendClientError('backend client disposed')
+    const requestTimeoutMs = init.timeoutMs ?? timeoutMs
     const controller = new AbortController()
     inFlight.add(controller)
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    const timer = setTimeout(() => controller.abort(), requestTimeoutMs)
     try {
       const rawBody = init.body === undefined ? '' : JSON.stringify(init.body)
       const headers: Record<string, string> = {}
@@ -149,7 +157,7 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     } catch (error) {
       if (error instanceof BackendClientError) throw error
       if (isAbortError(error)) {
-        throw new BackendClientError(`backend ${init.method} ${path} timed out after ${timeoutMs}ms`)
+        throw new BackendClientError(`backend ${init.method} ${path} timed out after ${requestTimeoutMs}ms`)
       }
       const message = error instanceof Error ? error.message : String(error)
       throw new BackendClientError(`backend ${init.method} ${path} failed: ${message}`)
@@ -160,25 +168,28 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
   }
 
   /** Reads may retry once; writes never do (idempotency is the caller's). */
-  const read = async (path: string, installationId?: string): Promise<unknown> => {
+  const read = async (
+    path: string,
+    installationId?: string,
+    options?: BackendReadOptions,
+  ): Promise<unknown> => {
+    const requestInit: { method: 'GET', installationId?: string, timeoutMs?: number } = { method: 'GET' }
+    if (installationId !== undefined) requestInit.installationId = installationId
+    if (options?.timeoutMs !== undefined) requestInit.timeoutMs = options.timeoutMs
     try {
-      return await request(path, installationId === undefined
-        ? { method: 'GET' }
-        : { method: 'GET', installationId })
+      return await request(path, requestInit)
     } catch (error) {
-      if (disposed) throw error
+      if (disposed || options?.retry === false) throw error
       if (error instanceof BackendClientError && error.status !== null && error.status < 500) throw error
       await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS))
-      return request(path, installationId === undefined
-        ? { method: 'GET' }
-        : { method: 'GET', installationId })
+      return request(path, requestInit)
     }
   }
 
   return {
     baseUrl,
-    async bootstrap(installationId) {
-      return parseV1Bootstrap(await read('/bootstrap', installationId))
+    async bootstrap(installationId, options) {
+      return parseV1Bootstrap(await read('/bootstrap', installationId, options))
     },
     async admissionTickets() {
       return parseV1AdmissionTicketsResponse(await read('/admission/tickets'))
