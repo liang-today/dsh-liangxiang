@@ -7,7 +7,7 @@ import {
   OVERLAY_ENTRY_ID,
   PLUGIN_PACKAGE_NAME,
   PRODUCT_NAME,
-  RECONCILE_LABEL,
+  UTILITY_LABEL,
   VOTER_STAT_LABEL,
   VOTE_DOWN_LABEL,
   VOTE_UP_LABEL,
@@ -29,7 +29,7 @@ describe('shared frozen copy', () => {
     expect(VOTE_DOWN_LABEL).toBe('拉 · 降梁')
     expect(INCENSE_STAT_LABEL).toBe('三界香火')
     expect(VOTER_STAT_LABEL).toBe('五行香客')
-    expect(RECONCILE_LABEL).toBe('上达天听')
+    expect(UTILITY_LABEL).toBe('梁相案牍')
   })
 
   it('uses the Liangxiang technical identifiers', () => {

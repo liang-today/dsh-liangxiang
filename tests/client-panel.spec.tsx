@@ -23,12 +23,15 @@ import {
   WELCOME_LOCAL_LABEL,
   WELCOME_ONLINE_LABEL,
   WELCOME_PRIVACY_NOTE,
+  WELCOME_TAGLINE,
   WELCOME_TITLE,
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
-  RECONCILE_HINT,
-  RECONCILE_LABEL,
+  UTILITY_HINT,
+  UTILITY_LABEL,
+  UTILITY_RECONCILE_HINT,
+  UTILITY_RECONCILE_LABEL,
   VOTE_DOWN_LABEL,
   VOTE_UP_LABEL,
   VOTER_STAT_LABEL,
@@ -58,6 +61,7 @@ function renderPanel(
     welcomeVisible?: boolean
     welcomeSeconds?: number
     condensedIncense?: number
+    utilityOpen?: boolean
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -80,6 +84,12 @@ function renderPanel(
       onInsufficientVote={extra.onInsufficientVote ?? (() => undefined)}
       onClose={() => undefined}
       reconcilePending={extra.reconcilePending ?? false}
+      utilityOpen={extra.utilityOpen ?? false}
+      onUtilityToggle={() => undefined}
+      onUtilityClose={() => undefined}
+      onOpenHomepage={() => undefined}
+      onResetPosition={() => undefined}
+      onShowVersion={() => undefined}
       onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
       onReconcileConfirm={extra.onReconcileConfirm ?? (() => undefined)}
       onReconcileCancel={extra.onReconcileCancel ?? (() => undefined)}
@@ -91,16 +101,16 @@ function renderPanel(
 const demoState = (): LiangxiangViewState => createMockLiangxiangStore().getSnapshot()
 
 describe('four visual regions', () => {
-  it('places the four-character 梁祠 entry beneath 上达天听 inside Region 4', () => {
+  it('places the four-character 梁祠 entry beneath 梁相案牍 inside Region 4', () => {
     const tree = renderPanel(demoState())
     const social = findByAttr(tree, 'data-liangxiang-region', 'social')[0]
     const controls = findAll(social === undefined ? [] : [social], node =>
       'data-liangxiang-ritual' in node.props)
     expect(controls.map(control => textContent([control]))).toEqual([
-      expect.stringContaining(RECONCILE_LABEL),
+      expect.stringContaining(UTILITY_LABEL),
       expect.stringContaining('进入梁祠'),
     ])
-    const slot = findByAttr(tree, 'data-liangxiang-reconcile-slot')[0]
+    const slot = findByAttr(tree, 'data-liangxiang-utility-slot')[0]
     expect(styleOf(slot).flexDirection).toBe('column')
   })
 
@@ -130,6 +140,7 @@ describe('four visual regions', () => {
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-online'))).toContain(WELCOME_ONLINE_LABEL)
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-online'))).toContain('10')
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-local'))).toBe(WELCOME_LOCAL_LABEL)
+    expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-tagline'))).toBe(WELCOME_TAGLINE)
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-privacy'))).toBe(WELCOME_PRIVACY_NOTE)
     expect(WELCOME_PRIVACY_NOTE).toContain('随机安装 ID')
     expect(WELCOME_PRIVACY_NOTE).not.toContain('投票')
@@ -426,6 +437,12 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onInsufficientVote={() => undefined}
         onClose={() => undefined}
         reconcilePending={false}
+        utilityOpen={false}
+        onUtilityToggle={() => undefined}
+        onUtilityClose={() => undefined}
+        onOpenHomepage={() => undefined}
+        onResetPosition={() => undefined}
+        onShowVersion={() => undefined}
         onReconcileAsk={() => undefined}
         onReconcileConfirm={() => undefined}
         onReconcileCancel={() => undefined}
@@ -456,6 +473,12 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         onInsufficientVote={() => undefined}
         onClose={() => undefined}
         reconcilePending={false}
+        utilityOpen={false}
+        onUtilityToggle={() => undefined}
+        onUtilityClose={() => undefined}
+        onOpenHomepage={() => undefined}
+        onResetPosition={() => undefined}
+        onShowVersion={() => undefined}
         onReconcileAsk={() => undefined}
         onReconcileConfirm={() => undefined}
         onReconcileCancel={() => undefined}
@@ -625,18 +648,18 @@ describe('region 4: social stats', () => {
     expect(voters?.props.title).toBeUndefined()
   })
 
-  it('uses Journey-to-the-West stat marks on the same row as 上达天听', () => {
+  it('uses Journey-to-the-West stat marks on the same row as 梁相案牍', () => {
     const tree = renderPanel(demoState())
     const social = findByAttr(tree, 'data-liangxiang-region', 'social')[0]
     expect(findByAttr(tree, 'data-liangxiang-incense-icon')).toHaveLength(1)
     expect(findByAttr(tree, 'data-liangxiang-voter-icon')).toHaveLength(1)
-    expect(findByAttr(social === undefined ? [] : [social], 'data-liangxiang-reconcile-slot')).toHaveLength(1)
+    expect(findByAttr(social === undefined ? [] : [social], 'data-liangxiang-utility-slot')).toHaveLength(1)
     expect(styleOf(findByAttr(tree, 'data-liangxiang-stat-label', 'incense')[0]).fontSize).toBe('10px')
     expect(styleOf(findByAttr(tree, 'data-liangxiang-stat', 'incense')[0]).flex).toBe('1 1 0')
   })
 })
 
-describe('上达天听', () => {
+describe('梁相案牍', () => {
   it('sits on the social row, not a fifth region or third vote', () => {
     const tree = renderPanel(demoState())
     const regions = findByAttr(tree, 'data-liangxiang-region')
@@ -648,28 +671,38 @@ describe('上达天听', () => {
     ])
     const votes = findByAttr(tree, 'data-liangxiang-vote')
     expect(votes).toHaveLength(2)
-    const slot = findByAttr(tree, 'data-liangxiang-reconcile-slot')[0]
+    const slot = findByAttr(tree, 'data-liangxiang-utility-slot')[0]
     expect(styleOf(slot).position).toBe('relative')
     expect(styleOf(slot).flex).toBe('0 0 auto')
-    const control = findByAttr(tree, 'data-liangxiang-reconcile')[0]
-    expect(control && textContent([control])).toContain(RECONCILE_LABEL)
+    const control = findByAttr(tree, 'data-liangxiang-utility-trigger')[0]
+    expect(control && textContent([control])).toContain(UTILITY_LABEL)
     expect(control?.props.title).toBeUndefined()
-    expect(control?.props['aria-label']).toBe(`${RECONCILE_LABEL}：${RECONCILE_HINT}`)
-    expect(findByAttr(tree, 'data-liangxiang-heaven-icon')).toHaveLength(1)
+    expect(control?.props['aria-label']).toBe(`${UTILITY_LABEL}：${UTILITY_HINT}`)
+    expect(findByAttr(tree, 'data-liangxiang-utility-icon', 'desk')).toHaveLength(1)
     const hint = findByAttr(tree, 'data-liangxiang-hint')[0]
-    expect(hint && textContent([hint])).toBe(RECONCILE_HINT)
-    expect(RECONCILE_HINT).toBe('和天庭重新对账香火数据')
+    expect(hint && textContent([hint])).toBe(UTILITY_HINT)
     expect(findByAttr(tree, 'data-liangxiang-reconcile-confirm')).toHaveLength(0)
   })
 
   it('asks for confirmation before the expensive sync', () => {
-    const tree = renderPanel(demoState(), '', { reconcilePending: true })
+    const tree = renderPanel(demoState(), '', { reconcilePending: true, utilityOpen: true })
     const confirm = findByAttr(tree, 'data-liangxiang-reconcile-confirm')[0]
     expect(confirm?.props.role).toBe('alertdialog')
     expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_PROMPT)
     expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_OK)
     expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_CANCEL)
-    expect(styleOf(findByAttr(tree, 'data-liangxiang-reconcile')[0]).visibility).toBe('hidden')
+    const repair = findByAttr(tree, 'data-liangxiang-utility-action', 'reconcile')[0]
+    expect(repair && textContent([repair])).toContain(UTILITY_RECONCILE_LABEL)
+    expect(repair && textContent([repair])).toContain(UTILITY_RECONCILE_HINT)
+  })
+
+  it('opens a themed four-action drawer and keeps manual核香 as repair-only', () => {
+    const tree = renderPanel(demoState(), '', { utilityOpen: true })
+    expect(findByAttr(tree, 'data-liangxiang-utility-drawer')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(4)
+    expect(findByAttr(tree, 'data-liangxiang-utility-action', 'home')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangxiang-utility-action', 'reset-position')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangxiang-utility-action', 'version')).toHaveLength(1)
   })
 })
 

@@ -4,7 +4,7 @@
  *   1. 今日梁案 (single active case)
  *   2. overlay flanks | centered 梁子 + 香火环 | 梁位
  *   3. two equal-width vote buttons 夯 · 升梁 / 拉 · 降梁
- *   4. 三界香火 + 五行香客 + 右侧礼仪控制列（上达天听 / 进入梁祠）
+ *   4. 三界香火 + 五行香客 + 右侧礼仪控制列（梁相案牍 / 进入梁祠）
  *
  * No personal-growth section, no ranking, no third option.
  * Presentational only (no hooks); the container wires state and callbacks.
@@ -46,17 +46,26 @@ import {
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
-  RECONCILE_HINT,
-  RECONCILE_LABEL,
+  UTILITY_HINT,
+  UTILITY_HOME_HINT,
+  UTILITY_HOME_LABEL,
+  UTILITY_LABEL,
+  UTILITY_RECONCILE_HINT,
+  UTILITY_RECONCILE_LABEL,
+  UTILITY_RESET_HINT,
+  UTILITY_RESET_LABEL,
+  UTILITY_VERSION_LABEL,
   WELCOME_LINES,
   WELCOME_LOCAL_LABEL,
   WELCOME_ONLINE_LABEL,
   WELCOME_PRIVACY_NOTE,
+  WELCOME_TAGLINE,
   WELCOME_TITLE,
   liangziRatioRangeText,
 } from '../shared/index.ts'
 import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
+import { ArchiveDeskIcon, HomepageIcon, RestorePositionIcon, VersionSealIcon } from './UtilityIcons.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangciIcon } from './LiangciIcon.tsx'
@@ -103,6 +112,13 @@ export interface PanelProps {
   onReconcileConfirm: () => void
   onReconcileCancel: () => void
   reconcilePending: boolean
+  /** Region 4's themed utility drawer; normal synchronization remains automatic. */
+  utilityOpen: boolean
+  onUtilityToggle: () => void
+  onUtilityClose: () => void
+  onOpenHomepage: () => void
+  onResetPosition: () => void
+  onShowVersion: () => void
   /** Open the read-only 梁祠 calendar; remains inside Region 4. */
   onOpenLiangci: () => void
   /** LOCAL_FAKE_DEV only: cycle the prepared 今日梁案 list. */
@@ -344,6 +360,35 @@ const PANEL_CSS = `
   box-shadow: inset 0 0 0 1px ${color.brand}, 0 4px 10px rgba(0, 0, 0, 0.12);
   transform: translateY(-1px);
 }
+[data-liangxiang-utility-drawer] {
+  animation: liangxiang-panel-enter 120ms cubic-bezier(.2,.8,.2,1) both;
+}
+[data-liangxiang-utility-action] {
+  min-width: 0;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 7px;
+  padding: 8px;
+  border: 1px solid ${color.border};
+  border-radius: 9px;
+  background: ${color.bgSubtle};
+  color: ${color.textPrimary};
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+[data-liangxiang-utility-action] > svg {
+  grid-row: 1 / 3;
+  color: ${color.ritualEmber};
+}
+[data-liangxiang-utility-action]:hover:not(:disabled),
+[data-liangxiang-utility-action]:focus-visible {
+  border-color: ${color.brand};
+  background: color-mix(in srgb, ${color.brand} 5%, ${color.bgLayer});
+}
 [data-liangxiang-ritual] [data-liangxiang-hint] {
   position: absolute;
   right: 0;
@@ -518,7 +563,8 @@ export function Panel(props: PanelProps): ReactElement {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionReveal, onSoundPressStart, onSoundPressEnd,
     welcomeVisible, welcomeSeconds, onDismissWelcome, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
     onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
-    reconcilePending, onOpenLiangci, onCycleLocalCase,
+    reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage, onResetPosition,
+    onShowVersion, onOpenLiangci, onCycleLocalCase,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
   const positionPulse = props.positionPulse ?? false
@@ -558,6 +604,7 @@ export function Panel(props: PanelProps): ReactElement {
     if (event.key === 'Escape') {
       event.stopPropagation()
       if (reconcilePending) onReconcileCancel()
+      else if (utilityOpen) onUtilityClose()
       else onClose()
     }
   }
@@ -614,6 +661,22 @@ export function Panel(props: PanelProps): ReactElement {
           }}
         >
           <strong style={{ fontSize: '15px', fontWeight: 700, color: color.textPrimary }}>{WELCOME_TITLE}</strong>
+          <p
+            data-liangxiang-welcome-tagline=""
+            style={{
+              margin: '-2px 0 1px',
+              padding: '3px 10px',
+              borderTop: `1px solid color-mix(in srgb, ${color.ritualGold} 48%, transparent)`,
+              borderBottom: `1px solid color-mix(in srgb, ${color.ritualGold} 48%, transparent)`,
+              color: color.ritualEmber,
+              fontSize: '13px',
+              lineHeight: 1.45,
+              fontWeight: 750,
+              letterSpacing: '1.2px',
+            }}
+          >
+            {WELCOME_TAGLINE}
+          </p>
           {WELCOME_LINES.map((line) => (
             <p key={line} style={{ margin: 0, fontSize: '12px', lineHeight: '1.6', color: color.textSecondary, textAlign: 'center' }}>
               {line}
@@ -1001,22 +1064,20 @@ export function Panel(props: PanelProps): ReactElement {
           />
         </span>
         <div
-          data-liangxiang-reconcile-slot=""
+          data-liangxiang-utility-slot=""
           style={{ position: 'relative', flex: '0 0 auto', marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}
         >
           <button
             type="button"
-            data-liangxiang-reconcile=""
+            data-liangxiang-utility-trigger=""
             data-liangxiang-ritual=""
-            aria-label={`${RECONCILE_LABEL}：${RECONCILE_HINT}`}
-            aria-hidden={reconcilePending || undefined}
-            disabled={offline || reconcilePending}
-            onClick={onReconcileAsk}
-            style={reconcilePending ? { visibility: 'hidden' } : undefined}
+            aria-label={`${UTILITY_LABEL}：${UTILITY_HINT}`}
+            aria-expanded={utilityOpen}
+            onClick={onUtilityToggle}
           >
-            <HeavenHearIcon size={14} />
-            {RECONCILE_LABEL}
-            <span data-liangxiang-hint="" aria-hidden="true">{RECONCILE_HINT}</span>
+            <ArchiveDeskIcon size={14} />
+            {UTILITY_LABEL}
+            <span data-liangxiang-hint="" aria-hidden="true">{UTILITY_HINT}</span>
           </button>
           <button
             type="button"
@@ -1029,68 +1090,84 @@ export function Panel(props: PanelProps): ReactElement {
             {LIANGCI_ENTRY_LABEL}
             <span data-liangxiang-hint="" aria-hidden="true">{LIANGCI_ENTRY_HINT}</span>
           </button>
-          {reconcilePending
+          {utilityOpen
             ? (
               <div
-                role="alertdialog"
-                aria-label={RECONCILE_CONFIRM_PROMPT}
-                data-liangxiang-reconcile-confirm=""
+                role="group"
+                aria-label={UTILITY_LABEL}
+                data-liangxiang-utility-drawer=""
                 style={{
                   position: 'absolute',
                   right: 0,
                   bottom: 'calc(100% + 6px)',
                   zIndex: 3,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: '6px',
-                  minWidth: '148px',
-                  padding: '8px',
-                  borderRadius: '8px',
+                  width: '220px',
+                  padding: '10px',
+                  borderRadius: '12px',
                   border: `1px solid ${color.border}`,
-                  background: color.bgLayer,
-                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.14)',
+                  background: `linear-gradient(180deg, color-mix(in srgb, ${color.ritualGold} 7%, ${color.bgLayer}), ${color.bgLayer})`,
+                  boxShadow: '0 12px 28px rgba(0, 0, 0, 0.2)',
                 }}
               >
-                <span style={{ fontSize: '11px', color: color.textPrimary, lineHeight: 1.4 }}>
-                  {RECONCILE_CONFIRM_PROMPT}
-                </span>
-                <span style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <strong style={{ fontSize: '12px', letterSpacing: '1px', color: color.textPrimary }}>{UTILITY_LABEL}</strong>
+                  <span style={{ fontSize: '9px', color: color.textTertiary }}>一卷在手 · 各归其位</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
                   <button
                     type="button"
-                    data-liangxiang-reconcile-cancel=""
-                    onClick={onReconcileCancel}
-                    style={{
-                      border: `1px solid ${color.border}`,
-                      background: color.bgSubtle,
-                      color: color.textPrimary,
-                      borderRadius: '6px',
-                      padding: '3px 8px',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontFamily: font.family,
-                    }}
+                    data-liangxiang-utility-action="home"
+                    onClick={onOpenHomepage}
                   >
-                    {RECONCILE_CONFIRM_CANCEL}
+                    <HomepageIcon />
+                    <strong style={{ fontSize: '11px' }}>{UTILITY_HOME_LABEL}</strong>
+                    <span style={{ fontSize: '9px', color: color.textTertiary }}>{UTILITY_HOME_HINT}</span>
                   </button>
                   <button
                     type="button"
-                    data-liangxiang-reconcile-ok=""
-                    onClick={onReconcileConfirm}
-                    style={{
-                      border: 'none',
-                      background: color.buttonPrimaryFill,
-                      color: color.buttonPrimaryText,
-                      borderRadius: '6px',
-                      padding: '3px 8px',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontFamily: font.family,
-                    }}
+                    data-liangxiang-utility-action="reconcile"
+                    disabled={offline}
+                    onClick={onReconcileAsk}
                   >
-                    {RECONCILE_CONFIRM_OK}
+                    <HeavenHearIcon size={19} />
+                    <strong style={{ fontSize: '11px' }}>{UTILITY_RECONCILE_LABEL}</strong>
+                    <span style={{ fontSize: '9px', color: color.textTertiary }}>{UTILITY_RECONCILE_HINT}</span>
                   </button>
-                </span>
+                  <button
+                    type="button"
+                    data-liangxiang-utility-action="reset-position"
+                    onClick={onResetPosition}
+                  >
+                    <RestorePositionIcon />
+                    <strong style={{ fontSize: '11px' }}>{UTILITY_RESET_LABEL}</strong>
+                    <span style={{ fontSize: '9px', color: color.textTertiary }}>{UTILITY_RESET_HINT}</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-liangxiang-utility-action="version"
+                    onClick={onShowVersion}
+                  >
+                    <VersionSealIcon />
+                    <strong style={{ fontSize: '11px' }}>{UTILITY_VERSION_LABEL}</strong>
+                    <span style={{ fontSize: '9px', color: color.textTertiary }}>{PLUGIN_PACKAGE_NAME} · v{PLUGIN_VERSION}</span>
+                  </button>
+                </div>
+                {reconcilePending && (
+                  <div
+                    role="alertdialog"
+                    aria-label={RECONCILE_CONFIRM_PROMPT}
+                    data-liangxiang-reconcile-confirm=""
+                    style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${color.border}` }}
+                  >
+                    <span style={{ display: 'block', fontSize: '10px', color: color.warn, lineHeight: 1.45 }}>
+                      {RECONCILE_CONFIRM_PROMPT}
+                    </span>
+                    <span style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '7px' }}>
+                      <button type="button" data-liangxiang-reconcile-cancel="" onClick={onReconcileCancel} style={{ border: `1px solid ${color.border}`, background: color.bgSubtle, color: color.textPrimary, borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontFamily: font.family }}>{RECONCILE_CONFIRM_CANCEL}</button>
+                      <button type="button" data-liangxiang-reconcile-ok="" onClick={onReconcileConfirm} style={{ border: 'none', background: color.buttonPrimaryFill, color: color.buttonPrimaryText, borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontFamily: font.family }}>{RECONCILE_CONFIRM_OK}</button>
+                    </span>
+                  </div>
+                )}
               </div>
             )
             : null}

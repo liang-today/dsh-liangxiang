@@ -142,15 +142,22 @@ incense.
 ### Region 4 — Social stats
 
 ```text
-三界香火 12,846     五行香客 2,841     上达天听
+三界香火 12,846     五行香客 2,841     梁相案牍
                                          进入梁祠
 ```
 
 - 三界香火 = accepted votes for the current case (天/人/地香火汇于一炉)
 - 五行香客 = unique users with at least one accepted vote for the current case/day (取经五众)
-- the right edge is one compact ritual-control column: `上达天听` above
+- the right edge is one compact ritual-control column: `梁相案牍` above
   `进入梁祠`; both remain inside Region 4 and neither is a fifth region
-- 上达天听 confirms before sync; 进入梁祠 opens the read-only in-plugin calendar
+- routine Token claims, snapshots, reconnects and archive refresh are automatic;
+  never present a routine manual-sync action
+- 梁相案牍 opens a themed 2×2 utility drawer: 梁相主页、核对香火、入口归位、
+  当前版本. `核对香火` is repair-only: it must warn that unconfirmed local
+  observation is discarded before rereading the server ledger
+- destructive identity reset does not belong in this lightweight drawer; it
+  requires a separate flow with explicit consequences and confirmation
+- 进入梁祠 opens the read-only in-plugin calendar
 - 进入梁祠 is not a vote, operator control, or external GitHub Pages link
 
 ### 梁祠 — immutable history calendar
@@ -179,7 +186,9 @@ incense, voting availability, or any ledger.
 - a history failure preserves the last-known-good archive and marks it
   `档案未更新`; it must never make today's case or voting unavailable
 - the calendar is a centered modal, reuses the existing Liangzi artwork and
-  theme tokens, supports keyboard focus trapping/Escape/focus return, narrow
+  theme tokens, uses only the 4/5/6 rows the month actually needs, and keeps a
+  stable dialog height; six-row density may reduce artwork/spacing but must
+  never squeeze or clip the authoritative Liangzi labels. It supports keyboard focus trapping/Escape/focus return, narrow
   viewport horizontal calendar scrolling, dark mode, reduced motion, and zoom
 - GitHub Pages is explicitly outside the current implementation scope
 

@@ -62,6 +62,11 @@ export function calendarDates(monthId: string): string[] {
   return Array.from({ length: cellCount }, (_unused, index) => addBusinessDays(start, index))
 }
 
+/** Six-row months keep the same dialog height by compacting marks, never labels. */
+export function isCompactLiangciMonth(weekRows: number): boolean {
+  return weekRows >= 6
+}
+
 function monthTitle(monthId: string): string {
   const [year, month] = monthId.split('-').map(Number)
   return `${year} 年 ${month} 月`
@@ -144,13 +149,13 @@ function ArchiveAvatar({
   )
 }
 
-function CurrentDayMark(): ReactElement {
+function CurrentDayMark({ size = 38 }: { size?: number }): ReactElement {
   return (
     <span
       aria-hidden="true"
       style={{
-        width: '38px',
-        height: '38px',
+        width: `${size}px`,
+        height: `${size}px`,
         display: 'grid',
         placeItems: 'center',
         border: `1.5px solid ${color.brand}`,
@@ -168,13 +173,13 @@ function CurrentDayMark(): ReactElement {
   )
 }
 
-function EmptyDayMark(): ReactElement {
+function EmptyDayMark({ size = 38 }: { size?: number }): ReactElement {
   return (
     <span
       aria-hidden="true"
       style={{
-        width: '38px',
-        height: '38px',
+        width: `${size}px`,
+        height: `${size}px`,
         display: 'grid',
         placeItems: 'center',
         border: `1px dashed ${color.border}`,
@@ -274,6 +279,7 @@ function DayCell({
   archive,
   selected,
   reducedMotion,
+  compact,
   onSelect,
 }: {
   date: string
@@ -282,6 +288,7 @@ function DayCell({
   archive: LiangDayArchive | undefined
   selected: boolean
   reducedMotion: boolean
+  compact: boolean
   onSelect: () => void
 }): ReactElement {
   const inMonth = date.startsWith(displayedMonth)
@@ -304,6 +311,7 @@ function DayCell({
       type="button"
       data-liangci-cell="day"
       data-liangci-day={date}
+      data-liangci-cell-density={compact ? 'compact' : 'regular'}
       data-liangci-day-status={today ? 'today' : future ? 'future' : missing ? 'missing' : 'archived'}
       data-selected={selected}
       onClick={onSelect}
@@ -314,7 +322,7 @@ function DayCell({
         height: '100%',
         minHeight: 0,
         minWidth: 0,
-        padding: '6px 5px 5px',
+        padding: compact ? '4px 4px' : '6px 5px 5px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -330,19 +338,20 @@ function DayCell({
         opacity: future ? 0.58 : 1,
       }}
     >
-      <span style={{ alignSelf: 'flex-start', fontSize: '10px', lineHeight: 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+      <span style={{ alignSelf: 'flex-start', flex: '0 0 auto', fontSize: compact ? '9px' : '10px', lineHeight: 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
         {day}
       </span>
       {today
-        ? <CurrentDayMark />
+        ? <CurrentDayMark size={compact ? 28 : 38} />
         : future
-          ? <span aria-hidden="true" style={{ height: '38px' }} />
+          ? <span aria-hidden="true" style={{ height: compact ? '28px' : '38px' }} />
           : archive === undefined
-            ? <EmptyDayMark />
-            : <ArchiveAvatar state={archive.liangziState} reducedMotion={reducedMotion} />}
+            ? <EmptyDayMark size={compact ? 28 : 38} />
+            : <ArchiveAvatar state={archive.liangziState} reducedMotion={reducedMotion} size={compact ? 28 : 34} />}
       <span
         style={{
           maxWidth: '100%',
+          flex: '0 0 auto',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -367,6 +376,7 @@ function WeekCell({
   period,
   selected,
   reducedMotion,
+  compact,
   onSelect,
 }: {
   startDate: string
@@ -375,6 +385,7 @@ function WeekCell({
   period: TemporaryLiangPeriod | LiangWeekArchive | null
   selected: boolean
   reducedMotion: boolean
+  compact: boolean
   onSelect: () => void
 }): ReactElement {
   const week = isoWeekFor(startDate)
@@ -396,9 +407,9 @@ function WeekCell({
         height: '100%',
         minHeight: 0,
         minWidth: 0,
-        padding: '7px 8px',
+        padding: compact ? '5px 6px' : '7px 8px',
         display: 'grid',
-        gridTemplateColumns: '1fr 42px',
+        gridTemplateColumns: `1fr ${compact ? 32 : 42}px`,
         alignItems: 'center',
         gap: '5px',
         borderRadius: '8px',
@@ -411,11 +422,11 @@ function WeekCell({
         opacity: future ? 0.52 : 1,
       }}
     >
-      <span style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+      <span style={{ display: 'flex', flexDirection: 'column', gap: compact ? '2px' : '4px', minWidth: 0 }}>
         <span style={{ fontSize: '9px', color: color.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
           {week.weekId.slice(5)} · 周梁
         </span>
-        <strong style={{ fontSize: '11px', color: period === null ? color.textTertiary : stateColor(period.liangziState) }}>
+        <strong style={{ fontSize: '11px', lineHeight: 1.15, whiteSpace: 'nowrap', color: period === null ? color.textTertiary : stateColor(period.liangziState) }}>
           {label}
         </strong>
         <span aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
@@ -428,8 +439,8 @@ function WeekCell({
         </span>
       </span>
       {future || period === null
-        ? <EmptyDayMark />
-        : <ArchiveAvatar state={period.liangziState} reducedMotion={reducedMotion} size={40} />}
+        ? <EmptyDayMark size={compact ? 30 : 38} />
+        : <ArchiveAvatar state={period.liangziState} reducedMotion={reducedMotion} size={compact ? 30 : 40} />}
       {temporary && <span aria-hidden="true" style={{ position: 'absolute', top: '6px', right: '7px', color: color.warn, fontSize: '9px' }}>暂</span>}
     </button>
   )
@@ -603,6 +614,7 @@ export function LiangciModal({
   const months = archive?.months ?? []
   const dates = useMemo(() => calendarDates(displayedMonth), [displayedMonth])
   const weekRows = dates.length / 7
+  const compactCells = isCompactLiangciMonth(weekRows)
   const dayByDate = useMemo(() => new Map(days.map(day => [day.businessDate, day])), [days])
   const currentMonthPeriod = deriveTemporaryMonth(businessDate, days)
   const monthPeriod = displayedMonth === currentMonth
@@ -755,6 +767,7 @@ export function LiangciModal({
                               archive={dayByDate.get(date)}
                               selected={selection.kind === 'day' && selection.id === date}
                               reducedMotion={reducedMotion}
+                              compact={compactCells}
                               onSelect={() => setSelection({ kind: 'day', id: date })}
                             />
                           )),
@@ -766,6 +779,7 @@ export function LiangciModal({
                             period={period}
                             selected={selection.kind === 'week' && selection.id === week.weekId}
                             reducedMotion={reducedMotion}
+                            compact={compactCells}
                             onSelect={() => setSelection({ kind: 'week', id: week.weekId, startDate, endDate })}
                           />,
                         ]

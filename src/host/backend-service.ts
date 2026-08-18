@@ -100,7 +100,7 @@ export class BackendLiangService implements LiangHostService {
   private claimNotice: string | null = null
   /**
    * How much of `locallyObserved` is already represented in `claimed`.
-   * After 上达天听 the local daily total resets while claimed stays; new
+   * After repair reconciliation the local daily total resets while claimed stays; new
    * deltas must be added on top of the ledger (same number the panel paints
    * and the same number POST /token-claims must send).
    */
@@ -250,7 +250,7 @@ export class BackendLiangService implements LiangHostService {
     // Flush any unclaimed local usage before the vote: the backend's spend
     // authority is the claim, so a vote must never race ahead of a debounced
     // claim. The flush reports ledger + local suffix, not a restarted daily
-    // total — 上达天听 must not strand new tokens below the ratchet.
+    // total — repair reconciliation must not strand new tokens below the ratchet.
     await this.flushClaim()
     let response: Awaited<ReturnType<BackendClient['vote']>>
     try {
@@ -634,7 +634,7 @@ export class BackendLiangService implements LiangHostService {
  * What the panel paints AND what the host claims: the server ledger plus any
  * local observation not already represented in it.
  *
- * After 上达天听 / a fresh Host process, `locallyObserved` restarts at 0 while
+ * After repair reconciliation / a fresh Host process, `locallyObserved` restarts at 0 while
  * `claimed_effective_tokens` does not. Treating the local daily total as the
  * claim (a smaller absolute watermark) is silently dropped by the ratchet.
  * The suffix formula is the same number the ring already shows.
