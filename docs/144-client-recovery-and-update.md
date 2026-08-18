@@ -41,10 +41,10 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 | 来源 | 升级命令 |
 |---|---|
 | npm | `dsh plugin --profile web add dsh-liangxiang@beta`（或把 `dsh` 换成 `npx --yes @deepseek-ai/dsh`） |
-| GitHub Release / tarball | `dsh plugin --profile web add ./dsh-liangxiang-<version>.tgz`（必须带 `./`） |
+| GitHub Release / tarball | 先 `cd` 到包目录再 `add ./dsh-liangxiang-<version>.tgz`，或 `add "file:${HOME}/Desktop/liangxiang/dsh-liangxiang-<version>.tgz"` |
 | 源码 | `git pull && pnpm install && pnpm run dev:install` |
 
-没有全局 `dsh` 时，把命令开头的 `dsh` 整段换成 `npx --yes @deepseek-ai/dsh`。漏掉本地包前面的 `./` 会变成去 npm 拉包，报 `ERR_PNPM_FETCH_404`。
+没有全局 `dsh` 时，把命令开头的 `dsh` 整段换成 `npx --yes @deepseek-ai/dsh`。漏掉本地包前面的 `./`，或只写文件名，pnpm 会去请求 `registry.npmjs.org/dsh-liangxiang-<version>.tgz`，报 `ERR_PNPM_FETCH_404`。不要写 `dsh-liangxiang@0.8.3-beta`：公开 npm 还没有这个版本。
 
 卸载一律：`dsh plugin --profile web remove dsh-liangxiang`（源码开发 profile 用 `pnpm run dev:uninstall`）。
 

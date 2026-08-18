@@ -117,7 +117,9 @@ TARBALL_SHA="$(node -e '
 mkdir -p "$PACKAGE_CACHE"
 CACHED_TARBALL="$PACKAGE_CACHE/dsh-liangxiang-${EXPECTED_VERSION}-${TARBALL_SHA:0:16}.tgz"
 install -m 0600 "$TARBALL" "$CACHED_TARBALL"
-"${DSH_CMD[@]}" plugin --profile "$PROFILE" add "$CACHED_TARBALL"
+# DSH forwards this to pnpm with cwd=profile. A bare filename is treated as an
+# npm package (ERR_PNPM_FETCH_404). file: + absolute path always stays local.
+"${DSH_CMD[@]}" plugin --profile "$PROFILE" add "file:${CACHED_TARBALL}"
 INSTALLED_VERSION="$(node -e '
   const manifest = require(process.argv[1])
   if (manifest.name !== "dsh-liangxiang" || typeof manifest.version !== "string") process.exit(2)

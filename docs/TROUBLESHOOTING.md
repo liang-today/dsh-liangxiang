@@ -13,13 +13,37 @@ npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.
 
 ## 本地 tarball 报 `ERR_PNPM_FETCH_404`
 
-路径少了 `./`（或绝对路径），pnpm 把文件名当成 npm 包名去 registry 拉。必须写成：
+典型日志是：
+
+```text
+GET https://registry.npmjs.org/dsh-liangxiang-0.8.3-beta.tgz: Not Found - 404
+```
+
+这不是包坏了，是 pnpm 把参数当成了 **npm 包名**。DSH 的 `plugin add` 只是把参数转给 pnpm，而且只有以 `./` 或 `../` 开头的路径才会按你当前目录重写。
+
+会 404 的写法：
 
 ```bash
+# 少了 ./
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-0.8.3-beta.tgz
+# 去 npm 拉未发布版本
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@0.8.3-beta
+```
+
+能装上的写法：
+
+```bash
+export DSH_HOME="$HOME/.dsh"
+cd "$HOME/Desktop/liangxiang"
 npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.3-beta.tgz
 ```
 
-不要写成 `… web add dsh-liangxiang-0.8.3-beta.tgz`：`web` 是启动 WebUI，安装插件的子命令是 `plugin add`。
+或：
+
+```bash
+export DSH_HOME="$HOME/.dsh"
+npx --yes @deepseek-ai/dsh plugin --profile web add "file:${HOME}/Desktop/liangxiang/dsh-liangxiang-0.8.3-beta.tgz"
+```
 
 ## 本轮运行失败：`Cannot read properties of undefined (reading 'prepare')`
 
