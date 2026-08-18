@@ -7,6 +7,7 @@
 - 入梁券在每个业务日 0 点（开当日梁案时）检查库存，剩余认领低于 1000 则只补差额。白天领完不会立刻补。`liang tickets replenish` 可手工补一次。
 - `liang version` / `liang status` / `/v1/health` 报告程序版本。部署标记写成 `程序号 git 时间`。
 - Host 不再持续打 DSH 控制台。精简日志写入 `$DSH_HOME/logs/liangxiang.log`，文件最多 5MB。
+- Region 4 统计（三界香火 / 五行香客）统一用全逗号千分位，去掉只在 1 万以上才触发的「万」压缩，避免两列格式不一致。
 
 ## 0.8.5-beta — 2026-08-18
 
