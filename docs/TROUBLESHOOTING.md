@@ -12,6 +12,8 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 
 两条命令必须对着日常 `DSH_HOME`。装完并启动一次 WebUI 后，`$DSH_HOME/profiles/web/package.json` 的依赖应是浮动的 `beta`，不应再是 `file:…tgz` 或旧精确号。
 
+另一种与「钉死」无关的情况：pnpm 11 对发布不足 24 小时的新版本会跳过（`minimumReleaseAge`），所以刚发版时 `add @beta` 仍可能装回上一个够龄号；过了 24 小时再 `add @beta` 就会自动拿到最新。想当天就装，从 GitHub Release 下载 `.tgz` 用 `./dsh-liangxiang-<版本>.tgz` 装一次（启动后会自动切回 `@beta`）。
+
 ## 更新脚本提示没有 `dsh` 命令
 
 没有全局安装 DSH CLI。两种用法等价：
