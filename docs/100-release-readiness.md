@@ -35,6 +35,11 @@
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
 | MacBook / Mac mini 安装 | ✅ 0.8.0；更新路径保留存储，全新安装经正式入梁券登记，在线 authority 恢复 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
+| npm 公开包复核 | ✅ `dsh-liangxiang@0.8.0`，7 文件，SHA-1 `df17b5988420e68eb1eb67c7b4fb56cad649fc0c`；registry 回下载隐私复扫通过 |
+
+npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`，且 registry
+拒绝删除首版 `latest` 标签；发布口径与安装文档仍统一要求显式使用 `@beta`。
+不得把这个 registry 默认标签解释为正式稳定版或 GitHub Release。
 
 ## 发布验收
 

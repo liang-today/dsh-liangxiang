@@ -40,8 +40,9 @@
 当前社区后端使用“公开短期入梁券 + Ed25519 安装签名”的公网 soft-trust
 准入：新客户端自动取券并认领一次，之后只凭安装私钥长期连接；生产共享口令
 已经关闭，入梁券是首次登记的唯一准入。数据与服务位于香港，正式客户端统一连接
-`https://api.liang.today`。npm 仅通过 `beta` 通道提供 0.8.0 测试包，尚未发布
-`latest` 或 GitHub Release。迁移实录见
+`https://api.liang.today`。npm 已提供 `dsh-liangxiang@0.8.0` 测试包，建议显式
+使用 `@beta` 安装；npm registry 为首个版本同时建立了 `latest` 指向。尚未发布
+GitHub Release。迁移实录见
 [`docs/142-hk-migration-report.md`](docs/142-hk-migration-report.md)。
 
 ## 文档导航
