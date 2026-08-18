@@ -104,7 +104,7 @@ if [[ "$STORAGE_FOUND" -eq 0 ]]; then
   echo "未发现既有存储；本次将作为新安装。"
 fi
 
-echo "正在更新 profile '$PROFILE'（DSH_HOME=$DSH_HOME，命令：${DSH_CMD[*]}）..."
+echo "正在更新 profile '${PROFILE}'（DSH_HOME=${DSH_HOME}，命令：${DSH_CMD[*]}）..."
 # pnpm keys local tarballs by dependency path as well as package version. A
 # rebuilt package at the same path/version may otherwise be reported as "Already up to
 # date" while stale bytes remain installed. Cache by content hash so every
