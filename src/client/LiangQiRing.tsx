@@ -244,7 +244,7 @@ export function LiangQiRing({
             position: 'absolute',
             top: '100%',
             left: '50%',
-            marginTop: '8px',
+            marginTop: '6px',
             transform: 'translateX(-50%)',
             whiteSpace: 'nowrap',
             fontFamily: font.family,

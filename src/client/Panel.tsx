@@ -138,7 +138,7 @@ const panelStyle: CSSProperties = {
   maxHeight: 'min(440px, calc(100vh - 24px))',
   overflow: 'visible',
   boxSizing: 'border-box',
-  padding: '14px',
+  padding: '10px 12px 8px',
   borderRadius: '18px',
   border: `1px solid ${color.border}`,
   background: `radial-gradient(circle at 50% 34%, color-mix(in srgb, ${color.ritualGold} 10%, transparent), transparent 38%), linear-gradient(180deg, color-mix(in srgb, ${color.ritualEmber} 5%, ${color.bgLayer}) 0%, ${color.bgLayer} 40%)`,
@@ -220,11 +220,14 @@ const positionFactStyle: CSSProperties = {
  * the 梁子, ring, and incense dots drift sideways.
  */
 const FLANK_WIDTH = 54
+/** Top pad must clear 日/月 glyphs that sit outside the 126px ring box. */
 const CORE_PAD_Y = 20
+/** Room for the absolutely positioned 梁位 pill under the ring. */
+const CORE_PAD_BOTTOM = 36
 
 const coreStyle: CSSProperties = {
   position: 'relative',
-  padding: `${CORE_PAD_Y}px 0 42px`,
+  padding: `${CORE_PAD_Y}px 0 ${CORE_PAD_BOTTOM}px`,
   overflow: 'visible',
 }
 
@@ -274,7 +277,7 @@ const voteRowStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: '8px',
-  marginTop: '10px',
+  marginTop: '6px',
 }
 
 const voteButtonBase: CSSProperties = {
@@ -822,7 +825,7 @@ export function Panel(props: PanelProps): ReactElement {
       {/* Region 1 — 今日梁案 */}
       <header
         data-liangxiang-region="case"
-        style={{ position: 'relative', marginBottom: '6px', padding: '0 24px', textAlign: 'center' }}
+        style={{ position: 'relative', marginBottom: '2px', padding: '0 24px', textAlign: 'center' }}
       >
         <h2 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: color.textTertiary, letterSpacing: '1.6px' }}>
           {panelTitle}
@@ -1066,7 +1069,18 @@ export function Panel(props: PanelProps): ReactElement {
       <p
         role="status"
         data-liangxiang-vote-feedback=""
-        style={{ margin: '5px 0 0', minHeight: '15px', lineHeight: '15px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontSize: '10px', color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary, textAlign: 'center' }}
+        style={{
+          margin: statusLine === '' ? 0 : '4px 0 0',
+          minHeight: statusLine === '' ? 0 : '15px',
+          height: statusLine === '' ? 0 : 'auto',
+          lineHeight: '15px',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          textOverflow: 'ellipsis',
+          fontSize: '10px',
+          color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary,
+          textAlign: 'center',
+        }}
       >
         {statusLine}
       </p>
@@ -1078,8 +1092,8 @@ export function Panel(props: PanelProps): ReactElement {
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          marginTop: '9px',
-          paddingTop: '10px',
+          marginTop: 0,
+          paddingTop: '8px',
           borderTop: `1px solid ${color.border}`,
           color: color.textSecondary,
         }}

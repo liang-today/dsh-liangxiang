@@ -128,15 +128,15 @@ describe('operator CLI', () => {
     const logs: string[] = []
     const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
     expect(runOperatorCli(
-      ['case', 'queue', 'seed', '--start', '2026-08-20', '--limit', '3', bank],
+      ['case', 'queue', 'seed', '--start', '2026-09-01', '--limit', '3', bank],
       env,
       io,
     )).toBe(0)
-    expect(logs.join('\n')).toContain('2026-08-20')
-    expect(logs.join('\n')).toContain('2026-08-22')
+    expect(logs.join('\n')).toContain('2026-09-01')
+    expect(logs.join('\n')).toContain('2026-09-03')
     const collision: string[] = []
     expect(runOperatorCli(
-      ['case', 'queue', 'add', '--on', '2026-08-21', '冲突题是夯还是拉'],
+      ['case', 'queue', 'add', '--on', '2026-09-02', '冲突题是夯还是拉'],
       env,
       { log: (line) => collision.push(line), error: (line) => collision.push(line) },
     )).toBe(1)
