@@ -1070,9 +1070,9 @@ export function Panel(props: PanelProps): ReactElement {
         role="status"
         data-liangxiang-vote-feedback=""
         style={{
-          margin: statusLine === '' ? 0 : '4px 0 0',
-          minHeight: statusLine === '' ? 0 : '15px',
-          height: statusLine === '' ? 0 : 'auto',
+          margin: '5px 0 0',
+          minHeight: '15px',
+          height: '15px',
           lineHeight: '15px',
           overflow: 'hidden',
           whiteSpace: 'nowrap',
