@@ -26,7 +26,7 @@ export const SETTINGS_CLEARANCE = 56
 export const PANEL_WIDTH = 256
 export const PANEL_GAP = 10
 /** Approximate expanded panel height; used only to pick above vs below. */
-const PANEL_STACK_HEIGHT = 316
+const PANEL_STACK_HEIGHT = 350
 
 export const BADGE_POSITION_STORAGE_KEY = 'liangxiang:badge-position:v2'
 export const PANEL_OPEN_STORAGE_KEY = 'liangxiang:panel-open:v1'

@@ -304,7 +304,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(pill.width).toBeUndefined()
       expect(pill.whiteSpace).toBe('nowrap')
       expect(styleOf(findByAttr(tree, 'data-liangxiang-ring-footer')[0]).top).toBe('100%')
-      expect(styleOf(findByAttr(tree, 'data-liangxiang-ring-footer')[0]).marginTop).toBe('8px')
+      expect(styleOf(findByAttr(tree, 'data-liangxiang-ring-footer')[0]).marginTop).toBe('6px')
       expect(styleOf(findByAttr(tree, 'data-liangxiang-avatar')[0]).width).toBe(AVATAR_SLOT)
       expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('256px')
       expect(social.map((node) => styleOf(node).flex)).toEqual(['1 1 0', '1 1 0'])
@@ -598,6 +598,29 @@ describe('region 3: exactly two vote buttons', () => {
     expect(styleOf(votes[1]).width).toBe('100%')
     expect(styleOf(votes[0]).textAlign).toBe('center')
     expect(styleOf(votes[1]).textAlign).toBe('center')
+  })
+
+  it('does not reserve a blank vote-feedback row when the panel is idle', () => {
+    const idle = renderPanel(demoState())
+    const dialog = findAll(idle, (node) => node.props.role === 'dialog')[0]
+    const feedback = findByAttr(idle, 'data-liangxiang-vote-feedback')[0]
+    const social = findByAttr(idle, 'data-liangxiang-region', 'social')[0]
+    expect(styleOf(dialog).padding).toBe('10px 12px 8px')
+    expect(styleOf(findByAttr(idle, 'data-liangxiang-region', 'case')[0]).marginBottom).toBe('2px')
+    expect(styleOf(findByAttr(idle, 'data-liangxiang-region', 'core')[0]).padding).toBe('20px 0 36px')
+    expect(styleOf(findByAttr(idle, 'data-liangxiang-region', 'vote')[0]).marginTop).toBe('6px')
+    expect(styleOf(feedback).minHeight).toBe(0)
+    expect(styleOf(feedback).height).toBe(0)
+    expect(styleOf(social).marginTop).toBe(0)
+    expect(styleOf(social).paddingTop).toBe('8px')
+  })
+
+  it('grows the vote-feedback row only when there is a reason to show', () => {
+    const tree = renderPanel(demoState(), '已上香 · 夯（剩余 6 炷）')
+    const feedback = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
+    expect(feedback && textContent([feedback])).toContain('已上香')
+    expect(styleOf(feedback).minHeight).toBe('15px')
+    expect(styleOf(feedback).height).toBe('auto')
   })
 
   it('keeps empty-pool buttons clickable for the gag cue without sending a vote', () => {
