@@ -117,3 +117,17 @@ CSS data attribute、日志前缀和 `liangxiang-backend` 服务名。代码、�
 - 同一社区节点、参与安装、香客
 - 软信任、本机声明 Token
 - 每日开案、结案入祠、日梁/周梁/月梁
+
+## 7. 渠道文案
+
+同一套故事，按阅读现场写，不要把一个渠道的界面用语抄到另一个渠道。
+
+| 渠道 | 写什么 | 不要写 |
+|---|---|---|
+| GitHub About | 品牌短句 + 这是 DSH WebUI 插件；主页填 `https://liang.today` | `npm i`、本页右侧、registry 按钮 |
+| GitHub `README.md` | 故事、玩法、`dsh plugin add`；`npm i` 只作为安装节里的一句反例 | 「本页右侧自动生成的 `npm i`」 |
+| npm `docs/npm-readme.md` / 发布包内 README | 先声明这是 DSH 插件，再点名 npm 简介页右侧那条 `npm i` 无效 | 把 GitHub 仓库当 npm 简介页来写 |
+| 官网 / 小红书 / X | 故事与官网入口；安装指向部署指南 | 作者写成「npm 账户」、仓库介绍写成 npm 安装说明 |
+| `package.json` `description` | 官网导语那一句产品短描述 | 安装命令、渠道专用提示 |
+
+发布 npm 时用 `docs/npm-readme.md` 覆盖包内的 `README.md`；GitHub 仓库始终保留产品向的 `README.md`。`prepack` / `postpack` 负责交换，不要手改后再发。

@@ -50,6 +50,8 @@
     "lint": "oxlint src tests",
     "test": "vitest run",
     "verify": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build",
+    "prepack": "bash scripts/swap-readme.sh prepack",
+    "postpack": "bash scripts/swap-readme.sh postpack",
     "pack:tarball": "pnpm pack",
     "dev:install": "bash scripts/dev-install.sh",
     "dev:uninstall": "bash scripts/dev-uninstall.sh",

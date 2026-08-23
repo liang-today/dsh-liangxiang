@@ -4,6 +4,7 @@ node_modules/
 .liangxiang-backend/
 *.tgz
 .env
+.README.github.md
 *.log
 coverage/
 .DS_Store
