@@ -318,8 +318,17 @@ export function createLiveLiangxiangStore(
       })
   }
 
-  const postVote = async (voteType: VoteType, requestId: string): Promise<VoteResult> => {
-    const body = JSON.stringify({ caseId: state.activeCase.id, voteType, requestId })
+  const postVote = async (
+    voteType: VoteType,
+    requestId: string,
+    count?: number,
+  ): Promise<VoteResult> => {
+    const body = JSON.stringify({
+      caseId: state.activeCase.id,
+      voteType,
+      requestId,
+      ...(count === undefined || count === 1 ? {} : { count }),
+    })
     const attempt = (): Promise<unknown> => transport.fetchJson(VOTE_PATH, { method: 'POST', body })
     let raw: unknown
     try {
@@ -341,7 +350,7 @@ export function createLiveLiangxiangStore(
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    vote: (voteType) => postVote(voteType, transport.randomRequestId()),
+    vote: (voteType, options) => postVote(voteType, transport.randomRequestId(), options?.count),
     start: () => bootstrap(),
     refresh: (options) => {
       if (disposed) return

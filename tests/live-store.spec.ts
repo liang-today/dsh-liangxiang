@@ -273,6 +273,22 @@ describe('live store', () => {
     store.dispose()
   })
 
+  it('sends a dump count once and spends that many sticks', async () => {
+    const service = makeService()
+    const controls = fakeTransport(service)
+    const store = createLiveLiangxiangStore(controls.transport)
+    store.start()
+    await settled()
+    const result = await store.vote('up', { count: 4 })
+    expect(result).toMatchObject({ status: 'accepted', spentIncense: 4 })
+    const voteBodies = controls.requests
+      .filter((request) => request.path === '/liangxiang/api/vote')
+      .map((request) => JSON.parse(request.body ?? '{}') as { count?: number })
+    expect(voteBodies.at(-1)?.count).toBe(4)
+    expect(service.getWireState().personal.usedIncenseToday).toBe(4)
+    store.dispose()
+  })
+
   it('goes offline after bounded SSE failures; refresh() reconnects', async () => {
     const service = makeService()
     const controls = fakeTransport(service)

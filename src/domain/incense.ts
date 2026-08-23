@@ -77,12 +77,21 @@ export function canSpendIncense(state: PersonalLiangQiState): boolean {
  * move. Throws `insufficient_incense` when the pool is empty.
  */
 export function spendOneIncense(state: PersonalLiangQiState): PersonalLiangQiState {
-  if (!canSpendIncense(state)) {
+  return spendIncense(state, 1)
+}
+
+/**
+ * Spend `count` sticks in one fold. Token remainder / ring fill stay still.
+ * Throws `insufficient_incense` when the pool cannot cover the whole count.
+ */
+export function spendIncense(state: PersonalLiangQiState, count: number): PersonalLiangQiState {
+  assertCount(count, 'invalid_incense_count', 'spendCount')
+  if (count < 1 || count > state.remainingIncense) {
     throw new DomainError('insufficient_incense', 'no remaining incense to spend')
   }
   return derivePersonalLiangQiState({
     effectiveTokensToday: state.effectiveTokensToday,
-    usedIncenseToday: state.usedIncenseToday + 1,
+    usedIncenseToday: state.usedIncenseToday + count,
     tokenPerIncense: state.tokenPerIncense,
   })
 }

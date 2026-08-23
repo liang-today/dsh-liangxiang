@@ -615,22 +615,35 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       return
     }
 
-    // POST /v1/votes
-    const rateDecision = voteLimiter.check(installationId, Date.now())
-    if (!rateDecision.allowed) {
-      const message = rateDecision.reason === 'active_key_capacity'
-        ? 'server vote limiter is at active-key capacity; retry later'
-        : 'too many vote requests; slow down'
-      writeError(res, 429, 'vote_rate_limited', message)
-      expectedEvents.record(
-        `vote_rate_limited_${rateDecision.reason ?? 'unknown'}`,
-        `[liangxiang-backend] vote 429 reason=${rateDecision.reason ?? 'unknown'} ${who(req, installationId)}`,
-      )
-      return
-    }
+    // POST /v1/votes — parse first so a dump's `count` is known before the bucket.
+    // Business time stays on the service clock (test fixtures freeze it);
+    // the limiter uses wall time. Replays must not be 429'd by an empty bucket.
     try {
       const intent = parseV1VoteRequest(body)
-      const response = service.vote(installationId, intent)
+      const limiterNow = Date.now()
+      const lastVoteAt = store.lastAcceptedVoteAt(installationId)
+      const existing = store.voteByRequestId(installationId, intent.request_id)
+      let available = Number.POSITIVE_INFINITY
+      if (existing === undefined) {
+        const decision = voteLimiter.inspect(installationId, limiterNow, lastVoteAt)
+        if (!decision.allowed || decision.available <= 0) {
+          const message = decision.reason === 'active_key_capacity'
+            ? 'server vote limiter is at active-key capacity; retry later'
+            : 'too many vote requests; slow down'
+          writeError(res, 429, 'vote_rate_limited', message)
+          expectedEvents.record(
+            `vote_rate_limited_${decision.reason ?? 'unknown'}`,
+            `[liangxiang-backend] vote 429 reason=${decision.reason ?? 'unknown'} ${who(req, installationId)}`,
+          )
+          return
+        }
+        available = decision.available
+      }
+      const response = service.vote(installationId, intent, undefined, available)
+      if (response.result.status === 'accepted' && !response.result.replayed) {
+        const spent = response.result.spent_incense ?? 1
+        if (spent > 0) voteLimiter.consume(installationId, spent, limiterNow, lastVoteAt)
+      }
       const status = response.result.status === 'accepted' ? 200 : statusForRejection(response.result.reason)
       writeJson(res, status, response)
       const direction = intent.vote_type === 'up' ? '夯' : '拉'
@@ -638,8 +651,9 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       const position = formatLiangPosition(snapshot.up_votes, snapshot.down_votes)
       const remaining = response.authoritative_personal_state.remaining_incense
       if (response.result.status === 'accepted') {
+        const spent = response.result.spent_incense ?? 1
         const message = `[liangxiang-backend] vote ${direction} accepted ${who(req, installationId)} `
-          + `remaining=${remaining} 梁位=${position} 香火=${snapshot.total_incense} 香客=${snapshot.unique_voters}`
+          + `spent=${spent} remaining=${remaining} 梁位=${position} 香火=${snapshot.total_incense} 香客=${snapshot.unique_voters}`
         if (response.result.replayed) expectedEvents.record('vote_replay', `${message} replay=true`)
         else log(message)
       } else {

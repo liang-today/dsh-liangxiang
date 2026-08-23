@@ -25,6 +25,7 @@ import { randomBytes } from 'node:crypto'
 import {
   DEFAULT_LIANGZI_THRESHOLDS,
   LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+  clampVoteSpend,
   derivePersonalLiangQiState,
   deriveLiangziState,
   isBusinessDate,
@@ -869,12 +870,17 @@ export class LiangxiangBackendService {
    * snapshot is still a single self-consistent row, so ratios and Liangzi state
    * can never come from different versions.
    */
-  vote(installationId: string, intent: V1VoteRequest, now = this.clock.now()): V1VoteResponse {
+  vote(
+    installationId: string,
+    intent: V1VoteRequest,
+    now = this.clock.now(),
+    maxSpend = Number.POSITIVE_INFINITY,
+  ): V1VoteResponse {
     const activeCase = this.ensureActiveCase(now)
     let result: V1VoteResult
     try {
       result = this.store.transaction(() => {
-        const outcome = this.voteInTransaction(installationId, intent, activeCase, now)
+        const outcome = this.voteInTransaction(installationId, intent, activeCase, now, maxSpend)
         if (outcome.status === 'accepted' && !outcome.replayed) {
           this.publishInTransaction(activeCase, now)
         }
@@ -910,6 +916,7 @@ export class LiangxiangBackendService {
     intent: V1VoteRequest,
     activeCase: CaseRow,
     now: number,
+    maxSpend: number,
   ): V1VoteResult {
     const target = this.store.caseById(intent.case_id)
     if (target === undefined) {
@@ -937,6 +944,7 @@ export class LiangxiangBackendService {
         vote_type: existing.vote_type,
         used_incense: existing.used_incense_after,
         remaining_incense: this.remainingFor(installationId, target),
+        spent_incense: 0,
         replayed: true,
       }
     }
@@ -944,7 +952,12 @@ export class LiangxiangBackendService {
     this.ensureRow(installationId, target, now)
     // Read before the insert: after it, this installation always has a vote.
     const firstVoteForCase = !this.store.hasVotedForCase(installationId, target.id)
-    if (!this.store.spendOneIncense(installationId, target.business_date, now)) {
+    const remaining = this.remainingFor(installationId, target)
+    const spent = clampVoteSpend(intent.count ?? 1, remaining, maxSpend)
+    if (spent < 1) {
+      return rejected(intent, 'insufficient_incense', 'no remaining incense today')
+    }
+    if (!this.store.spendIncense(installationId, target.business_date, spent, now)) {
       return rejected(intent, 'insufficient_incense', 'no remaining incense today')
     }
     const row = this.requireRow(installationId, target.business_date)
@@ -967,13 +980,14 @@ export class LiangxiangBackendService {
       }
       throw error
     }
-    this.store.applyAcceptedVoteToStats(target.id, intent.vote_type, firstVoteForCase, now)
+    this.store.applyAcceptedVoteToStats(target.id, intent.vote_type, spent, firstVoteForCase, now)
     return {
       status: 'accepted',
       request_id: intent.request_id,
       vote_type: intent.vote_type,
       used_incense: row.used_incense,
       remaining_incense: earned - row.used_incense,
+      spent_incense: spent,
       replayed: false,
     }
   }
@@ -995,6 +1009,7 @@ export class LiangxiangBackendService {
       remaining_incense: caseRow === undefined
         ? stored.remaining_incense_after
         : this.remainingFor(installationId, caseRow),
+      spent_incense: 0,
       replayed: true,
     }
   }

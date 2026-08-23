@@ -6,11 +6,11 @@
  * `domain/`; the store never hand-rolls ratios, thresholds, or incense math.
  */
 import {
-  applyAcceptedVote,
+  applyAcceptedVotes,
   buildPublicSnapshot,
   canSpendIncense,
   derivePersonalLiangQiState,
-  spendOneIncense,
+  spendIncense,
   type DailyLiangCase,
   type GlobalVoteAggregate,
   type PersonalLiangQiState,
@@ -59,8 +59,8 @@ export interface LiangxiangViewState {
 export interface LiangxiangStore {
   getSnapshot(): LiangxiangViewState
   subscribe(listener: () => void): () => void
-  /** Submit one vote intent; resolves with the authoritative-side result. */
-  vote(voteType: VoteType): Promise<VoteResult>
+  /** Submit a vote intent; `count` dumps many sticks in one request. */
+  vote(voteType: VoteType, options?: { count?: number }): Promise<VoteResult>
 }
 
 /** Derive the render state from one validated wire frame (raw counts in, domain invariants out). */
@@ -235,9 +235,10 @@ export function createMockLiangxiangStore(seed: MockStoreSeed = {}): MockLiangxi
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    vote(voteType): Promise<VoteResult> {
+    vote(voteType, options): Promise<VoteResult> {
       const requestId = nextMockRequestId()
-      if (!canSpendIncense(personal)) {
+      const count = options?.count ?? 1
+      if (!canSpendIncense(personal) || count < 1 || count > personal.remainingIncense) {
         return Promise.resolve({
           status: 'rejected',
           requestId,
@@ -248,8 +249,8 @@ export function createMockLiangxiangStore(seed: MockStoreSeed = {}): MockLiangxi
       // Order matters for the frozen semantics: the spend touches only
       // used/remaining; the global aggregate (and thus the Liangzi state)
       // moves because the accepted vote changed the global ratio.
-      personal = spendOneIncense(personal)
-      aggregate = applyAcceptedVote(aggregate, voteType, !hasAcceptedVote)
+      personal = spendIncense(personal, count)
+      aggregate = applyAcceptedVotes(aggregate, voteType, count, !hasAcceptedVote)
       hasAcceptedVote = true
       sequence += 1
       publish()
@@ -259,6 +260,7 @@ export function createMockLiangxiangStore(seed: MockStoreSeed = {}): MockLiangxi
         voteType,
         usedIncenseToday: personal.usedIncenseToday,
         remainingIncense: personal.remainingIncense,
+        spentIncense: count,
       })
     },
     addEffectiveTokens(count) {

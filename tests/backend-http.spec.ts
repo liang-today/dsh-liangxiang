@@ -186,19 +186,20 @@ describe('routing and boundary validation', () => {
   it('does not grow the rate-limit map with every installation id it sees', async () => {
     const h = await start({ voteRateLimitPerMinute: 5, voteRateLimitMaxKeys: 32 })
     const caseId = await activeCaseId(h)
-    // Installation ids are self-minted, so unbounded per-id state would be
-    // attacker-controlled memory growth.
-    for (let i = 0; i < 1_200; i += 1) {
-      await h.post(
+    // Rejected empty-pool votes do not occupy limiter keys. Fill the cap with
+    // accepted spends, then an unseen id fails closed with 429.
+    for (let i = 0; i < 32; i += 1) {
+      const installationId = `inst-flood-${String(i).padStart(6, '0')}`
+      await grant(h, 50_000, installationId)
+      const accepted = await h.post(
         '/v1/votes',
         { case_id: caseId, vote_type: 'up', request_id: `req-flood-${String(i).padStart(6, '0')}` },
-        `inst-flood-${String(i).padStart(6, '0')}`,
+        installationId,
       )
+      expect(accepted.status).toBe(200)
     }
-    // Nothing was spent (no claims), and the server is still responsive.
     const health = await fetch(`${h.baseUrl}/v1/health`)
     expect(health.status).toBe(200)
-    // Once the active-key cap is full, an unseen id fails closed with 429.
     const overflow = await h.post(
       '/v1/votes',
       { case_id: caseId, vote_type: 'up', request_id: 'req-after-cap-0001' },
@@ -206,6 +207,38 @@ describe('routing and boundary validation', () => {
     )
     expect(overflow.status).toBe(429)
     expect(overflow.body).toMatchObject({ error: { message: expect.stringContaining('active-key capacity') } })
+  })
+
+  it('accepts one dump request and spends the clamped incense once', async () => {
+    const h = await start({ voteRateLimitPerMinute: 50 })
+    await grant(h, 80 * 50_000)
+    const caseId = await activeCaseId(h)
+    const dumped = await h.post('/v1/votes', {
+      case_id: caseId,
+      vote_type: 'up',
+      request_id: 'req-dump-http-01',
+      count: 80,
+    })
+    expect(dumped.status).toBe(200)
+    const body = parseV1VoteResponse(dumped.body)
+    expect(body.result).toMatchObject({
+      status: 'accepted',
+      spent_incense: 50,
+      used_incense: 50,
+      remaining_incense: 30,
+    })
+    const replay = await h.post('/v1/votes', {
+      case_id: caseId,
+      vote_type: 'up',
+      request_id: 'req-dump-http-01',
+      count: 80,
+    })
+    expect(parseV1VoteResponse(replay.body).result).toMatchObject({
+      status: 'accepted',
+      replayed: true,
+      spent_incense: 0,
+      used_incense: 50,
+    })
   })
 
   it('answers an oversized body with 413 instead of killing the connection', async () => {

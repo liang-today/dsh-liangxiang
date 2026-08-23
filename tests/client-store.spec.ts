@@ -37,6 +37,16 @@ describe('vote flow', () => {
     expect(after.snapshot.upRatio).toBe(after.snapshot.upVotes / after.snapshot.totalIncense)
   })
 
+  it('dumps several sticks in one mock vote', async () => {
+    const store = createMockLiangxiangStore()
+    const before = store.getSnapshot()
+    const result = await store.vote('down', { count: 3 })
+    expect(result).toMatchObject({ status: 'accepted', spentIncense: 3, remainingIncense: before.personal.remainingIncense - 3 })
+    const after = store.getSnapshot()
+    expect(after.personal.remainingIncense).toBe(before.personal.remainingIncense - 3)
+    expect(after.snapshot.downVotes).toBe(before.snapshot.downVotes + 3)
+  })
+
   it('five sticks allow five votes (repeated or mixed); the sixth is rejected', async () => {
     const store = createMockLiangxiangStore()
     const directions = ['up', 'down', 'up', 'up', 'down'] as const

@@ -24,12 +24,20 @@ afterEach(() => {
   fixture = null
 })
 
-function vote(f: BackendFixture, installation: string, voteType: 'up' | 'down', requestId: string) {
+function vote(
+  f: BackendFixture,
+  installation: string,
+  voteType: 'up' | 'down',
+  requestId: string,
+  count?: number,
+  maxSpend?: number,
+) {
   return f.service.vote(installation, {
     case_id: f.service.ensureActiveCase().id,
     vote_type: voteType,
     request_id: requestId,
-  })
+    ...(count === undefined ? {} : { count }),
+  }, f.clock.now(), maxSpend ?? Number.POSITIVE_INFINITY)
 }
 
 describe('bootstrap and token claims', () => {
@@ -188,6 +196,26 @@ describe('vote transaction', () => {
     expect(stats).toMatchObject({ up_votes: 3, down_votes: 1, unique_voters: 2 })
   })
 
+  it('dumps many sticks in one transaction and clamps to remaining and budget', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 80)
+    const dumped = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-dump-00001', 80, 40))
+    expect(dumped.result).toMatchObject({
+      status: 'accepted',
+      replayed: false,
+      spent_incense: 40,
+      used_incense: 40,
+      remaining_incense: 40,
+    })
+    expect(f.store.statsFor(f.service.ensureActiveCase().id)).toMatchObject({
+      up_votes: 40,
+      down_votes: 0,
+      unique_voters: 1,
+    })
+    const empty = vote(f, INSTALLATION, 'down', 'req-dump-00002', 80, 0)
+    expect(empty.result).toMatchObject({ status: 'rejected', reason: 'insufficient_incense' })
+  })
+
   it('rejects a stale or unknown case id', () => {
     const f = boot()
     f.grantIncense(INSTALLATION, 2)
@@ -284,7 +312,7 @@ describe('global snapshot', () => {
   ])('publishes %d up / %d down as %s from one sequence', (upVotes, downVotes, expected) => {
     const f = boot()
     const caseRow = f.service.ensureActiveCase()
-    f.store.applyAcceptedVoteToStats(caseRow.id, 'up', false, FIXED_NOW)
+    f.store.applyAcceptedVoteToStats(caseRow.id, 'up', 1, false, FIXED_NOW)
     // Seed the aggregate directly: this test is about publication, not spending.
     f.store.transaction(() => {
       f.store.insertSnapshot({

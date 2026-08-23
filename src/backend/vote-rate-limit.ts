@@ -1,6 +1,8 @@
-/** Hard-bounded in-memory limiter for vote attempts. */
-export const VOTE_RATE_WINDOW_MS = 60_000
-/** Per-installation incense submissions (votes) allowed in one minute. */
+import { VOTE_BUDGET_WINDOW_MS, voteBudgetAvailable } from '../domain/vote-budget.ts'
+
+/** Hard-bounded in-memory limiter for vote incense, not raw HTTP requests. */
+export const VOTE_RATE_WINDOW_MS = VOTE_BUDGET_WINDOW_MS
+/** Per-installation incense allowed to refill each minute. */
 export const DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE = 50
 export const DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS = 4_096
 
@@ -10,10 +12,16 @@ export interface VoteRateDecision {
   allowed: boolean
   reason: VoteRateLimitReason | null
   retryAfterMs: number
+  available: number
+}
+
+interface Bucket {
+  tokens: number
+  updatedAt: number
 }
 
 export class VoteRateLimiter {
-  private readonly windows = new Map<string, number[]>()
+  private readonly windows = new Map<string, Bucket>()
 
   constructor(
     private readonly requestsPerMinute: number,
@@ -24,30 +32,89 @@ export class VoteRateLimiter {
     }
   }
 
-  check(installationId: string, now: number): VoteRateDecision {
-    if (this.requestsPerMinute <= 0) return { allowed: true, reason: null, retryAfterMs: 0 }
+  /**
+   * Current spendable incense. `lastVoteAt` reconstructs a missing bucket from
+   * the last accepted vote (no new schema): idle refill from empty, new
+   * installation still starts at `requestsPerMinute`.
+   */
+  inspect(installationId: string, now: number, lastVoteAt?: number | null): VoteRateDecision {
+    if (this.requestsPerMinute <= 0) {
+      return { allowed: true, reason: null, retryAfterMs: 0, available: Number.POSITIVE_INFINITY }
+    }
+    const existing = this.windows.get(installationId)
+    if (existing === undefined) {
+      if (this.windows.size >= this.maxActiveKeys) {
+        this.evictExpired(now)
+        if (this.windows.size >= this.maxActiveKeys) {
+          return { allowed: false, reason: 'active_key_capacity', retryAfterMs: VOTE_RATE_WINDOW_MS, available: 0 }
+        }
+      }
+      const available = lastVoteAt == null
+        ? this.requestsPerMinute
+        : Math.floor(voteBudgetAvailable(0, lastVoteAt, now, this.requestsPerMinute))
+      return {
+        allowed: available >= 1,
+        reason: available >= 1 ? null : 'per_installation',
+        retryAfterMs: available >= 1 ? 0 : this.retryAfterMs(available),
+        available,
+      }
+    }
+    const available = Math.floor(voteBudgetAvailable(
+      existing.tokens,
+      existing.updatedAt,
+      now,
+      this.requestsPerMinute,
+    ))
+    return {
+      allowed: available >= 1,
+      reason: available >= 1 ? null : 'per_installation',
+      retryAfterMs: available >= 1 ? 0 : this.retryAfterMs(available),
+      available,
+    }
+  }
+
+  peek(installationId: string, now: number, lastVoteAt?: number | null): number {
+    return this.inspect(installationId, now, lastVoteAt).available
+  }
+
+  /** Spend `count` incense from the bucket. `check(id, now)` is consume(1). */
+  consume(installationId: string, count: number, now: number, lastVoteAt?: number | null): VoteRateDecision {
+    if (this.requestsPerMinute <= 0) {
+      return { allowed: true, reason: null, retryAfterMs: 0, available: Number.POSITIVE_INFINITY }
+    }
+    const want = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0
+    if (want < 1) {
+      return { allowed: true, reason: null, retryAfterMs: 0, available: this.peek(installationId, now) }
+    }
 
     const existing = this.windows.get(installationId)
     if (existing === undefined && this.windows.size >= this.maxActiveKeys) {
       this.evictExpired(now)
       if (this.windows.size >= this.maxActiveKeys) {
-        return { allowed: false, reason: 'active_key_capacity', retryAfterMs: VOTE_RATE_WINDOW_MS }
+        return { allowed: false, reason: 'active_key_capacity', retryAfterMs: VOTE_RATE_WINDOW_MS, available: 0 }
       }
     }
 
-    const window = (existing ?? []).filter(at => now - at < VOTE_RATE_WINDOW_MS)
-    if (window.length >= this.requestsPerMinute) {
-      this.windows.set(installationId, window)
-      const oldest = window[0] as number
+    const tokens = existing === undefined
+      ? (lastVoteAt == null
+          ? this.requestsPerMinute
+          : voteBudgetAvailable(0, lastVoteAt, now, this.requestsPerMinute))
+      : voteBudgetAvailable(existing.tokens, existing.updatedAt, now, this.requestsPerMinute)
+    if (tokens < want) {
+      if (existing !== undefined) this.windows.set(installationId, { tokens, updatedAt: now })
       return {
         allowed: false,
         reason: 'per_installation',
-        retryAfterMs: Math.max(1, VOTE_RATE_WINDOW_MS - (now - oldest)),
+        retryAfterMs: this.retryAfterMs(tokens),
+        available: Math.floor(tokens),
       }
     }
-    window.push(now)
-    this.windows.set(installationId, window)
-    return { allowed: true, reason: null, retryAfterMs: 0 }
+    this.windows.set(installationId, { tokens: tokens - want, updatedAt: now })
+    return { allowed: true, reason: null, retryAfterMs: 0, available: Math.floor(tokens - want) }
+  }
+
+  check(installationId: string, now: number): VoteRateDecision {
+    return this.consume(installationId, 1, now)
   }
 
   get activeKeys(): number {
@@ -58,10 +125,15 @@ export class VoteRateLimiter {
     this.windows.clear()
   }
 
+  private retryAfterMs(tokens: number): number {
+    const need = 1 - tokens
+    if (need <= 0) return 1
+    return Math.max(1, Math.ceil((need / this.requestsPerMinute) * VOTE_RATE_WINDOW_MS))
+  }
+
   private evictExpired(now: number): void {
-    for (const [installationId, window] of this.windows) {
-      const newest = window.at(-1)
-      if (newest === undefined || now - newest >= VOTE_RATE_WINDOW_MS) {
+    for (const [installationId, bucket] of this.windows) {
+      if (now - bucket.updatedAt >= VOTE_RATE_WINDOW_MS) {
         this.windows.delete(installationId)
       }
     }

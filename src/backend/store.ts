@@ -185,10 +185,20 @@ export interface BackendStore {
   raiseClaim: (installationId: string, businessDate: string, claimed: number, now: number) => boolean
   /** Conditional spend; false means unaffordable/lost race (no row changed). */
   spendOneIncense: (installationId: string, businessDate: string, now: number) => boolean
+  /** Spend `count` sticks atomically; false if the pool cannot cover it. */
+  spendIncense: (installationId: string, businessDate: string, count: number, now: number) => boolean
   voteByRequestId: (installationId: string, requestId: string) => VoteRow | undefined
+  /** Latest accepted vote time for this installation; null if they have never voted. */
+  lastAcceptedVoteAt: (installationId: string) => number | null
   hasVotedForCase: (installationId: string, caseId: string) => boolean
   insertVote: (row: Omit<VoteRow, 'id'>) => void
-  applyAcceptedVoteToStats: (caseId: string, voteType: VoteType, firstVoter: boolean, now: number) => void
+  applyAcceptedVoteToStats: (
+    caseId: string,
+    voteType: VoteType,
+    count: number,
+    firstVoter: boolean,
+    now: number,
+  ) => void
   latestSnapshot: (caseId: string) => SnapshotRow | undefined
   insertSnapshot: (row: SnapshotRow) => void
   /** Drop all but the newest `keep` snapshots of one case; returns rows deleted. */
@@ -351,12 +361,15 @@ export function openBackendStore(databasePath: string): BackendStore {
   // no read-then-write window.
   const spendStmt = db.prepare(
     `UPDATE daily_incense_state
-        SET used_incense = used_incense + 1, version = version + 1, updated_at = ?
+        SET used_incense = used_incense + ?, version = version + 1, updated_at = ?
       WHERE installation_id = ? AND business_date = ?
-        AND (used_incense + 1) * token_per_incense <= claimed_effective_tokens`,
+        AND (used_incense + ?) * token_per_incense <= claimed_effective_tokens`,
   )
   const selectVote = db.prepare(
     'SELECT * FROM liang_vote WHERE installation_id = ? AND request_id = ?',
+  )
+  const selectLastVoteAt = db.prepare(
+    'SELECT MAX(created_at) AS last_at FROM liang_vote WHERE installation_id = ?',
   )
   const selectAnyVoteForCase = db.prepare(
     'SELECT 1 AS present FROM liang_vote WHERE case_id = ? AND installation_id = ? LIMIT 1',
@@ -604,9 +617,16 @@ export function openBackendStore(databasePath: string): BackendStore {
     raiseClaim: (installationId, businessDate, claimed, now) =>
       changed(raiseClaimStmt.run(claimed, now, installationId, businessDate, claimed)) > 0,
     spendOneIncense: (installationId, businessDate, now) =>
-      changed(spendStmt.run(now, installationId, businessDate)) > 0,
+      changed(spendStmt.run(1, now, installationId, businessDate, 1)) > 0,
+    spendIncense: (installationId, businessDate, count, now) =>
+      count >= 1 && changed(spendStmt.run(count, now, installationId, businessDate, count)) > 0,
     voteByRequestId: (installationId, requestId) =>
       selectVote.get(installationId, requestId) as VoteRow | undefined,
+    lastAcceptedVoteAt(installationId) {
+      const row = selectLastVoteAt.get(installationId) as { last_at: number | bigint | null } | undefined
+      if (row?.last_at == null) return null
+      return Number(row.last_at)
+    },
     hasVotedForCase: (installationId, caseId) =>
       selectAnyVoteForCase.get(caseId, installationId) !== undefined,
     insertVote(row) {
@@ -621,10 +641,10 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.created_at,
       )
     },
-    applyAcceptedVoteToStats(caseId, voteType, firstVoter, now) {
+    applyAcceptedVoteToStats(caseId, voteType, count, firstVoter, now) {
       bumpStats.run(
-        voteType === 'up' ? 1 : 0,
-        voteType === 'down' ? 1 : 0,
+        voteType === 'up' ? count : 0,
+        voteType === 'down' ? count : 0,
         firstVoter ? 1 : 0,
         now,
         caseId,

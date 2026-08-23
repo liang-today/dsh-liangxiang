@@ -12,6 +12,8 @@ import {
   assertValidCase,
   assertVoteType,
   isVoteType,
+  VOTE_COUNT_MAX,
+  VOTE_COUNT_MIN,
   type DailyLiangCase,
   type VoteRejectionReason,
   type VoteResult,
@@ -111,6 +113,7 @@ export interface WireVoteRequest {
   caseId: string
   voteType: VoteType
   requestId: string
+  count?: number
 }
 
 /** POST /vote response: the business result plus the fresh full state. */
@@ -283,7 +286,14 @@ export function parseWireVoteRequest(raw: unknown): WireVoteRequest {
   } catch {
     throw new WireError('vote.requestId', 'must match [A-Za-z0-9._-]{8,128}')
   }
-  return { caseId, voteType, requestId }
+  let count: number | undefined
+  if (record.count !== undefined) {
+    count = requireCount(record.count, 'vote.count')
+    if (count < VOTE_COUNT_MIN || count > VOTE_COUNT_MAX) {
+      throw new WireError('vote.count', `expected an integer in [${VOTE_COUNT_MIN}, ${VOTE_COUNT_MAX}]`)
+    }
+  }
+  return count === undefined ? { caseId, voteType, requestId } : { caseId, voteType, requestId, count }
 }
 
 /** Validate a vote result payload (client boundary). */
@@ -302,6 +312,9 @@ export function parseWireVoteResult(raw: unknown): VoteResult {
       voteType: record.voteType as VoteType,
       usedIncenseToday: requireCount(record.usedIncenseToday, 'result.usedIncenseToday'),
       remainingIncense: requireCount(record.remainingIncense, 'result.remainingIncense'),
+      spentIncense: record.spentIncense === undefined
+        ? 1
+        : requireCount(record.spentIncense, 'result.spentIncense'),
     }
   }
   if (record.status === 'rejected') {

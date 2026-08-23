@@ -33,11 +33,17 @@ export function assertRequestId(value: unknown): asserts value is RequestId {
   }
 }
 
+/** One request may dump many sticks; omitted / 1 is a single click. */
+export const VOTE_COUNT_MIN = 1
+export const VOTE_COUNT_MAX = 500
+
 /** Minimal vote intent — the client never self-reports balances or identity. */
 export interface VoteIntent {
   caseId: string
   voteType: VoteType
   requestId: RequestId
+  /** Requested sticks; the authority clamps to remaining and the rate budget. */
+  count?: number
 }
 
 export type VoteRejectionReason =
@@ -55,6 +61,8 @@ export type VoteResult =
     /** Authoritative personal accounting after the spend. */
     usedIncenseToday: number
     remainingIncense: number
+    /** Sticks actually spent this accept (1 for a click; N for a dump). */
+    spentIncense?: number
   }
   | {
     status: 'rejected'

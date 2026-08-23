@@ -313,6 +313,19 @@ describe('vote transaction', () => {
     expect(state.personal.usedIncenseToday).toBe(5)
   })
 
+  it('dumps the remaining pool in one accepted request', () => {
+    const { service, caseId } = fundedService(12)
+    const outcome = service.vote({ caseId, voteType: 'down', requestId: 'req-dump-local', count: 12 })
+    expect(outcome.result).toMatchObject({
+      status: 'accepted',
+      spentIncense: 12,
+      usedIncenseToday: 12,
+      remainingIncense: 0,
+    })
+    expect(service.getWireState().personal.usedIncenseToday).toBe(12)
+    expect(service.getWireState().personal.remainingIncense).toBe(0)
+  })
+
   it('remaining=1 with 10 concurrent distinct requests accepts at most one', async () => {
     const { service, caseId } = fundedService(1)
     const outcomes = await Promise.all(

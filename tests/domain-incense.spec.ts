@@ -8,6 +8,7 @@ import {
   canSpendIncense,
   derivePersonalLiangQiState,
   liangQiIntensity,
+  spendIncense,
   spendOneIncense,
 } from '../src/domain/index.ts'
 
@@ -38,6 +39,15 @@ describe('personal inventory', () => {
     const after = spendOneIncense(before)
     expect(after.usedIncenseToday).toBe(3)
     expect(after.remainingIncense).toBe(2)
+  })
+
+  it('spends many sticks in one fold without moving ring fill', () => {
+    const before = derivePersonalLiangQiState({ effectiveTokensToday: 500_000, usedIncenseToday: 0 })
+    const after = spendIncense(before, 7)
+    expect(after.usedIncenseToday).toBe(7)
+    expect(after.remainingIncense).toBe(3)
+    expect(after.liangQiFill).toBe(before.liangQiFill)
+    expect(() => spendIncense(before, 11)).toThrow(DomainError)
   })
 
   it('allows exactly five spends on five sticks; the sixth fails safe', () => {

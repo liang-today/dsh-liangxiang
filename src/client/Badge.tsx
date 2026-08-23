@@ -13,10 +13,12 @@
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
-import type { LiangziState, VoteType } from '../domain/index.ts'
-import { HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_RATE_LIMITED, VOTE_UP_NAME } from '../shared/index.ts'
+import { VOTE_COUNT_MAX, type LiangziState, type VoteType } from '../domain/index.ts'
+import { formatAcceptedVoteFeedback, HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_RATE_LIMITED, VOTE_UP_NAME } from '../shared/index.ts'
 import type { HostAuthorityPreference } from '../shared/wire.ts'
-import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
+import { readLocalEpithet, rememberLocalEpithetVote } from './local-epithet-store.ts'
+import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
+import { CHARGE_FULL_MS, DUMP_HOLD_MS } from './vote-charge.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
@@ -448,13 +450,56 @@ export function LiangxiangBadge(): ReactElement {
     wasOpen.current = open
   }, [open])
 
-  const onVote = (voteType: VoteType): void => {
-    store.vote(voteType).then(
+  const [localEpithet, setLocalEpithet] = useState(() => readLocalEpithet().label)
+  const [chargeVoteType, setChargeVoteType] = useState<VoteType | null>(null)
+  const [charge, setCharge] = useState(0)
+  const chargeRef = useRef<{
+    type: VoteType
+    pointerId: number
+    startedAt: number
+    frame: number
+  } | null>(null)
+  const voteInFlight = useRef(false)
+
+  const clearCharge = useCallback((): void => {
+    const current = chargeRef.current
+    if (current !== null) cancelAnimationFrame(current.frame)
+    chargeRef.current = null
+    setChargeVoteType(null)
+    setCharge(0)
+  }, [])
+  useEffect(() => () => {
+    const current = chargeRef.current
+    if (current !== null) cancelAnimationFrame(current.frame)
+  }, [])
+
+  const onInsufficientVote = (voteType: VoteType): void => {
+    playNoIncense(voteType)
+    setVoteFeedback(NO_INCENSE_GAG)
+  }
+
+  const onVote = (voteType: VoteType, count = 1): void => {
+    if (voteInFlight.current) return
+    const remainingBefore = store.getSnapshot().personal.remainingIncense
+    if (remainingBefore <= 0) {
+      onInsufficientVote(voteType)
+      return
+    }
+    const requested = Math.min(Math.max(1, count), remainingBefore, VOTE_COUNT_MAX)
+    voteInFlight.current = true
+    store.vote(voteType, requested === 1 ? undefined : { count: requested }).then(
       (result) => {
         if (result.status === 'accepted') {
-          if (voteType === 'up') playVoteUp()
+          const spent = Math.max(0, remainingBefore - result.remainingIncense)
+          if (spent > 1) playVoteDump(voteType)
+          else if (voteType === 'up') playVoteUp()
           else playVoteDown()
-          setVoteFeedback(`已上香 · ${voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME}（剩余 ${result.remainingIncense} 炷）`)
+          if (spent > 0) setLocalEpithet(rememberLocalEpithetVote(voteType, spent).label)
+          setVoteFeedback(formatAcceptedVoteFeedback(
+            voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME,
+            spent,
+            result.remainingIncense,
+          ))
         } else if (result.reason === 'insufficient_incense') {
           // The panel painted optimistic local incense the backend has not
           // authorized. Re-read the authoritative ledger so the count is honest
@@ -471,12 +516,49 @@ export function LiangxiangBadge(): ReactElement {
           ? VOTE_RATE_LIMITED
           : '打梁失败，请稍后重试')
       },
-    )
+    ).finally(() => {
+      voteInFlight.current = false
+    })
   }
 
-  const onInsufficientVote = (voteType: VoteType): void => {
-    playNoIncense(voteType)
-    setVoteFeedback(NO_INCENSE_GAG)
+  const onVotePointerDown = (voteType: VoteType, event: ReactPointerEvent<HTMLButtonElement>): void => {
+    if (event.button !== 0 || chargeRef.current !== null || voteInFlight.current) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    const startedAt = performance.now()
+    const hold: { type: VoteType, pointerId: number, startedAt: number, frame: number } = {
+      type: voteType,
+      pointerId: event.pointerId,
+      startedAt,
+      frame: 0,
+    }
+    const tick = (): void => {
+      if (chargeRef.current !== hold) return
+      const progress = Math.min(1, (performance.now() - hold.startedAt) / CHARGE_FULL_MS)
+      setCharge(progress)
+      hold.frame = requestAnimationFrame(tick)
+    }
+    chargeRef.current = hold
+    setChargeVoteType(voteType)
+    setCharge(0)
+    hold.frame = requestAnimationFrame(tick)
+  }
+
+  const onVotePointerUp = (voteType: VoteType, event: ReactPointerEvent<HTMLButtonElement>): void => {
+    const hold = chargeRef.current
+    if (hold === null || hold.pointerId !== event.pointerId) return
+    const elapsed = performance.now() - hold.startedAt
+    clearCharge()
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* already released */
+    }
+    const remaining = store.getSnapshot().personal.remainingIncense
+    if (remaining <= 0) {
+      onInsufficientVote(voteType)
+      return
+    }
+    onVote(voteType, elapsed >= DUMP_HOLD_MS ? remaining : 1)
   }
 
   const onReconcileAsk = (): void => {
@@ -597,6 +679,12 @@ export function LiangxiangBadge(): ReactElement {
           positionPulse={positionPulse}
           placement={placement}
           onVote={onVote}
+          onVotePointerDown={onVotePointerDown}
+          onVotePointerUp={onVotePointerUp}
+          onVotePointerCancel={clearCharge}
+          chargeVoteType={chargeVoteType}
+          charge={charge}
+          localEpithet={localEpithet}
           onInsufficientVote={onInsufficientVote}
           onClose={() => {
             if (welcomeVisible) return

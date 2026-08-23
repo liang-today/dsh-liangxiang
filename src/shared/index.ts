@@ -29,7 +29,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.8.8-beta'
+export const PLUGIN_VERSION = '0.8.9-beta'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
@@ -147,6 +147,18 @@ export const WELCOME_LINES = [
 export const WELCOME_ONLINE_LABEL = '进入在线'
 export const WELCOME_LOCAL_LABEL = '离线模式'
 export const VOTE_RATE_LIMITED = '打梁过快，每分钟最多 50 炷'
+/** Idle-row 梁号: local-only, never sent to the backend. */
+export const LOCAL_EPITHET_HINT = '仅本机可见，天庭不记账'
+
+export function formatAcceptedVoteFeedback(
+  voteName: string,
+  spent: number,
+  remaining: number,
+): string {
+  return spent > 1
+    ? `已上香 · ${voteName} ×${spent}（剩余 ${remaining} 炷）`
+    : `已上香 · ${voteName}（剩余 ${remaining} 炷）`
+}
 export const WELCOME_PRIVACY_NOTE = '在线模式不收集对话、代码、文件或账号。社区账本只用本机生成的随机安装 ID 区分不同香客，无法识别你是谁。'
 export const WELCOME_DISMISS = '知道了'
 

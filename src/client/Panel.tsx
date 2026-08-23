@@ -42,6 +42,7 @@ import {
   VOTE_DOWN_NAME,
   VOTE_UP_LABEL,
   VOTE_UP_NAME,
+  LOCAL_EPITHET_HINT,
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
@@ -107,6 +108,15 @@ export interface PanelProps {
   /** Where to draw relative to the (freely placeable) badge. */
   placement?: PanelPlacement
   onVote: (voteType: VoteType) => void
+  /** Pointer charge for dump; the container owns timers (this file stays hook-free). */
+  onVotePointerDown?: (voteType: VoteType, event: PointerEvent<HTMLButtonElement>) => void
+  onVotePointerUp?: (voteType: VoteType, event: PointerEvent<HTMLButtonElement>) => void
+  onVotePointerCancel?: () => void
+  chargeVoteType?: VoteType | null
+  /** 0..1 lightning intensity while a button is held. */
+  charge?: number
+  /** Local-only 梁号 painted in the reserved feedback row when idle. */
+  localEpithet?: string
   /** Empty-pool click: never sends a vote; plays the playful local cue. */
   onInsufficientVote: (voteType: VoteType) => void
   onClose: () => void
@@ -281,6 +291,9 @@ const voteRowStyle: CSSProperties = {
 }
 
 const voteButtonBase: CSSProperties = {
+  position: 'relative',
+  isolation: 'isolate',
+  overflow: 'hidden',
   width: '100%',
   boxSizing: 'border-box',
   minHeight: '44px',
@@ -333,6 +346,44 @@ const PANEL_CSS = `
 [data-liangxiang-vote]:active:not([disabled]) {
   transform: translateY(1px) scale(0.985);
   box-shadow: 0 2px 7px rgba(0, 0, 0, 0.14);
+}
+[data-liangxiang-vote][data-charging] {
+  --charge: 0;
+  z-index: 1;
+  filter: brightness(calc(1 + (var(--charge) * 0.72)));
+  box-shadow:
+    0 0 calc(6px + (var(--charge) * 22px)) color-mix(in srgb, #f6e27a calc(28% + (var(--charge) * 52%)), transparent),
+    0 0 calc(16px + (var(--charge) * 26px)) color-mix(in srgb, #fff4c2 calc(var(--charge) * 60%), transparent);
+  animation: liangxiang-vote-quake calc(150ms - (var(--charge) * 95ms)) linear infinite;
+}
+[data-liangxiang-vote][data-charging]::before,
+[data-liangxiang-vote][data-charging]::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  background:
+    linear-gradient(112deg, transparent 38%, rgba(255, 255, 220, 0) 46%, rgba(255, 252, 210, calc(0.2 + (var(--charge) * 0.65))) 50%, rgba(255, 255, 220, 0) 54%, transparent 62%),
+    linear-gradient(68deg, transparent 40%, rgba(255, 244, 170, calc(var(--charge) * 0.5)) 50%, transparent 60%);
+  mix-blend-mode: screen;
+  opacity: calc(0.28 + (var(--charge) * 0.72));
+  animation: liangxiang-vote-bolt calc(240ms - (var(--charge) * 130ms)) steps(2, end) infinite;
+}
+[data-liangxiang-vote][data-charging]::after {
+  transform: scaleX(-1);
+  animation-delay: 45ms;
+}
+@keyframes liangxiang-vote-quake {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(calc(var(--charge) * -1.8px), calc(var(--charge) * 1.2px)) rotate(calc(var(--charge) * -0.7deg)); }
+  50% { transform: translate(calc(var(--charge) * 1.6px), calc(var(--charge) * -1.1px)) rotate(calc(var(--charge) * 0.55deg)); }
+  75% { transform: translate(calc(var(--charge) * -1.2px), calc(var(--charge) * -0.9px)) rotate(calc(var(--charge) * 0.4deg)); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes liangxiang-vote-bolt {
+  0% { opacity: 0.12; filter: brightness(1); }
+  50% { opacity: calc(0.45 + (var(--charge) * 0.55)); filter: brightness(1.85); }
+  100% { opacity: 0.18; }
 }
 @keyframes liangxiang-panel-enter {
   from { opacity: 0; transform: translateY(4px) scale(0.985); }
@@ -572,7 +623,14 @@ export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionInfoOpen, onVersionInfoClose,
     welcomeVisible, onChooseOnline, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
-    onVote, onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
+    onVote,
+    onVotePointerDown = () => undefined,
+    onVotePointerUp = () => undefined,
+    onVotePointerCancel = () => undefined,
+    chargeVoteType = null,
+    charge = 0,
+    localEpithet = '',
+    onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
     modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
     onShowVersion, onOpenLiangci, onCycleLocalCase,
@@ -616,7 +674,7 @@ export function Panel(props: PanelProps): ReactElement {
           ? voteFeedback
           : outOfIncense
             ? NO_INCENSE_REASON
-            : ''
+            : localEpithet
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
@@ -1036,10 +1094,26 @@ export function Panel(props: PanelProps): ReactElement {
           data-liangxiang-vote="up"
           disabled={authorityUnavailable}
           aria-disabled={votingDisabled}
-          title={votingDisabled ? disabledReason : `${VOTE_UP_NAME}一炷香`}
-          onClick={() => outOfIncense ? onInsufficientVote('up') : onVote('up')}
+          title={votingDisabled ? disabledReason : `${VOTE_UP_NAME}一炷香，长按倾炉`}
+          data-charging={chargeVoteType === 'up' ? '' : undefined}
+          onClick={() => {
+            if (outOfIncense) onInsufficientVote('up')
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return
+            event.preventDefault()
+            if (outOfIncense) onInsufficientVote('up')
+            else onVote('up')
+          }}
+          onPointerDown={(event) => {
+            if (outOfIncense || authorityUnavailable) return
+            onVotePointerDown('up', event)
+          }}
+          onPointerUp={(event) => onVotePointerUp('up', event)}
+          onPointerCancel={onVotePointerCancel}
           style={{
             ...voteButtonBase,
+            ...(chargeVoteType === 'up' ? { ['--charge']: String(charge) } as CSSProperties : {}),
             background: `linear-gradient(135deg, ${color.ritualEmber}, color-mix(in srgb, ${color.ritualEmber} 74%, #7f2f25))`,
             borderColor: `color-mix(in srgb, ${color.ritualEmber} 84%, ${color.border})`,
             color: '#ffffff',
@@ -1053,10 +1127,26 @@ export function Panel(props: PanelProps): ReactElement {
           data-liangxiang-vote="down"
           disabled={authorityUnavailable}
           aria-disabled={votingDisabled}
-          title={votingDisabled ? disabledReason : `${VOTE_DOWN_NAME}一炷香`}
-          onClick={() => outOfIncense ? onInsufficientVote('down') : onVote('down')}
+          title={votingDisabled ? disabledReason : `${VOTE_DOWN_NAME}一炷香，长按倾炉`}
+          data-charging={chargeVoteType === 'down' ? '' : undefined}
+          onClick={() => {
+            if (outOfIncense) onInsufficientVote('down')
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return
+            event.preventDefault()
+            if (outOfIncense) onInsufficientVote('down')
+            else onVote('down')
+          }}
+          onPointerDown={(event) => {
+            if (outOfIncense || authorityUnavailable) return
+            onVotePointerDown('down', event)
+          }}
+          onPointerUp={(event) => onVotePointerUp('down', event)}
+          onPointerCancel={onVotePointerCancel}
           style={{
             ...voteButtonBase,
+            ...(chargeVoteType === 'down' ? { ['--charge']: String(charge) } as CSSProperties : {}),
             background: `color-mix(in srgb, ${color.ritualCool} 13%, ${color.bgSubtle})`,
             borderColor: `color-mix(in srgb, ${color.ritualCool} 42%, ${color.border})`,
             color: color.textPrimary,
@@ -1069,6 +1159,8 @@ export function Panel(props: PanelProps): ReactElement {
       <p
         role="status"
         data-liangxiang-vote-feedback=""
+        data-liangxiang-epithet={statusLine === localEpithet && localEpithet !== '' ? '' : undefined}
+        title={statusLine === localEpithet && localEpithet !== '' ? LOCAL_EPITHET_HINT : undefined}
         style={{
           margin: '5px 0 0',
           minHeight: '15px',

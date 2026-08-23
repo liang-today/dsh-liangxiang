@@ -266,6 +266,7 @@ export class BackendLiangService implements LiangHostService {
         case_id: intent.caseId,
         vote_type: intent.voteType,
         request_id: intent.requestId,
+        ...(intent.count === undefined ? {} : { count: intent.count }),
       })
       this.setAuthorityAvailable(true)
     } catch (error) {
@@ -821,6 +822,7 @@ function toDomainVoteResult(result: V1VoteResult): VoteResult {
       voteType: result.vote_type,
       usedIncenseToday: result.used_incense,
       remainingIncense: result.remaining_incense,
+      spentIncense: result.spent_incense ?? 1,
     }
   }
   return {

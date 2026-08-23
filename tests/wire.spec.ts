@@ -92,6 +92,26 @@ describe('vote request validation', () => {
       .toEqual({ caseId: 'local-2026-08-16', voteType: 'down', requestId: 'req-000042' })
   })
 
+  it('accepts an optional dump count in [1, 500]', () => {
+    expect(parseWireVoteRequest({
+      caseId: 'local-2026-08-16',
+      voteType: 'up',
+      requestId: 'req-dump-0001',
+      count: 120,
+    })).toEqual({
+      caseId: 'local-2026-08-16',
+      voteType: 'up',
+      requestId: 'req-dump-0001',
+      count: 120,
+    })
+    expect(() => parseWireVoteRequest({
+      caseId: 'local-2026-08-16',
+      voteType: 'up',
+      requestId: 'req-dump-0002',
+      count: 501,
+    })).toThrow(WireError)
+  })
+
   it.each([
     [{ caseId: 'c', voteType: '稳', requestId: 'req-000042' }],
     [{ caseId: 'c', voteType: 'up', requestId: 'short' }],

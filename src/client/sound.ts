@@ -101,6 +101,14 @@ export function playVoteDown(): void {
   tone(640, 320, 180, 'triangle', 0.09)
 }
 
+/** Long-press dump: the click cue plus a short lightning crack. */
+export function playVoteDump(voteType: VoteType): void {
+  if (voteType === 'up') playVoteUp()
+  else playVoteDown()
+  window.setTimeout(() => tone(1480, 220, 90, 'square', 0.055), 40)
+  window.setTimeout(() => tone(2100, 140, 70, 'sawtooth', 0.04), 95)
+}
+
 export interface NoIncenseTone {
   delayMs: number
   freqStart: number

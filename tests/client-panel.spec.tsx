@@ -54,7 +54,7 @@ function visibleNextIncenseText(node: RenderedElement | undefined): string {
 function renderPanel(
   state: LiangxiangViewState,
   voteFeedback = '',
-  extra: {
+    extra: {
     reconcilePending?: boolean
     onReconcileAsk?: () => void
     onReconcileConfirm?: () => void
@@ -66,6 +66,9 @@ function renderPanel(
     utilityOpen?: boolean
     modeConfirmOpen?: boolean
     modeChanging?: boolean
+    localEpithet?: string
+    chargeVoteType?: 'up' | 'down' | null
+    charge?: number
   } = {},
 ): RenderedNode[] {
   return renderDeep(
@@ -83,6 +86,9 @@ function renderPanel(
       condensedIncense={extra.condensedIncense ?? 0}
       voteFeedback={voteFeedback}
       onVote={() => undefined}
+      localEpithet={extra.localEpithet ?? ''}
+      chargeVoteType={extra.chargeVoteType ?? null}
+      charge={extra.charge ?? 0}
       onInsufficientVote={extra.onInsufficientVote ?? (() => undefined)}
       onClose={() => undefined}
       reconcilePending={extra.reconcilePending ?? false}
@@ -645,6 +651,25 @@ describe('region 3: exactly two vote buttons', () => {
   it('shows the transient 已上香 feedback line', () => {
     const tree = renderPanel(demoState(), '已上香 · 夯（剩余 4 炷）')
     expect(textContent(tree)).toContain('已上香 · 夯（剩余 4 炷）')
+  })
+
+  it('paints the local 梁号 in the reserved idle feedback row', () => {
+    const tree = renderPanel(demoState(), '', { localEpithet: '勤香·死夯梁' })
+    const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
+    expect(row && textContent([row])).toBe('勤香·死夯梁')
+    expect(row?.props['data-liangxiang-epithet']).toBe('')
+    expect(row?.props.title).toBe('仅本机可见，天庭不记账')
+    expect(styleOf(row).height).toBe('15px')
+  })
+
+  it('charges a held vote button without adding a fifth region', () => {
+    const tree = renderPanel(demoState(), '', { chargeVoteType: 'up', charge: 0.8 })
+    const votes = findByAttr(tree, 'data-liangxiang-vote')
+    expect(votes[0]?.props['data-charging']).toBe('')
+    expect(votes[1]?.props['data-charging']).toBeUndefined()
+    expect(styleOf(votes[0])['--charge']).toBe('0.8')
+    expect(findByAttr(tree, 'data-liangxiang-region').map((node) => node.props['data-liangxiang-region']))
+      .toEqual(['case', 'core', 'vote', 'social'])
   })
 
   it('keeps observed 凝香 visible but disables votes while the community is unreachable', () => {

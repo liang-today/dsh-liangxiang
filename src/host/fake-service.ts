@@ -24,8 +24,10 @@ import {
 } from '../compat/dsh/token-usage.ts'
 import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
 import {
-  applyAcceptedVote,
+  applyAcceptedVotes,
+  clampVoteSpend,
   canSpendIncense,
+  VOTE_REFILL_PER_MINUTE,
   computeEffectiveTokens,
   deriveArchiveResult,
   derivePersonalLiangQiState,
@@ -40,11 +42,13 @@ import {
   type LiangMonthArchive,
   type PersonalLiangQiState,
   type LiangWeekArchive,
+  voteBudgetAvailable,
   type VoteResult,
 } from '../domain/index.ts'
 import type { LiangxiangWireState, WireGlobalCounts, WireVoteRequest } from '../shared/wire.ts'
 import { WIRE_SCHEMA_VERSION } from '../shared/wire.ts'
 import { createBusinessDateProvider, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
+import { BackendClientError } from './backend-client.ts'
 import { DEV_CREDIT_SESSION_ID } from './dev-credit.ts'
 import { localCaseId, LOCAL_CASE_TITLES, nextLocalCaseIndex } from './local-cases.ts'
 import { LIANGZI_POLICY_VERSION } from '../shared/backend-v1.ts'
@@ -73,6 +77,7 @@ export interface PersistedVoteRecord {
   usedIncenseToday: number
   remainingIncense: number
   acceptedAt: number
+  spentIncense?: number
 }
 
 /** Everything the persistence adapter loads back at boot. */
@@ -140,6 +145,9 @@ export class FakeAuthoritativeLiangService {
   private activeCase!: DailyLiangCase
   private aggregate: GlobalVoteAggregate = EMPTY_GLOBAL_AGGREGATE
   private usedIncenseToday = 0
+  /** Local incense token bucket: same 50/min, cap 500 as the community backend. */
+  private voteBucketTokens = VOTE_REFILL_PER_MINUTE
+  private voteBucketUpdatedAt = 0
 
   private published!: WireGlobalCounts
   private snapshotSequence = 0
@@ -283,6 +291,7 @@ export class FakeAuthoritativeLiangService {
           voteType: existing.voteType,
           usedIncenseToday: existing.usedIncenseToday,
           remainingIncense: existing.remainingIncense,
+          spentIncense: existing.spentIncense ?? 1,
         })
       }
       return respond({
@@ -302,18 +311,38 @@ export class FakeAuthoritativeLiangService {
       })
     }
 
+    const now = this.clock.now()
+    const available = this.voteBucketUpdatedAt === 0
+      ? VOTE_REFILL_PER_MINUTE
+      : Math.floor(voteBudgetAvailable(this.voteBucketTokens, this.voteBucketUpdatedAt, now))
+    if (available < 1) {
+      throw new BackendClientError('too many vote requests; slow down', 429, 'vote_rate_limited')
+    }
+    const spent = clampVoteSpend(intent.count ?? 1, personal.remainingIncense, available)
+    if (spent < 1) {
+      return respond({
+        status: 'rejected',
+        requestId: intent.requestId,
+        reason: 'insufficient_incense',
+        message: 'no remaining incense today',
+      })
+    }
+
     // Commit (no awaits between the check above and the writes below).
     const firstAcceptedVote = ![...this.votes.values()].some(record => record.caseId === this.activeCase.id)
-    this.usedIncenseToday += 1
-    this.aggregate = applyAcceptedVote(this.aggregate, intent.voteType, firstAcceptedVote)
+    this.usedIncenseToday += spent
+    this.aggregate = applyAcceptedVotes(this.aggregate, intent.voteType, spent, firstAcceptedVote)
     this.aggregates.set(this.activeCase.id, this.aggregate)
     this.ledgers.set(this.currentDate, { usedIncense: this.usedIncenseToday })
+    this.voteBucketTokens = available - spent
+    this.voteBucketUpdatedAt = now
     const record: PersistedVoteRecord = {
       caseId: intent.caseId,
       voteType: intent.voteType,
       usedIncenseToday: this.usedIncenseToday,
-      remainingIncense: personal.remainingIncense - 1,
-      acceptedAt: this.clock.now(),
+      remainingIncense: personal.remainingIncense - spent,
+      acceptedAt: now,
+      spentIncense: spent,
     }
     this.votes.set(intent.requestId, record)
     this.persistence?.putLedger(this.currentDate, { usedIncense: this.usedIncenseToday })
@@ -328,6 +357,7 @@ export class FakeAuthoritativeLiangService {
       voteType: intent.voteType,
       usedIncenseToday: record.usedIncenseToday,
       remainingIncense: record.remainingIncense,
+      spentIncense: spent,
     })
   }
 

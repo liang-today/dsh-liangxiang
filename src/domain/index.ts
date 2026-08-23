@@ -24,6 +24,7 @@ export {
 export {
   canSpendIncense,
   derivePersonalLiangQiState,
+  spendIncense,
   spendOneIncense,
   type IncenseAccountingInput,
   type PersonalLiangQiState,
@@ -44,6 +45,7 @@ export {
 export {
   EMPTY_GLOBAL_AGGREGATE,
   applyAcceptedVote,
+  applyAcceptedVotes,
   assertValidAggregate,
   buildPublicSnapshot,
   type GlobalVoteAggregate,
@@ -51,6 +53,8 @@ export {
   type SnapshotBuildInput,
 } from './global-state.ts'
 export {
+  VOTE_COUNT_MAX,
+  VOTE_COUNT_MIN,
   VOTE_TYPES,
   assertRequestId,
   assertVoteType,
@@ -62,6 +66,22 @@ export {
   type VoteResult,
   type VoteType,
 } from './vote.ts'
+export {
+  VOTE_BUDGET_WINDOW_MS,
+  VOTE_BURST_CAP,
+  VOTE_BURST_MINUTES,
+  VOTE_REFILL_PER_MINUTE,
+  clampVoteSpend,
+  voteBudgetAvailable,
+  voteBurstCap,
+} from './vote-budget.ts'
+export {
+  EMPTY_LOCAL_EPITHET,
+  deriveLocalEpithet,
+  recordLocalEpithetVote,
+  type LocalEpithet,
+  type LocalEpithetRecord,
+} from './local-epithet.ts'
 export {
   assertBusinessDate,
   assertValidCase,

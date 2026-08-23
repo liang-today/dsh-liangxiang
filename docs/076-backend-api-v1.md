@@ -100,18 +100,20 @@
 ## POST /v1/votes
 
 ```jsonc
-// 请求：仅这三个字段，多带权威字段一律 400
-{ "case_id": "case-2026-08-16", "vote_type": "up", "request_id": "5d2d034a-…" }
+// 请求：最少三个字段；长按一把梭加 count。多带权威字段一律 400
+{ "case_id": "case-2026-08-16", "vote_type": "up", "request_id": "5d2d034a-…", "count": 80 }
 // 响应（200 accepted / 409 业务拒绝）
 { "schema_version": 1,
   "result": { "status": "accepted", "request_id": "…", "vote_type": "up",
-              "used_incense": 1, "remaining_incense": 4, "replayed": false },
+              "used_incense": 50, "remaining_incense": 30, "spent_incense": 50, "replayed": false },
   "authoritative_personal_state": {…},
   "snapshot_version": { "sequence": 3, "captured_at": 0 },
   "global_snapshot": { "case_id": "case-2026-08-16", "sequence": 3, "up_votes": …, "down_votes": …, "…" } }
 ```
 
 - `request_id` 形如 `[A-Za-z0-9._-]{8,128}`。
+- `count` 可选，整数 `[1, 500]`，省略视为 1。服务器一次事务裁切：`spent = min(count, remaining, 令牌桶, 500)`。不要为 dump 拆成多次 HTTP，也不要为它加 schema / 新列；`liang_vote` 仍一行一 `request_id`。
+- 令牌桶按**炷**而不是按 HTTP 次数：每分钟回填 50，最多攒 10 分钟 = 500；新安装初始 50。先 parse 再 peek，accepted 且非重放后才 `consume(spent)`。桶被回收时用 `MAX(liang_vote.created_at)` 从空桶回填，不新增列。
 - 拒绝体：`result.status = "rejected"` + `reason` + `message`。
 - accepted 投票在**自己的事务里发布新快照**并随 `global_snapshot` 返回——投票者点击即看到梁位变化，不多一次往返；被拒票不发布。公共比例仍只在快照 cadence 变化（见 GET /v1/snapshot）。
 - host 端对「缺 `global_snapshot` 的旧后端」有回退：严格解析失败时按 `V1VoteEnvelope` 接受缺省，并回退 `GET /v1/snapshot` 补齐；该回退取的快照可能尚未包含刚投的那一票（旧后端按 cadence 发布），是明确接受的降级。
@@ -179,5 +181,5 @@ node lib/backend-cli.js case publish "测试发布：梁相是夯还是拉"
 
 ## 限流
 
-`POST /v1/votes` 按 installation 每分钟 `LIANGXIANG_VOTE_RATE_LIMIT` 次（默认 50，0 关闭），超出 429。
+`POST /v1/votes` 按 installation 每分钟 `LIANGXIANG_VOTE_RATE_LIMIT` **炷**（默认 50，0 关闭），闲置最多攒 10 分钟共 500 炷；超出 429。一把梭是一次请求。
 这是防误用/防抖，不是安全边界——没有 DSH 身份，限流可以被换密钥对绕过（设备指纹只挡住同一 MAC 集合上的第二次安装）。

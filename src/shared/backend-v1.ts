@@ -12,8 +12,8 @@
  *    them from the same row and REJECTS the frame on disagreement, which is
  *    what keeps "ratios and state share one snapshot version" honest across
  *    the process boundary;
- *  - a vote body is the minimum intent only (`case_id`, `vote_type`,
- *    `request_id`). Identity travels in the installation header and personal
+ *  - a vote body is the minimum intent (`case_id`, `vote_type`,
+ *    `request_id`, optional `count`). Identity travels in the installation header and personal
  *    accounting is never accepted from the caller (AGENTS.md §9).
  *
  * Trust: under Decision Gate A3 the installation id is a PSEUDONYMOUS
@@ -28,6 +28,8 @@ import {
   LIANGZI_STATES,
   deriveLiangziState,
   isVoteType,
+  VOTE_COUNT_MAX,
+  VOTE_COUNT_MIN,
   type LiangziState,
   type LiangziThresholdPolicy,
   type VoteRejectionReason,
@@ -195,6 +197,8 @@ export interface V1VoteRequest {
   case_id: string
   vote_type: VoteType
   request_id: string
+  /** Requested sticks; omitted means 1. The server clamps to remaining and budget. */
+  count?: number
 }
 
 export interface V1VoteAccepted {
@@ -203,6 +207,8 @@ export interface V1VoteAccepted {
   vote_type: VoteType
   used_incense: number
   remaining_incense: number
+  /** Sticks actually spent this accept (1 for a click). */
+  spent_incense?: number
   /** True when this response replayed an earlier accepted vote (idempotency). */
   replayed: boolean
 }
@@ -616,6 +622,9 @@ function parseVoteResult(raw: unknown, field: string): V1VoteResult {
       vote_type: record.vote_type,
       used_incense: requireCount(record.used_incense, `${field}.used_incense`),
       remaining_incense: requireCount(record.remaining_incense, `${field}.remaining_incense`),
+      spent_incense: record.spent_incense === undefined
+        ? 1
+        : requireCount(record.spent_incense, `${field}.spent_incense`),
       replayed: record.replayed,
     }
   }
@@ -798,7 +807,19 @@ export function parseV1VoteRequest(raw: unknown): V1VoteRequest {
       throw new WireError(`vote.${forbidden}`, 'client-declared authority is not accepted')
     }
   }
-  return { case_id: caseId, vote_type: record.vote_type as VoteType, request_id: requestId }
+  let count: number | undefined
+  if (record.count !== undefined) {
+    count = requireCount(record.count, 'vote.count')
+    if (count < VOTE_COUNT_MIN || count > VOTE_COUNT_MAX) {
+      throw new WireError('vote.count', `expected an integer in [${VOTE_COUNT_MIN}, ${VOTE_COUNT_MAX}]`)
+    }
+  }
+  return {
+    case_id: caseId,
+    vote_type: record.vote_type as VoteType,
+    request_id: requestId,
+    ...(count === undefined ? {} : { count }),
+  }
 }
 
 /** Validate a token-claim body (backend boundary). */

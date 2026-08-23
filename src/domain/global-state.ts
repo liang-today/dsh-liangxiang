@@ -62,10 +62,24 @@ export function applyAcceptedVote(
   voteType: VoteType,
   isFirstAcceptedVoteByVoter: boolean,
 ): GlobalVoteAggregate {
+  return applyAcceptedVotes(aggregate, voteType, 1, isFirstAcceptedVoteByVoter)
+}
+
+/** Apply `count` accepted votes of one direction in a single fold. */
+export function applyAcceptedVotes(
+  aggregate: GlobalVoteAggregate,
+  voteType: VoteType,
+  count: number,
+  isFirstAcceptedVoteByVoter: boolean,
+): GlobalVoteAggregate {
   assertValidAggregate(aggregate)
+  assertCount(count, 'invalid_vote_count', 'acceptedCount')
+  if (count < 1) {
+    throw new DomainError('invalid_vote_count', `acceptedCount must be >= 1, got ${String(count)}`)
+  }
   return {
-    upVotes: aggregate.upVotes + (voteType === 'up' ? 1 : 0),
-    downVotes: aggregate.downVotes + (voteType === 'down' ? 1 : 0),
+    upVotes: aggregate.upVotes + (voteType === 'up' ? count : 0),
+    downVotes: aggregate.downVotes + (voteType === 'down' ? count : 0),
     uniqueVoters: aggregate.uniqueVoters + (isFirstAcceptedVoteByVoter ? 1 : 0),
   }
 }
