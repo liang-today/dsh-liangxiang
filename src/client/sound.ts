@@ -105,8 +105,9 @@ export function playVoteDown(): void {
 export function playVoteDump(voteType: VoteType): void {
   if (voteType === 'up') playVoteUp()
   else playVoteDown()
-  window.setTimeout(() => tone(1480, 220, 90, 'square', 0.055), 40)
-  window.setTimeout(() => tone(2100, 140, 70, 'sawtooth', 0.04), 95)
+  window.setTimeout(() => tone(1680, 180, 140, 'square', 0.09), 30)
+  window.setTimeout(() => tone(2400, 90, 110, 'sawtooth', 0.07), 80)
+  window.setTimeout(() => tone(320, 90, 220, 'triangle', 0.06), 130)
 }
 
 export interface NoIncenseTone {

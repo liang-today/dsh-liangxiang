@@ -18,7 +18,7 @@ import { formatAcceptedVoteFeedback, HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LAB
 import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { readLocalEpithet, rememberLocalEpithetVote } from './local-epithet-store.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
-import { CHARGE_FULL_MS, DUMP_HOLD_MS } from './vote-charge.ts'
+import { chargeProgress, isDumpHold } from './vote-charge.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
@@ -453,6 +453,7 @@ export function LiangxiangBadge(): ReactElement {
   const [localEpithet, setLocalEpithet] = useState(() => readLocalEpithet().label)
   const [chargeVoteType, setChargeVoteType] = useState<VoteType | null>(null)
   const [charge, setCharge] = useState(0)
+  const [dumpBurst, setDumpBurst] = useState<VoteType | null>(null)
   const chargeRef = useRef<{
     type: VoteType
     pointerId: number
@@ -487,12 +488,15 @@ export function LiangxiangBadge(): ReactElement {
     }
     const requested = Math.min(Math.max(1, count), remainingBefore, VOTE_COUNT_MAX)
     voteInFlight.current = true
-    store.vote(voteType, requested === 1 ? undefined : { count: requested }).then(
+    store.vote(voteType, { count: requested }).then(
       (result) => {
         if (result.status === 'accepted') {
           const spent = Math.max(0, remainingBefore - result.remainingIncense)
-          if (spent > 1) playVoteDump(voteType)
-          else if (voteType === 'up') playVoteUp()
+          if (spent > 1) {
+            playVoteDump(voteType)
+            setDumpBurst(voteType)
+            window.setTimeout(() => setDumpBurst((current) => current === voteType ? null : current), 460)
+          } else if (voteType === 'up') playVoteUp()
           else playVoteDown()
           if (spent > 0) setLocalEpithet(rememberLocalEpithetVote(voteType, spent).label)
           setVoteFeedback(formatAcceptedVoteFeedback(
@@ -521,8 +525,29 @@ export function LiangxiangBadge(): ReactElement {
     })
   }
 
+  const finishHold = (voteType: VoteType, pointerId: number, target?: HTMLButtonElement): void => {
+    const hold = chargeRef.current
+    if (hold === null || hold.pointerId !== pointerId) return
+    const elapsed = performance.now() - hold.startedAt
+    clearCharge()
+    if (target !== undefined) {
+      try {
+        target.releasePointerCapture(pointerId)
+      } catch {
+        /* already released */
+      }
+    }
+    const remaining = store.getSnapshot().personal.remainingIncense
+    if (remaining <= 0) {
+      onInsufficientVote(voteType)
+      return
+    }
+    onVote(voteType, isDumpHold(elapsed) ? remaining : 1)
+  }
+
   const onVotePointerDown = (voteType: VoteType, event: ReactPointerEvent<HTMLButtonElement>): void => {
     if (event.button !== 0 || chargeRef.current !== null || voteInFlight.current) return
+    event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     const startedAt = performance.now()
     const hold: { type: VoteType, pointerId: number, startedAt: number, frame: number } = {
@@ -533,8 +558,7 @@ export function LiangxiangBadge(): ReactElement {
     }
     const tick = (): void => {
       if (chargeRef.current !== hold) return
-      const progress = Math.min(1, (performance.now() - hold.startedAt) / CHARGE_FULL_MS)
-      setCharge(progress)
+      setCharge(chargeProgress(performance.now() - hold.startedAt))
       hold.frame = requestAnimationFrame(tick)
     }
     chargeRef.current = hold
@@ -544,21 +568,13 @@ export function LiangxiangBadge(): ReactElement {
   }
 
   const onVotePointerUp = (voteType: VoteType, event: ReactPointerEvent<HTMLButtonElement>): void => {
+    finishHold(voteType, event.pointerId, event.currentTarget)
+  }
+
+  const onVotePointerCancel = (): void => {
     const hold = chargeRef.current
-    if (hold === null || hold.pointerId !== event.pointerId) return
-    const elapsed = performance.now() - hold.startedAt
-    clearCharge()
-    try {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    } catch {
-      /* already released */
-    }
-    const remaining = store.getSnapshot().personal.remainingIncense
-    if (remaining <= 0) {
-      onInsufficientVote(voteType)
-      return
-    }
-    onVote(voteType, elapsed >= DUMP_HOLD_MS ? remaining : 1)
+    if (hold === null) return
+    finishHold(hold.type, hold.pointerId)
   }
 
   const onReconcileAsk = (): void => {
@@ -681,9 +697,10 @@ export function LiangxiangBadge(): ReactElement {
           onVote={onVote}
           onVotePointerDown={onVotePointerDown}
           onVotePointerUp={onVotePointerUp}
-          onVotePointerCancel={clearCharge}
+          onVotePointerCancel={onVotePointerCancel}
           chargeVoteType={chargeVoteType}
           charge={charge}
+          dumpBurst={dumpBurst}
           localEpithet={localEpithet}
           onInsufficientVote={onInsufficientVote}
           onClose={() => {

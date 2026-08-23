@@ -70,6 +70,7 @@ import {
   WELCOME_TITLE,
   liangziRatioRangeText,
 } from '../shared/index.ts'
+import { DUMP_ARMED_CHARGE } from './vote-charge.ts'
 import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ArchiveDeskIcon, HomepageIcon, ModeSwitchIcon, VersionSealIcon } from './UtilityIcons.tsx'
@@ -115,6 +116,8 @@ export interface PanelProps {
   chargeVoteType?: VoteType | null
   /** 0..1 lightning intensity while a button is held. */
   charge?: number
+  /** After a dump lands: strike the vote row once. */
+  dumpBurst?: VoteType | null
   /** Local-only 梁号 painted in the reserved feedback row when idle. */
   localEpithet?: string
   /** Empty-pool click: never sends a vote; plays the playful local cue. */
@@ -284,6 +287,7 @@ const flankUnitStyle: CSSProperties = {
 }
 
 const voteRowStyle: CSSProperties = {
+  position: 'relative',
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: '8px',
@@ -296,8 +300,8 @@ const voteButtonBase: CSSProperties = {
   overflow: 'hidden',
   width: '100%',
   boxSizing: 'border-box',
-  minHeight: '44px',
-  padding: '10px 0',
+  minHeight: '38px',
+  padding: '7px 0',
   borderRadius: '11px',
   fontFamily: font.family,
   fontSize: '13px',
@@ -307,6 +311,9 @@ const voteButtonBase: CSSProperties = {
   whiteSpace: 'nowrap',
   cursor: 'pointer',
   border: `1px solid ${color.border}`,
+  touchAction: 'manipulation',
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
   transition: 'transform 100ms ease, box-shadow 120ms ease, filter 120ms ease, border-color 120ms ease',
 }
 
@@ -350,40 +357,87 @@ const PANEL_CSS = `
 [data-liangxiang-vote][data-charging] {
   --charge: 0;
   z-index: 1;
-  filter: brightness(calc(1 + (var(--charge) * 0.72)));
+  color: #fffdf3 !important;
+  filter: brightness(calc(1.08 + (var(--charge) * 1.15))) saturate(calc(1 + (var(--charge) * 0.55)));
   box-shadow:
-    0 0 calc(6px + (var(--charge) * 22px)) color-mix(in srgb, #f6e27a calc(28% + (var(--charge) * 52%)), transparent),
-    0 0 calc(16px + (var(--charge) * 26px)) color-mix(in srgb, #fff4c2 calc(var(--charge) * 60%), transparent);
-  animation: liangxiang-vote-quake calc(150ms - (var(--charge) * 95ms)) linear infinite;
+    0 0 calc(10px + (var(--charge) * 28px)) color-mix(in srgb, #fff1a8 calc(40% + (var(--charge) * 60%)), transparent),
+    0 0 calc(22px + (var(--charge) * 36px)) color-mix(in srgb, #ffb347 calc(var(--charge) * 70%), transparent),
+    inset 0 0 calc(12px + (var(--charge) * 18px)) color-mix(in srgb, #fff6c8 calc(var(--charge) * 55%), transparent);
+  animation: liangxiang-vote-quake calc(130ms - (var(--charge) * 80ms)) linear infinite;
 }
-[data-liangxiang-vote][data-charging]::before,
-[data-liangxiang-vote][data-charging]::after {
+[data-liangxiang-vote][data-charging][data-armed] {
+  animation-duration: 55ms;
+}
+[data-liangxiang-vote-fill] {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--charge) * 100%);
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 252, 220, 0.96) 0%, rgba(255, 168, 46, 0.88) 55%, rgba(190, 40, 16, 0.72) 100%);
+  opacity: calc(0.25 + (var(--charge) * 0.7));
+  mix-blend-mode: screen;
+}
+[data-liangxiang-vote="down"] [data-liangxiang-vote-fill] {
+  background: linear-gradient(180deg, rgba(245, 252, 255, 0.96) 0%, rgba(120, 190, 255, 0.82) 55%, rgba(40, 70, 160, 0.7) 100%);
+}
+[data-liangxiang-vote-bolt] {
+  position: absolute;
+  top: -28%;
+  width: 18px;
+  height: 160%;
+  pointer-events: none;
+  background: linear-gradient(180deg, #ffffff 0%, #fff3b0 38%, #ffbe3b 70%, transparent 100%);
+  clip-path: polygon(42% 0, 78% 22%, 52% 22%, 88% 58%, 36% 40%, 58% 40%, 12% 100%, 48% 62%, 30% 62%, 62% 0);
+  mix-blend-mode: plus-lighter;
+  opacity: calc(var(--charge) * 0.95);
+  filter: drop-shadow(0 0 6px #fff4b8);
+  animation: liangxiang-vote-bolt calc(160ms - (var(--charge) * 90ms)) steps(2, end) infinite;
+}
+[data-liangxiang-vote="down"] [data-liangxiang-vote-bolt] {
+  background: linear-gradient(180deg, #ffffff 0%, #d7f0ff 38%, #7ec8ff 70%, transparent 100%);
+  filter: drop-shadow(0 0 6px #c8ecff);
+}
+[data-liangxiang-vote-bolt="a"] { left: 18%; }
+[data-liangxiang-vote-bolt="b"] { right: 16%; transform: scaleX(-1); animation-delay: 40ms; }
+[data-liangxiang-vote-label] {
+  position: relative;
+  z-index: 1;
+}
+[data-liangxiang-region="vote"][data-dump-burst] {
+  animation: liangxiang-dump-row 420ms ease-out;
+}
+[data-liangxiang-region="vote"][data-dump-burst]::after {
   content: "";
   position: absolute;
-  inset: -30%;
+  inset: -18px -8px;
   pointer-events: none;
   background:
-    linear-gradient(112deg, transparent 38%, rgba(255, 255, 220, 0) 46%, rgba(255, 252, 210, calc(0.2 + (var(--charge) * 0.65))) 50%, rgba(255, 255, 220, 0) 54%, transparent 62%),
-    linear-gradient(68deg, transparent 40%, rgba(255, 244, 170, calc(var(--charge) * 0.5)) 50%, transparent 60%);
+    linear-gradient(100deg, transparent 30%, rgba(255, 255, 230, 0.88) 48%, rgba(255, 210, 90, 0.55) 50%, rgba(255, 255, 230, 0.88) 52%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 244, 180, 0.55), transparent 62%);
   mix-blend-mode: screen;
-  opacity: calc(0.28 + (var(--charge) * 0.72));
-  animation: liangxiang-vote-bolt calc(240ms - (var(--charge) * 130ms)) steps(2, end) infinite;
-}
-[data-liangxiang-vote][data-charging]::after {
-  transform: scaleX(-1);
-  animation-delay: 45ms;
+  animation: liangxiang-dump-sheet 420ms ease-out both;
 }
 @keyframes liangxiang-vote-quake {
   0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(calc(var(--charge) * -1.8px), calc(var(--charge) * 1.2px)) rotate(calc(var(--charge) * -0.7deg)); }
-  50% { transform: translate(calc(var(--charge) * 1.6px), calc(var(--charge) * -1.1px)) rotate(calc(var(--charge) * 0.55deg)); }
-  75% { transform: translate(calc(var(--charge) * -1.2px), calc(var(--charge) * -0.9px)) rotate(calc(var(--charge) * 0.4deg)); }
+  25% { transform: translate(calc(var(--charge) * -3.6px), calc(var(--charge) * 2.4px)) rotate(calc(var(--charge) * -1.4deg)); }
+  50% { transform: translate(calc(var(--charge) * 3.2px), calc(var(--charge) * -2.2px)) rotate(calc(var(--charge) * 1.1deg)); }
+  75% { transform: translate(calc(var(--charge) * -2.6px), calc(var(--charge) * -1.8px)) rotate(calc(var(--charge) * 0.9deg)); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 @keyframes liangxiang-vote-bolt {
-  0% { opacity: 0.12; filter: brightness(1); }
-  50% { opacity: calc(0.45 + (var(--charge) * 0.55)); filter: brightness(1.85); }
-  100% { opacity: 0.18; }
+  0% { opacity: 0.05; transform: translateY(8%) scaleY(0.86); }
+  50% { opacity: calc(0.55 + (var(--charge) * 0.45)); transform: translateY(-4%) scaleY(1.12); }
+  100% { opacity: 0.12; transform: translateY(6%) scaleY(0.9); }
+}
+@keyframes liangxiang-dump-row {
+  0% { filter: brightness(2.2); transform: scale(1.03); }
+  100% { filter: brightness(1); transform: scale(1); }
+}
+@keyframes liangxiang-dump-sheet {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
 }
 @keyframes liangxiang-panel-enter {
   from { opacity: 0; transform: translateY(4px) scale(0.985); }
@@ -629,6 +683,7 @@ export function Panel(props: PanelProps): ReactElement {
     onVotePointerCancel = () => undefined,
     chargeVoteType = null,
     charge = 0,
+    dumpBurst = null,
     localEpithet = '',
     onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
@@ -1088,7 +1143,11 @@ export function Panel(props: PanelProps): ReactElement {
       </div>
 
       {/* Region 3 — exactly two equal-width vote buttons */}
-      <div data-liangxiang-region="vote" style={voteRowStyle}>
+      <div
+        data-liangxiang-region="vote"
+        data-dump-burst={dumpBurst ?? undefined}
+        style={voteRowStyle}
+      >
         <button
           type="button"
           data-liangxiang-vote="up"
@@ -1096,6 +1155,8 @@ export function Panel(props: PanelProps): ReactElement {
           aria-disabled={votingDisabled}
           title={votingDisabled ? disabledReason : `${VOTE_UP_NAME}一炷香，长按倾炉`}
           data-charging={chargeVoteType === 'up' ? '' : undefined}
+          data-armed={chargeVoteType === 'up' && charge >= DUMP_ARMED_CHARGE ? '' : undefined}
+          onContextMenu={(event) => event.preventDefault()}
           onClick={() => {
             if (outOfIncense) onInsufficientVote('up')
           }}
@@ -1120,7 +1181,18 @@ export function Panel(props: PanelProps): ReactElement {
             boxShadow: `0 5px 14px color-mix(in srgb, ${color.ritualEmber} 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.18)`,
           }}
         >
-          {VOTE_UP_LABEL}
+          {chargeVoteType === 'up' ? (
+            <>
+              <span data-liangxiang-vote-fill="" />
+              <span data-liangxiang-vote-bolt="a" />
+              <span data-liangxiang-vote-bolt="b" />
+            </>
+          ) : null}
+          <span data-liangxiang-vote-label="">
+            {chargeVoteType === 'up' && charge >= DUMP_ARMED_CHARGE
+              ? `倾炉 ×${personal.remainingIncense}`
+              : VOTE_UP_LABEL}
+          </span>
         </button>
         <button
           type="button"
@@ -1129,6 +1201,8 @@ export function Panel(props: PanelProps): ReactElement {
           aria-disabled={votingDisabled}
           title={votingDisabled ? disabledReason : `${VOTE_DOWN_NAME}一炷香，长按倾炉`}
           data-charging={chargeVoteType === 'down' ? '' : undefined}
+          data-armed={chargeVoteType === 'down' && charge >= DUMP_ARMED_CHARGE ? '' : undefined}
+          onContextMenu={(event) => event.preventDefault()}
           onClick={() => {
             if (outOfIncense) onInsufficientVote('down')
           }}
@@ -1153,7 +1227,18 @@ export function Panel(props: PanelProps): ReactElement {
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
           }}
         >
-          {VOTE_DOWN_LABEL}
+          {chargeVoteType === 'down' ? (
+            <>
+              <span data-liangxiang-vote-fill="" />
+              <span data-liangxiang-vote-bolt="a" />
+              <span data-liangxiang-vote-bolt="b" />
+            </>
+          ) : null}
+          <span data-liangxiang-vote-label="">
+            {chargeVoteType === 'down' && charge >= DUMP_ARMED_CHARGE
+              ? `倾炉 ×${personal.remainingIncense}`
+              : VOTE_DOWN_LABEL}
+          </span>
         </button>
       </div>
       <p
@@ -1162,15 +1247,20 @@ export function Panel(props: PanelProps): ReactElement {
         data-liangxiang-epithet={statusLine === localEpithet && localEpithet !== '' ? '' : undefined}
         title={statusLine === localEpithet && localEpithet !== '' ? LOCAL_EPITHET_HINT : undefined}
         style={{
-          margin: '5px 0 0',
-          minHeight: '15px',
-          height: '15px',
-          lineHeight: '15px',
+          margin: '6px 0 0',
+          minHeight: '22px',
+          height: '22px',
+          lineHeight: '22px',
           overflow: 'hidden',
           whiteSpace: 'nowrap',
           textOverflow: 'ellipsis',
-          fontSize: '10px',
-          color: outOfIncense || offline || absurdNotice ? color.warn : color.textTertiary,
+          fontSize: '12px',
+          fontWeight: voteFeedback !== '' ? 700 : 600,
+          color: outOfIncense || offline || absurdNotice
+            ? color.warn
+            : voteFeedback !== ''
+              ? color.textPrimary
+              : color.textSecondary,
           textAlign: 'center',
         }}
       >

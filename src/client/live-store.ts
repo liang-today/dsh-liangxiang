@@ -327,7 +327,7 @@ export function createLiveLiangxiangStore(
       caseId: state.activeCase.id,
       voteType,
       requestId,
-      ...(count === undefined || count === 1 ? {} : { count }),
+      ...(count === undefined ? {} : { count }),
     })
     const attempt = (): Promise<unknown> => transport.fetchJson(VOTE_PATH, { method: 'POST', body })
     let raw: unknown
