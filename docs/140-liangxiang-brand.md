@@ -130,7 +130,7 @@ CSS data attribute、日志前缀和 `liangxiang-backend` 服务名。代码、�
 | 官网首页 / 关于 | 故事与入口；安装指向部署指南；上架只点名，不教第二套装法 | 作者写成「npm 账户」、仓库介绍写成 npm 安装说明 |
 | 官网部署指南 | 完整安装（dsh-market 步骤 + 截图）；其他已上架目录只一行 | 给 1024 / awesome 列表各写一套安装教程 |
 | 小红书 / X | 故事与官网入口 | 安装命令、市场操作逐步截图 |
-| 插件市场 / 目录 | 设置 → **插件市场**（不是官方「插件」页）；搜 `liangxiang` | 把商店写成 DeepSeek 官方；把旧插件列表当成商店 |
+| 插件市场 / 目录 | 设置 → **插件市场**；搜 `liangxiang` | 把商店写成 DeepSeek 官方 |
 | `package.json` `description` | 官网导语那一句产品短描述 | 安装命令、渠道专用提示 |
 
 发布 npm 时用 `docs/npm-readme.md` 覆盖包内的 `README.md`；GitHub 仓库始终保留产品向的 `README.md`。`prepack` / `postpack` 负责交换，不要手改后再发。
