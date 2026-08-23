@@ -10,7 +10,7 @@
 
 ## 安装
 
-先完全退出 WebUI。有商店时走界面：设置 → **插件市场**（不是「插件」）→ 搜 `liangxiang`。没有商店先装 `dshmarket`，步骤和截图见 [部署指南](https://liang.today/guide/#market)。
+先完全退出 WebUI。有商店时走界面：设置 → **插件市场**（不是「插件」）→ 搜 `liangxiang`。没有商店先装 `dshmarket`，步骤和截图见 [部署指南](https://liang.today/guide/#market)。也已列入 [1024 Store](https://deepseek1024.com/) 和 [awesome-deepseek-harness](https://github.com/Dominic789654/awesome-deepseek-harness)。
 
 也可以直接写入 profile：
 

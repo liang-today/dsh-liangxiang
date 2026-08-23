@@ -125,9 +125,11 @@ CSS data attribute、日志前缀和 `liangxiang-backend` 服务名。代码、�
 | 渠道 | 写什么 | 不要写 |
 |---|---|---|
 | GitHub About | 品牌短句 + 这是 DSH WebUI 插件；主页填 `https://liang.today` | `npm i`、本页右侧、registry 按钮 |
-| GitHub `README.md` | 故事、玩法、`dsh plugin add`；`npm i` 只作为安装节里的一句反例 | 「本页右侧自动生成的 `npm i`」 |
-| npm `docs/npm-readme.md` / 发布包内 README | 先声明这是 DSH 插件，再点名 npm 简介页右侧那条 `npm i` 无效 | 把 GitHub 仓库当 npm 简介页来写 |
-| 官网 / 小红书 / X | 故事与官网入口；安装指向部署指南 | 作者写成「npm 账户」、仓库介绍写成 npm 安装说明 |
+| GitHub `README.md` | 故事、玩法、短安装；市场步骤链到官网指南；其他目录只一行 | 「本页右侧自动生成的 `npm i`」、市场截图、官网导语复述 |
+| npm `docs/npm-readme.md` / 发布包内 README | 先声明这是 DSH 插件，再点名 npm 简介页右侧那条 `npm i` 无效；市场只一句并链到指南 | 把 GitHub 仓库或官网指南整段抄进 npm 页 |
+| 官网首页 / 关于 | 故事与入口；安装指向部署指南；上架只点名，不教第二套装法 | 作者写成「npm 账户」、仓库介绍写成 npm 安装说明 |
+| 官网部署指南 | 完整安装（dsh-market 步骤 + 截图）；其他已上架目录只一行 | 给 1024 / awesome 列表各写一套安装教程 |
+| 小红书 / X | 故事与官网入口 | 安装命令、市场操作逐步截图 |
 | 插件市场 / 目录 | 设置 → **插件市场**（不是官方「插件」页）；搜 `liangxiang` | 把商店写成 DeepSeek 官方；把旧插件列表当成商店 |
 | `package.json` `description` | 官网导语那一句产品短描述 | 安装命令、渠道专用提示 |
 
