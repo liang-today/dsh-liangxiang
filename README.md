@@ -10,7 +10,9 @@
 
 ## 安装
 
-先完全退出 WebUI，再写入你的 DSH profile：
+先完全退出 WebUI。有商店时走界面：设置 → **插件市场**（不是「插件」）→ 搜 `liangxiang`。没有商店先装 `dshmarket`，步骤和截图见 [部署指南](https://liang.today/guide/#market)。
+
+也可以直接写入 profile：
 
 ```bash
 export DSH_HOME="$HOME/.dsh"

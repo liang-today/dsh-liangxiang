@@ -1,5 +1,9 @@
 # TROUBLESHOOTING
 
+## 打开了设置，但没有「插件市场」
+
+官方「设置 → 插件」是已装插件清单，**不会**被商店替换。商店是旁边另一项：**插件市场 / Plugin Market**。若左侧根本没有这项，先退出 WebUI，对同一个 `DSH_HOME` 执行 `plugin --profile web add dshmarket`，再启动并强制刷新。`dsh web` 需 ≥ `0.1.0-rc.6`。
+
 ## Desktop 里安装成功，界面没有「今日梁相」
 
 命令写进了默认 `~/.dsh`，DSH Desktop 读的是自己的 harness 目录（Windows 上通常是 `%APPDATA%\dsh-desktop\harness`）。先完全退出 Desktop，设好 `DSH_HOME` 再 `plugin add`。详见 [`INSTALL.md`](INSTALL.md) 的 DSH Desktop 一节。梁相不需要为此改代码。

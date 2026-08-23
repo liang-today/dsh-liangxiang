@@ -13,7 +13,21 @@ dsh …                                    # 全局模式
 npx --yes @deepseek-ai/dsh …             # 没有全局 dsh 时
 ```
 
-### npm（推荐，可远程拉包）
+### 插件市场（推荐）
+
+先装社区商店 [dsh-market](https://dshmarket.com/)（货架来自 [awesome-dsh-plugin](https://awesome-dsh-plugin.com)），再在界面里搜梁相。商店**不会**替换官方「设置 → 插件」页，而是另开一项 **插件市场 / Plugin Market**。
+
+```bash
+export DSH_HOME="$HOME/.dsh"
+npx --yes @deepseek-ai/dsh plugin --profile web add dshmarket
+npx --yes @deepseek-ai/dsh web
+```
+
+打开 WebUI → **设置 → 插件市场**（不要停在「插件」那一页）→ 搜索 `liangxiang` → 安装 `dsh-liangxiang`。部分 Desktop 已内置商店，可跳过第一条，但仍要把 `DSH_HOME` 指到桌面自己的 harness。需要 `dsh web` ≥ `0.1.0-rc.6`。
+
+![在插件市场搜索 liangxiang，卡片显示 dsh-liangxiang 已安装，分类为娱乐](assets/dshmarket-search-liangxiang.jpg)
+
+### npm（命令行）
 
 安装和升级都写浮动标签 `@beta`，不要钉死某一号：
 

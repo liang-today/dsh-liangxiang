@@ -128,6 +128,7 @@ CSS data attribute、日志前缀和 `liangxiang-backend` 服务名。代码、�
 | GitHub `README.md` | 故事、玩法、`dsh plugin add`；`npm i` 只作为安装节里的一句反例 | 「本页右侧自动生成的 `npm i`」 |
 | npm `docs/npm-readme.md` / 发布包内 README | 先声明这是 DSH 插件，再点名 npm 简介页右侧那条 `npm i` 无效 | 把 GitHub 仓库当 npm 简介页来写 |
 | 官网 / 小红书 / X | 故事与官网入口；安装指向部署指南 | 作者写成「npm 账户」、仓库介绍写成 npm 安装说明 |
+| 插件市场 / 目录 | 设置 → **插件市场**（不是官方「插件」页）；搜 `liangxiang` | 把商店写成 DeepSeek 官方；把旧插件列表当成商店 |
 | `package.json` `description` | 官网导语那一句产品短描述 | 安装命令、渠道专用提示 |
 
 发布 npm 时用 `docs/npm-readme.md` 覆盖包内的 `README.md`；GitHub 仓库始终保留产品向的 `README.md`。`prepack` / `postpack` 负责交换，不要手改后再发。
