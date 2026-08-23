@@ -56,6 +56,20 @@ localStorage.removeItem('liangxiang:welcome:v2')
 location.reload()
 ```
 
+### DSH Desktop
+
+Desktop 换了一套家目录，不是另一套插件协议。不设 `DSH_HOME` 时，`plugin add` 写进 `~/.dsh`，Desktop 不读，表现为安装成功、界面无入口。梁相这边不用改代码。
+
+先完全退出 Desktop。Windows PowerShell：
+
+```powershell
+$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+$env:PATH = "$env:DSH_HOME\.desktop-bin;$env:PATH"
+dsh plugin --profile web add dsh-liangxiang@beta
+```
+
+Desktop 自带 pnpm 10（`%DSH_HOME%\.desktop-bin`）。本机 PATH 上的 pnpm 11 会报 `ERR_PNPM_UNEXPECTED_STORE`。不要用全局 `dsh` 对着默认 `~/.dsh` 装完再指望 Desktop 看见。
+
 ### 源码（开发 profile，不改日常 `~/.dsh`）
 
 ```bash

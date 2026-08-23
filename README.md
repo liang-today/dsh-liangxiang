@@ -22,6 +22,8 @@ npx --yes @deepseek-ai/dsh web
 
 不要运行 `npm i dsh-liangxiang`：那只会落入当前目录的 `node_modules`，不会进入 DSH。包是给 `dsh plugin add` 用的。
 
+DSH Desktop 必须先把 `DSH_HOME` 指到桌面自己的 harness 目录，再执行同一条 `plugin add`。默认的 `~/.dsh` 桌面客户端不读。详见 [部署指南 · DSH Desktop](https://liang.today/guide/#desktop)。
+
 ## 玩法
 
 - 按 DeepSeek Harness 的 **Input + Output Token** 折算，默认 50,000 Pro 当量凝成一炷

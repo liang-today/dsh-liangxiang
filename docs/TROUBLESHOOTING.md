@@ -1,5 +1,9 @@
 # TROUBLESHOOTING
 
+## Desktop 里安装成功，界面没有「今日梁相」
+
+命令写进了默认 `~/.dsh`，DSH Desktop 读的是自己的 harness 目录（Windows 上通常是 `%APPDATA%\dsh-desktop\harness`）。先完全退出 Desktop，设好 `DSH_HOME` 再 `plugin add`。详见 [`INSTALL.md`](INSTALL.md) 的 DSH Desktop 一节。梁相不需要为此改代码。
+
 ## 重装后案牍仍是旧版本（例如 0.8.3-beta）
 
 profile 里钉着旧精确号（`0.8.3-beta`）或本地 tarball。再执行 `plugin add dsh-liangxiang@beta` 时 pnpm 会报 Already up to date，不会去解析新的 `@beta`。先退出 WebUI，再：

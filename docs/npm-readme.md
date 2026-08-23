@@ -16,7 +16,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
 npx --yes @deepseek-ai/dsh web
 ```
 
-已全局安装 `dsh` 时，把开头换成 `dsh`。页面边缘出现「今日梁相」即装好。
+已全局安装 `dsh` 时，把开头换成 `dsh`。页面边缘出现「今日梁相」即装好。DSH Desktop 必须先把 `DSH_HOME` 指到桌面自己的 harness 目录，见 https://liang.today/guide/#desktop 。
 
 ## 玩法
 
