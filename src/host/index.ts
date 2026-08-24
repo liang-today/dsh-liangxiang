@@ -44,7 +44,7 @@ import { FakeAuthoritativeLiangService } from './fake-service.ts'
 import { AuthoritySlot } from './authority-slot.ts'
 import { createLiangxiangApi } from './routes.ts'
 import { createHostFileLog } from './file-log.ts'
-import { ensureProfileTracksBeta } from './profile-npm-float.ts'
+import { ensureProfileTracksLatest } from './profile-npm-float.ts'
 import type { LiangHostService } from './service.ts'
 
 export const name = HOST_PLUGIN_NAME
@@ -61,12 +61,12 @@ export function apply(ctx: DshHostContext): void {
     hostLog.warn(message)
   }
   try {
-    const floated = ensureProfileTracksBeta(dirname(fileURLToPath(import.meta.url)), {
+    const floated = ensureProfileTracksLatest(dirname(fileURLToPath(import.meta.url)), {
       refresh: false,
     })
     if (floated?.changed) {
       hostLog.log(
-        `[${PLUGIN_PACKAGE_NAME}] profile tracks npm tag ${floated.specifier ?? 'beta'}`
+        `[${PLUGIN_PACKAGE_NAME}] profile tracks npm tag ${floated.specifier ?? 'latest'}`
         + (floated.refreshed ? ' and refreshed' : ''),
       )
     }

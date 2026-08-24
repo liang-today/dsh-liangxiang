@@ -8,27 +8,28 @@
 
 命令写进了默认 `~/.dsh`，DSH Desktop 读的是自己的 harness 目录（Windows 上通常是 `%APPDATA%\dsh-desktop\harness`）。先完全退出 Desktop，设好 `DSH_HOME` 再 `plugin add`。详见 [`INSTALL.md`](INSTALL.md) 的 DSH Desktop 一节。
 
-## 重装后案牍仍是旧版本（例如 0.8.3-beta）
+## 重装后案牍仍是旧版本（例如 0.8.6-beta）
 
-profile 里钉着旧精确号（`0.8.3-beta`）或本地 tarball。再执行 `plugin add dsh-liangxiang@beta` 时 pnpm 会报 Already up to date，不会去解析新的 `@beta`。先退出 WebUI，再：
+profile 里钉着旧精确号或本地 tarball。正式通道应是浮动的 `latest`。先退出 WebUI，再执行和安装相同的命令（不要先 remove）：
 
 ```bash
 export DSH_HOME="$HOME/.dsh"
-npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang
 ```
 
-两条命令必须对着日常 `DSH_HOME`。装完并启动一次 WebUI 后，`$DSH_HOME/profiles/web/package.json` 的依赖应是浮动的 `beta`，不应再是 `file:…tgz` 或旧精确号。
+启动一次带 1.0.0 Host 的 WebUI 后，`$DSH_HOME/profiles/web/package.json` 的依赖应是 `latest`，不应再是 `file:…tgz`、`beta` 或旧精确号。清单已排除本包的 pnpm 24 小时冷静期，以后升级继续这条命令即可。
 
-另一种与「钉死」无关的情况：pnpm 11 对发布不足 24 小时的新版本会跳过（`minimumReleaseAge`），所以刚发版时 `add @beta` 仍可能装回上一个够龄号；过了 24 小时再 `add @beta` 就会自动拿到最新。想当天就装，从 GitHub Release 下载 `.tgz` 用 `./dsh-liangxiang-<版本>.tgz` 装一次（启动后会自动切回 `@beta`）。
+若仍钉死：先启动一次让 Host 改写清单，退出后再 `add dsh-liangxiang`。只有旧 Host 从未改写过清单时，才需要 `remove` 再 `add dsh-liangxiang`。
+
+刚发版当天若市场或 pnpm 先拿到了上一个够龄号：启动一次（写入冷静期排除）后再执行同一条 `add`，不要 remove。也可以从 GitHub Release 下载 `./dsh-liangxiang-1.0.0.tgz` 装一次，启动后会自动切回 `latest`。
 
 ## 更新脚本提示没有 `dsh` 命令
 
 没有全局安装 DSH CLI。两种用法等价：
 
 ```bash
-dsh plugin --profile web add ./dsh-liangxiang-0.8.19-beta.tgz
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.19-beta.tgz
+dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
 ```
 
 `scripts/update-plugin.sh` 现在会在找不到 `dsh` 时自动改用 npx。也可以显式指定：`--dsh npx`。
@@ -38,7 +39,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.19-beta
 典型日志是：
 
 ```text
-GET https://registry.npmjs.org/dsh-liangxiang-0.8.19-beta.tgz: Not Found - 404
+GET https://registry.npmjs.org/dsh-liangxiang-1.0.0.tgz: Not Found - 404
 ```
 
 这不是包坏了，是 pnpm 把参数当成了 **npm 包名**。DSH 的 `plugin add` 只是把参数转给 pnpm，而且只有以 `./` 或 `../` 开头的路径才会按你当前目录重写。
@@ -47,7 +48,7 @@ GET https://registry.npmjs.org/dsh-liangxiang-0.8.19-beta.tgz: Not Found - 404
 
 ```bash
 # 少了 ./
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-0.8.19-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-1.0.0.tgz
 ```
 
 能装上的写法：
@@ -55,7 +56,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-0.8.19-beta.t
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.19-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
 ```
 
 ## 本轮运行失败：`Cannot read properties of undefined (reading 'prepare')`

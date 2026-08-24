@@ -33,27 +33,27 @@ npx --yes @deepseek-ai/dsh web
 
 ### npm（命令行）
 
-安装和升级都写浮动标签 `@beta`，不要钉死某一号：
+安装和升级都写无标签包名，解析 npm `latest`，不要钉 `@beta` 或某一号：
 
 ```bash
 export DSH_HOME="$HOME/.dsh"
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang@beta
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang
 ```
 
-插件本身没有收窄的版本范围。若 profile 还钉着旧精确号或本地 `.tgz`，先 `remove` 再 `add @beta`。Host 启动时会把依赖改回浮动的 `beta`，并在 profile 的 `pnpm-workspace.yaml` 写入：
+插件本身没有收窄的版本范围。Host 启动时只改清单：精确号、本地 `.tgz`、残留的 `beta` 一律改成 `latest`，并在 profile 的 `pnpm-workspace.yaml` 写入：
 
 ```yaml
 minimumReleaseAgeExclude:
   - dsh-liangxiang
 ```
 
-这是为了躲开 pnpm 11 默认 24 小时发布冷静期。未启动过带此逻辑的 Host 时，也可以自己把上面两行加进 `$DSH_HOME/profiles/web/pnpm-workspace.yaml`，再执行一次 `add @beta`。
+这是为了躲开 pnpm 11 默认 24 小时发布冷静期，并让以后升级继续走同一条命令。启动不跑 `pnpm add`。未启动过带此逻辑的 Host 时，也可以自己把上面两行加进 `$DSH_HOME/profiles/web/pnpm-workspace.yaml`，再执行一次 `add dsh-liangxiang`。旧书签里的 `add @beta` 仍能装到正式包，但文档不再教这条。
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 当前 npm 包是 `dsh-liangxiang@0.8.19-beta`。请写 `@beta`；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> 当前正式版是 `dsh-liangxiang@1.0.0`（`latest`）。请写无标签包名；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 
@@ -62,7 +62,7 @@ minimumReleaseAgeExclude:
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.19-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
 ```
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
@@ -83,7 +83,7 @@ Desktop 读的是自己的家目录。不设 `DSH_HOME` 时，命令会写进 `~
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 $env:PATH = "$env:DSH_HOME\.desktop-bin;$env:PATH"
-dsh plugin --profile web add dsh-liangxiang@beta
+dsh plugin --profile web add dsh-liangxiang
 ```
 
 Desktop 自带 pnpm 10（`%DSH_HOME%\.desktop-bin`）。本机 PATH 上的 pnpm 11 会报 `ERR_PNPM_UNEXPECTED_STORE`。不要用全局 `dsh` 对着默认 `~/.dsh` 装完再指望 Desktop 看见。
@@ -106,9 +106,9 @@ pnpm run dev:uninstall                                     # 卸载
   npm config set registry https://registry.npmmirror.com
   ```
 
-  或单次：`npm_config_registry=https://registry.npmmirror.com dsh plugin --profile web add dsh-liangxiang@beta`
+  或单次：`npm_config_registry=https://registry.npmmirror.com dsh plugin --profile web add dsh-liangxiang`
 - **社区后端**：本机 DSH Host 直连 `https://api.liang.today`。内地一般可访问，偶发跨境抖动时插件会在 3 秒内放弃等待、进入 DSH 主界面，并显示「无法连接天庭」，后台继续重连。
-- **官网 / GitHub**：`liang.today` 是 GitHub Pages；源码自编译依赖 GitHub。这两条在内地可能较慢或不可达，优先走 npm + `@beta`。
+- **官网 / GitHub**：`liang.today` 是 GitHub Pages；源码自编译依赖 GitHub。这两条在内地可能较慢或不可达，优先走 npm `latest`。
 - **离线兜底**：连不上社区时不要改 registry 以外的配置；在梁相案牍手动选离线模式即可本机自玩。
 
 ## 一、从仓库开发运行（推荐）
@@ -148,7 +148,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 ```bash
 pnpm pack
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.19-beta.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-1.0.0.tgz
 ```
 
 1. **不要**把 in-box bundle（如 `@deepseek-ai/dsh-web-app`）装成 profile 依赖。它只需要出现在 `dsh.profile.bundles` 里；装进 `<profile>/node_modules` 会遮蔽 launcher 的模块回退目录，造成同一个包出现两个实例，工具调用会直接报 `Cannot read properties of undefined (reading 'prepare')`。装完可以跑 `node scripts/assert-profile-modules.mjs <DSH_HOME>/profiles/<profile>` 自检。

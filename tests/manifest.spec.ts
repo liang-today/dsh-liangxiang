@@ -75,10 +75,12 @@ describe('package.json dsh manifests', () => {
     expect(readRootFile('README.md')).not.toMatch(/本页右侧/)
     expect(readRootFile('README.md')).toContain('众香成势，梁子显相')
     expect(readRootFile('README.md')).toContain('https://liang.today/')
-    expect(readRootFile('README.md')).toContain('plugin --profile web add dsh-liangxiang@beta')
+    expect(readRootFile('README.md')).toContain('plugin --profile web add dsh-liangxiang')
+    expect(readRootFile('README.md')).not.toContain('dsh-liangxiang@beta')
     expect(readRootFile('README.md')).toContain('不要运行 `npm i dsh-liangxiang`')
     expect(readRootFile('docs/npm-readme.md')).toContain('本页右侧')
-    expect(readRootFile('docs/npm-readme.md')).toContain('plugin --profile web add dsh-liangxiang@beta')
+    expect(readRootFile('docs/npm-readme.md')).toContain('plugin --profile web add dsh-liangxiang')
+    expect(readRootFile('docs/npm-readme.md')).not.toContain('dsh-liangxiang@beta')
   })
 
   it('is an ESM package with the host entry as main', () => {

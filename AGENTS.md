@@ -1001,8 +1001,9 @@ environments; distributable bundles must contain no key.
 ### Version float (installed profile — intentional)
 
 The shipped Host rewrites the DSH profile it is installed into so the
-`dsh-liangxiang` dependency stays on the floating `@beta` dist-tag and the
-package is exempt from pnpm 11's 24h `minimumReleaseAge`. Rules:
+`dsh-liangxiang` dependency stays on the floating `latest` dist-tag and the
+package is exempt from pnpm 11's 24h `minimumReleaseAge`. Leftover `beta`,
+exact versions and tarball `file:` rows are rewritten to `latest`. Rules:
 
 - only this package's dependency specifier and the `minimumReleaseAgeExclude`
   row in `pnpm-workspace.yaml` are touched; nothing else in the profile changes;

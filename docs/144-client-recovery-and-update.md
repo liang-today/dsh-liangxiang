@@ -40,11 +40,11 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 
 | 来源 | 升级命令 |
 |---|---|
-| npm | 先 `remove dsh-liangxiang`，再 `add dsh-liangxiang@beta`（本地 tarball 钉住时只 add 不会换源）。没有全局 `dsh` 时把开头换成 `npx --yes @deepseek-ai/dsh` |
+| npm | 重复安装命令 `add dsh-liangxiang`（解析 `latest`）。没有全局 `dsh` 时把开头换成 `npx --yes @deepseek-ai/dsh`。1.0.0 Host 会把精确号 / tarball / 残留 `beta` 改成 `latest`，不必先 remove |
 | GitHub Release / tarball | 先 `cd` 到包目录，再 `add ./dsh-liangxiang-<version>.tgz` |
 | 源码 | `git pull && pnpm install && pnpm run dev:install` |
 
-没有全局 `dsh` 时，把命令开头的 `dsh` 整段换成 `npx --yes @deepseek-ai/dsh`。漏掉本地包前面的 `./`，或只写文件名，pnpm 会去请求 `registry.npmjs.org/dsh-liangxiang-<version>.tgz`，报 `ERR_PNPM_FETCH_404`。走 npm 请写 `dsh-liangxiang@beta`；本地包必须带 `./`。
+没有全局 `dsh` 时，把命令开头的 `dsh` 整段换成 `npx --yes @deepseek-ai/dsh`。漏掉本地包前面的 `./`，或只写文件名，pnpm 会去请求 `registry.npmjs.org/dsh-liangxiang-<version>.tgz`，报 `ERR_PNPM_FETCH_404`。走 npm 请写 `dsh-liangxiang`；本地包必须带 `./`。
 
 卸载一律：`dsh plugin --profile web remove dsh-liangxiang`（源码开发 profile 用 `pnpm run dev:uninstall`）。
 
@@ -56,7 +56,7 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 
 ```bash
 export DSH_HOME=/实际使用的/dsh/home
-bash scripts/update-plugin.sh ./dsh-liangxiang-0.8.19-beta.tgz --profile <profile名>
+bash scripts/update-plugin.sh ./dsh-liangxiang-1.0.0.tgz --profile <profile名>
 ```
 
 脚本先备份并校验 `storages/liangxiang.json` 与存在时的 `storages/liangxiang_local.json`，再按 tarball 内容 SHA-256 复制到持久化包缓存，并用这个

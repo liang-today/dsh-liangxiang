@@ -1,4 +1,4 @@
-# 102 — Known Limitations（更新至 v0.8.19-beta）
+# 102 — Known Limitations（更新至 v1.0.0）
 
 按严重度排列。**没有未修的 Blocker/High**；以下都是明确接受的限制，不违反冻结不变量。
 
@@ -10,7 +10,7 @@
 
 ## 部署与运维
 
-4. **pnpm 11 默认 24 小时发布冷静期**。`dsh plugin add` 只是转给 pnpm；`@beta` 会先被写成精确版本，且未满 24 小时的版本会被退回上一号。这不是插件自己的 semver 范围。Host 会把 profile 依赖改回浮动 `beta`，并排除本包的冷静期。未启动过新 Host 的旧 profile 仍需先 `remove` 再 `add @beta`。
+4. **pnpm 11 默认 24 小时发布冷静期**。`dsh plugin add` 只是转给 pnpm；无标签包名会先被写成精确版本，且未满 24 小时的版本可能被退回上一号。这不是插件自己的 semver 范围。Host 会把 profile 依赖改回浮动 `latest`，并排除本包的冷静期。清单改写后，升级重复 `add dsh-liangxiang` 即可，不必再 remove。未启动过 1.0.0 Host 的旧 profile，先启动一次再 add；只有从未改写过的清单才需要 `remove`。
 5. **社区服务仍是软信任**。代码默认监听 `127.0.0.1`，公网仅由 Caddy 在 `https://api.liang.today` 提供 TLS；短期入梁券与 Ed25519 安装签名限制注册流量，但不能证明真人身份或 Token 真实性。
 6. **RC tarball 不含后端**。`lib/backend.js` 不在包内（插件包只装 Host + Client 两半）；在线模式需要从仓库运行 `pnpm run backend:start`。
 7. **单机 SQLite 后端，且社区节点必须单进程**。同机双进程共享 SQLite 已通过抢最后一炷与幂等重放测试；不支持跨机器共享数据库或多节点写入。投票 / 身份 / 入梁券限流都是进程内内存桶：多进程共享同一库时限额会变成 N 倍，因此社区部署以单进程为硬要求。

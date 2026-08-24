@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import {
+  FLOATING_NPM_TAG,
   applyNpmFloatToProfile,
   findDshProfileRoot,
   floatingRegistrySpecifier,
@@ -26,13 +27,15 @@ autoInstallPeers: false
 }
 
 describe('profile npm float', () => {
-  it('keeps developer checkouts and already-floating tags', () => {
-    expect(floatingRegistrySpecifier('beta')).toBe('beta')
+  it('keeps developer checkouts and already-floating latest', () => {
+    expect(FLOATING_NPM_TAG).toBe('latest')
+    expect(floatingRegistrySpecifier('latest')).toBe('latest')
     expect(floatingRegistrySpecifier('link:../../dsh-liangxiang')).toBe('link:../../dsh-liangxiang')
     expect(floatingRegistrySpecifier('file:/workspace/example-user/code/dsh-liangxiang')).toBe('file:/workspace/example-user/code/dsh-liangxiang')
-    expect(floatingRegistrySpecifier('0.8.3-beta')).toBe('beta')
-    expect(floatingRegistrySpecifier('file:/workspace/example-user/Desktop/liangxiang/dsh-liangxiang-0.8.3-beta.tgz'))
-      .toBe('beta')
+    expect(floatingRegistrySpecifier('beta')).toBe('latest')
+    expect(floatingRegistrySpecifier('0.8.6-beta')).toBe('latest')
+    expect(floatingRegistrySpecifier('file:/workspace/example-user/Desktop/liangxiang/dsh-liangxiang-0.8.6-beta.tgz'))
+      .toBe('latest')
   })
 
   it('writes a package-level release-age exclude and replaces version-specific rows', () => {
@@ -51,17 +54,22 @@ minimumReleaseAgeExclude:
     expect(next).not.toContain('dsh-liangxiang@')
   })
 
-  it('finds a DSH profile and rewrites an exact version to beta', () => {
+  it('finds a DSH profile and rewrites an exact version or leftover beta to latest', () => {
     const dir = join(tmpdir(), `liangxiang-float-${Date.now()}`)
-    writeProfile(dir, '0.8.3-beta')
+    writeProfile(dir, '0.8.6-beta')
     expect(findDshProfileRoot(join(dir, 'node_modules', 'dsh-liangxiang', 'lib'))).toBe(dir)
     const result = applyNpmFloatToProfile(dir)
-    expect(result).toEqual({ changed: true, specifier: 'beta' })
+    expect(result).toEqual({ changed: true, specifier: 'latest' })
     const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
       dependencies: Record<string, string>
     }
-    expect(manifest.dependencies['dsh-liangxiang']).toBe('beta')
+    expect(manifest.dependencies['dsh-liangxiang']).toBe('latest')
     expect(readFileSync(join(dir, 'pnpm-workspace.yaml'), 'utf8')).toContain('  - dsh-liangxiang\n')
+
+    writeProfile(dir, 'beta')
+    expect(applyNpmFloatToProfile(dir)).toEqual({ changed: true, specifier: 'latest' })
+    expect(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).dependencies['dsh-liangxiang'])
+      .toBe('latest')
   })
 
   it('does not treat the plugin repo as a DSH profile', () => {

@@ -1,6 +1,6 @@
-# 100 — Release Readiness（v0.8.19-beta 梁相）
+# 100 — Release Readiness（v1.0.0 梁相）
 
-结论：**社区 soft-trust 发布候选可部署**；不得宣传为实名、一人一票、
+结论：**社区正式版已按 1.0.0 发布**；不得宣传为实名、一人一票、
 可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
 `hk-api.liang.today` 旁路与 `api.liang.today` 正式域名验收均已通过；这不改变
 社区模式的信任边界。详见 [`142`](142-hk-migration-report.md)。
@@ -20,7 +20,7 @@
 - 离线模式由用户手动选择并持久化；离线香火、打梁、梁案和梁祠使用独立 `liangxiang_local.json`，与社区账本不混用。
 - 梁祠月历按月份实际使用 4/5/6 周，在固定高度内完整显示且只保留窄屏横向滚动。
 - 香港节点统一 `liang` 运维命令可查询未来排期并原子替换整张未发布题表；客户端提供保留用户存储的一键更新脚本。
-- 安装命令保持浮动 `@beta`。Host 启动时把 DSH profile 依赖改成 `beta`，并排除 pnpm 11 的 24 小时发布冷静期；不在文档里钉死某一号。
+- 正式版安装/升级同一条命令：`dsh plugin --profile web add dsh-liangxiang`（`latest`）。Host 启动时把精确号、tarball、残留 `beta` 改成 `latest`，并排除 pnpm 11 的 24 小时发布冷静期；启动不跑 `pnpm add`。
 
 ## 2026-08-18 自动化验证
 
@@ -36,16 +36,15 @@
 | 构建配置迁移 | ✅ 迁移前后三个 bundle SHA-256 相同，无弃用警告 |
 | 密钥/命名空间扫描 | ✅ bundle 不含入梁券 secret 或共享准入凭据，仓库只使用 `liangxiang / 梁相` |
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
-| MacBook / Mac mini 安装 | ⚠️ 0.8.8-beta 发布后须用 `@beta` 再验收日常 profile；不要把精确号写进安装命令 |
+| MacBook / Mac mini 安装 | ⚠️ 1.0.0 发布后用无标签 `dsh-liangxiang` 验收日常 profile；不要把精确号或 `@beta` 写进安装命令 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
-| npm 公开包复核 | ⚠️ 源码已升到 `0.8.8-beta`；registry 仍待本机过二次验证后 `npm publish --tag beta` |
-| 0.8.8-beta 候选包 | ⚠️ 待 `pnpm pack` 后复核 SHA-256；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
+| npm 公开包复核 | ⚠️ 源码已升到 `1.0.0`；registry 以 `npm publish` 进入 `latest`，再 `dist-tag add … beta` 兼容旧书签 |
+| 1.0.0 正式包 | ✅ `dsh-liangxiang-1.0.0.tgz` 7 个文件；SHA-256 `0438fb576301a9621871fc9c58ebd03e5a79659fab64cf8ffb96f176fc09f56c`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
 | 香港公网峰值（只读） | ✅ `/v1/health` 1,000 请求 / 1,000 并发新建 TLS 连接，0 失败；测试后 Caddy/Backend 无 warning、内存余量 14 GiB |
 
-npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`，且 registry
-拒绝删除首版 `latest` 标签。`0.8.0` 不可覆盖。本版将 `0.8.8-beta` 发到 `beta`
-标签，并视需要把 `latest` 也指过来，安装文档仍写 `@beta`。不得把 registry
-默认标签解释为已核验的稳定公投。
+`0.8.0` 仍留在 registry 且不可覆盖。1.0.0 高于既有号，作为首个正式号占据
+`latest`；`beta` 标签同时指到 1.0.0，只为兼容旧书签。安装文档写无标签包名。
+不得把 registry 默认标签解释为已核验的稳定公投。
 
 ## 发布验收
 
@@ -55,8 +54,8 @@ npm 首次创建包时在显式 `beta` 之外仍自动建立了 `latest=0.8.0`�
 2. 旧 SQLite 票、身份与梁祠档案的数量和抽样内容在迁移前后一致。
 3. 本机 MacBook 与独立 Mac mini 均已安装新包；更新路径保留身份，全新安装按设计领取入梁券。
 4. 桌面 `liangxiang` 目录中的 tarball 已按内容、密钥和 SHA-256 审计通过
-   （`dsh-liangxiang-0.8.8-beta.tgz` /
-   打包后写入 SHA-256）。
+   （`dsh-liangxiang-1.0.0.tgz` /
+   SHA-256 `0438fb576301a9621871fc9c58ebd03e5a79659fab64cf8ffb96f176fc09f56c`）。
    真实 MacBook / Mac mini profile 安装仍待运营者手工勾掉。
 5. 香港节点先经 `hk-api.liang.today` 旁路验收，再切 `api.liang.today`；
    原节点作为只读限时回滚点，不得与新节点同时接收写入。

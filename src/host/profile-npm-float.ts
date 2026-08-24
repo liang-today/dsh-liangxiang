@@ -3,14 +3,16 @@
  * pin people to an old Liangxiang build even though the plugin itself has no
  * tight version range:
  *
- *   1. `pnpm add dsh-liangxiang@beta` writes the resolved exact version into
- *      the profile manifest. The next `add @beta` is "Already up to date".
+ *   1. `pnpm add dsh-liangxiang` writes the resolved exact version into the
+ *      profile manifest. The next add is "Already up to date".
  *   2. pnpm 11 defaults `minimumReleaseAge` to 1440 minutes. A dist-tag whose
  *      target is younger than one day falls back to the last aged version.
  *
  * This module rewrites a DSH profile so the specifier stays the floating
- * `beta` tag and the package is excluded from the age gate. Developers using
- * `link:` or a non-tarball `file:` checkout are left alone.
+ * `latest` tag and the package is excluded from the age gate. Leftover `beta`
+ * pins, exact versions and tarball `file:` rows are migrated to `latest`.
+ * Developers using `link:` or a non-tarball `file:` checkout are left alone.
+ * Startup only edits the manifest — it never runs `pnpm add`.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -29,6 +31,9 @@ export interface NpmFloatResult {
   specifier?: string
   refreshed: boolean
 }
+
+/** Official install/upgrade channel after 1.0.0. */
+export const FLOATING_NPM_TAG = 'latest'
 
 function readJson(path: string): ProfileManifest {
   return JSON.parse(readFileSync(path, 'utf8')) as ProfileManifest
@@ -61,12 +66,12 @@ export function findDshProfileRoot(startDir: string): string | undefined {
 /** Keep a floating registry tag; do not rewrite developer checkouts. */
 export function floatingRegistrySpecifier(current: string | undefined): string | undefined {
   if (current === undefined) return undefined
-  if (current === 'beta' || current === 'latest' || current === '*' || current.startsWith('>=')) {
+  if (current === FLOATING_NPM_TAG || current === '*' || current.startsWith('>=')) {
     return current
   }
   if (current.startsWith('link:') || current.startsWith('workspace:')) return current
   if (current.startsWith('file:') && !/\.tgz(?:#|$)/.test(current)) return current
-  return 'beta'
+  return FLOATING_NPM_TAG
 }
 
 /** Make `minimumReleaseAgeExclude` contain the bare package name (all versions). */
@@ -126,8 +131,8 @@ export function applyNpmFloatToProfile(profileDir: string): { changed: boolean, 
   return specifier === undefined ? { changed } : { changed, specifier }
 }
 
-export function refreshFloatingBeta(profileDir: string): boolean {
-  const result = spawnSync('pnpm', ['add', `${PLUGIN_PACKAGE_NAME}@beta`], {
+export function refreshFloatingLatest(profileDir: string): boolean {
+  const result = spawnSync('pnpm', ['add', `${PLUGIN_PACKAGE_NAME}@${FLOATING_NPM_TAG}`], {
     cwd: profileDir,
     stdio: 'ignore',
     shell: process.platform === 'win32',
@@ -135,7 +140,7 @@ export function refreshFloatingBeta(profileDir: string): boolean {
   return result.status === 0
 }
 
-export function ensureProfileTracksBeta(
+export function ensureProfileTracksLatest(
   startDir: string,
   options: { refresh?: boolean } = {},
 ): NpmFloatResult | undefined {
@@ -144,8 +149,8 @@ export function ensureProfileTracksBeta(
   if (profileDir === undefined) return undefined
   const applied = applyNpmFloatToProfile(profileDir)
   let refreshed = false
-  if (applied.changed && options.refresh !== false) {
-    refreshed = refreshFloatingBeta(profileDir)
+  if (applied.changed && options.refresh === true) {
+    refreshed = refreshFloatingLatest(profileDir)
   }
   return applied.specifier === undefined
     ? { profileDir, changed: applied.changed, refreshed }
