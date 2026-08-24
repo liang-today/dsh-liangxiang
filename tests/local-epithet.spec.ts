@@ -23,7 +23,7 @@ describe('local-only 梁号', () => {
       label: '旁观 • 闲梁',
       spent: 0,
     })
-    expect(formatLocalEpithetLine('焚尽', '死夯梁')).toBe('小梁号：焚尽 • 死夯梁')
+    expect(formatLocalEpithetLine('焚尽', '死夯梁')).toBe('梁小号：焚尽 • 死夯梁')
   })
 
   it('stacks dedication and stance from local 夯/拉 counts', () => {

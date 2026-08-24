@@ -3,8 +3,8 @@
  * remembers personal 夯/拉 counts and paints a two-part epithet in the
  * already-reserved vote-feedback row.
  *
- *   小梁号：dedication • stance
- *   e.g. 小梁号：勤香 • 死夯梁
+ *   梁小号：dedication • stance
+ *   e.g. 梁小号：勤香 • 死夯梁
  *
  * Counts reset with the business date, same as 今日凝香.
  */

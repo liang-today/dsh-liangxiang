@@ -30,7 +30,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.8.12-beta'
+export const PLUGIN_VERSION = '0.8.13-beta'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
@@ -149,7 +149,7 @@ export const WELCOME_ONLINE_LABEL = '进入在线'
 export const WELCOME_LOCAL_LABEL = '离线模式'
 export const VOTE_RATE_LIMITED = '打梁过快，每分钟最多 50 炷'
 /** Idle-row 梁号: local-only, never sent to the backend. */
-export const LOCAL_EPITHET_TITLE = '小梁号'
+export const LOCAL_EPITHET_TITLE = '梁小号'
 export const LOCAL_EPITHET_HINT = '仅本机可见，天庭不记账；随今日香火日清'
 
 export function formatLocalEpithetLine(dedication: string, stance: string): string {

@@ -659,7 +659,7 @@ describe('region 3: exactly two vote buttons', () => {
       localEpithet: { dedication: '勤香', stance: '死夯梁', label: '勤香 • 死夯梁', spent: 20 },
     })
     const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
-    expect(row && textContent([row])).toBe('小梁号：勤香 • 死夯梁')
+    expect(row && textContent([row])).toBe('梁小号：勤香 • 死夯梁')
     expect(row?.props['data-liangxiang-epithet']).toBe('')
     expect(row?.props.title).toBe('仅本机可见，天庭不记账；随今日香火日清')
     expect(styleOf(row).height).toBe('22px')

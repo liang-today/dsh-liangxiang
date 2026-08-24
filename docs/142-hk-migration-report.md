@@ -69,8 +69,8 @@ ddbaf969f18c1288b6bfc49152ba1bb1b6a7f6cbf6d2c36166b17b0d38cd125b
 - 当前桌面分发包为 `dsh-liangxiang-0.8.0.tgz`，SHA-256 为
   `31a32f2d8a698aeb29c5750598a73e5014b0cf557b383386bc43457a4df0b031`；
   不沿用迁移期旧包摘要。
-- 当前本地功能候选为 `dsh-liangxiang@0.8.12-beta`；迁移后的 0.8.1-beta.0
-  MacBook 复验属于历史证据，0.8.12-beta 仍须在最终打包后补真实 profile 验收。
+- 当前本地功能候选为 `dsh-liangxiang@0.8.13-beta`；迁移后的 0.8.1-beta.0
+  MacBook 复验属于历史证据，0.8.13-beta 仍须在最终打包后补真实 profile 验收。
   不能把不可变的 npm `0.8.0` 与后续修复源码视为同一字节。
 
 ## DNS 切换与回收
