@@ -45,6 +45,7 @@ import {
   LOCAL_EPITHET_HINT,
   LOCAL_EPITHET_TITLE,
   formatLocalEpithetLine,
+  isEmptyIncenseFeedback,
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
@@ -730,9 +731,7 @@ export function Panel(props: PanelProps): ReactElement {
         ? ABSURD_CLAIM_NOTICE
         : voteFeedback !== ''
           ? voteFeedback
-          : outOfIncense
-            ? NO_INCENSE_REASON
-            : epithetLine
+          : epithetLine
   const showingEpithet = statusLine === epithetLine && epithetLine !== '' && localEpithet !== null
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
@@ -1260,7 +1259,7 @@ export function Panel(props: PanelProps): ReactElement {
           textOverflow: 'ellipsis',
           fontSize: '12px',
           fontWeight: voteFeedback !== '' ? 700 : 600,
-          color: outOfIncense || offline || absurdNotice
+          color: offline || absurdNotice || isEmptyIncenseFeedback(voteFeedback)
             ? color.warn
             : voteFeedback !== ''
               ? color.textPrimary

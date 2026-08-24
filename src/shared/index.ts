@@ -30,7 +30,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.8.13-beta'
+export const PLUGIN_VERSION = '0.8.14-beta'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
@@ -118,11 +118,18 @@ export const AUTHORITY_MODE_NOTES: Readonly<Record<AuthorityMode, string>> = {
   DEV_STAGING_ONLY: STAGING_MODE_NOTE,
 }
 
-/** Disabled-vote reason surfaced when the personal incense pool is empty. */
-export const NO_INCENSE_REASON = '香火不足：再积累当量获得下一炷香后即可打梁'
+/** Hover / reject copy when the personal incense pool is empty. Keep to one 12px line. */
+export const NO_INCENSE_REASON = '香炉空了，先去攒香'
 
-/** Playful visible feedback for an intentional click on an empty incense pool. */
-export const NO_INCENSE_GAG = '咣当——香炉空了，梁子催你先去攒香'
+/** Click feedback on an empty furnace. Same length budget as the reason. */
+export const NO_INCENSE_GAG = '香炉空了，先去攒香'
+
+export const VOTE_FEEDBACK_MS = 2000
+export const EMPTY_INCENSE_FEEDBACK_MS = 3000
+
+export function isEmptyIncenseFeedback(text: string): boolean {
+  return text === NO_INCENSE_REASON || text === NO_INCENSE_GAG
+}
 
 /** Status line while the host channel is unreachable (UI keeps rendering). */
 export const OFFLINE_REASON = '无法连接天庭：尚未取得社区状态，正在自动重连'

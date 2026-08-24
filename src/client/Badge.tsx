@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
 import { VOTE_COUNT_MAX, type LiangziState, type VoteType } from '../domain/index.ts'
-import { formatAcceptedVoteFeedback, HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_RATE_LIMITED, VOTE_UP_NAME } from '../shared/index.ts'
+import { EMPTY_INCENSE_FEEDBACK_MS, VOTE_FEEDBACK_MS, formatAcceptedVoteFeedback, HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_RATE_LIMITED, VOTE_UP_NAME, isEmptyIncenseFeedback } from '../shared/index.ts'
 import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { readLocalEpithet, rememberLocalEpithetVote } from './local-epithet-store.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
@@ -422,7 +422,8 @@ export function LiangxiangBadge(): ReactElement {
   const [modeChanging, setModeChanging] = useState(false)
   useEffect(() => {
     if (voteFeedback === '') return undefined
-    const timer = window.setTimeout(() => setVoteFeedback(''), 2000)
+    const lingerMs = isEmptyIncenseFeedback(voteFeedback) ? EMPTY_INCENSE_FEEDBACK_MS : VOTE_FEEDBACK_MS
+    const timer = window.setTimeout(() => setVoteFeedback(''), lingerMs)
     return () => window.clearTimeout(timer)
   }, [voteFeedback])
   useEffect(() => {

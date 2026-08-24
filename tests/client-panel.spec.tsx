@@ -15,6 +15,8 @@ import {
   COMMUNITY_UNAVAILABLE_REASON,
   INCENSE_STAT_LABEL,
   LOCAL_MODE_NOTE,
+  EMPTY_INCENSE_FEEDBACK_MS,
+  NO_INCENSE_GAG,
   NO_INCENSE_REASON,
   PANEL_TITLE_LOCAL,
   PLUGIN_PACKAGE_NAME,
@@ -642,11 +644,33 @@ describe('region 3: exactly two vote buttons', () => {
       click?.()
     }
     expect(blocked).toEqual(['up', 'down'])
-    expect(textContent(tree)).toContain(NO_INCENSE_REASON)
-    expect(NO_INCENSE_REASON).toContain('打梁')
+    expect(textContent(findByAttr(tree, 'data-liangxiang-vote-feedback'))).toBe('')
+    expect(NO_INCENSE_REASON).toBe('香炉空了，先去攒香')
+    expect(NO_INCENSE_REASON.length).toBeLessThanOrEqual(10)
     expect(NO_INCENSE_REASON).not.toContain('投票')
     expect(LOCAL_MODE_NOTE).not.toContain('投票')
     expect(STAGING_MODE_NOTE).not.toContain('投票')
+  })
+
+  it('keeps 梁小号 in the idle row when the furnace is empty', () => {
+    const store = createMockLiangxiangStore({ effectiveTokensToday: 47_000, usedIncenseToday: 0 })
+    const tree = renderPanel(store.getSnapshot(), '', {
+      localEpithet: { dedication: '旁观', stance: '闲梁', label: '旁观 • 闲梁', spent: 0 },
+    })
+    const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
+    expect(row && textContent([row])).toBe('梁小号：旁观 • 闲梁')
+    expect(row?.props['data-liangxiang-epithet']).toBe('')
+  })
+
+  it('shows the empty-furnace tip only as transient feedback', () => {
+    const store = createMockLiangxiangStore({ effectiveTokensToday: 47_000, usedIncenseToday: 0 })
+    const tree = renderPanel(store.getSnapshot(), NO_INCENSE_GAG, {
+      localEpithet: { dedication: '旁观', stance: '闲梁', label: '旁观 • 闲梁', spent: 0 },
+    })
+    const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
+    expect(row && textContent([row])).toBe(NO_INCENSE_GAG)
+    expect(row?.props['data-liangxiang-epithet']).toBeUndefined()
+    expect(EMPTY_INCENSE_FEEDBACK_MS).toBe(3000)
   })
 
   it('shows the transient 已上香 feedback line', () => {

@@ -137,7 +137,7 @@ incense.
   third option
 - vote availability depends only on authoritative `remaining_incense > 0`
 - click spends one stick; a long press dumps every stick the incense token bucket will allow (50/min, burst 500) in **one** `count` request — never a loop of HTTP votes
-- the reserved feedback row stays 22px / 12px type: idle shows the local-only 梁号 (`梁小号：勤香 • 死夯梁`); a dump shows `已上香 · 夯 ×N（剩余 M 炷）`. The 梁号 resets on the business date with 今日凝香. Vote buttons may sit at 38px to fund that row. Do not add a fifth region or a personal-growth section
+- the reserved feedback row stays 22px / 12px type: idle shows the local-only 梁号 (`梁小号：勤香 • 死夯梁`); a dump shows `已上香 · 夯 ×N（剩余 M 炷）`; an empty furnace shows `香炉空了，先去攒香` for 3s then returns to 梁小号. The 梁号 resets on the business date with 今日凝香. Vote buttons may sit at 38px to fund that row. Do not add a fifth region or a personal-growth section
 - do not add a third placeholder or neutral action
 - do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside the 香火环
 
