@@ -715,6 +715,21 @@ describe('region 3: exactly two vote buttons', () => {
       .toEqual(['case', 'core', 'vote', 'social'])
   })
 
+  it('charges 拉 as its own cool vessel, still without a fifth region', () => {
+    const state = demoState()
+    const tree = renderPanel(state, '', { chargeVoteType: 'down', charge: 0.8 })
+    const votes = findByAttr(tree, 'data-liangxiang-vote')
+    expect(votes[1]?.props['data-liangxiang-vote']).toBe('down')
+    expect(votes[1]?.props['data-charging']).toBe('')
+    expect(votes[1]?.props['data-armed']).toBe('')
+    expect(votes[0]?.props['data-charging']).toBeUndefined()
+    expect(styleOf(votes[1])['--charge']).toBe('0.8')
+    expect(votes[1] && textContent([votes[1]])).toBe(`倾炉 ×${Math.min(state.personal.remainingIncense, VOTE_COUNT_MAX)}`)
+    expect(findByAttr(tree, 'data-liangxiang-vote-bolt')).toHaveLength(2)
+    expect(findByAttr(tree, 'data-liangxiang-region').map((node) => node.props['data-liangxiang-region']))
+      .toEqual(['case', 'core', 'vote', 'social'])
+  })
+
   it('caps the dump label at the vote count max when remaining is larger', () => {
     const store = createMockLiangxiangStore({
       effectiveTokensToday: 1_234 * 50_000,

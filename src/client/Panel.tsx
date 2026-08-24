@@ -378,6 +378,16 @@ const PANEL_CSS = `
 [data-liangxiang-vote][data-charging][data-armed] {
   animation-duration: 55ms;
 }
+[data-liangxiang-vote="down"][data-charging] {
+  color: #f4fbff !important;
+  background: linear-gradient(135deg, ${color.ritualCool}, color-mix(in srgb, ${color.ritualCool} 46%, #182232)) !important;
+  border-color: color-mix(in srgb, ${color.ritualCool} 82%, #b7dcff) !important;
+  filter: brightness(calc(1.04 + (var(--charge) * 0.4))) saturate(calc(1.12 + (var(--charge) * 0.38)));
+  box-shadow:
+    0 0 calc(10px + (var(--charge) * 28px)) color-mix(in srgb, #9fd0ff calc(38% + (var(--charge) * 52%)), transparent),
+    0 0 calc(22px + (var(--charge) * 36px)) color-mix(in srgb, #3d6aa8 calc(var(--charge) * 72%), transparent),
+    inset 0 0 calc(12px + (var(--charge) * 18px)) color-mix(in srgb, #d4efff calc(var(--charge) * 42%), transparent);
+}
 [data-liangxiang-vote-fill] {
   position: absolute;
   left: 0;
@@ -428,6 +438,11 @@ const PANEL_CSS = `
     radial-gradient(ellipse at 50% 50%, rgba(255, 244, 180, 0.55), transparent 62%);
   mix-blend-mode: screen;
   animation: liangxiang-dump-sheet 420ms ease-out both;
+}
+[data-liangxiang-region="vote"][data-dump-burst="down"]::after {
+  background:
+    linear-gradient(100deg, transparent 30%, rgba(230, 246, 255, 0.9) 48%, rgba(110, 180, 255, 0.55) 50%, rgba(230, 246, 255, 0.9) 52%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, rgba(180, 220, 255, 0.55), transparent 62%);
 }
 @keyframes liangxiang-vote-quake {
   0% { transform: translate(0, 0) rotate(0deg); }
