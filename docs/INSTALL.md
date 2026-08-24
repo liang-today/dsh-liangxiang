@@ -53,7 +53,7 @@ minimumReleaseAgeExclude:
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 当前 npm 包是 `dsh-liangxiang@0.8.10-beta`。请写 `@beta`；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> 当前 npm 包是 `dsh-liangxiang@0.8.11-beta`。请写 `@beta`；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 
@@ -62,7 +62,7 @@ minimumReleaseAgeExclude:
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.10-beta.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-0.8.11-beta.tgz
 ```
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
@@ -148,7 +148,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 ```bash
 pnpm pack
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.10-beta.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-0.8.11-beta.tgz
 ```
 
 1. **不要**把 in-box bundle（如 `@deepseek-ai/dsh-web-app`）装成 profile 依赖。它只需要出现在 `dsh.profile.bundles` 里；装进 `<profile>/node_modules` 会遮蔽 launcher 的模块回退目录，造成同一个包出现两个实例，工具调用会直接报 `Cannot read properties of undefined (reading 'prepare')`。装完可以跑 `node scripts/assert-profile-modules.mjs <DSH_HOME>/profiles/<profile>` 自检。

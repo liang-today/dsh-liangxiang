@@ -18,7 +18,7 @@ import { formatAcceptedVoteFeedback, HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LAB
 import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { readLocalEpithet, rememberLocalEpithetVote } from './local-epithet-store.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
-import { chargeProgress, isDumpHold } from './vote-charge.ts'
+import { DUMP_AUTO_RELEASE_MS, chargeProgress, isDumpHold } from './vote-charge.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
@@ -459,19 +459,27 @@ export function LiangxiangBadge(): ReactElement {
     pointerId: number
     startedAt: number
     frame: number
+    timeout: number
+    target: HTMLButtonElement
   } | null>(null)
   const voteInFlight = useRef(false)
 
   const clearCharge = useCallback((): void => {
     const current = chargeRef.current
-    if (current !== null) cancelAnimationFrame(current.frame)
+    if (current !== null) {
+      cancelAnimationFrame(current.frame)
+      window.clearTimeout(current.timeout)
+    }
     chargeRef.current = null
     setChargeVoteType(null)
     setCharge(0)
   }, [])
   useEffect(() => () => {
     const current = chargeRef.current
-    if (current !== null) cancelAnimationFrame(current.frame)
+    if (current !== null) {
+      cancelAnimationFrame(current.frame)
+      window.clearTimeout(current.timeout)
+    }
   }, [])
 
   const onInsufficientVote = (voteType: VoteType): void => {
@@ -550,21 +558,39 @@ export function LiangxiangBadge(): ReactElement {
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     const startedAt = performance.now()
-    const hold: { type: VoteType, pointerId: number, startedAt: number, frame: number } = {
+    const hold: {
+      type: VoteType
+      pointerId: number
+      startedAt: number
+      frame: number
+      timeout: number
+      target: HTMLButtonElement
+    } = {
       type: voteType,
       pointerId: event.pointerId,
       startedAt,
       frame: 0,
+      timeout: 0,
+      target: event.currentTarget,
     }
     const tick = (): void => {
       if (chargeRef.current !== hold) return
-      setCharge(chargeProgress(performance.now() - hold.startedAt))
+      const elapsed = performance.now() - hold.startedAt
+      setCharge(chargeProgress(elapsed))
+      if (elapsed >= DUMP_AUTO_RELEASE_MS) {
+        finishHold(hold.type, hold.pointerId, hold.target)
+        return
+      }
       hold.frame = requestAnimationFrame(tick)
     }
     chargeRef.current = hold
     setChargeVoteType(voteType)
     setCharge(0)
     hold.frame = requestAnimationFrame(tick)
+    hold.timeout = window.setTimeout(() => {
+      if (chargeRef.current !== hold) return
+      finishHold(hold.type, hold.pointerId, hold.target)
+    }, DUMP_AUTO_RELEASE_MS)
   }
 
   const onVotePointerUp = (voteType: VoteType, event: ReactPointerEvent<HTMLButtonElement>): void => {

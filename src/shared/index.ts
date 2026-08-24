@@ -29,7 +29,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.8.10-beta'
+export const PLUGIN_VERSION = '0.8.11-beta'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'

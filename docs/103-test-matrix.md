@@ -1,6 +1,6 @@
 # 103 — Test Matrix（RC）
 
-`pnpm test`：**41 个文件 / 483 项，全绿**（2026-08-24，v0.8.10-beta）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
+`pnpm test`：**41 个文件 / 484 项，全绿**（2026-08-24，v0.8.11-beta）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是 RC 视角的总账：每条冻结性质对应到哪个文件。
 
 ## 覆盖分布
 

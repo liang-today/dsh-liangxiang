@@ -9,6 +9,7 @@ Client 点击 / 长按
   └─ requestId = crypto.randomUUID()（一次意图一个 id，重试复用）
     └─ POST /vote {caseId, voteType, requestId, count?}
        count 省略或 1 = 单击一炷；长按一把梭把剩余香火放进同一请求
+       长按满 3 秒由客户端自动松开，不再空等 pointerup
        网络失败 → 等 400ms → 同 requestId 重试一次 → 仍失败 → UI「打梁失败」
   └─ Host 边界：JSON ≤4KB、parseWireVoteRequest（voteType 严格 up/down、requestId 格式、count ∈ [1,500]）
   └─ 在线：Host 原样转发 POST /v1/votes（含 count）
