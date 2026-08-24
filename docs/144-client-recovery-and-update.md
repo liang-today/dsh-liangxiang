@@ -40,6 +40,7 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 
 | 来源 | 升级命令 |
 |---|---|
+| 插件市场 | 设置 → 插件市场 → 检查更新 / 更新。比对 npm `latest`；`1.0.0` 高于已装的 `0.8.x-beta`。不必先 remove |
 | npm | 重复安装命令 `add dsh-liangxiang`（解析 `latest`）。没有全局 `dsh` 时把开头换成 `npx --yes @deepseek-ai/dsh`。1.0.0 Host 会把精确号 / tarball / 残留 `beta` 改成 `latest`，不必先 remove |
 | GitHub Release / tarball | 先 `cd` 到包目录，再 `add ./dsh-liangxiang-<version>.tgz` |
 | 源码 | `git pull && pnpm install && pnpm run dev:install` |

@@ -31,6 +31,8 @@ npx --yes @deepseek-ai/dsh web
 
 也已列入 [1024 Store](https://deepseek1024.com/) 和 [awesome-deepseek-harness](https://github.com/Dominic789654/awesome-deepseek-harness)。安装仍按上面的 dsh-market 走。
 
+已装过旧 `@beta` 时：打开同一市场 → **检查更新**（或卡片上的更新）。市场比的是 npm `latest`（`1.0.0` 高于 `0.8.6-beta`）。点更新后刷新；看不到更新就强制检查一次（缓存大约 30 分钟）。
+
 ### npm（命令行）
 
 安装和升级都写无标签包名，解析 npm `latest`，不要钉 `@beta` 或某一号：

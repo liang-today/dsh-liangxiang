@@ -38,7 +38,7 @@
 | 香港节点旁路验收 | ✅ TLS、鉴权、快照、梁祠、数据库、端口与服务沙箱 |
 | MacBook / Mac mini 安装 | ⚠️ 1.0.0 发布后用无标签 `dsh-liangxiang` 验收日常 profile；不要把精确号或 `@beta` 写进安装命令 |
 | `api.liang.today` 权威解析与 TLS | ✅ 权威及公共解析器收敛，正式 Let's Encrypt 证书生效 |
-| npm 公开包复核 | ⚠️ 源码已升到 `1.0.0`；registry 以 `npm publish` 进入 `latest`，再 `dist-tag add … beta` 兼容旧书签 |
+| npm 公开包复核 | ✅ `latest=1.0.0` 且 `beta=1.0.0`；npm 页与 npmmirror 均已同步正式命令 |
 | 1.0.0 正式包 | ✅ `dsh-liangxiang-1.0.0.tgz` 7 个文件；SHA-256 `0438fb576301a9621871fc9c58ebd03e5a79659fab64cf8ffb96f176fc09f56c`；无个人路径、内网/旧服务器 IP、私钥、旧共享口令或密钥形文件 |
 | 香港公网峰值（只读） | ✅ `/v1/health` 1,000 请求 / 1,000 并发新建 TLS 连接，0 失败；测试后 Caddy/Backend 无 warning、内存余量 14 GiB |
 
