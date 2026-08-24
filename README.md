@@ -8,6 +8,12 @@
 
 官网：[liang.today](https://liang.today/) · 部署指南：[liang.today/guide](https://liang.today/guide/)
 
+![今日梁相](assets/today-card.jpg)
+
+![插件主面板](assets/plugin-panel.jpg)
+
+![梁祠](assets/liangci.jpg)
+
 ## 安装
 
 先完全退出 WebUI。设置 → **插件市场** → 搜 `liangxiang`。没有插件市场时先装 `dshmarket`，步骤见 [部署指南](https://liang.today/guide/#market)。也已列入 [1024 Store](https://deepseek1024.com/) 和 [awesome-deepseek-harness](https://github.com/Dominic789654/awesome-deepseek-harness)。
