@@ -1,4 +1,4 @@
-# 102 — Known Limitations（更新至 v0.8.15-beta）
+# 102 — Known Limitations（更新至 v0.8.16-beta）
 
 按严重度排列。**没有未修的 Blocker/High**；以下都是明确接受的限制，不违反冻结不变量。
 
@@ -13,7 +13,7 @@
 4. **pnpm 11 默认 24 小时发布冷静期**。`dsh plugin add` 只是转给 pnpm；`@beta` 会先被写成精确版本，且未满 24 小时的版本会被退回上一号。这不是插件自己的 semver 范围。Host 会把 profile 依赖改回浮动 `beta`，并排除本包的冷静期。未启动过新 Host 的旧 profile 仍需先 `remove` 再 `add @beta`。
 5. **社区服务仍是软信任**。代码默认监听 `127.0.0.1`，公网仅由 Caddy 在 `https://api.liang.today` 提供 TLS；短期入梁券与 Ed25519 安装签名限制注册流量，但不能证明真人身份或 Token 真实性。
 6. **RC tarball 不含后端**。`lib/backend.js` 不在包内（插件包只装 Host + Client 两半）；在线模式需要从仓库运行 `pnpm run backend:start`。
-7. **单机 SQLite 后端**。同机双进程共享 SQLite 已通过抢最后一炷与幂等重放测试；不支持跨机器共享数据库或多节点写入。
+7. **单机 SQLite 后端，且社区节点必须单进程**。同机双进程共享 SQLite 已通过抢最后一炷与幂等重放测试；不支持跨机器共享数据库或多节点写入。投票 / 身份 / 入梁券限流都是进程内内存桶：多进程共享同一库时限额会变成 N 倍，因此社区部署以单进程为硬要求。
 8. `node:sqlite` 在 Node 22 仍是实验特性，启动会打印 ExperimentalWarning。
 9. **公开入梁券库存可能被扫空**。公开接口返回短期 bearer secret，这是当前“一键领券”的产品取舍；全局认领限流能约束服务器负载，却不能阻止脚本在限额内消耗库存。每个业务日 0 点会把剩余认领补回目标，因此 1000 张是日初库存下限，不是全天硬顶。可用 `liang config set admission-inventory-target 0` 停发。不能把入梁券宣传成真人认证。
 10. **健康端点通过不等于完整业务容量**。香港 Caddy 的 `/v1/health` 已通过 1,000 请求/1,000 并发、全部新建 TLS 连接且零失败的公网测试；但会触发 SQLite/日切逻辑的 `/snapshot`、签名链和投票写事务没有在生产账本上施加同等级峰值，正式业务容量仍须结合隔离压测与上线监控判定。

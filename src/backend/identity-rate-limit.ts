@@ -7,7 +7,8 @@
  *          → same IP, once per 30 minutes
  *
  * Timestamps are recorded on every attempt (allowed or denied) so a hammer
- * cannot reset the window by failing. The map is bounded.
+ * cannot reset the window by failing. The map is bounded and process-local;
+ * multi-process SQLite share multiplies the budget (docs/102).
  */
 export const IDENTITY_HIT_WINDOW_MS = 10 * 60 * 1000
 export const IDENTITY_MISS_WINDOW_MS = 30 * 60 * 1000

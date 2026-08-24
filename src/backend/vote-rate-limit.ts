@@ -1,6 +1,10 @@
 import { VOTE_BUDGET_WINDOW_MS, voteBudgetAvailable } from '../domain/vote-budget.ts'
 
-/** Hard-bounded in-memory limiter for vote incense, not raw HTTP requests. */
+/**
+ * Hard-bounded in-memory limiter for vote incense, not raw HTTP requests.
+ * Process-local: sharing one SQLite file across N processes multiplies the
+ * budget. A community node must run a single backend process (docs/102).
+ */
 export const VOTE_RATE_WINDOW_MS = VOTE_BUDGET_WINDOW_MS
 /** Per-installation incense allowed to refill each minute. */
 export const DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE = 50
@@ -34,8 +38,9 @@ export class VoteRateLimiter {
 
   /**
    * Current spendable incense. `lastVoteAt` reconstructs a missing bucket from
-   * the last accepted vote (no new schema): idle refill from empty, new
-   * installation still starts at `requestsPerMinute`.
+   * the last accepted vote (no new schema): idle refill from empty.
+   * A new installation (no last vote) starts at `requestsPerMinute` (50),
+   * not the 10-minute burst cap of 500.
    */
   inspect(installationId: string, now: number, lastVoteAt?: number | null): VoteRateDecision {
     if (this.requestsPerMinute <= 0) {
@@ -55,7 +60,7 @@ export class VoteRateLimiter {
       return {
         allowed: available >= 1,
         reason: available >= 1 ? null : 'per_installation',
-        retryAfterMs: available >= 1 ? 0 : this.retryAfterMs(available),
+        retryAfterMs: available >= 1 ? 0 : this.retryAfterMs(available, 1),
         available,
       }
     }
@@ -68,7 +73,7 @@ export class VoteRateLimiter {
     return {
       allowed: available >= 1,
       reason: available >= 1 ? null : 'per_installation',
-      retryAfterMs: available >= 1 ? 0 : this.retryAfterMs(available),
+      retryAfterMs: available >= 1 ? 0 : this.retryAfterMs(available, 1),
       available,
     }
   }
@@ -105,7 +110,7 @@ export class VoteRateLimiter {
       return {
         allowed: false,
         reason: 'per_installation',
-        retryAfterMs: this.retryAfterMs(tokens),
+        retryAfterMs: this.retryAfterMs(tokens, want),
         available: Math.floor(tokens),
       }
     }
@@ -125,8 +130,8 @@ export class VoteRateLimiter {
     this.windows.clear()
   }
 
-  private retryAfterMs(tokens: number): number {
-    const need = 1 - tokens
+  private retryAfterMs(tokens: number, want: number): number {
+    const need = want - tokens
     if (need <= 0) return 1
     return Math.max(1, Math.ceil((need / this.requestsPerMinute) * VOTE_RATE_WINDOW_MS))
   }

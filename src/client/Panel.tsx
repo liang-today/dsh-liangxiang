@@ -10,7 +10,7 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement } from 'react'
-import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, type LocalEpithet, type VoteType } from '../domain/index.ts'
+import { LIANG_POSITION_DECIMALS, VOTE_COUNT_MAX, formatCompactCount, formatRatioPercents, type LocalEpithet, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
   ACCOUNTING_UNAVAILABLE_HINT,
@@ -112,6 +112,8 @@ export interface PanelProps {
   /** Where to draw relative to the (freely placeable) badge. */
   placement?: PanelPlacement
   onVote: (voteType: VoteType) => void
+  /** Synthetic/read-screen click. Pointer holds must not also fire this. */
+  onVoteClick?: (voteType: VoteType) => void
   /** Pointer charge for dump; the container owns timers (this file stays hook-free). */
   onVotePointerDown?: (voteType: VoteType, event: PointerEvent<HTMLButtonElement>) => void
   onVotePointerUp?: (voteType: VoteType, event: PointerEvent<HTMLButtonElement>) => void
@@ -681,6 +683,7 @@ export function Panel(props: PanelProps): ReactElement {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionInfoOpen, onVersionInfoClose,
     welcomeVisible, onChooseOnline, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
     onVote,
+    onVoteClick = () => undefined,
     onVotePointerDown = () => undefined,
     onVotePointerUp = () => undefined,
     onVotePointerCancel = () => undefined,
@@ -1162,6 +1165,7 @@ export function Panel(props: PanelProps): ReactElement {
           onContextMenu={(event) => event.preventDefault()}
           onClick={() => {
             if (outOfIncense) onInsufficientVote('up')
+            else onVoteClick('up')
           }}
           onKeyDown={(event) => {
             if (event.key !== 'Enter' && event.key !== ' ') return
@@ -1193,7 +1197,7 @@ export function Panel(props: PanelProps): ReactElement {
           ) : null}
           <span data-liangxiang-vote-label="">
             {chargeVoteType === 'up' && charge >= DUMP_ARMED_CHARGE
-              ? `倾炉 ×${personal.remainingIncense}`
+              ? `倾炉 ×${Math.min(personal.remainingIncense, VOTE_COUNT_MAX)}`
               : VOTE_UP_LABEL}
           </span>
         </button>
@@ -1208,6 +1212,7 @@ export function Panel(props: PanelProps): ReactElement {
           onContextMenu={(event) => event.preventDefault()}
           onClick={() => {
             if (outOfIncense) onInsufficientVote('down')
+            else onVoteClick('down')
           }}
           onKeyDown={(event) => {
             if (event.key !== 'Enter' && event.key !== ' ') return
@@ -1239,7 +1244,7 @@ export function Panel(props: PanelProps): ReactElement {
           ) : null}
           <span data-liangxiang-vote-label="">
             {chargeVoteType === 'down' && charge >= DUMP_ARMED_CHARGE
-              ? `倾炉 ×${personal.remainingIncense}`
+              ? `倾炉 ×${Math.min(personal.remainingIncense, VOTE_COUNT_MAX)}`
               : VOTE_DOWN_LABEL}
           </span>
         </button>

@@ -9,9 +9,8 @@
  *    the frozen invariants fails validation instead of rendering nonsense;
  *  - the snapshot additionally carries the backend's own derived ratios and
  *    `liangzi_state` because the contract mandates them — the host re-derives
- *    them from the same row and REJECTS the frame on disagreement, which is
- *    what keeps "ratios and state share one snapshot version" honest across
- *    the process boundary;
+ *    the label from raw counts with this binary's frozen thresholds. A rolling
+ *    deploy with an older band table must not 502 an already-accepted vote;
  *  - a vote body is the minimum intent (`case_id`, `vote_type`,
  *    `request_id`, optional `count`). Identity travels in the installation header and personal
  *    accounting is never accepted from the caller (AGENTS.md §9).
@@ -27,6 +26,7 @@ import {
   DEFAULT_LIANGZI_THRESHOLDS,
   LIANGZI_STATES,
   deriveLiangziState,
+  isBusinessDate,
   isVoteType,
   VOTE_COUNT_MAX,
   VOTE_COUNT_MIN,
@@ -334,7 +334,6 @@ export interface V1ErrorBody {
   error: { code: V1ErrorCode, message: string, field?: string }
 }
 
-const BUSINESS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{8,128}$/
 
 function asRecord(raw: unknown, field: string): Record<string, unknown> {
@@ -367,7 +366,7 @@ function requireFinite(value: unknown, field: string): number {
 
 function requireBusinessDate(value: unknown, field: string): string {
   const text = requireString(value, field)
-  if (!BUSINESS_DATE_PATTERN.test(text)) throw new WireError(field, 'expected YYYY-MM-DD')
+  if (!isBusinessDate(text)) throw new WireError(field, 'expected a real YYYY-MM-DD calendar date')
   return text
 }
 
@@ -572,9 +571,11 @@ export function parseV1Bootstrap(raw: unknown): V1Bootstrap {
     throw new WireError('bootstrap.authority_mode', `unknown authority mode ${String(authorityMode)}`)
   }
   const liangziPolicy = parseLiangziPolicy(record.liangzi_policy, 'bootstrap.liangzi_policy')
-  const snapshot = parseV1Snapshot(record.global_snapshot, 'bootstrap.global_snapshot', {
-    boundaries: liangziPolicy.boundaries,
-  })
+  const snapshot = parseV1Snapshot(
+    record.global_snapshot,
+    'bootstrap.global_snapshot',
+    DEFAULT_LIANGZI_THRESHOLDS,
+  )
   const refresh = requireCount(record.snapshot_refresh_seconds, 'bootstrap.snapshot_refresh_seconds')
   if (refresh <= 0) throw new WireError('bootstrap.snapshot_refresh_seconds', 'must be positive')
   return {

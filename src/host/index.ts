@@ -119,11 +119,12 @@ export function apply(ctx: DshHostContext): void {
   let modeChangeTail: Promise<void> = Promise.resolve()
   let accountingAvailable = false
   let selectedPreference: HostAuthorityPreference = defaultAuthorityPreference
-  const pendingObservations = new Map<string, {
+  const pendingObservations: Array<{
+    sessionId: string
     value: unknown
     origin: UsageObservationOrigin
     modelId: string | null
-  }>()
+  }> = []
 
   const queueObservation = (
     sessionId: string,
@@ -131,18 +132,15 @@ export function apply(ctx: DshHostContext): void {
     origin: UsageObservationOrigin,
     modelId: string | null,
   ): void => {
-    const previous = pendingObservations.get(sessionId)
-    const preservedOrigin = previous?.origin.kind === 'live' && previous.origin.firstLiveSeq === 0
-      ? previous.origin
-      : origin
-    pendingObservations.set(sessionId, { value, origin: preservedOrigin, modelId })
+    // Keep arrival order. Collapsing to "latest per session" can drop a
+    // catch-up baseline; the following live event then credits from zero.
+    pendingObservations.push({ sessionId, value, origin, modelId })
   }
 
   const flushPendingObservations = (): void => {
-    const pending = [...pendingObservations.entries()]
-    pendingObservations.clear()
-    for (const [sessionId, observation] of pending) {
-      service.observeUsage(sessionId, observation.value, observation.origin, observation.modelId)
+    const pending = pendingObservations.splice(0)
+    for (const observation of pending) {
+      service.observeUsage(observation.sessionId, observation.value, observation.origin, observation.modelId)
     }
   }
 

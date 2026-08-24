@@ -10,7 +10,7 @@ import { Panel } from '../src/client/Panel.tsx'
 import { createMockLiangxiangStore } from '../src/client/store.ts'
 import type { LiangxiangViewState } from '../src/client/store.ts'
 import { color } from '../src/client/theme.ts'
-import { LIANGZI_STATES, liangQiFloatPeriodMs } from '../src/domain/index.ts'
+import { LIANGZI_STATES, VOTE_COUNT_MAX, liangQiFloatPeriodMs } from '../src/domain/index.ts'
 import {
   COMMUNITY_UNAVAILABLE_REASON,
   INCENSE_STAT_LABEL,
@@ -63,6 +63,7 @@ function renderPanel(
     onReconcileCancel?: () => void
     versionInfoOpen?: boolean
     onInsufficientVote?: (voteType: 'up' | 'down') => void
+    onVoteClick?: (voteType: 'up' | 'down') => void
     welcomeVisible?: boolean
     condensedIncense?: number
     utilityOpen?: boolean
@@ -88,6 +89,7 @@ function renderPanel(
       condensedIncense={extra.condensedIncense ?? 0}
       voteFeedback={voteFeedback}
       onVote={() => undefined}
+      {...(extra.onVoteClick === undefined ? {} : { onVoteClick: extra.onVoteClick })}
       localEpithet={extra.localEpithet ?? null}
       chargeVoteType={extra.chargeVoteType ?? null}
       charge={extra.charge ?? 0}
@@ -703,10 +705,32 @@ describe('region 3: exactly two vote buttons', () => {
     expect(votes[0]?.props['data-armed']).toBe('')
     expect(votes[1]?.props['data-charging']).toBeUndefined()
     expect(styleOf(votes[0])['--charge']).toBe('0.8')
-    expect(votes[0] && textContent([votes[0]])).toBe(`倾炉 ×${state.personal.remainingIncense}`)
+    expect(votes[0] && textContent([votes[0]])).toBe(`倾炉 ×${Math.min(state.personal.remainingIncense, VOTE_COUNT_MAX)}`)
     expect(styleOf(votes[0]).minHeight).toBe('38px')
     expect(findByAttr(tree, 'data-liangxiang-region').map((node) => node.props['data-liangxiang-region']))
       .toEqual(['case', 'core', 'vote', 'social'])
+  })
+
+  it('caps the dump label at the vote count max when remaining is larger', () => {
+    const store = createMockLiangxiangStore({
+      effectiveTokensToday: 1_234 * 50_000,
+      usedIncenseToday: 0,
+    })
+    const tree = renderPanel(store.getSnapshot(), '', { chargeVoteType: 'up', charge: 0.8 })
+    expect(store.getSnapshot().personal.remainingIncense).toBeGreaterThan(VOTE_COUNT_MAX)
+    expect(textContent(findByAttr(tree, 'data-liangxiang-vote').slice(0, 1))).toBe(`倾炉 ×${VOTE_COUNT_MAX}`)
+  })
+
+  it('lets a synthetic click vote when incense remains', () => {
+    const clicks: string[] = []
+    const tree = renderPanel(demoState(), '', {
+      onVoteClick: (voteType) => clicks.push(voteType),
+    })
+    for (const vote of findByAttr(tree, 'data-liangxiang-vote')) {
+      const click = vote.props.onClick as (() => void) | undefined
+      click?.()
+    }
+    expect(clicks).toEqual(['up', 'down'])
   })
 
   it('keeps observed 凝香 visible but disables votes while the community is unreachable', () => {

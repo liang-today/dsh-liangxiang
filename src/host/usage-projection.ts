@@ -151,7 +151,7 @@ export class UsageProjection {
       : {
         inputTokens: dest.inputTokens + source.inputTokens,
         outputTokens: dest.outputTokens + source.outputTokens,
-        weightCarry: dest.weightCarry,
+        weightCarry: dest.weightCarry + source.weightCarry,
         observedAt: Math.max(dest.observedAt, source.observedAt),
       }
     this.daily.set(authoritativeDate, merged)

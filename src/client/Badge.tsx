@@ -467,6 +467,8 @@ export function LiangxiangBadge(): ReactElement {
     target: HTMLButtonElement
   } | null>(null)
   const voteInFlight = useRef(false)
+  const pointerConsumedRef = useRef(false)
+  const dumpBurstTimer = useRef(0)
 
   const clearCharge = useCallback((): void => {
     const current = chargeRef.current
@@ -484,6 +486,7 @@ export function LiangxiangBadge(): ReactElement {
       cancelAnimationFrame(current.frame)
       window.clearTimeout(current.timeout)
     }
+    window.clearTimeout(dumpBurstTimer.current)
   }, [])
 
   const onInsufficientVote = (voteType: VoteType): void => {
@@ -507,7 +510,10 @@ export function LiangxiangBadge(): ReactElement {
           if (spent > 1) {
             playVoteDump(voteType)
             setDumpBurst(voteType)
-            window.setTimeout(() => setDumpBurst((current) => current === voteType ? null : current), 460)
+            window.clearTimeout(dumpBurstTimer.current)
+            dumpBurstTimer.current = window.setTimeout(() => {
+              setDumpBurst((current) => current === voteType ? null : current)
+            }, 460)
           } else if (voteType === 'up') playVoteUp()
           else playVoteDown()
           if (spent > 0) setLocalEpithet(rememberLocalEpithetVote(voteType, spent, store.getSnapshot().businessDate))
@@ -559,6 +565,7 @@ export function LiangxiangBadge(): ReactElement {
 
   const onVotePointerDown = (voteType: VoteType, event: ReactPointerEvent<HTMLButtonElement>): void => {
     if (event.button !== 0 || chargeRef.current !== null || voteInFlight.current) return
+    pointerConsumedRef.current = true
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     const startedAt = performance.now()
@@ -601,10 +608,18 @@ export function LiangxiangBadge(): ReactElement {
     finishHold(voteType, event.pointerId, event.currentTarget)
   }
 
+  const onVoteClick = (voteType: VoteType): void => {
+    if (pointerConsumedRef.current) {
+      pointerConsumedRef.current = false
+      return
+    }
+    onVote(voteType, 1)
+  }
+
   const onVotePointerCancel = (): void => {
-    const hold = chargeRef.current
-    if (hold === null) return
-    finishHold(hold.type, hold.pointerId)
+    // Keep the pointer-consumed flag so a leftover click after cancel
+    // cannot submit. Never finishHold / vote from a cancelled gesture.
+    clearCharge()
   }
 
   const onReconcileAsk = (): void => {
@@ -725,6 +740,7 @@ export function LiangxiangBadge(): ReactElement {
           positionPulse={positionPulse}
           placement={placement}
           onVote={onVote}
+          onVoteClick={onVoteClick}
           onVotePointerDown={onVotePointerDown}
           onVotePointerUp={onVotePointerUp}
           onVotePointerCancel={onVotePointerCancel}

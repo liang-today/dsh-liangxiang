@@ -938,15 +938,7 @@ export class LiangxiangBackendService {
           'request id was already used with a different payload',
         )
       }
-      return {
-        status: 'accepted',
-        request_id: intent.request_id,
-        vote_type: existing.vote_type,
-        used_incense: existing.used_incense_after,
-        remaining_incense: this.remainingFor(installationId, target),
-        spent_incense: 0,
-        replayed: true,
-      }
+      return this.replayAccepted(installationId, intent, existing, target)
     }
 
     this.ensureRow(installationId, target, now)
@@ -1000,15 +992,28 @@ export class LiangxiangBackendService {
     if (stored.case_id !== intent.case_id || stored.vote_type !== intent.vote_type) {
       return rejected(intent, 'idempotency_conflict', 'request id was already used with a different payload')
     }
-    const caseRow = this.store.caseById(stored.case_id)
+    return this.replayAccepted(installationId, intent, stored, this.store.caseById(stored.case_id))
+  }
+
+  private replayAccepted(
+    installationId: string,
+    intent: V1VoteRequest,
+    stored: { vote_type: V1VoteRequest['vote_type'], used_incense_after: number, remaining_incense_after: number },
+    caseRow: CaseRow | undefined,
+  ): V1VoteResult {
+    const row = caseRow === undefined
+      ? undefined
+      : this.store.incenseFor(installationId, caseRow.business_date)
+    const used = row?.used_incense ?? stored.used_incense_after
+    const remaining = row === undefined
+      ? stored.remaining_incense_after
+      : Math.floor(row.claimed_effective_tokens / row.token_per_incense) - row.used_incense
     return {
       status: 'accepted',
       request_id: intent.request_id,
       vote_type: stored.vote_type,
-      used_incense: stored.used_incense_after,
-      remaining_incense: caseRow === undefined
-        ? stored.remaining_incense_after
-        : this.remainingFor(installationId, caseRow),
+      used_incense: used,
+      remaining_incense: remaining,
       spent_incense: 0,
       replayed: true,
     }

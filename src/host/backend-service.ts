@@ -85,6 +85,8 @@ export class BackendLiangService implements LiangHostService {
   private archiveVersion = 0
   private historyArchive: LiangHistoryArchive | null = null
   private historyInFlight: Promise<void> | null = null
+  private snapshotInFlight: Promise<void> | null = null
+  private snapshotSequenceApplied = 0
 
   private accountingAvailable = false
   /** Last-known reachability of the community authority (history excluded). */
@@ -282,7 +284,7 @@ export class BackendLiangService implements LiangHostService {
     // moves on the click. It is still the BACKEND's published row — the host
     // never computes a ratio of its own — and adopting it needs no round trip.
     if (response.global_snapshot.case_id === this.activeCase?.id) {
-      this.snapshot = response.global_snapshot
+      this.applySnapshotIfNewer(response.global_snapshot)
     }
     this.bump()
     if (
@@ -350,8 +352,10 @@ export class BackendLiangService implements LiangHostService {
   }
 
   private connectingWireState(): LiangxiangWireState {
-    const businessDate = this.businessDate || new Date(this.hostEpoch).toISOString().slice(0, 10)
+    const businessDate = this.businessDate || this.usage.localBusinessDate()
     const usage = this.usage.recordFor(businessDate)
+    const effectiveTokensToday = this.usage.effectiveTokensFor(businessDate)
+    const remainingIncense = Math.floor(effectiveTokensToday / DEFAULT_TOKEN_PER_INCENSE)
     return {
       schemaVersion: WIRE_SCHEMA_VERSION,
       revision: this.revision,
@@ -381,9 +385,9 @@ export class BackendLiangService implements LiangHostService {
         lifetimeVoters: 0,
       },
       personal: {
-        effectiveTokensToday: this.usage.effectiveTokensFor(businessDate),
+        effectiveTokensToday,
         usedIncenseToday: 0,
-        remainingIncense: 0,
+        remainingIncense,
         tokenPerIncense: DEFAULT_TOKEN_PER_INCENSE,
       },
       accounting: {
@@ -458,6 +462,15 @@ export class BackendLiangService implements LiangHostService {
   }
 
   async refreshSnapshot(): Promise<void> {
+    if (this.snapshotInFlight !== null) return this.snapshotInFlight
+    const run = this.refreshSnapshotOnce().finally(() => {
+      this.snapshotInFlight = null
+    })
+    this.snapshotInFlight = run
+    return run
+  }
+
+  private async refreshSnapshotOnce(): Promise<void> {
     if (this.disposed || this.installationId === null) return
     if (this.bootstrap === null) {
       await this.refreshBootstrap()
@@ -470,7 +483,7 @@ export class BackendLiangService implements LiangHostService {
         await this.refreshBootstrap()
         return
       }
-      this.snapshot = response.global_snapshot
+      if (!this.applySnapshotIfNewer(response.global_snapshot)) return
       this.activeCase = response.active_case
       const archiveMoved = response.archive_version > this.archiveVersion
       this.archiveVersion = response.archive_version
@@ -480,6 +493,13 @@ export class BackendLiangService implements LiangHostService {
       this.setAuthorityUnavailable(error)
       this.reportFailure('snapshot', error)
     }
+  }
+
+  private applySnapshotIfNewer(snapshot: V1Snapshot): boolean {
+    if (snapshot.sequence < this.snapshotSequenceApplied) return false
+    this.snapshot = snapshot
+    this.snapshotSequenceApplied = snapshot.sequence
+    return true
   }
 
   dispose(): void {
@@ -497,6 +517,7 @@ export class BackendLiangService implements LiangHostService {
     this.activeCase = bootstrap.active_case
     this.personal = bootstrap.authoritative_personal_state
     this.snapshot = bootstrap.global_snapshot
+    this.snapshotSequenceApplied = bootstrap.global_snapshot.sequence
     this.businessDate = bootstrap.business_date
     const archiveMoved = bootstrap.archive_version > this.archiveVersion
     this.archiveVersion = bootstrap.archive_version

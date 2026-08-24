@@ -337,17 +337,28 @@ describe('vote transaction', () => {
     expect(service.getWireState().personal.usedIncenseToday).toBe(1)
   })
 
-  it('idempotency: same request id + same payload replays the original result', () => {
+  it('idempotency: same request id + same payload does not spend again', () => {
     const { service, caseId } = fundedService(3)
     const first = service.vote({ caseId, voteType: 'up', requestId: 'req-idem-1' })
+    service.vote({ caseId, voteType: 'down', requestId: 'req-later-1' })
     const replay = service.vote({ caseId, voteType: 'up', requestId: 'req-idem-1' })
-    expect(replay.result).toEqual(first.result)
-    // Exactly one spend, one global vote, one unique voter.
+    expect(first.result).toMatchObject({ status: 'accepted', usedIncenseToday: 1, remainingIncense: 2, spentIncense: 1 })
+    expect(replay.result).toMatchObject({ status: 'accepted', usedIncenseToday: 2, remainingIncense: 1, spentIncense: 0 })
     service.tick()
     const state = service.getWireState()
-    expect(state.personal.usedIncenseToday).toBe(1)
+    expect(state.personal.usedIncenseToday).toBe(2)
     expect(state.global.upVotes).toBe(1)
+    expect(state.global.downVotes).toBe(1)
     expect(state.global.uniqueVoters).toBe(1)
+  })
+
+  it('idempotency conflict: same request id + different count is rejected', () => {
+    const { service, caseId } = fundedService(5)
+    service.vote({ caseId, voteType: 'up', requestId: 'req-count-1', count: 2 })
+    const conflict = service.vote({ caseId, voteType: 'up', requestId: 'req-count-1', count: 3 })
+    expect(conflict.result.status).toBe('rejected')
+    if (conflict.result.status === 'rejected') expect(conflict.result.reason).toBe('idempotency_conflict')
+    expect(service.getWireState().personal.usedIncenseToday).toBe(2)
   })
 
   it('idempotency conflict: same request id + different direction is rejected', () => {
@@ -468,6 +479,24 @@ describe('hydration guards', () => {
     service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(0)
     await service.attachPersistence(memoryPort(memoryState()))
+    expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
+  })
+
+  it('keeps a catch-up baseline when a later live event arrives before ready', async () => {
+    const service = new FakeAuthoritativeLiangService(BASE_CONFIG, fakeClock(NOON_SHANGHAI), () => undefined)
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), CATCHUP, 'deepseek-v4-pro')
+    service.observeUsage('s1', buckets(100_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
+    await service.attachPersistence(memoryPort(memoryState()))
+    expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
+  })
+
+  it('does not double-count when memory-only observations later attach an empty disk', async () => {
+    const service = new FakeAuthoritativeLiangService(BASE_CONFIG, fakeClock(NOON_SHANGHAI), () => undefined)
+    service.markReadyMemoryOnly('test')
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
+    expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
+    await service.attachPersistence(memoryPort(memoryState()))
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
     expect(service.getWireState().personal.effectiveTokensToday).toBe(50_000)
   })
 

@@ -163,7 +163,7 @@ export function useThrottleFill(
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [reducedMotion, effectiveTokensToday])
+  }, [reducedMotion, effectiveTokensToday, tokenPerIncense])
 
   const displayed = displayedRef.current
   const progress = deriveDisplayedProgress(displayed, tokenPerIncense)

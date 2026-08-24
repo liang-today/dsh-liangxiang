@@ -53,4 +53,11 @@ describe('hard-bounded vote rate limiter', () => {
       available: 380,
     })
   })
+
+  it('computes retry-after from the missing incense, not a single stick', () => {
+    const limiter = new VoteRateLimiter(50, 16)
+    const denied = limiter.consume('fresh', 500, 0)
+    expect(denied).toMatchObject({ allowed: false, available: 50 })
+    expect(denied.retryAfterMs).toBe(9 * VOTE_RATE_WINDOW_MS)
+  })
 })

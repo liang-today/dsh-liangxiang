@@ -78,6 +78,8 @@ export interface PersistedVoteRecord {
   remainingIncense: number
   acceptedAt: number
   spentIncense?: number
+  /** Original requested count (`count ?? 1`); used for idempotency conflicts. */
+  requestedCount?: number
 }
 
 /** Everything the persistence adapter loads back at boot. */
@@ -123,12 +125,13 @@ export class FakeAuthoritativeLiangService {
 
   private persistence: LiangPersistencePort | null = null
   private ready = false
-  /** Latest cumulative projection (+origin) per session seen before readiness. */
-  private readonly pendingObservations = new Map<string, {
+  /** Startup observations in arrival order (catch-up must baseline before live). */
+  private readonly pendingObservations: Array<{
+    sessionId: string
     value: unknown
     origin: UsageObservationOrigin
     modelId: string | null | undefined
-  }>()
+  }> = []
 
   private watermarks = new Map<string, SessionUsageWatermark>()
   private dailyUsage = new Map<string, DailyUsageRecord>()
@@ -178,15 +181,35 @@ export class FakeAuthoritativeLiangService {
   /** Hydrate from storage, then adopt the port for write-behind persistence. */
   async attachPersistence(port: LiangPersistencePort): Promise<void> {
     const persisted = await port.load()
-    this.watermarks = persisted.watermarks
-    this.dailyUsage = persisted.dailyUsage
-    this.ledgers = persisted.ledgers
-    this.aggregates = persisted.aggregates
-    this.votes = persisted.votes
-    this.caseIndexes = persisted.caseIndexes
-    this.dayArchives = persisted.dayArchives
-    this.weekArchives = persisted.weekArchives
-    this.monthArchives = persisted.monthArchives
+    for (const [sessionId, persistedMark] of persisted.watermarks) {
+      const current = this.watermarks.get(sessionId)
+      this.watermarks.set(sessionId, current === undefined
+        ? { ...persistedMark }
+        : {
+          inputHwm: Math.max(current.inputHwm, persistedMark.inputHwm),
+          outputHwm: Math.max(current.outputHwm, persistedMark.outputHwm),
+        })
+    }
+    for (const [date, persistedDay] of persisted.dailyUsage) {
+      const current = this.dailyUsage.get(date)
+      this.dailyUsage.set(date, current === undefined
+        ? { ...persistedDay }
+        : {
+          inputTokens: Math.max(current.inputTokens, persistedDay.inputTokens),
+          outputTokens: Math.max(current.outputTokens, persistedDay.outputTokens),
+          weightCarry: Math.max(current.weightCarry, persistedDay.weightCarry),
+          observedAt: Math.max(current.observedAt, persistedDay.observedAt),
+        })
+    }
+    if (!this.ready) {
+      this.ledgers = persisted.ledgers
+      this.aggregates = persisted.aggregates
+      this.votes = persisted.votes
+      this.caseIndexes = persisted.caseIndexes
+      this.dayArchives = persisted.dayArchives
+      this.weekArchives = persisted.weekArchives
+      this.monthArchives = persisted.monthArchives
+    }
     this.archiveVersion = Math.max(
       0,
       ...[...this.dayArchives.values(), ...this.weekArchives.values(), ...this.monthArchives.values()]
@@ -208,10 +231,9 @@ export class FakeAuthoritativeLiangService {
   private markReady(_reason: string): void {
     if (this.ready) return
     this.ready = true
-    const pending = [...this.pendingObservations.entries()]
-    this.pendingObservations.clear()
-    for (const [sessionId, entry] of pending) {
-      this.observeUsage(sessionId, entry.value, entry.origin, entry.modelId)
+    const pending = this.pendingObservations.splice(0)
+    for (const entry of pending) {
+      this.observeUsage(entry.sessionId, entry.value, entry.origin, entry.modelId)
     }
     this.bump()
   }
@@ -233,7 +255,7 @@ export class FakeAuthoritativeLiangService {
     modelId?: string | null,
   ): void {
     if (!this.ready) {
-      this.pendingObservations.set(sessionId, { value, origin, modelId })
+      this.pendingObservations.push({ sessionId, value, origin, modelId })
       return
     }
     if (!isDshTokenUsageBuckets(value)) {
@@ -283,15 +305,21 @@ export class FakeAuthoritativeLiangService {
     }
     const existing = this.votes.get(intent.requestId)
     if (existing !== undefined) {
-      if (existing.caseId === intent.caseId && existing.voteType === intent.voteType) {
-        // Idempotent replay: the original business result, no second spend.
+      const requested = intent.count ?? 1
+      const originalRequested = existing.requestedCount ?? existing.spentIncense ?? 1
+      if (
+        existing.caseId === intent.caseId
+        && existing.voteType === intent.voteType
+        && originalRequested === requested
+      ) {
+        const current = this.derivePersonal()
         return respond({
           status: 'accepted',
           requestId: intent.requestId,
           voteType: existing.voteType,
-          usedIncenseToday: existing.usedIncenseToday,
-          remainingIncense: existing.remainingIncense,
-          spentIncense: existing.spentIncense ?? 1,
+          usedIncenseToday: current.usedIncenseToday,
+          remainingIncense: current.remainingIncense,
+          spentIncense: 0,
         })
       }
       return respond({
@@ -343,6 +371,7 @@ export class FakeAuthoritativeLiangService {
       remainingIncense: personal.remainingIncense - spent,
       acceptedAt: now,
       spentIncense: spent,
+      requestedCount: intent.count ?? 1,
     }
     this.votes.set(intent.requestId, record)
     this.persistence?.putLedger(this.currentDate, { usedIncense: this.usedIncenseToday })

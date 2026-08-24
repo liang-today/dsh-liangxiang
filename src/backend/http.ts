@@ -367,6 +367,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       return
     }
     if (path === `${BACKEND_API_PREFIX}/admission/tickets`) {
+      // Public ticket list is the one-tap 入梁券 design: the secret is meant
+      // to be claimed, not a leaked credential. Rate limits bound inventory.
       writeJson(res, 200, service.admissionTickets())
       return
     }
@@ -698,5 +700,9 @@ function writeValidationError(res: ServerResponse, error: unknown): void {
     writeError(res, 400, 'invalid_request', error.message, error.field)
     return
   }
-  writeError(res, 400, 'invalid_request', 'invalid request')
+  if (error instanceof SyntaxError) {
+    writeError(res, 400, 'invalid_request', 'invalid request')
+    return
+  }
+  throw error
 }

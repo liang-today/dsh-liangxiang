@@ -1,4 +1,7 @@
-/** Server-wide cap for first-install ticket claims. No attacker-controlled key map. */
+/**
+ * Server-wide cap for first-install ticket claims. No attacker-controlled key
+ * map. Process-local memory: a community node must be a single process (docs/102).
+ */
 export class AdmissionRateLimiter {
   private windowStartedAt = 0
   private used = 0

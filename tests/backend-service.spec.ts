@@ -162,9 +162,34 @@ describe('vote transaction', () => {
     const first = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-idem-00001'))
     const replay = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-idem-00001'))
     expect(first.result).toMatchObject({ status: 'accepted', replayed: false })
-    expect(replay.result).toMatchObject({ status: 'accepted', replayed: true })
+    expect(replay.result).toMatchObject({ status: 'accepted', replayed: true, spent_incense: 0 })
     expect(replay.authoritative_personal_state.used_incense).toBe(1)
     expect(replay.authoritative_personal_state.remaining_incense).toBe(2)
+  })
+
+  it('replays later with current incense counters so the envelope stays consistent', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 3)
+    parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-replay-a0001'))
+    parseV1VoteResponse(vote(f, INSTALLATION, 'down', 'req-replay-b0001'))
+    const replay = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'req-replay-a0001'))
+    expect(replay.result).toMatchObject({
+      status: 'accepted',
+      replayed: true,
+      spent_incense: 0,
+      used_incense: 2,
+      remaining_incense: 1,
+    })
+    expect(replay.authoritative_personal_state).toMatchObject({
+      used_incense: 2,
+      remaining_incense: 1,
+    })
+  })
+
+  it('rejects a calendar-impossible business date on the snapshot', () => {
+    const f = boot()
+    const snapshot = f.service.snapshotResponse().global_snapshot
+    expect(() => parseV1Snapshot({ ...snapshot, business_date: '2025-02-30' })).toThrow(/calendar date/)
   })
 
   it('rejects the same request id with a conflicting payload', () => {

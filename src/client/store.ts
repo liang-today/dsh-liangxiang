@@ -9,6 +9,7 @@ import {
   applyAcceptedVotes,
   buildPublicSnapshot,
   canSpendIncense,
+  DEFAULT_TOKEN_PER_INCENSE,
   derivePersonalLiangQiState,
   spendIncense,
   type DailyLiangCase,
@@ -131,7 +132,7 @@ export function createOfflineViewState(connection: ConnectionState): LiangxiangV
       title: '梁案尚未同步',
       status: 'active',
       createdAt: 0,
-      tokenPerIncense: 50_000,
+      tokenPerIncense: DEFAULT_TOKEN_PER_INCENSE,
     },
     snapshot: buildPublicSnapshot({
       caseId: 'offline',
@@ -165,7 +166,7 @@ const DEFAULT_SEED: Required<MockStoreSeed> = {
   uniqueVoters: 2_841,
   effectiveTokensToday: 397_000,
   usedIncenseToday: 2,
-  tokenPerIncense: 50_000,
+  tokenPerIncense: DEFAULT_TOKEN_PER_INCENSE,
 }
 
 export interface MockLiangxiangStore extends LiangxiangStore {

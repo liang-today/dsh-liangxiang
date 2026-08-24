@@ -7,7 +7,7 @@
 1. `ensureActiveCase(now)`：按服务器时钟解析业务日，必要时开新案（并关闭旧案、写入零票快照）。
 2. 进入事务，按 `case_id` 取案：不存在 → `stale_case`；`status != active` → `case_not_active`；不是今天的活跃案 → `stale_case`。
 3. 幂等查询 `(installation_id, request_id)`：
-   - 命中且 `case_id`+`vote_type` 相同 → 返回**原业务结果**（`replayed: true`），不再扣香、不再计票、不再计香客；
+   - 命中且 `case_id`+`vote_type` 相同 → `replayed: true`，不再扣香、不再计票、不再计香客；`used_incense` / `remaining_incense` 取**当前** incense 行（与同响应 `authoritative_personal_state` 一致），`spent_incense: 0`。行上的 `used_incense_after` 是当时快照，后续投票后不能再当重放计数。
    - 命中但载荷不同 → `idempotency_conflict`。
 4. `ensureIncenseRow`（`INSERT … ON CONFLICT DO NOTHING`）。
 5. 记录 `firstVoteForCase = !hasVotedForCase(...)`（必须在插入投票前读）。
@@ -36,7 +36,7 @@ UPDATE daily_incense_state
 
 ## 幂等：同 request_id
 
-- 串行重放 → 同一结果，`used_incense` 不变（`replayed: true`）。
+- 串行重放 → 不二次扣香（`replayed: true`，`spent_incense: 0`）；计数与当前账面一致，因此中间若有后续票，重放响应不会自相矛盾。
 - 20 个并行同 id → 全部 200，最终 `used_incense = 1`。
 - 同 id 不同方向 → 409 `idempotency_conflict`，账面不动。
 - 幂等域是 `(installation_id, request_id)`：不同安装可用相同 id。

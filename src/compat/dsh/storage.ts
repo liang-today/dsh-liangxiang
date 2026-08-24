@@ -115,6 +115,8 @@ const voteSchema: DshValueSchema = {
       usedIncenseToday: requireCountField(record, 'usedIncenseToday'),
       remainingIncense: requireCountField(record, 'remainingIncense'),
       acceptedAt: requireCountField(record, 'acceptedAt'),
+      ...(record.spentIncense === undefined ? {} : { spentIncense: requireCountField(record, 'spentIncense') }),
+      ...(record.requestedCount === undefined ? {} : { requestedCount: requireCountField(record, 'requestedCount') }),
     }
   },
 }

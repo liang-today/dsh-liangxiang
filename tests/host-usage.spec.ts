@@ -116,3 +116,22 @@ describe('UsageProjection.hydrate merge', () => {
     expect(usage.effectiveTokensFor(BUSINESS_DATE)).toBe(0)
   })
 })
+
+describe('UsageProjection.alignDailyBucket', () => {
+  it('adds the source weight carry when merging into a non-empty destination', () => {
+    const usage = projection(Date.UTC(2026, 7, 16, 16, 30, 0))
+    usage.hydrate(
+      new Map(),
+      new Map([
+        ['2026-08-16', { inputTokens: 10_000, outputTokens: 0, weightCarry: 2_000, observedAt: 1 }],
+        ['2026-08-17', { inputTokens: 5_000, outputTokens: 0, weightCarry: 3_000, observedAt: 2 }],
+      ]),
+      memorySink(),
+    )
+    usage.alignDailyBucket('2026-08-16')
+    expect(usage.recordFor('2026-08-16')).toMatchObject({
+      inputTokens: 15_000,
+      weightCarry: 5_000,
+    })
+  })
+})
