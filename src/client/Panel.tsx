@@ -10,7 +10,7 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement } from 'react'
-import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, type VoteType } from '../domain/index.ts'
+import { LIANG_POSITION_DECIMALS, LOCAL_EPITHET_MARK, formatCompactCount, formatRatioPercents, type LocalEpithet, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
   ACCOUNTING_UNAVAILABLE_HINT,
@@ -43,6 +43,8 @@ import {
   VOTE_UP_LABEL,
   VOTE_UP_NAME,
   LOCAL_EPITHET_HINT,
+  LOCAL_EPITHET_TITLE,
+  formatLocalEpithetLine,
   RECONCILE_CONFIRM_CANCEL,
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
@@ -119,7 +121,7 @@ export interface PanelProps {
   /** After a dump lands: strike the vote row once. */
   dumpBurst?: VoteType | null
   /** Local-only 梁号 painted in the reserved feedback row when idle. */
-  localEpithet?: string
+  localEpithet?: LocalEpithet | null
   /** Empty-pool click: never sends a vote; plays the playful local cue. */
   onInsufficientVote: (voteType: VoteType) => void
   onClose: () => void
@@ -684,7 +686,7 @@ export function Panel(props: PanelProps): ReactElement {
     chargeVoteType = null,
     charge = 0,
     dumpBurst = null,
-    localEpithet = '',
+    localEpithet = null,
     onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
     modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
@@ -717,6 +719,7 @@ export function Panel(props: PanelProps): ReactElement {
       ? NO_INCENSE_REASON
       : ''
   const absurdNotice = state.accountingNotice === 'claim_capped_absurd'
+  const epithetLine = localEpithet === null ? '' : formatLocalEpithetLine(localEpithet.dedication, localEpithet.stance)
   const statusLine = offline
     ? OFFLINE_REASON
     : communityUnavailable
@@ -729,7 +732,8 @@ export function Panel(props: PanelProps): ReactElement {
           ? voteFeedback
           : outOfIncense
             ? NO_INCENSE_REASON
-            : localEpithet
+            : epithetLine
+  const showingEpithet = statusLine === epithetLine && epithetLine !== '' && localEpithet !== null
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
@@ -1244,8 +1248,8 @@ export function Panel(props: PanelProps): ReactElement {
       <p
         role="status"
         data-liangxiang-vote-feedback=""
-        data-liangxiang-epithet={statusLine === localEpithet && localEpithet !== '' ? '' : undefined}
-        title={statusLine === localEpithet && localEpithet !== '' ? LOCAL_EPITHET_HINT : undefined}
+        data-liangxiang-epithet={showingEpithet ? '' : undefined}
+        title={showingEpithet ? LOCAL_EPITHET_HINT : undefined}
         style={{
           margin: '6px 0 0',
           minHeight: '22px',
@@ -1264,7 +1268,30 @@ export function Panel(props: PanelProps): ReactElement {
           textAlign: 'center',
         }}
       >
-        {statusLine}
+        {showingEpithet && localEpithet !== null ? (
+          <>
+            <span data-liangxiang-epithet-title="" style={{ color: color.textTertiary, fontWeight: 650 }}>
+              {LOCAL_EPITHET_TITLE}：
+            </span>
+            {localEpithet.dedication}
+            <span
+              data-liangxiang-epithet-mark=""
+              aria-hidden="true"
+              style={{
+                display: 'inline-block',
+                margin: '0 0.08em',
+                fontSize: '16px',
+                fontWeight: 800,
+                lineHeight: '22px',
+                verticalAlign: 'middle',
+                color: color.ritualEmber,
+              }}
+            >
+              {' '}{LOCAL_EPITHET_MARK}{' '}
+            </span>
+            {localEpithet.stance}
+          </>
+        ) : statusLine}
       </p>
 
       {/* Region 4 — stats + the compact ritual-control column. */}

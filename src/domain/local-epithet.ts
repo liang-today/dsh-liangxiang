@@ -3,8 +3,10 @@
  * remembers personal 夯/拉 counts and paints a two-part epithet in the
  * already-reserved vote-feedback row.
  *
- *   dedication (how much you have spent) · stance (how you vote)
- *   e.g. 勤香·死夯梁 / 旁观·闲梁 / 焚尽·铁拉梁
+ *   小梁号：dedication • stance
+ *   e.g. 小梁号：勤香 • 死夯梁
+ *
+ * Counts reset with the business date, same as 今日凝香.
  */
 export interface LocalEpithetRecord {
   up: number
@@ -13,12 +15,19 @@ export interface LocalEpithetRecord {
 
 export const EMPTY_LOCAL_EPITHET: LocalEpithetRecord = { up: 0, down: 0 }
 
+/** Heavier than `·`, so the two halves read as a pair. */
+export const LOCAL_EPITHET_MARK = '•'
+
 export interface LocalEpithet {
   dedication: string
   stance: string
-  /** `勤香·死夯梁` — one voice, two facts. */
+  /** `勤香 • 死夯梁` — one voice, two facts. */
   label: string
   spent: number
+}
+
+export function formatLocalEpithetName(dedication: string, stance: string): string {
+  return `${dedication} ${LOCAL_EPITHET_MARK} ${stance}`
 }
 
 function dedicationFor(spent: number): string {
@@ -50,7 +59,7 @@ export function deriveLocalEpithet(record: LocalEpithetRecord): LocalEpithet {
   const spent = up + down
   const dedication = dedicationFor(spent)
   const stance = stanceFor(up, down)
-  return { dedication, stance, label: `${dedication}·${stance}`, spent }
+  return { dedication, stance, label: formatLocalEpithetName(dedication, stance), spent }
 }
 
 export function recordLocalEpithetVote(

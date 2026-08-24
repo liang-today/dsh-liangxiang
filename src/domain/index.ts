@@ -77,7 +77,9 @@ export {
 } from './vote-budget.ts'
 export {
   EMPTY_LOCAL_EPITHET,
+  LOCAL_EPITHET_MARK,
   deriveLocalEpithet,
+  formatLocalEpithetName,
   recordLocalEpithetVote,
   type LocalEpithet,
   type LocalEpithetRecord,

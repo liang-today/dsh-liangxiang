@@ -66,7 +66,7 @@ function renderPanel(
     utilityOpen?: boolean
     modeConfirmOpen?: boolean
     modeChanging?: boolean
-    localEpithet?: string
+    localEpithet?: { dedication: string, stance: string, label: string, spent: number }
     chargeVoteType?: 'up' | 'down' | null
     charge?: number
   } = {},
@@ -86,7 +86,7 @@ function renderPanel(
       condensedIncense={extra.condensedIncense ?? 0}
       voteFeedback={voteFeedback}
       onVote={() => undefined}
-      localEpithet={extra.localEpithet ?? ''}
+      localEpithet={extra.localEpithet ?? null}
       chargeVoteType={extra.chargeVoteType ?? null}
       charge={extra.charge ?? 0}
       onInsufficientVote={extra.onInsufficientVote ?? (() => undefined)}
@@ -655,12 +655,15 @@ describe('region 3: exactly two vote buttons', () => {
   })
 
   it('paints the local 梁号 in the reserved idle feedback row', () => {
-    const tree = renderPanel(demoState(), '', { localEpithet: '勤香·死夯梁' })
+    const tree = renderPanel(demoState(), '', {
+      localEpithet: { dedication: '勤香', stance: '死夯梁', label: '勤香 • 死夯梁', spent: 20 },
+    })
     const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
-    expect(row && textContent([row])).toBe('勤香·死夯梁')
+    expect(row && textContent([row])).toBe('小梁号：勤香 • 死夯梁')
     expect(row?.props['data-liangxiang-epithet']).toBe('')
-    expect(row?.props.title).toBe('仅本机可见，天庭不记账')
+    expect(row?.props.title).toBe('仅本机可见，天庭不记账；随今日香火日清')
     expect(styleOf(row).height).toBe('22px')
+    expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-mark')[0]).fontSize).toBe('16px')
   })
 
   it('charges a held vote button without adding a fifth region', () => {

@@ -450,7 +450,10 @@ export function LiangxiangBadge(): ReactElement {
     wasOpen.current = open
   }, [open])
 
-  const [localEpithet, setLocalEpithet] = useState(() => readLocalEpithet().label)
+  const [localEpithet, setLocalEpithet] = useState(() => readLocalEpithet(state.businessDate))
+  useEffect(() => {
+    setLocalEpithet(readLocalEpithet(state.businessDate))
+  }, [state.businessDate])
   const [chargeVoteType, setChargeVoteType] = useState<VoteType | null>(null)
   const [charge, setCharge] = useState(0)
   const [dumpBurst, setDumpBurst] = useState<VoteType | null>(null)
@@ -506,7 +509,7 @@ export function LiangxiangBadge(): ReactElement {
             window.setTimeout(() => setDumpBurst((current) => current === voteType ? null : current), 460)
           } else if (voteType === 'up') playVoteUp()
           else playVoteDown()
-          if (spent > 0) setLocalEpithet(rememberLocalEpithetVote(voteType, spent).label)
+          if (spent > 0) setLocalEpithet(rememberLocalEpithetVote(voteType, spent, store.getSnapshot().businessDate))
           setVoteFeedback(formatAcceptedVoteFeedback(
             voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME,
             spent,
