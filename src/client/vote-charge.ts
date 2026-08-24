@@ -1,8 +1,8 @@
-/** Hold this long to dump every spendable stick in one request. */
+/** Visual 倾炉 arming. Release in this window cancels; it does not dump. */
 export const DUMP_HOLD_MS = 280
 /** Visual charge reaches full lightning around this mark. */
 export const CHARGE_FULL_MS = 900
-/** Stop waiting for pointerup and dump the remaining sticks. */
+/** Only a full hold dumps. Early pointerup revokes the charge. */
 export const DUMP_AUTO_RELEASE_MS = 2000
 
 export function chargeProgress(elapsedMs: number): number {
@@ -20,3 +20,12 @@ export function isAutoRelease(elapsedMs: number): boolean {
 
 /** Charge progress at which the button is armed for 倾炉. */
 export const DUMP_ARMED_CHARGE = DUMP_HOLD_MS / CHARGE_FULL_MS
+
+export type HoldReleaseAction = 'tap' | 'cancel' | 'dump'
+
+/** Tap = one stick; armed-but-released = revoke; full 2s = dump. */
+export function holdReleaseAction(elapsedMs: number): HoldReleaseAction {
+  if (isAutoRelease(elapsedMs)) return 'dump'
+  if (isDumpHold(elapsedMs)) return 'cancel'
+  return 'tap'
+}

@@ -19,7 +19,7 @@ import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { readLocalEpithet, rememberLocalEpithetVote } from './local-epithet-store.ts'
 import { readLocalIncenseStats, rememberLocalIncenseVote } from './local-incense-store.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
-import { DUMP_AUTO_RELEASE_MS, chargeProgress, isDumpHold } from './vote-charge.ts'
+import { DUMP_AUTO_RELEASE_MS, chargeProgress, holdReleaseAction } from './vote-charge.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
@@ -562,12 +562,14 @@ export function LiangxiangBadge(): ReactElement {
         /* already released */
       }
     }
+    const action = holdReleaseAction(elapsed)
+    if (action === 'cancel') return
     const remaining = store.getSnapshot().personal.remainingIncense
     if (remaining <= 0) {
       onInsufficientVote(voteType)
       return
     }
-    onVote(voteType, isDumpHold(elapsed) ? remaining : 1)
+    onVote(voteType, action === 'dump' ? remaining : 1)
   }
 
   const onVotePointerDown = (voteType: VoteType, event: ReactPointerEvent<HTMLButtonElement>): void => {

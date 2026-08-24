@@ -56,7 +56,7 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 
 ```bash
 export DSH_HOME=/实际使用的/dsh/home
-bash scripts/update-plugin.sh ./dsh-liangxiang-0.8.18-beta.tgz --profile <profile名>
+bash scripts/update-plugin.sh ./dsh-liangxiang-0.8.19-beta.tgz --profile <profile名>
 ```
 
 脚本先备份并校验 `storages/liangxiang.json` 与存在时的 `storages/liangxiang_local.json`，再按 tarball 内容 SHA-256 复制到持久化包缓存，并用这个

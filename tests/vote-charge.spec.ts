@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DUMP_ARMED_CHARGE, DUMP_AUTO_RELEASE_MS, DUMP_HOLD_MS, chargeProgress, isAutoRelease, isDumpHold } from '../src/client/vote-charge.ts'
+import { DUMP_ARMED_CHARGE, DUMP_AUTO_RELEASE_MS, DUMP_HOLD_MS, chargeProgress, holdReleaseAction, isAutoRelease, isDumpHold } from '../src/client/vote-charge.ts'
 
 describe('long-press dump charge', () => {
   it('arms the dump well before a full visual charge', () => {
@@ -17,5 +17,13 @@ describe('long-press dump charge', () => {
     expect(isAutoRelease(DUMP_AUTO_RELEASE_MS - 1)).toBe(false)
     expect(isAutoRelease(DUMP_AUTO_RELEASE_MS)).toBe(true)
     expect(isDumpHold(DUMP_AUTO_RELEASE_MS)).toBe(true)
+  })
+
+  it('dumps only after a full hold; early release revokes the charge', () => {
+    expect(holdReleaseAction(0)).toBe('tap')
+    expect(holdReleaseAction(DUMP_HOLD_MS - 1)).toBe('tap')
+    expect(holdReleaseAction(DUMP_HOLD_MS)).toBe('cancel')
+    expect(holdReleaseAction(DUMP_AUTO_RELEASE_MS - 1)).toBe('cancel')
+    expect(holdReleaseAction(DUMP_AUTO_RELEASE_MS)).toBe('dump')
   })
 })
