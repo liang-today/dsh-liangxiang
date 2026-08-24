@@ -658,7 +658,7 @@ describe('region 3: exactly two vote buttons', () => {
       localEpithet: { dedication: '旁观', stance: '闲梁', label: '旁观 • 闲梁', spent: 0 },
     })
     const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
-    expect(row && textContent([row])).toBe('梁小号：旁观 • 闲梁')
+    expect(row && textContent([row])).toBe('梁小号：旁观闲梁')
     expect(row?.props['data-liangxiang-epithet']).toBe('')
   })
 
@@ -683,11 +683,16 @@ describe('region 3: exactly two vote buttons', () => {
       localEpithet: { dedication: '勤香', stance: '死夯梁', label: '勤香 • 死夯梁', spent: 20 },
     })
     const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
-    expect(row && textContent([row])).toBe('梁小号：勤香 • 死夯梁')
+    expect(row && textContent([row])).toBe('梁小号：勤香死夯梁')
     expect(row?.props['data-liangxiang-epithet']).toBe('')
     expect(row?.props.title).toBe('仅本机可见，天庭不记账；随今日香火日清')
     expect(styleOf(row).height).toBe('22px')
-    expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-mark')[0]).fontSize).toBe('16px')
+    expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-line')[0]).alignItems).toBe('center')
+    expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-mark')[0])).toMatchObject({
+      width: '5px',
+      height: '5px',
+      borderRadius: '50%',
+    })
   })
 
   it('charges a held vote button without adding a fifth region', () => {

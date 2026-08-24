@@ -10,7 +10,7 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement } from 'react'
-import { LIANG_POSITION_DECIMALS, LOCAL_EPITHET_MARK, formatCompactCount, formatRatioPercents, type LocalEpithet, type VoteType } from '../domain/index.ts'
+import { LIANG_POSITION_DECIMALS, formatCompactCount, formatRatioPercents, type LocalEpithet, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
   ACCOUNTING_UNAVAILABLE_HINT,
@@ -1268,7 +1268,15 @@ export function Panel(props: PanelProps): ReactElement {
         }}
       >
         {showingEpithet && localEpithet !== null ? (
-          <>
+          <span
+            data-liangxiang-epithet-line=""
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              maxWidth: '100%',
+              overflow: 'hidden',
+            }}
+          >
             <span data-liangxiang-epithet-title="" style={{ color: color.textTertiary, fontWeight: 650 }}>
               {LOCAL_EPITHET_TITLE}：
             </span>
@@ -1277,19 +1285,17 @@ export function Panel(props: PanelProps): ReactElement {
               data-liangxiang-epithet-mark=""
               aria-hidden="true"
               style={{
-                display: 'inline-block',
-                margin: '0 0.08em',
-                fontSize: '16px',
-                fontWeight: 800,
-                lineHeight: '22px',
-                verticalAlign: 'middle',
-                color: color.ritualEmber,
+                display: 'block',
+                width: '5px',
+                height: '5px',
+                margin: '0 5px',
+                borderRadius: '50%',
+                background: color.ritualEmber,
+                flex: '0 0 auto',
               }}
-            >
-              {' '}{LOCAL_EPITHET_MARK}{' '}
-            </span>
+            />
             {localEpithet.stance}
-          </>
+          </span>
         ) : statusLine}
       </p>
 

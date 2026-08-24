@@ -1,4 +1,4 @@
-# 100 — Release Readiness（v0.8.14-beta 梁相）
+# 100 — Release Readiness（v0.8.15-beta 梁相）
 
 结论：**社区 soft-trust 发布候选可部署**；不得宣传为实名、一人一票、
 可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
