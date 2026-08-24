@@ -15,14 +15,10 @@ REMOTE_VERSION="$(ssh "$REMOTE" "sudo -n cat '$PREFIX/VERSION' 2>/dev/null" || t
 echo "local : ${LOCAL}"
 echo "server: ${REMOTE_VERSION:-<missing>}"
 
-case "$REMOTE_VERSION" in
-  "$LOCAL"*)
-    ssh "$REMOTE" "sudo -n systemctl is-active --quiet liangxiang-backend"
-    echo "OK: server matches local checkout and liangxiang-backend is active."
-    exit 0
-    ;;
-  *)
-    echo "STALE: server does not match local checkout. Run scripts/deploy.sh." >&2
-    exit 1
-    ;;
-esac
+if [[ "$REMOTE_VERSION" == *"$LOCAL"* ]]; then
+  ssh "$REMOTE" "sudo -n systemctl is-active --quiet liangxiang-backend"
+  echo "OK: server matches local checkout and liangxiang-backend is active."
+  exit 0
+fi
+echo "STALE: server does not match local checkout. Run scripts/deploy.sh." >&2
+exit 1
