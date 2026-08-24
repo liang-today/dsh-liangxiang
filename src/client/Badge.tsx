@@ -17,6 +17,7 @@ import { VOTE_COUNT_MAX, type LiangziState, type VoteType } from '../domain/inde
 import { EMPTY_INCENSE_FEEDBACK_MS, VOTE_FEEDBACK_MS, formatAcceptedVoteFeedback, HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_RATE_LIMITED, VOTE_UP_NAME, isEmptyIncenseFeedback } from '../shared/index.ts'
 import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { readLocalEpithet, rememberLocalEpithetVote } from './local-epithet-store.ts'
+import { readLocalIncenseStats, rememberLocalIncenseVote } from './local-incense-store.ts'
 import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { DUMP_AUTO_RELEASE_MS, chargeProgress, isDumpHold } from './vote-charge.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
@@ -452,8 +453,10 @@ export function LiangxiangBadge(): ReactElement {
   }, [open])
 
   const [localEpithet, setLocalEpithet] = useState(() => readLocalEpithet(state.businessDate))
+  const [localIncense, setLocalIncense] = useState(() => readLocalIncenseStats(state.businessDate))
   useEffect(() => {
     setLocalEpithet(readLocalEpithet(state.businessDate))
+    setLocalIncense(readLocalIncenseStats(state.businessDate))
   }, [state.businessDate])
   const [chargeVoteType, setChargeVoteType] = useState<VoteType | null>(null)
   const [charge, setCharge] = useState(0)
@@ -516,7 +519,11 @@ export function LiangxiangBadge(): ReactElement {
             }, 460)
           } else if (voteType === 'up') playVoteUp()
           else playVoteDown()
-          if (spent > 0) setLocalEpithet(rememberLocalEpithetVote(voteType, spent, store.getSnapshot().businessDate))
+          if (spent > 0) {
+            const date = store.getSnapshot().businessDate
+            setLocalEpithet(rememberLocalEpithetVote(voteType, spent, date))
+            setLocalIncense(rememberLocalIncenseVote(voteType, spent, date))
+          }
           setVoteFeedback(formatAcceptedVoteFeedback(
             voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME,
             spent,
@@ -748,6 +755,7 @@ export function LiangxiangBadge(): ReactElement {
           charge={charge}
           dumpBurst={dumpBurst}
           localEpithet={localEpithet}
+          localIncense={localIncense}
           onInsufficientVote={onInsufficientVote}
           onClose={() => {
             if (welcomeVisible) return

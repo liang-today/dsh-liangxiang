@@ -10,7 +10,7 @@
  * Presentational only (no hooks); the container wires state and callbacks.
  */
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement } from 'react'
-import { LIANG_POSITION_DECIMALS, VOTE_COUNT_MAX, formatCompactCount, formatRatioPercents, type LocalEpithet, type VoteType } from '../domain/index.ts'
+import { LIANG_POSITION_DECIMALS, VOTE_COUNT_MAX, formatCompactCount, formatIncenseShare, formatRatioPercents, type LocalEpithet, type LocalIncenseStats, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
   ACCOUNTING_UNAVAILABLE_HINT,
@@ -18,6 +18,8 @@ import {
   AUTHORITY_MODE_NOTES,
   INCENSE_STAT_HINT,
   INCENSE_STAT_LABEL,
+  MY_INCENSE_STAT_HINT,
+  MY_INCENSE_STAT_LABEL,
   LIANGZI_STATE_LABELS,
   LIANG_POSITION_LABEL,
   LIANGCI_ENTRY_HINT,
@@ -35,6 +37,7 @@ import {
   PLUGIN_VERSION,
   CYCLE_LOCAL_CASE_LABEL,
   STAT_LIFETIME_LABEL,
+  STAT_SHARE_LABEL,
   STAT_TODAY_LABEL,
   VOTER_STAT_HINT,
   VOTER_STAT_LABEL,
@@ -125,6 +128,8 @@ export interface PanelProps {
   dumpBurst?: VoteType | null
   /** Local-only 梁号 painted in the reserved feedback row when idle. */
   localEpithet?: LocalEpithet | null
+  /** Local-only incense ledger painted under 三界香火 on hover. */
+  localIncense?: LocalIncenseStats | null
   /** Empty-pool click: never sends a vote; plays the playful local cue. */
   onInsufficientVote: (voteType: VoteType) => void
   onClose: () => void
@@ -569,7 +574,7 @@ const PANEL_CSS = `
   left: 0;
   bottom: calc(100% + 8px);
   z-index: 3;
-  min-width: 128px;
+  min-width: 168px;
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid ${color.border};
@@ -615,6 +620,11 @@ const PANEL_CSS = `
   font-weight: 600;
   color: ${color.textPrimary};
 }
+[data-liangxiang-stat-mine] {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, ${color.border} 80%, transparent);
+}
 [data-liangxiang-weight-hint] table {
   border-collapse: collapse;
   width: 100%;
@@ -657,14 +667,21 @@ const visuallyHidden: CSSProperties = {
   border: 0,
 }
 
+function formatMineLine(total: number, upShare: string, up: number, down: number): string {
+  if (total <= 0) return `0 · ${upShare}`
+  return `${total.toLocaleString('zh-CN')} · 夯${upShare}（${up}/${down}）`
+}
+
 function SocialStatHint(props: {
   kind: 'incense' | 'voters'
   label: string
   today: number
   lifetime: number
+  mine?: LocalIncenseStats | null
 }): ReactElement {
   const todayText = props.today.toLocaleString('zh-CN')
   const lifetimeText = props.lifetime.toLocaleString('zh-CN')
+  const mine = props.mine
   return (
     <div data-liangxiang-stat-hint={props.kind} role="tooltip">
       <strong>{props.label}</strong>
@@ -674,6 +691,27 @@ function SocialStatHint(props: {
         <dt>{STAT_LIFETIME_LABEL}</dt>
         <dd>{lifetimeText}</dd>
       </dl>
+      {mine === undefined || mine === null ? null : (
+        <div data-liangxiang-stat-mine="">
+          <strong>{MY_INCENSE_STAT_LABEL}</strong>
+          <dl>
+            <dt>{STAT_TODAY_LABEL}</dt>
+            <dd>{formatMineLine(mine.today.total, mine.today.upShare, mine.today.up, mine.today.down)}</dd>
+            <dt>{STAT_LIFETIME_LABEL}</dt>
+            <dd>{formatMineLine(mine.lifetime.total, mine.lifetime.upShare, mine.lifetime.up, mine.lifetime.down)}</dd>
+            <dt>{STAT_SHARE_LABEL}</dt>
+            <dd>
+              {STAT_TODAY_LABEL}
+              {' '}
+              {formatIncenseShare(mine.today.total, props.today)}
+              {' · '}
+              {STAT_LIFETIME_LABEL}
+              {' '}
+              {formatIncenseShare(mine.lifetime.total, props.lifetime)}
+            </dd>
+          </dl>
+        </div>
+      )}
     </div>
   )
 }
@@ -691,6 +729,7 @@ export function Panel(props: PanelProps): ReactElement {
     charge = 0,
     dumpBurst = null,
     localEpithet = null,
+    localIncense = null,
     onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
     modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
@@ -1320,7 +1359,7 @@ export function Panel(props: PanelProps): ReactElement {
         <span
           data-liangxiang-stat="incense"
           tabIndex={0}
-          aria-label={`${INCENSE_STAT_LABEL}。${INCENSE_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.totalIncense.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeIncense.toLocaleString('zh-CN')}`}
+          aria-label={`${INCENSE_STAT_LABEL}。${INCENSE_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.totalIncense.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeIncense.toLocaleString('zh-CN')}。${MY_INCENSE_STAT_LABEL}。${MY_INCENSE_STAT_HINT}`}
           style={statStyle}
         >
           <ThreeRealmsIncenseIcon size={18} />
@@ -1333,6 +1372,7 @@ export function Panel(props: PanelProps): ReactElement {
             label={INCENSE_STAT_LABEL}
             today={snapshot.totalIncense}
             lifetime={lifetimeIncense}
+            mine={localIncense}
           />
         </span>
         <span

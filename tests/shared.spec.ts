@@ -3,6 +3,7 @@ import {
   HOST_PLUGIN_NAME,
   HOVER_TEXT,
   INCENSE_STAT_LABEL,
+  MY_INCENSE_STAT_LABEL,
   MY_INCENSE_LABEL,
   OVERLAY_ENTRY_ID,
   PLUGIN_PACKAGE_NAME,
@@ -28,6 +29,7 @@ describe('shared frozen copy', () => {
     expect(VOTE_UP_LABEL).toBe('夯 · 升梁')
     expect(VOTE_DOWN_LABEL).toBe('拉 · 降梁')
     expect(INCENSE_STAT_LABEL).toBe('三界香火')
+    expect(MY_INCENSE_STAT_LABEL).toBe('此身香火')
     expect(VOTER_STAT_LABEL).toBe('五行香客')
     expect(UTILITY_LABEL).toBe('梁相案牍')
   })

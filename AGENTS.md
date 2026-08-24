@@ -149,6 +149,9 @@ incense.
 ```
 
 - 三界香火 = accepted votes for the current case (天/人/地香火汇于一炉)
+- hovering 三界香火 shows that community pile on top and **此身香火**
+  underneath: this installation's today/lifetime 夯拉 and the share of 三界香火
+  (`占梁`). Local only, never a fifth region or a 梁位 percentage-point claim
 - 五行香客 = unique users with at least one accepted vote for the current case/day (取经五众)
 - the right edge is one compact ritual-control column: `梁相案牍` above
   `进入梁祠`; both remain inside Region 4 and neither is a fifth region

@@ -10,10 +10,11 @@ import { Panel } from '../src/client/Panel.tsx'
 import { createMockLiangxiangStore } from '../src/client/store.ts'
 import type { LiangxiangViewState } from '../src/client/store.ts'
 import { color } from '../src/client/theme.ts'
-import { LIANGZI_STATES, VOTE_COUNT_MAX, liangQiFloatPeriodMs } from '../src/domain/index.ts'
+import { LIANGZI_STATES, VOTE_COUNT_MAX, deriveLocalIncenseStats, liangQiFloatPeriodMs } from '../src/domain/index.ts'
 import {
   COMMUNITY_UNAVAILABLE_REASON,
   INCENSE_STAT_LABEL,
+  MY_INCENSE_STAT_LABEL,
   LOCAL_MODE_NOTE,
   EMPTY_INCENSE_FEEDBACK_MS,
   NO_INCENSE_GAG,
@@ -41,6 +42,7 @@ import {
   VOTE_UP_LABEL,
   VOTER_STAT_LABEL,
   STAT_LIFETIME_LABEL,
+  STAT_SHARE_LABEL,
   STAT_TODAY_LABEL,
 } from '../src/shared/index.ts'
 import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedElement, type RenderedNode } from './helpers/render.ts'
@@ -70,6 +72,7 @@ function renderPanel(
     modeConfirmOpen?: boolean
     modeChanging?: boolean
     localEpithet?: { dedication: string, stance: string, label: string, spent: number }
+    localIncense?: ReturnType<typeof deriveLocalIncenseStats>
     chargeVoteType?: 'up' | 'down' | null
     charge?: number
   } = {},
@@ -91,6 +94,7 @@ function renderPanel(
       onVote={() => undefined}
       {...(extra.onVoteClick === undefined ? {} : { onVoteClick: extra.onVoteClick })}
       localEpithet={extra.localEpithet ?? null}
+      localIncense={extra.localIncense ?? null}
       chargeVoteType={extra.chargeVoteType ?? null}
       charge={extra.charge ?? 0}
       onInsufficientVote={extra.onInsufficientVote ?? (() => undefined)}
@@ -766,11 +770,34 @@ describe('region 4: social stats', () => {
     expect(incenseHint && textContent([incenseHint])).toContain(STAT_TODAY_LABEL)
     expect(incenseHint && textContent([incenseHint])).toContain(STAT_LIFETIME_LABEL)
     expect(incenseHint && textContent([incenseHint])).toContain('12,846')
+    expect(incenseHint && textContent([incenseHint])).not.toContain(MY_INCENSE_STAT_LABEL)
     expect(voterHint && textContent([voterHint])).toContain(STAT_TODAY_LABEL)
     expect(voterHint && textContent([voterHint])).toContain(STAT_LIFETIME_LABEL)
     expect(voterHint && textContent([voterHint])).toContain('2,841')
     expect(incense?.props.title).toBeUndefined()
     expect(voters?.props.title).toBeUndefined()
+  })
+
+  it('puts 此身香火 under 三界香火 on hover, with local 夯拉 and 占梁', () => {
+    const mine = deriveLocalIncenseStats({
+      lifetimeUp: 80,
+      lifetimeDown: 20,
+      todayUp: 8,
+      todayDown: 4,
+    })
+    const tree = renderPanel(demoState(), '', { localIncense: mine })
+    const incenseHint = findByAttr(tree, 'data-liangxiang-stat-hint', 'incense')[0]
+    const mineHint = findByAttr(tree, 'data-liangxiang-stat-mine')[0]
+    const voterHint = findByAttr(tree, 'data-liangxiang-stat-hint', 'voters')[0]
+    expect(MY_INCENSE_STAT_LABEL).toBe('此身香火')
+    expect(incenseHint && textContent([incenseHint])).toContain(INCENSE_STAT_LABEL)
+    expect(mineHint && textContent([mineHint])).toContain(MY_INCENSE_STAT_LABEL)
+    expect(mineHint && textContent([mineHint])).toContain(STAT_SHARE_LABEL)
+    expect(mineHint && textContent([mineHint])).toContain('夯66%')
+    expect(mineHint && textContent([mineHint])).toContain('夯80%')
+    expect(voterHint && textContent([voterHint])).not.toContain(MY_INCENSE_STAT_LABEL)
+    expect(findByAttr(tree, 'data-liangxiang-region').map((node) => node.props['data-liangxiang-region']))
+      .toEqual(['case', 'core', 'vote', 'social'])
   })
 
   it('uses Journey-to-the-West stat marks on the same row as 梁相案牍', () => {

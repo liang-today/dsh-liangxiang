@@ -30,7 +30,7 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.8.16-beta'
+export const PLUGIN_VERSION = '0.8.17-beta'
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
@@ -98,8 +98,12 @@ export const INCENSE_STAT_LABEL = '三界香火'
 export const VOTER_STAT_LABEL = '五行香客'
 export const INCENSE_STAT_HINT = '今日梁案有效香火'
 export const VOTER_STAT_HINT = '今日至少上过一炷香的香客'
+/** Hover pair for 三界香火: this body's incense, local-only. */
+export const MY_INCENSE_STAT_LABEL = '此身香火'
+export const MY_INCENSE_STAT_HINT = '本机记录的上香，仅自己可见，不入天庭账本'
 export const STAT_TODAY_LABEL = '今日'
 export const STAT_LIFETIME_LABEL = '累计'
+export const STAT_SHARE_LABEL = '占梁'
 
 /** Honest soft-trust note for the LOCAL_FAKE_DEV authority mode (AGENTS.md §16). */
 export const LOCAL_MODE_NOTE = '离线模式：香火、打梁与梁祠档案均只保存在本机，不代表全网结果'

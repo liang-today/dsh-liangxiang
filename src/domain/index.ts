@@ -85,6 +85,16 @@ export {
   type LocalEpithetRecord,
 } from './local-epithet.ts'
 export {
+  EMPTY_LOCAL_INCENSE,
+  deriveLocalIncenseStats,
+  formatIncenseShare,
+  recordLocalIncenseVote,
+  rollLocalIncenseDay,
+  type LocalIncenseLedger,
+  type LocalIncenseSide,
+  type LocalIncenseStats,
+} from './local-incense.ts'
+export {
   assertBusinessDate,
   assertValidCase,
   isBusinessDate,
