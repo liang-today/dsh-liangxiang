@@ -8,7 +8,7 @@
 
 官网：[liang.today](https://liang.today/) · 部署指南：[liang.today/guide](https://liang.today/guide/)
 
-![今日梁相](assets/today-card.jpg)
+![插件主界面](assets/main-frame.jpg)
 
 ![插件主面板](assets/plugin-panel.jpg)
 
