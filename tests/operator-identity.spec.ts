@@ -4,7 +4,7 @@ import { resolveHostRuntimeConfig } from '../src/host/config.ts'
 import { STAGING_BACKEND_URL } from '../src/host/community-endpoint.ts'
 import { LOCAL_CASE_TITLES, nextLocalCaseIndex } from '../src/host/local-cases.ts'
 import { runOperatorCli } from '../src/backend/cli.ts'
-import { PLUGIN_VERSION } from '../src/shared/index.ts'
+import { PLUGIN_VERSION, SERVER_BUILD } from '../src/shared/index.ts'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -74,7 +74,8 @@ describe('operator CLI', () => {
       { log: (line) => logs.push(line), error: (line) => logs.push(line) },
     )).toBe(0)
     expect(logs.join('\n')).toContain(`"package_version": "${PLUGIN_VERSION}"`)
-    expect(logs.join('\n')).toContain(`[liangxiang-ops] version ${PLUGIN_VERSION}`)
+    expect(logs.join('\n')).toContain(`"server_build": "${SERVER_BUILD}"`)
+    expect(logs.join('\n')).toContain(`[liangxiang-ops] version ${PLUGIN_VERSION} server_build=${SERVER_BUILD}`)
   })
 
   it('issues tickets and reports the remaining admission inventory', () => {
@@ -116,6 +117,31 @@ describe('operator CLI', () => {
     expect(code).toBe(0)
     expect(logs.join('\n')).toContain('CLI 发布是夯还是拉')
     expect(logs.join('\n')).toContain('[liangxiang-ops] publish')
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('retitles the live case without resetting votes', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-retitle-'))
+    const db = join(dir, 'liangxiang.sqlite')
+    const env = {
+      LIANGXIANG_BACKEND_DB: db,
+      LIANGXIANG_SNAPSHOT_SECONDS: '1',
+      LIANGXIANG_MAX_TOKENS_PER_MINUTE: '0',
+    }
+    const logs: string[] = []
+    expect(runOperatorCli(
+      ['case', 'publish', '先开一案是夯还是拉'],
+      env,
+      { log: (line) => logs.push(line), error: (line) => logs.push(line) },
+    )).toBe(0)
+    expect(runOperatorCli(
+      ['case', 'retitle', '为了多一炷香熬夜攒当量是夯还是拉'],
+      env,
+      { log: (line) => logs.push(line), error: (line) => logs.push(line) },
+    )).toBe(0)
+    expect(logs.join('\n')).toContain('为了多一炷香熬夜攒当量是夯还是拉')
+    expect(logs.join('\n')).toContain('[liangxiang-ops] case retitle')
+    expect(logs.join('\n')).toContain('"up_votes": 0')
     rmSync(dir, { recursive: true, force: true })
   })
 

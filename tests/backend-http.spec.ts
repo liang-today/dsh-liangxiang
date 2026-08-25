@@ -13,7 +13,7 @@ import {
   parseV1Bootstrap,
   parseV1VoteResponse,
 } from '../src/shared/backend-v1.ts'
-import { parseV1HistoryResponse, PLUGIN_VERSION } from '../src/shared/index.ts'
+import { parseV1HistoryResponse, PLUGIN_VERSION, SERVER_BUILD } from '../src/shared/index.ts'
 
 const INSTALLATION = 'install-http-0001'
 
@@ -134,6 +134,7 @@ describe('routing and boundary validation', () => {
       status: 'ok',
       authority_mode: 'DEV_STAGING_ONLY',
       version: PLUGIN_VERSION,
+      server_build: SERVER_BUILD,
     })
   })
 

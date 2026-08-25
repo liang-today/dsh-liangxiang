@@ -6,6 +6,7 @@
  * Usage (on the VPS, after `pnpm run build`):
  *   node lib/backend-cli.js status
  *   node lib/backend-cli.js case publish "新题是夯还是拉"
+ *   node lib/backend-cli.js case retitle "原地改题保留票数"
  *   node lib/backend-cli.js case queue list
  *   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "明日题是夯还是拉"
  *   node lib/backend-cli.js case queue replace --start YYYY-MM-DD <题库文件>
@@ -16,7 +17,7 @@
 import { resolveBackendConfig, BackendConfigError } from './config.ts'
 import { readFileSync } from 'node:fs'
 import { formatLiangPosition, isBusinessDate } from '../domain/index.ts'
-import { PLUGIN_VERSION } from '../shared/index.ts'
+import { PLUGIN_VERSION, SERVER_BUILD } from '../shared/index.ts'
 import { BACKEND_SCHEMA_USER_VERSION } from './schema.ts'
 import { LiangxiangBackendService } from './service.ts'
 import { openBackendStore, type QueueRow } from './store.ts'
@@ -32,6 +33,7 @@ const usage = `usage:
   node lib/backend-cli.js status
   node lib/backend-cli.js version
   node lib/backend-cli.js case publish "<标题是夯还是拉>"
+  node lib/backend-cli.js case retitle "<标题>"
   node lib/backend-cli.js case queue list
   node lib/backend-cli.js case queue add [--on YYYY-MM-DD] "<标题是夯还是拉>"
   node lib/backend-cli.js case queue seed --start YYYY-MM-DD [--limit N] <题库文件>
@@ -44,6 +46,7 @@ const usage = `usage:
   node lib/backend-cli.js admission replenish
   node lib/backend-cli.js admission replace --yes --count N [--claims N] [--ttl-hours N]
   node lib/backend-cli.js archive clear --yes
+  node lib/backend-cli.js case retitle "<标题>"
   node lib/backend-cli.js case reset --yes`
 
 function stripExec(argv: string[]): string[] {
@@ -76,9 +79,10 @@ export function runOperatorCli(
   if (topic === 'version') {
     io.log(JSON.stringify({
       package_version: PLUGIN_VERSION,
+      server_build: SERVER_BUILD,
       schema_user_version: BACKEND_SCHEMA_USER_VERSION,
     }, null, 2))
-    io.log(`[liangxiang-ops] version ${PLUGIN_VERSION}`)
+    io.log(`[liangxiang-ops] version ${PLUGIN_VERSION} server_build=${SERVER_BUILD}`)
     return 0
   }
 
@@ -98,6 +102,7 @@ export function runOperatorCli(
       const admission = service.admissionInventory()
       io.log(JSON.stringify({
         package_version: PLUGIN_VERSION,
+        server_build: SERVER_BUILD,
         schema_user_version: BACKEND_SCHEMA_USER_VERSION,
         business_date: snapshot.business_date,
         business_timezone: config.timezone,
@@ -135,6 +140,23 @@ export function runOperatorCli(
       io.log(
         `[liangxiang-ops] case reset date=${reset.business_date} case=${reset.case_id ?? '-'} `
         + `votes=${reset.votes} 梁位=--`,
+      )
+      return 0
+    }
+    if (topic === 'case' && command === 'retitle') {
+      const title = args.slice(2).join(' ').trim()
+      const snapshot = service.retitleActiveCase(parseV1PublishCaseRequest({ title }).title)
+      io.log(JSON.stringify({
+        business_date: snapshot.business_date,
+        case_id: snapshot.active_case.id,
+        title: snapshot.active_case.title,
+        up_votes: snapshot.global_snapshot.up_votes,
+        down_votes: snapshot.global_snapshot.down_votes,
+        unique_voters: snapshot.global_snapshot.unique_voters,
+      }, null, 2))
+      io.log(
+        `[liangxiang-ops] case retitle date=${snapshot.business_date} case=${snapshot.active_case.id} `
+        + `title=${snapshot.active_case.title} 夯=${snapshot.global_snapshot.up_votes} 拉=${snapshot.global_snapshot.down_votes}`,
       )
       return 0
     }

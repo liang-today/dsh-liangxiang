@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { PLUGIN_PACKAGE_NAME, PLUGIN_VERSION } from '../src/shared/index.ts'
+import { PLUGIN_PACKAGE_NAME, PLUGIN_VERSION, SERVER_BUILD } from '../src/shared/index.ts'
 
 interface Manifest {
   name: string
@@ -40,6 +40,11 @@ describe('package.json dsh manifests', () => {
 
   it('keeps the package/tarball version and visible plugin version in sync', () => {
     expect(manifest.version).toBe(PLUGIN_VERSION)
+  })
+
+  it('keeps a server-only build label that does not bump the client version', () => {
+    expect(SERVER_BUILD).toMatch(new RegExp(`^${PLUGIN_VERSION.replaceAll('.', '\\.')}-u\\d+$`))
+    expect(SERVER_BUILD).not.toBe(PLUGIN_VERSION)
   })
 
   it('keeps every current-facing release document on the package version', () => {

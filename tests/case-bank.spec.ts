@@ -14,7 +14,8 @@ describe('case bank', () => {
 
   it('cycles and wraps', () => {
     expect(nextCycledCaseTitle(undefined)).toBe('DeepSeek Harness 是夯还是拉')
-    expect(nextCycledCaseTitle('DeepSeek Harness 是夯还是拉')).toBe(CASE_BANK[1])
+    expect(nextCycledCaseTitle('DeepSeek Harness 是夯还是拉')).toBe(CASE_BANK[0])
+    expect(nextCycledCaseTitle(CASE_BANK[0])).toBe(CASE_BANK[1])
     expect(nextCycledCaseTitle(CASE_BANK.at(-1))).toBe(CASE_BANK[0])
   })
 })

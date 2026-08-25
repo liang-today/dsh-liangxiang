@@ -15,10 +15,10 @@ liang logs 200
 liang logs -f
 ```
 
-`liang version` 报告程序号、`/opt/liangxiang/VERSION` 部署标记，以及运行中
-`/v1/health` 的 `version`。`liang status` 在此之上再报告 systemd 状态、业务日期、
-当前梁案、原始夯/拉票数、快照序号、档案版本，以及下一道待发布梁案。`cases list`
-显示完整排期。
+`liang version` 报告客户端程序号、后台 `server_build`、`/opt/liangxiang/VERSION`
+部署标记，以及运行中 `/v1/health`。`liang status` 在此之上再报告 systemd 状态、
+业务日期、当前梁案、原始夯/拉票数、快照序号、档案版本，以及下一道待发布梁案。
+`cases list` 显示完整排期。
 
 ## 梁案排期
 
@@ -42,8 +42,15 @@ liang cases replace --start 2026-08-19
 按题库顺序连续重建；已发布/已消费的历史行不动。它适合运营者整体换题库，失败时不会
 留下只换了一半的队列。
 
-`liang cases publish "标题"` 会立即结掉今日当前梁案并清零新案票数，只用于临时换案，
-不是日常排期命令。同日被结掉的旧案仍会在日终并入日梁。
+只改今日题目、保留现有投票时用：
+
+```bash
+liang cases retitle "为了多一炷香熬夜攒当量是夯还是拉"
+```
+
+这只改 `daily_liang_case.title`，`case_id`、票、快照和香客不动。不要用
+`publish` 做这件事：`publish` 会立刻结掉今日当前梁案并清零新案票数，只用于
+临时换案，不是日常排期命令。同日被结掉的旧案仍会在日终并入日梁。
 
 正式开梁若只要把**今天**打回待开梁，用：
 

@@ -504,6 +504,34 @@ describe('same-day publish', () => {
   })
 })
 
+describe('same-day retitle', () => {
+  it('changes the live title without resetting votes or opening a new case', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 5, 47_000)
+    const firstId = f.service.ensureActiveCase().id
+    vote(f, INSTALLATION, 'up', 'req-retitle-0001')
+    vote(f, INSTALLATION, 'down', 'req-retitle-0002')
+    const before = f.service.snapshotResponse()
+    expect(before.global_snapshot.up_votes).toBe(1)
+    expect(before.global_snapshot.down_votes).toBe(1)
+    expect(before.global_snapshot.unique_voters).toBe(1)
+    expect(before.global_snapshot.total_incense).toBe(2)
+
+    const after = f.service.retitleActiveCase('为了多一炷香熬夜攒当量是夯还是拉')
+    expect(after.active_case.id).toBe(firstId)
+    expect(after.active_case.title).toBe('为了多一炷香熬夜攒当量是夯还是拉')
+    expect(after.active_case.status).toBe('active')
+    expect(after.global_snapshot.case_id).toBe(firstId)
+    expect(after.global_snapshot.up_votes).toBe(1)
+    expect(after.global_snapshot.down_votes).toBe(1)
+    expect(after.global_snapshot.unique_voters).toBe(1)
+    expect(after.global_snapshot.total_incense).toBe(2)
+    expect(after.global_snapshot.sequence).toBe(before.global_snapshot.sequence)
+    expect(f.store.statsFor(firstId)).toMatchObject({ up_votes: 1, down_votes: 1, unique_voters: 1 })
+    expect(f.store.activeCaseFor('2026-08-16')?.id).toBe(firstId)
+  })
+})
+
 describe('case queue', () => {
   it('atomically replaces every pending row with the dated release plan', () => {
     const f = boot()

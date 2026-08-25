@@ -982,6 +982,11 @@ flow, or community backend contract) must bump `package.json` `version` and
 version number. Keep both strings identical; `tests/manifest.spec.ts` guards
 this. Historical changelog entries stay frozen.
 
+Backend-only community server updates must not bump the npm / client number.
+Stamp `SERVER_BUILD` as `${PLUGIN_VERSION}-uN` (for example `1.0.0-u1`) and
+leave `package.json` / `PLUGIN_VERSION` alone so the plugin market stays on
+the current client release.
+
 ### Git (HARD RULE — 每次修复都必须 commit + push)
 
 After every completed change in this repository, **before considering the

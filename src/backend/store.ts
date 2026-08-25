@@ -264,6 +264,8 @@ export interface BackendStore {
   clearPendingQueue: () => number
   /** First unused queue row for `today`, else the oldest undated FIFO row. */
   takeQueuedTitle: (today: string, now: number) => string | undefined
+  /** Change the active case title in place. Votes and `case_id` stay. */
+  updateActiveCaseTitle: (caseId: string, title: string) => boolean
   close: () => void
 }
 
@@ -311,6 +313,9 @@ export function openBackendStore(databasePath: string): BackendStore {
     `INSERT INTO daily_liang_case
        (id, business_date, title, status, token_per_incense, liangzi_policy_version, created_at, opened_at, closed_at)
      VALUES (?, ?, ?, 'active', ?, ?, ?, ?, NULL)`,
+  )
+  const updateActiveCaseTitleStmt = db.prepare(
+    `UPDATE daily_liang_case SET title = ? WHERE id = ? AND status = 'active'`,
   )
   const closeOldCases = db.prepare(
     `UPDATE daily_liang_case SET status = 'closed', closed_at = ?
@@ -605,6 +610,7 @@ export function openBackendStore(databasePath: string): BackendStore {
       )
       insertStats.run(input.id, input.businessDate, input.now)
     },
+    updateActiveCaseTitle: (caseId, title) => changed(updateActiveCaseTitleStmt.run(title, caseId)) > 0,
     closeCasesBefore: (businessDate, now) => changed(closeOldCases.run(now, businessDate)),
     closeActiveCaseFor: (businessDate, now) => changed(closeActiveForDate.run(now, businessDate)),
     resetUsedIncenseForDate: (businessDate, now) => changed(resetUsedIncense.run(now, businessDate)),

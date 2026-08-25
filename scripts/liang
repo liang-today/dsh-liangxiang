@@ -23,6 +23,7 @@ usage() {
   liang cases seed --start 日期 [数量]  从内置题库连续排期（默认 10 道）
   liang cases replace --start 日期 [数量] 原子替换全部待发布排期
   liang cases publish "标题"           立即结案并发布新梁案（慎用）
+  liang cases retitle "标题"           原地改今日题目，保留现有投票
   liang cases reset --yes              清空今日统计，回到待开梁
   liang tickets status                  显示可用券、剩余认领次数及历史状态
   liang tickets list [数量]             查看当前可用入梁券（默认 100）
@@ -251,11 +252,12 @@ case "$1" in
         fi
         ;;
       publish) shift 2; run_backend_cli case publish "$@" ;;
+      retitle) shift 2; run_backend_cli case retitle "$@" ;;
       reset)
         [[ "${3:-}" == "--yes" ]] || { echo "用法：liang cases reset --yes" >&2; exit 2; }
         run_backend_cli case reset --yes
         ;;
-      *) echo '用法：liang cases list | add [--on YYYY-MM-DD] "标题" | seed/replace --start YYYY-MM-DD [数量] | publish "标题" | reset --yes' >&2; exit 2 ;;
+      *) echo '用法：liang cases list | add [--on YYYY-MM-DD] "标题" | seed/replace --start YYYY-MM-DD [数量] | publish "标题" | retitle "标题" | reset --yes' >&2; exit 2 ;;
     esac
     ;;
   tickets)

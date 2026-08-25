@@ -17,7 +17,10 @@
 
 ## GET /v1/health
 
-无需身份。`{ status, authority_mode, business_date, version }`。`version` 与 `package.json` / `PLUGIN_VERSION` 相同，供 `liang version` 与探活核对正在运行的程序号。
+无需身份。`{ status, authority_mode, business_date, version, server_build }`。
+`version` 与 `package.json` / `PLUGIN_VERSION` 相同，是客户端程序号。
+`server_build` 是后台单独的发布号（如 `1.0.0-u1`），后台更新不抬客户端版本。
+`liang version` 同时报告两者，以及 `/opt/liangxiang/VERSION` 部署标记。
 
 ## GET /v1/admission/tickets
 

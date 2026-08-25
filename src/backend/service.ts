@@ -430,6 +430,19 @@ export class LiangxiangBackendService {
   }
 
   /**
+   * Operator retitle: change today's active case title in place.
+   * Votes, snapshots, incense, and `case_id` stay. Use this instead of
+   * `publishCase` when the live question should change without resetting the day.
+   */
+  retitleActiveCase(title: string, now = this.clock.now()): V1SnapshotResponse {
+    const { title: normalized } = parseV1PublishCaseRequest({ title })
+    const caseRow = this.ensureActiveCase(now)
+    const updated = this.store.updateActiveCaseTitle(caseRow.id, normalized)
+    if (!updated) throw new Error('failed to retitle the active case')
+    return this.snapshotResponse(now)
+  }
+
+  /**
    * Operator publish: archive today's active case (if any), open a new one,
    * publish a zero-vote snapshot, and clear spent incense for the business
    * date. Claimed tokens stay, so remaining incense can be spent on the new

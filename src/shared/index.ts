@@ -32,6 +32,12 @@ export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
 export const PLUGIN_VERSION = '1.0.0'
 
+/**
+ * Server-only release label for the community backend. Do not bump the npm /
+ * client `PLUGIN_VERSION` for a backend-only change; stamp `1.0.0-uN` instead.
+ */
+export const SERVER_BUILD = '1.0.0-u1'
+
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
 

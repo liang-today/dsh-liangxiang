@@ -14,7 +14,13 @@ STAGE="${LIANGXIANG_DEPLOY_STAGE:-/var/tmp/liangxiang-deploy}"
 cd "$ROOT"
 GIT_SHA="$(git rev-parse --short HEAD)"
 STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-PKG_VERSION="$(node -p 'require("./package.json").version')"
+SERVER_BUILD="$(node --input-type=module -e "
+import { readFileSync } from 'node:fs'
+const text = readFileSync('src/shared/index.ts', 'utf8')
+const match = /export const SERVER_BUILD = '([^']+)'/.exec(text)
+if (!match) throw new Error('SERVER_BUILD missing')
+process.stdout.write(match[1])
+")"
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "refusing deploy: checkout has uncommitted changes" >&2
@@ -26,7 +32,7 @@ case "$STAGE" in
   *) echo "refusing deploy: unexpected stage path: $STAGE" >&2; exit 1 ;;
 esac
 
-echo "== stage ${GIT_SHA} -> ${REMOTE}:${STAGE} =="
+echo "== stage ${SERVER_BUILD} ${GIT_SHA} -> ${REMOTE}:${STAGE} =="
 rsync -a --delete \
   --exclude .git \
   --exclude .DS_Store \
@@ -44,14 +50,14 @@ rsync -a --delete \
 ssh "$REMOTE" "cd '$STAGE' && CI=1 pnpm install --frozen-lockfile && pnpm run build"
 
 echo "== install ${GIT_SHA} -> ${PREFIX} =="
-ssh "$REMOTE" sudo -n bash -s -- "$PREFIX" "$STAGE" "$GIT_SHA" "$STAMP" "$PKG_VERSION" <<'REMOTE_SCRIPT'
+ssh "$REMOTE" sudo -n bash -s -- "$PREFIX" "$STAGE" "$GIT_SHA" "$STAMP" "$SERVER_BUILD" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 PREFIX="$1"
 STAGE="$2"
 GIT_SHA="$3"
 STAMP="$4"
-PKG_VERSION="$5"
+SERVER_BUILD="$5"
 ENV_FILE="/etc/liangxiang.env"
 SERVICE="liangxiang-backend"
 DATA_DIR="/var/lib/liangxiang/data"
@@ -173,7 +179,7 @@ if ! "$CADDY_BIN" validate --config "$CADDY_CONFIG" || ! systemctl reload caddy;
   exit 1
 fi
 
-printf '%s %s %s\n' "$PKG_VERSION" "$GIT_SHA" "$STAMP" > "$PREFIX/VERSION"
+printf '%s %s %s\n' "$SERVER_BUILD" "$GIT_SHA" "$STAMP" > "$PREFIX/VERSION"
 trap - EXIT
 REMOTE_SCRIPT
 
