@@ -4,6 +4,7 @@
  * and versioning, and the personal/global separation.
  */
 import { afterEach, describe, expect, it } from 'vitest'
+import { CASE_BANK, nextCycledCaseTitle } from '../src/backend/case-bank.ts'
 import { deriveLiangziState } from '../src/domain/index.ts'
 import { parseV1Bootstrap, parseV1PublishCaseResponse, parseV1Snapshot, parseV1VoteResponse } from '../src/shared/backend-v1.ts'
 import { createBackendFixture, DAY_MS, FIXED_NOW, type BackendFixture } from './helpers/backend.ts'
@@ -388,7 +389,7 @@ describe('business date rollover', () => {
     const today = f.service.ensureActiveCase()
     expect(today.business_date).toBe('2026-08-17')
     expect(today.id).not.toBe(yesterday.id)
-    expect(today.title).toBe(yesterday.title)
+    expect(today.title).toBe(nextCycledCaseTitle(yesterday.title))
     expect(f.store.caseById(yesterday.id)?.status).toBe('closed')
 
     const state = f.service.dailyState(INSTALLATION).authoritative_personal_state
@@ -549,6 +550,26 @@ describe('case queue', () => {
     expect(today.business_date).toBe('2026-08-17')
     expect(today.title).toBe('排队梁案是夯还是拉')
     expect(f.service.listQueue()).toHaveLength(0)
+  })
+
+  it('cycles the case bank when the queue is empty, never repeating yesterday', () => {
+    const f = boot()
+    const first = f.service.ensureActiveCase()
+    f.clock.advance(DAY_MS)
+    const second = f.service.ensureActiveCase()
+    expect(second.title).toBe(nextCycledCaseTitle(first.title))
+    expect(second.title).not.toBe(first.title)
+    f.clock.advance(DAY_MS)
+    const third = f.service.ensureActiveCase()
+    expect(third.title).toBe(nextCycledCaseTitle(second.title))
+    expect(CASE_BANK).toContain(second.title)
+    expect(CASE_BANK).toContain(third.title)
+  })
+
+  it('wraps to the first bank title after the last one', () => {
+    const last = CASE_BANK.at(-1)
+    expect(nextCycledCaseTitle(last)).toBe(CASE_BANK[0])
+    expect(nextCycledCaseTitle('完全不在题库里的自定义梁案是夯还是拉')).toBe(CASE_BANK[0])
   })
 
   it('uses FIFO when midnight has no dated row', () => {

@@ -56,6 +56,7 @@ import {
 } from '../shared/backend-v1.ts'
 import { createBusinessDateProvider, systemClock, type BusinessDateProvider, type Clock } from '../shared/business-date.ts'
 import { SNAPSHOT_HISTORY_LIMIT, type BackendConfig } from './config.ts'
+import { CASE_BANK, nextCycledCaseTitle } from './case-bank.ts'
 import { CommunityAuthError } from './community-auth.ts'
 import {
   isUniqueConstraintError,
@@ -126,7 +127,7 @@ export class LiangxiangBackendService {
       if (raced !== undefined) return raced
       const queued = this.store.takeQueuedTitle(businessDate, now)
       const previous = this.store.latestCaseBefore(businessDate)
-      const title = queued ?? previous?.title ?? this.config.caseTitle
+      const title = queued ?? nextCycledCaseTitle(previous?.title, CASE_BANK, this.config.caseTitle)
       const id = `case-${businessDate}`
       this.store.insertCase({
         id,

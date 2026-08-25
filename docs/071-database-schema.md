@@ -108,7 +108,8 @@ total == 0 → ratio = null/null, liangzi_state = WAITING
 ## case_queue（v3，运营梁案队列）
 
 `id`、`title`、可空 `publish_on`、`sort_order`、`created_at`、可空 `consumed_at`。
-日切懒开案时从尚未消费且日期适用的队列中取一条；没有可用项时回退默认梁案。
+日切懒开案时从尚未消费且日期适用的队列中取一条；没有可用项时按内置题库
+（`CASE_BANK` / `scripts/case-bank.txt`）循环取下一题，不会出现无梁案日。
 
 ## 梁祠永久档案（v4）
 
