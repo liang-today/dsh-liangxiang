@@ -55,7 +55,7 @@ minimumReleaseAgeExclude:
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 当前正式版是 `dsh-liangxiang@1.0.1`（`latest`）。请写无标签包名；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> 源码本点是 `dsh-liangxiang@1.0.1`。请写无标签包名；不要写 `@0.8.0`。npm `latest` 随后切到本号。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 

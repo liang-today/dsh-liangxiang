@@ -7,9 +7,7 @@
 
 ## 1.0.1 点更新
 
-- 新香客按设备指纹每个业务日送 10 炷；同机当日重装不重复领。
-- 欢迎页改疏；安装包不再声明 `engines.node`。
-- 仓库根 `screenshots.json` 供 awesome / dsh-market 自动换图。
+对外主文案见 [`CHANGELOG.md`](../CHANGELOG.md) 的 `1.0.1`：刚装上备 10 炷，欢迎页突出见面礼和倾炉，安装包不再声明 `engines.node`，截图改由本仓 `screenshots.json` 自动更新。npm 与 GitHub Release 尚未发本号。
 
 ## 本版变更
 
