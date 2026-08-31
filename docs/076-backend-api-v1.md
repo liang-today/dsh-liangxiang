@@ -149,13 +149,16 @@
     "case_titles": ["早梁案", "晚梁案"],
     "up_votes": 8,
     "down_votes": 4,
+    "unique_voters": 6,
     "finalized_at": 1786873669490,
     "archive_version": 12,
     "aggregation_policy_version": "liang-archive-v1-weighted-counts",
     "liangzi_policy_version": "liangzi-v0.1-50-70-85-95"
   }],
   "weeks": [],
-  "months": []
+  "months": [],
+  "open_week_unique_voters": 0,
+  "open_month_unique_voters": 6
 }
 
 // 后续：GET /v1/history?after_version=12
@@ -163,7 +166,7 @@
 ```
 
 - `after_version` 只能出现一次，必须是非负 safe integer；未知 query 参数拒绝。
-- 日/周/月只传原始票数和策略版本，比例与梁子状态由共享 parser 在严格校验后派生。
+- 日/周/月传原始票数、`unique_voters` 和策略版本，比例与梁子状态由共享 parser 在严格校验后派生。周/月香客是期内去重安装；暂梁用 `open_*_unique_voters`，仍不入库。
 - parser 拒绝负数、NaN/Infinity、非真实日期、错误 ISO 周/月边界、重复主键、标题数与案数不符、未知策略版本或行版本超过 envelope 版本。
 - Host 缓存首次全量并合并后续 delta；若后端失败，保留 last-known-good、设置 `stale=true`，不影响今日链路。
 - 浏览器只向本机 Host 的 `/liangxiang/api/history` 请求同形状数据；当前周/月暂梁由共享纯函数从日档推导，不在该 API 中持久化。

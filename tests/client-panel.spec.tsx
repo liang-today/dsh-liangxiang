@@ -817,6 +817,7 @@ describe('region 4: social stats', () => {
     expect(mineHint && textContent([mineHint])).toContain('夯66%')
     expect(mineHint && textContent([mineHint])).toContain('夯80%')
     expect(voterHint && textContent([voterHint])).not.toContain(MY_INCENSE_STAT_LABEL)
+    expect(textContent(findByAttr(tree, 'data-liangxiang-stat-mine-inline'))).toContain(MY_INCENSE_STAT_LABEL)
     expect(findByAttr(tree, 'data-liangxiang-region').map((node) => node.props['data-liangxiang-region']))
       .toEqual(['case', 'core', 'vote', 'social'])
   })

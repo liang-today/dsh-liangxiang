@@ -34,6 +34,7 @@ import {
   EMPTY_GLOBAL_AGGREGATE,
   isoWeekFor,
   LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+  maxDayUniqueVoters,
   monthFor,
   sumDayArchives,
   type DailyLiangCase,
@@ -120,6 +121,18 @@ export interface LiangPersistencePort {
 }
 
 const DEMO_SEED: GlobalVoteAggregate = { upVotes: 10_665, downVotes: 2_181, uniqueVoters: 2_841 }
+
+function localOpenUniqueVoters(
+  kind: 'week' | 'month',
+  businessDate: string,
+  days: readonly LiangDayArchive[],
+): number {
+  const bounds = kind === 'week' ? isoWeekFor(businessDate) : monthFor(businessDate)
+  return maxDayUniqueVoters(days.filter(day =>
+    day.businessDate >= bounds.startDate
+    && day.businessDate <= bounds.endDate
+    && day.businessDate < businessDate))
+}
 
 export type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
 
@@ -494,14 +507,17 @@ export class FakeAuthoritativeLiangService {
       throw new Error('history cursor must be a non-negative safe integer')
     }
     const cursor = afterVersion ?? -1
+    const allDays = [...this.dayArchives.values()]
     return historyArchiveToV1({
       archiveVersion: this.archiveVersion,
       businessDate: this.currentDate,
       businessTimezone: this.config.timezone,
       stale: false,
-      days: [...this.dayArchives.values()].filter(row => row.archiveVersion > cursor),
+      days: allDays.filter(row => row.archiveVersion > cursor),
       weeks: [...this.weekArchives.values()].filter(row => row.archiveVersion > cursor),
       months: [...this.monthArchives.values()].filter(row => row.archiveVersion > cursor),
+      openWeekUniqueVoters: localOpenUniqueVoters('week', this.currentDate, allDays),
+      openMonthUniqueVoters: localOpenUniqueVoters('month', this.currentDate, allDays),
     }, afterVersion === undefined)
   }
 
@@ -588,6 +604,7 @@ export class FakeAuthoritativeLiangService {
 
     const upVotes = cases.reduce((sum, entry) => sum + entry.aggregate.upVotes, 0)
     const downVotes = cases.reduce((sum, entry) => sum + entry.aggregate.downVotes, 0)
+    const uniqueVoters = cases.reduce((sum, entry) => sum + entry.aggregate.uniqueVoters, 0)
     const dayArchive: LiangDayArchive = {
       businessDate: endedDate,
       caseCount: cases.length,
@@ -596,7 +613,7 @@ export class FakeAuthoritativeLiangService {
       archiveVersion: version,
       aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
       liangziPolicyVersion: LIANGZI_POLICY_VERSION,
-      ...deriveArchiveResult(upVotes, downVotes),
+      ...deriveArchiveResult(upVotes, downVotes, uniqueVoters),
     }
     this.dayArchives.set(endedDate, dayArchive)
     this.persistence?.putDayArchive(endedDate, dayArchive)
@@ -611,6 +628,7 @@ export class FakeAuthoritativeLiangService {
       const week = isoWeekFor(day.businessDate)
       if (week.endDate < nextDate && !this.weekArchives.has(week.weekId)) {
         const covered = allDays.filter(item => item.businessDate >= week.startDate && item.businessDate <= week.endDate)
+        const weekSum = sumDayArchives(covered)
         const weekArchive: LiangWeekArchive = {
           weekId: week.weekId,
           startDate: week.startDate,
@@ -620,7 +638,7 @@ export class FakeAuthoritativeLiangService {
           archiveVersion: version,
           aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
           liangziPolicyVersion: LIANGZI_POLICY_VERSION,
-          ...sumDayArchives(covered),
+          ...deriveArchiveResult(weekSum.upVotes, weekSum.downVotes, maxDayUniqueVoters(covered)),
         }
         this.weekArchives.set(week.weekId, weekArchive)
         this.persistence?.putWeekArchive(week.weekId, weekArchive)
@@ -629,6 +647,7 @@ export class FakeAuthoritativeLiangService {
       const month = monthFor(day.businessDate)
       if (month.endDate < nextDate && !this.monthArchives.has(month.monthId)) {
         const covered = allDays.filter(item => item.businessDate >= month.startDate && item.businessDate <= month.endDate)
+        const monthSum = sumDayArchives(covered)
         const monthArchive: LiangMonthArchive = {
           monthId: month.monthId,
           startDate: month.startDate,
@@ -638,7 +657,7 @@ export class FakeAuthoritativeLiangService {
           archiveVersion: version,
           aggregationPolicyVersion: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
           liangziPolicyVersion: LIANGZI_POLICY_VERSION,
-          ...sumDayArchives(covered),
+          ...deriveArchiveResult(monthSum.upVotes, monthSum.downVotes, maxDayUniqueVoters(covered)),
         }
         this.monthArchives.set(month.monthId, monthArchive)
         this.persistence?.putMonthArchive(month.monthId, monthArchive)

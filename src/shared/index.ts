@@ -30,13 +30,13 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '1.0.1'
+export const PLUGIN_VERSION = '1.0.2'
 
 /**
  * Server-only release label for the community backend. Do not bump the npm /
- * client `PLUGIN_VERSION` for a backend-only change; stamp `1.0.1-uN` instead.
+ * client `PLUGIN_VERSION` for a backend-only change; stamp `1.0.2-uN` instead.
  */
-export const SERVER_BUILD = '1.0.1-u1'
+export const SERVER_BUILD = '1.0.2-u1'
 
 /** Welcome gift: sticks credited once per device fingerprint per business date. */
 export const STARTER_INCENSE_COUNT = 10
@@ -160,7 +160,7 @@ export const ABSURD_CLAIM_NOTICE = 'Token 上报超出合理上限，已限幅�
 export const WELCOME_TITLE = '欢迎来到梁相'
 export const WELCOME_TAGLINE = '梁相还得梁人出！'
 export const WELCOME_GIFT_LINE = `新香客备 ${STARTER_INCENSE_COUNT} 炷，对话还能继续攒。`
-export const WELCOME_PLAY_LINE = '点一下一炷，长按两秒倾炉。'
+export const WELCOME_PLAY_LINE = '点一下一炷，长按 1.5 秒倾炉。'
 export const WELCOME_LINES = [WELCOME_GIFT_LINE, WELCOME_PLAY_LINE]
 export const WELCOME_ONLINE_LABEL = '进入在线'
 export const WELCOME_LOCAL_LABEL = '离线模式'

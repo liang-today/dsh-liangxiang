@@ -36,10 +36,10 @@ DSH Desktop 必须先把 `DSH_HOME` 指到桌面自己的 harness 目录，再�
 
 - 新香客备 10 炷，对话还能继续攒；同一台机器当天重装不会再领一份
 - 按 DeepSeek Harness 的 **Input + Output Token** 折算，默认 50,000 Pro 当量凝成一炷
-- 一炷一票，只能夯或拉；点一下一炷，长按两秒倾炉
+- 一炷一票，只能夯或拉；点一下一炷，长按 1.5 秒倾炉
 - **梁位**是社区夯率；梁子按门槛显相：待开梁 / 梁工 / 梁总 / 梁神 / 梁圣 / 梁祖
 - 日终结果收入梁祠
 
 > 梁位是社区软信任玩法，不代表实名人数、真实民意或任何个人、机构立场。
 
-源码本点是 **v1.0.1**（见面礼 10 炷）。请安装 `dsh-liangxiang`（npm `latest`）；npm 与 GitHub Release 随后发。开发、排障与实现说明在 [`docs/INSTALL.md`](docs/INSTALL.md)。
+源码本点是 **v1.0.2**（梁祠香客、倾炉 1.5 秒）。请安装 `dsh-liangxiang`（npm `latest`）；npm 与 GitHub Release 随后发。开发、排障与实现说明在 [`docs/INSTALL.md`](docs/INSTALL.md)。

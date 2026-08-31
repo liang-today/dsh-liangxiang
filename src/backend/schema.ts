@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v6) for the Liangxiang backend.
+ * SQLite schema (v7) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -28,7 +28,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 
-export const BACKEND_SCHEMA_USER_VERSION = 6
+export const BACKEND_SCHEMA_USER_VERSION = 7
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -232,6 +232,31 @@ export function migrate(db: DatabaseSync): void {
     if (!tableColumns(db, 'daily_incense_state').includes('starter_tokens')) {
       db.exec('ALTER TABLE daily_incense_state ADD COLUMN starter_tokens INTEGER NOT NULL DEFAULT 0')
     }
+  }
+  if (current < 7) {
+    for (const table of ['liang_day_archive', 'liang_week_archive', 'liang_month_archive'] as const) {
+      if (!tableColumns(db, table).includes('unique_voters')) {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN unique_voters INTEGER NOT NULL DEFAULT 0`)
+      }
+    }
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS ix_vote_business_date
+        ON liang_vote (business_date, installation_id);
+      UPDATE liang_day_archive SET unique_voters = (
+        SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
+         WHERE v.business_date = liang_day_archive.business_date
+      );
+      UPDATE liang_week_archive SET unique_voters = (
+        SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
+         WHERE v.business_date >= liang_week_archive.start_date
+           AND v.business_date <= liang_week_archive.end_date
+      );
+      UPDATE liang_month_archive SET unique_voters = (
+        SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
+         WHERE v.business_date >= liang_month_archive.start_date
+           AND v.business_date <= liang_month_archive.end_date
+      );
+    `)
   }
   if (current !== BACKEND_SCHEMA_USER_VERSION) {
     db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)

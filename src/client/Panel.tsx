@@ -78,7 +78,8 @@ import {
   liangziRatioRangeText,
 } from '../shared/index.ts'
 import { DUMP_ARMED_CHARGE } from './vote-charge.ts'
-import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
+import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelDensity, type PanelPlacement } from './badge-position.ts'
+import { duration, radius, space } from './tokens.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ArchiveDeskIcon, HomepageIcon, ModeSwitchIcon, VersionSealIcon } from './UtilityIcons.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
@@ -115,6 +116,13 @@ export interface PanelProps {
   positionPulse?: boolean
   /** Where to draw relative to the (freely placeable) badge. */
   placement?: PanelPlacement
+  density?: PanelDensity
+  maxPanelHeight?: number
+  pinnedHint?: 'incense' | 'epithet' | null
+  onToggleHint?: (kind: 'incense' | 'epithet') => void
+  /** Presentation-only tweened counts from the container. */ 
+  displayTotalIncense?: number
+  displayUniqueVoters?: number
   onVote: (voteType: VoteType) => void
   /** Synthetic/read-screen click. Pointer holds must not also fire this. */
   onVoteClick?: (voteType: VoteType) => void
@@ -156,14 +164,19 @@ export interface PanelProps {
   onCycleLocalCase?: () => void
 }
 
-const panelStyle: CSSProperties = {
+function panelChrome(density: PanelDensity, maxPanelHeight?: number): CSSProperties {
+  const compact = density === 'compact'
+  return {
   position: 'absolute',
   width: `${PANEL_WIDTH}px`,
-  maxHeight: 'min(440px, calc(100vh - 24px))',
-  overflow: 'visible',
+  maxHeight: maxPanelHeight === undefined
+    ? `min(440px, calc(100vh - 24px))`
+    : `${maxPanelHeight}px`,
+  overflowX: 'visible',
+  overflowY: compact ? 'auto' : 'visible',
   boxSizing: 'border-box',
-  padding: '10px 12px 8px',
-  borderRadius: '18px',
+  padding: compact ? `${space.sm}px ${space.md}px ${space.xs}px` : '10px 12px 8px',
+  borderRadius: `${radius.xl}px`,
   border: `1px solid ${color.border}`,
   background: `radial-gradient(circle at 50% 34%, color-mix(in srgb, ${color.ritualGold} 10%, transparent), transparent 38%), linear-gradient(180deg, color-mix(in srgb, ${color.ritualEmber} 5%, ${color.bgLayer}) 0%, ${color.bgLayer} 40%)`,
   color: color.textPrimary,
@@ -172,6 +185,7 @@ const panelStyle: CSSProperties = {
   pointerEvents: 'auto',
   isolation: 'isolate',
   outline: 'none',
+  }
 }
 
 const statStyle: CSSProperties = {
@@ -603,9 +617,50 @@ const PANEL_CSS = `
   transition: opacity 40ms ease, transform 40ms ease;
 }
 [data-liangxiang-stat]:hover [data-liangxiang-stat-hint],
-[data-liangxiang-stat]:focus-visible [data-liangxiang-stat-hint] {
+[data-liangxiang-stat]:focus-visible [data-liangxiang-stat-hint],
+[data-liangxiang-stat][data-open] [data-liangxiang-stat-hint] {
   opacity: 1;
   transform: translateY(0);
+}
+[data-liangxiang-stat-mine-inline] {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 650;
+  color: ${color.textTertiary};
+  letter-spacing: 0.2px;
+}
+[data-liangxiang-epithet-hint] {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  z-index: 3;
+  transform: translateX(-50%) translateY(4px);
+  min-width: 168px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid ${color.border};
+  background: ${color.bgLayer};
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+  color: ${color.textSecondary};
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+}
+[data-liangxiang-epithet][data-open] [data-liangxiang-epithet-hint],
+[data-liangxiang-epithet]:focus-visible [data-liangxiang-epithet-hint] {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+@keyframes liangxiang-state-cross {
+  0% { filter: none; }
+  40% { filter: drop-shadow(0 0 10px color-mix(in srgb, ${color.ritualGold} 70%, transparent)); }
+  100% { filter: none; }
+}
+[data-liangxiang-avatar][data-crossing] {
+  animation: liangxiang-state-cross ${duration.flashMs}ms ease-out 1;
 }
 [data-liangxiang-stat-hint] strong {
   display: block;
@@ -749,11 +804,16 @@ export function Panel(props: PanelProps): ReactElement {
     onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
     modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
-    onShowVersion, onOpenLiangci, onCycleLocalCase,
+    onShowVersion,     onOpenLiangci, onCycleLocalCase,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
+  const density = props.density ?? 'regular'
+  const pinnedHint = props.pinnedHint ?? null
+  const onToggleHint = props.onToggleHint ?? (() => undefined)
   const positionPulse = props.positionPulse ?? false
   const { snapshot, personal, activeCase, lifetimeIncense, lifetimeVoters } = state
+  const shownIncense = props.displayTotalIncense ?? snapshot.totalIncense
+  const shownVoters = props.displayUniqueVoters ?? snapshot.uniqueVoters
   // Throttled (smoothed/extrapolated) display values — presentation only. The
   // authoritative remaining incense / vote availability stay on `personal`.
   const displayFill = throttle?.fill ?? personal.liangQiFill
@@ -825,8 +885,9 @@ export function Panel(props: PanelProps): ReactElement {
       aria-label={panelTitle}
       data-liangxiang-panel=""
       data-liangxiang-authority={state.authorityMode}
+      data-liangxiang-density={density}
       tabIndex={-1}
-      style={{ ...panelStyle, ...placementStyle(placement) }}
+      style={{ ...panelChrome(density, props.maxPanelHeight), ...placementStyle(placement) }}
       onKeyDown={onKeyDown}
       onPointerDownCapture={(event: PointerEvent<HTMLElement>) => {
         if (!utilityOpen) return
@@ -1170,6 +1231,7 @@ export function Panel(props: PanelProps): ReactElement {
             <LiangAvatar
               state={snapshot.liangziState}
               pulse={avatarPulse}
+              crossing={avatarPulse}
               reducedMotion={reducedMotion}
               size={AVATAR_SLOT}
               hideLabel
@@ -1325,16 +1387,25 @@ export function Panel(props: PanelProps): ReactElement {
         </button>
       </div>
       <p
-        role="status"
+        role={showingEpithet ? 'button' : 'status'}
         data-liangxiang-vote-feedback=""
         data-liangxiang-epithet={showingEpithet ? '' : undefined}
+        data-open={showingEpithet && pinnedHint === 'epithet' ? '' : undefined}
         title={showingEpithet ? LOCAL_EPITHET_HINT : undefined}
+        tabIndex={showingEpithet ? 0 : undefined}
+        onClick={showingEpithet ? () => onToggleHint('epithet') : undefined}
+        onKeyDown={showingEpithet ? (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          onToggleHint('epithet')
+        } : undefined}
         style={{
+          position: 'relative',
           margin: '6px 0 0',
           minHeight: '22px',
           height: '22px',
           lineHeight: '22px',
-          overflow: 'hidden',
+          overflow: pinnedHint === 'epithet' ? 'visible' : 'hidden',
           whiteSpace: 'nowrap',
           textOverflow: 'ellipsis',
           fontSize: '12px',
@@ -1377,6 +1448,9 @@ export function Panel(props: PanelProps): ReactElement {
             {localEpithet.stance}
           </span>
         ) : statusLine}
+        {showingEpithet && pinnedHint === 'epithet'
+          ? <span data-liangxiang-epithet-hint="" role="tooltip">{LOCAL_EPITHET_HINT}</span>
+          : null}
       </p>
 
       {/* Region 4 — stats + the compact ritual-control column. */}
@@ -1394,14 +1468,30 @@ export function Panel(props: PanelProps): ReactElement {
       >
         <span
           data-liangxiang-stat="incense"
+          data-open={pinnedHint === 'incense' ? '' : undefined}
           tabIndex={0}
+          role="button"
+          aria-expanded={pinnedHint === 'incense'}
+          onClick={() => onToggleHint('incense')}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return
+            event.preventDefault()
+            onToggleHint('incense')
+          }}
           aria-label={`${INCENSE_STAT_LABEL}。${INCENSE_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.totalIncense.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeIncense.toLocaleString('zh-CN')}。${MY_INCENSE_STAT_LABEL}。${MY_INCENSE_STAT_HINT}`}
-          style={statStyle}
+          style={{ ...statStyle, cursor: 'pointer' }}
         >
           <ThreeRealmsIncenseIcon size={18} />
           <span style={statCopyStyle}>
             <span data-liangxiang-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
-            <strong style={statValueStyle}>{snapshot.totalIncense.toLocaleString('zh-CN')}</strong>
+            <strong style={statValueStyle}>{shownIncense.toLocaleString('zh-CN')}</strong>
+            {localIncense === null || localIncense === undefined ? null : (
+              <span data-liangxiang-stat-mine-inline="">
+                {MY_INCENSE_STAT_LABEL}
+                {' '}
+                {localIncense.today.total.toLocaleString('zh-CN')}
+              </span>
+            )}
           </span>
           <SocialStatHint
             kind="incense"
@@ -1420,7 +1510,7 @@ export function Panel(props: PanelProps): ReactElement {
           <FivePhasePilgrimIcon size={18} />
           <span style={statCopyStyle}>
             <span data-liangxiang-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
-            <strong style={statValueStyle}>{snapshot.uniqueVoters.toLocaleString('zh-CN')}</strong>
+            <strong style={statValueStyle}>{shownVoters.toLocaleString('zh-CN')}</strong>
           </span>
           <SocialStatHint
             kind="voters"

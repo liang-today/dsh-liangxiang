@@ -27,6 +27,8 @@ export interface LiangAvatarProps {
   state: LiangziState
   /** Play one short state-transition pulse (container decides when). */
   pulse: boolean
+  /** Brief 200–400ms glow when the 梁子 crosses a threshold. */
+  crossing?: boolean
   reducedMotion: boolean
   /** Rendered size in px (default 92); the portrait is circular-cropped. */
   size?: number
@@ -53,6 +55,11 @@ const AVATAR_MOTION_CSS = `
   40% { transform: scale3d(1.12, 1.12, 1); }
   100% { transform: scale3d(1, 1, 1); }
 }
+@keyframes liangxiang-avatar-cross {
+  0% { filter: none; }
+  40% { filter: drop-shadow(0 0 8px rgba(226, 174, 84, 0.7)); }
+  100% { filter: none; }
+}
 @keyframes liangxiang-avatar-figure-float {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(0, -4px, 0); }
@@ -77,6 +84,7 @@ export const LIANGZI_LABEL_COLOR: Record<LiangziState, string> = {
 export function LiangAvatar({
   state,
   pulse,
+  crossing = false,
   reducedMotion,
   size = 92,
   hideLabel = false,
@@ -97,7 +105,9 @@ export function LiangAvatar({
     gap: hideLabel ? 0 : '2px',
     overflow: 'visible',
     background: 'transparent',
-    animation: pulse && !reducedMotion ? 'liangxiang-avatar-pulse 0.9s ease-out 1' : undefined,
+    animation: pulse && !reducedMotion
+      ? (crossing ? 'liangxiang-avatar-pulse 0.9s ease-out 1, liangxiang-avatar-cross 320ms ease-out 1' : 'liangxiang-avatar-pulse 0.9s ease-out 1')
+      : undefined,
   }
 
   // Float the figure group only. Never translate a cropped plate / clip box,
@@ -129,7 +139,12 @@ export function LiangAvatar({
   }
 
   return (
-    <div style={wrapStyle} data-liangxiang-avatar={state} data-liangxiang-avatar-chrome={chrome}>
+    <div
+      style={wrapStyle}
+      data-liangxiang-avatar={state}
+      data-liangxiang-avatar-chrome={chrome}
+      data-crossing={crossing && !reducedMotion ? '' : undefined}
+    >
       <style>{AVATAR_MOTION_CSS}</style>
       <span
         data-liangxiang-avatar-figure=""

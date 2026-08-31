@@ -270,7 +270,12 @@ describe('day rollover', () => {
     const afterRestart = second.history()
     expect(afterRestart.archive_version).toBe(1)
     expect(afterRestart.days).toHaveLength(1)
-    expect(afterRestart.days[0]).toMatchObject({ business_date: '2026-08-16', up_votes: 1, down_votes: 0 })
+    expect(afterRestart.days[0]).toMatchObject({
+      business_date: '2026-08-16',
+      up_votes: 1,
+      down_votes: 0,
+      unique_voters: 1,
+    })
 
     const third = new FakeAuthoritativeLiangService(BASE_CONFIG, fakeClock(AFTER_MIDNIGHT_SHANGHAI), () => undefined)
     await third.attachPersistence(memoryPort(stored))
@@ -296,6 +301,7 @@ describe('day rollover', () => {
       covered_days: 2,
       up_votes: 2,
       down_votes: 3,
+      unique_voters: 1,
     })
   })
 })

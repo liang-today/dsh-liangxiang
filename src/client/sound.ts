@@ -172,3 +172,9 @@ export function playLiangziShift(from: LiangziState, to: LiangziState): void {
   }
   tone(698, 349, 260, 'triangle', 0.08)
 }
+
+/** 入祠: a short two-note seal, same mute-by-default volume table. */
+export function playArchiveSeal(): void {
+  tone(392, 392, 160, 'sine', 0.07)
+  window.setTimeout(() => tone(523, 523, 200, 'sine', 0.06), 130)
+}

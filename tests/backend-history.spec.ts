@@ -41,13 +41,17 @@ describe('梁祠 backend archive', () => {
         downVotes: 1,
         totalIncense: 2,
         liangziState: 'liang_zong',
+        uniqueVoters: 1,
       })
       expect(full.weeks[0]).toMatchObject({
         weekId: '2026-W33',
         coveredDays: 1,
         upVotes: 1,
         downVotes: 1,
+        uniqueVoters: 1,
       })
+      expect(full.openWeekUniqueVoters).toBe(0)
+      expect(full.openMonthUniqueVoters).toBe(1)
       expect(full.months).toHaveLength(0)
       expect(full.days.some(day => day.businessDate === today.business_date)).toBe(false)
 
@@ -114,6 +118,7 @@ describe('梁祠 backend archive', () => {
         coveredDays: 1,
         upVotes: 2,
         downVotes: 1,
+        uniqueVoters: 1,
       })
     } finally {
       f.close()
@@ -180,6 +185,39 @@ describe('梁祠 backend archive', () => {
         liangzi_state: 'waiting',
       })
       expect(f.service.ensureActiveCase().id).toBe(today.id)
+    } finally {
+      f.close()
+    }
+  })
+
+  it('counts week unique voters as distinct installations, not the sum of daily pilgrims', () => {
+    const fridayInW33 = Date.UTC(2026, 7, 14, 4, 0, 0)
+    const f = createBackendFixture({}, fridayInW33)
+    try {
+      const first = 'history-install-repeat'
+      const second = 'history-install-other'
+      f.service.ensureActiveCase()
+      f.grantIncense(first, 1)
+      vote(f, first, 'up', 'history-repeat-0001')
+
+      f.clock.advance(DAY_MS)
+      f.service.ensureActiveCase()
+      f.grantIncense(first, 1)
+      f.grantIncense(second, 1)
+      vote(f, first, 'down', 'history-repeat-0002')
+      vote(f, second, 'up', 'history-repeat-0003')
+
+      f.clock.advance(DAY_MS * 2)
+      f.service.ensureActiveCase()
+      const history = parseV1HistoryResponse(f.service.historyResponse())
+      expect(history.days.map(day => day.businessDate)).toEqual(['2026-08-14', '2026-08-15'])
+      expect(history.days.map(day => day.uniqueVoters)).toEqual([1, 2])
+      expect(history.weeks[0]).toMatchObject({
+        weekId: '2026-W33',
+        uniqueVoters: 2,
+        upVotes: 2,
+        downVotes: 1,
+      })
     } finally {
       f.close()
     }

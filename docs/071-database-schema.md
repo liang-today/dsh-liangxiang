@@ -1,9 +1,9 @@
-# 071 — Database Schema v6（SQLite）
+# 071 — Database Schema v7（SQLite）
 
-`PRAGMA user_version = 6`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
+`PRAGMA user_version = 7`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
 比例、`liangzi_state`、`earned/remaining/fill` **一律不入库**：它们由 `domain/` 从原始计数派生，存一份就会出现第二个真相源。
 
-迁移轨迹：v2 增加 `community_identity`，v3 增加 `case_queue`，v4 增加梁祠永久档案，v5 增加 `admission_ticket`，v6 增加 `starter_incense_grant` 与 `daily_incense_state.starter_tokens`。旧库启动时逐级建表，不改既有投票账本。
+迁移轨迹：v2 增加 `community_identity`，v3 增加 `case_queue`，v4 增加梁祠永久档案，v5 增加 `admission_ticket`，v6 增加 `starter_incense_grant` 与 `daily_incense_state.starter_tokens`，v7 给日/周/月档案补 `unique_voters` 并从 `liang_vote` 回填。旧库启动时逐级建表，不改既有投票账本。
 
 ## daily_liang_case
 
@@ -129,6 +129,7 @@ total == 0 → ratio = null/null, liangzi_state = WAITING
 | `business_date` PK | 已结束的服务器业务日 |
 | `case_count` / `case_titles_json` | 同日全部已关闭梁案数量与标题 |
 | `up_votes` / `down_votes` | 同日全部梁案原始 accepted 票数之和 |
+| `unique_voters` | 当日至少上过一炷的去重安装数（v7） |
 | `finalized_at` / `archive_version` | 封存时间与冷通道游标 |
 | `aggregation_policy_version` / `liangzi_policy_version` | 聚合与梁子阈值策略快照 |
 
@@ -136,10 +137,10 @@ total == 0 → ratio = null/null, liangzi_state = WAITING
 
 ### liang_week_archive / liang_month_archive
 
-共同保存周期 id、`start_date` / `end_date`、`covered_days`、原始夯/拉票数、封存时间、归档版本和两项策略版本。周 id 为 ISO week（周一至周日），月 id 为 `YYYY-MM`。
+共同保存周期 id、`start_date` / `end_date`、`covered_days`、原始夯/拉票数、`unique_voters`（期内去重安装，不是各日香客之和）、封存时间、归档版本和两项策略版本。周 id 为 ISO week（周一至周日），月 id 为 `YYYY-MM`。
 
 - 只封存已经完整结束的周期；当前周/月暂梁不入库。
-- 周/月结果由该周期日档的原始票数求和，再派生比例与梁子状态，不平均每日百分比或枚举。
+- 周/月票数由该周期日档的原始票数求和，再派生比例与梁子状态，不平均每日百分比或枚举。香客另按票表 `COUNT(DISTINCT installation_id)`。
 - 主键/唯一周期范围 + 事务内 `INSERT OR IGNORE` 使重复日切幂等。
 - `ix_*_archive_version` 支持 `/v1/history?after_version=N` 只读取新增不可变档案。
 

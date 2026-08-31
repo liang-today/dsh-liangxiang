@@ -12,7 +12,7 @@ describe('long-press dump charge', () => {
   })
 
   it('auto-releases a dump hold after two seconds', () => {
-    expect(DUMP_AUTO_RELEASE_MS).toBe(2000)
+    expect(DUMP_AUTO_RELEASE_MS).toBe(1500)
     expect(DUMP_AUTO_RELEASE_MS).toBeGreaterThan(DUMP_HOLD_MS)
     expect(isAutoRelease(DUMP_AUTO_RELEASE_MS - 1)).toBe(false)
     expect(isAutoRelease(DUMP_AUTO_RELEASE_MS)).toBe(true)

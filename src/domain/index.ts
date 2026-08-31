@@ -110,6 +110,7 @@ export {
   deriveTemporaryMonth,
   deriveTemporaryWeek,
   isoWeekFor,
+  maxDayUniqueVoters,
   monthFor,
   sumDayArchives,
   type LiangArchiveResult,

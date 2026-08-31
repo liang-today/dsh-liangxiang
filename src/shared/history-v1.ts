@@ -26,6 +26,7 @@ export interface V1HistoryDay {
   case_titles: string[]
   up_votes: number
   down_votes: number
+  unique_voters: number
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -39,6 +40,7 @@ export interface V1HistoryWeek {
   covered_days: number
   up_votes: number
   down_votes: number
+  unique_voters: number
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -52,6 +54,7 @@ export interface V1HistoryMonth {
   covered_days: number
   up_votes: number
   down_votes: number
+  unique_voters: number
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -71,6 +74,10 @@ export interface V1HistoryResponse {
   days: V1HistoryDay[]
   weeks: V1HistoryWeek[]
   months: V1HistoryMonth[]
+  /** Distinct installations in the still-open week, excluding today. */
+  open_week_unique_voters: number
+  /** Distinct installations in the still-open month, excluding today. */
+  open_month_unique_voters: number
 }
 
 export interface ParsedHistoryArchive extends LiangHistoryArchive {
@@ -94,6 +101,12 @@ function count(raw: unknown, field: string): number {
     throw new WireError(field, 'expected a non-negative safe integer')
   }
   return raw
+}
+
+/** Older caches / deploy-window responses may omit unique_voters. */
+function optionalCount(raw: unknown, field: string): number {
+  if (raw === undefined) return 0
+  return count(raw, field)
 }
 
 function positiveCount(raw: unknown, field: string): number {
@@ -161,6 +174,7 @@ function parseDay(raw: unknown, field: string, envelopeVersion: number): LiangDa
     ...deriveArchiveResult(
       count(value.up_votes, `${field}.up_votes`),
       count(value.down_votes, `${field}.down_votes`),
+      optionalCount(value.unique_voters, `${field}.unique_voters`),
     ),
   }
 }
@@ -196,6 +210,7 @@ function parseWeek(raw: unknown, field: string, envelopeVersion: number): LiangW
     ...deriveArchiveResult(
       count(value.up_votes, `${field}.up_votes`),
       count(value.down_votes, `${field}.down_votes`),
+      optionalCount(value.unique_voters, `${field}.unique_voters`),
     ),
   }
 }
@@ -231,6 +246,7 @@ function parseMonth(raw: unknown, field: string, envelopeVersion: number): Liang
     ...deriveArchiveResult(
       count(value.up_votes, `${field}.up_votes`),
       count(value.down_votes, `${field}.down_votes`),
+      optionalCount(value.unique_voters, `${field}.unique_voters`),
     ),
   }
 }
@@ -274,6 +290,8 @@ export function parseV1HistoryResponse(raw: unknown): ParsedHistoryArchive {
     days,
     weeks,
     months,
+    openWeekUniqueVoters: optionalCount(value.open_week_unique_voters, 'historyResponse.open_week_unique_voters'),
+    openMonthUniqueVoters: optionalCount(value.open_month_unique_voters, 'historyResponse.open_month_unique_voters'),
   }
 }
 
@@ -303,6 +321,8 @@ export function mergeHistoryArchive(
       .sort((left, right) => left.startDate.localeCompare(right.startDate)),
     months: replaceByKey(current.months, incoming.months, item => item.monthId)
       .sort((left, right) => left.startDate.localeCompare(right.startDate)),
+    openWeekUniqueVoters: incoming.openWeekUniqueVoters,
+    openMonthUniqueVoters: incoming.openMonthUniqueVoters,
   }
 }
 
@@ -318,12 +338,15 @@ export function historyArchiveToV1(
     business_timezone: history.businessTimezone,
     full,
     stale: history.stale,
+    open_week_unique_voters: history.openWeekUniqueVoters ?? 0,
+    open_month_unique_voters: history.openMonthUniqueVoters ?? 0,
     days: history.days.map(day => ({
       business_date: day.businessDate,
       case_count: day.caseCount,
       case_titles: [...day.caseTitles],
       up_votes: day.upVotes,
       down_votes: day.downVotes,
+      unique_voters: day.uniqueVoters,
       finalized_at: day.finalizedAt,
       archive_version: day.archiveVersion,
       aggregation_policy_version: day.aggregationPolicyVersion,
@@ -336,6 +359,7 @@ export function historyArchiveToV1(
       covered_days: week.coveredDays,
       up_votes: week.upVotes,
       down_votes: week.downVotes,
+      unique_voters: week.uniqueVoters,
       finalized_at: week.finalizedAt,
       archive_version: week.archiveVersion,
       aggregation_policy_version: week.aggregationPolicyVersion,
@@ -348,6 +372,7 @@ export function historyArchiveToV1(
       covered_days: month.coveredDays,
       up_votes: month.upVotes,
       down_votes: month.downVotes,
+      unique_voters: month.uniqueVoters,
       finalized_at: month.finalizedAt,
       archive_version: month.archiveVersion,
       aggregation_policy_version: month.aggregationPolicyVersion,
@@ -366,5 +391,7 @@ export function emptyHistoryArchive(businessDate: string, businessTimezone: stri
     days: [],
     weeks: [],
     months: [],
+    openWeekUniqueVoters: 0,
+    openMonthUniqueVoters: 0,
   }
 }

@@ -36,7 +36,7 @@ afterEach(() => {
 })
 
 describe('starter incense grant', () => {
-  it('migrates the backend schema to v6 with a grant table', () => {
+  it('migrates the backend schema to v7 with archive unique voters', () => {
     const db = new DatabaseSync(':memory:')
     migrate(db)
     const version = db.prepare('PRAGMA user_version').get() as { user_version: number }
@@ -48,6 +48,9 @@ describe('starter incense grant', () => {
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'starter_incense_grant'",
     ).get()
     expect(grant).toBeDefined()
+    const dayColumns = (db.prepare('PRAGMA table_info(liang_day_archive)').all() as Array<{ name: string }>)
+      .map((row) => row.name)
+    expect(dayColumns).toContain('unique_voters')
     db.close()
   })
 

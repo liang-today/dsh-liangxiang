@@ -1,13 +1,13 @@
-# 100 — Release Readiness（v1.0.1 梁相）
+# 100 — Release Readiness（v1.0.2 梁相）
 
-结论：**社区正式版已按 1.0.1 发布**；不得宣传为实名、一人一票、
+结论：**社区正式版已按 1.0.2 发布**；不得宣传为实名、一人一票、
 可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
 `hk-api.liang.today` 旁路与 `api.liang.today` 正式域名验收均已通过；这不改变
 社区模式的信任边界。详见 [`142`](142-hk-migration-report.md)。
 
-## 1.0.1 点更新
+## 1.0.2 点更新
 
-对外主文案见 [`CHANGELOG.md`](../CHANGELOG.md) 的 `1.0.1`：刚装上备 10 炷，欢迎页突出见面礼和倾炉，安装包不再声明 `engines.node`，截图改由本仓 `screenshots.json` 自动更新。npm 与 GitHub Release 尚未发本号。
+对外主文案见 [`CHANGELOG.md`](../CHANGELOG.md) 的 `1.0.2`：梁祠日/周/月补五行香客，倾炉改为 1.5 秒，窄窗停靠与本机痕迹可发现。npm 与 GitHub Release 尚未发本号。
 
 ## 本版变更
 

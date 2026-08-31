@@ -58,7 +58,7 @@ describe('weighted 梁 archive policy', () => {
       day('2026-08-01', 9, 1),
       day('2026-08-02', 1, 99),
     ])
-    expect(result).toMatchObject({ upVotes: 10, downVotes: 100, totalIncense: 110 })
+    expect(result).toMatchObject({ upVotes: 10, downVotes: 100, totalIncense: 110, uniqueVoters: 0 })
     expect(result.upRatio).toBeCloseTo(10 / 110)
     expect(result.liangziState).toBe('liang_gong')
   })
@@ -67,6 +67,7 @@ describe('weighted 梁 archive policy', () => {
     expect(deriveArchiveResult(0, 0)).toEqual({
       upVotes: 0,
       downVotes: 0,
+      uniqueVoters: 0,
       totalIncense: 0,
       upRatio: null,
       downRatio: null,
@@ -94,6 +95,17 @@ describe('weighted 梁 archive policy', () => {
       upVotes: 9,
       downVotes: 1,
     })
+  })
+
+  it('keeps uniqueVoters on day sums and accepts a distinct override for temporary periods', () => {
+    const days = [
+      { ...day('2026-08-17', 2, 0), ...deriveArchiveResult(2, 0, 1) },
+      { ...day('2026-08-18', 0, 3), ...deriveArchiveResult(0, 3, 1) },
+    ]
+    expect(sumDayArchives(days).uniqueVoters).toBe(2)
+    expect(deriveTemporaryWeek('2026-08-19', days).uniqueVoters).toBe(2)
+    expect(deriveTemporaryWeek('2026-08-19', days, 1).uniqueVoters).toBe(1)
+    expect(() => deriveArchiveResult(1, 0, 2)).toThrow(/uniqueVoters/)
   })
 
   it('shows waiting on Monday and the first day of a month', () => {

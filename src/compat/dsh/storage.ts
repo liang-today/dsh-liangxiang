@@ -186,6 +186,7 @@ const dayArchiveSchema: DshValueSchema = {
       ...deriveArchiveResult(
         requireCountField(record, 'upVotes'),
         requireCountField(record, 'downVotes'),
+        record.uniqueVoters === undefined ? 0 : requireCountField(record, 'uniqueVoters'),
       ),
     }
   },
@@ -212,6 +213,7 @@ const weekArchiveSchema: DshValueSchema = {
       ...deriveArchiveResult(
         requireCountField(record, 'upVotes'),
         requireCountField(record, 'downVotes'),
+        record.uniqueVoters === undefined ? 0 : requireCountField(record, 'uniqueVoters'),
       ),
     }
   },
@@ -238,6 +240,7 @@ const monthArchiveSchema: DshValueSchema = {
       ...deriveArchiveResult(
         requireCountField(record, 'upVotes'),
         requireCountField(record, 'downVotes'),
+        record.uniqueVoters === undefined ? 0 : requireCountField(record, 'uniqueVoters'),
       ),
     }
   },

@@ -25,7 +25,9 @@ import { randomBytes } from 'node:crypto'
 import {
   DEFAULT_LIANGZI_THRESHOLDS,
   LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
+  addBusinessDays,
   clampVoteSpend,
+  deriveArchiveResult,
   derivePersonalLiangQiState,
   deriveLiangziState,
   isBusinessDate,
@@ -200,6 +202,7 @@ export class LiangxiangBackendService {
         case_titles_json: JSON.stringify(source.caseTitles),
         up_votes: source.upVotes,
         down_votes: source.downVotes,
+        unique_voters: source.uniqueVoters,
         finalized_at: now,
         archive_version: archiveVersion,
         aggregation_policy_version: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
@@ -218,6 +221,7 @@ export class LiangxiangBackendService {
         covered_days: days.length,
         up_votes: days.reduce((sum, day) => sum + day.up_votes, 0),
         down_votes: days.reduce((sum, day) => sum + day.down_votes, 0),
+        unique_voters: this.store.countUniqueVoters(week.startDate, week.endDate),
         finalized_at: now,
         archive_version: archiveVersion,
         aggregation_policy_version: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
@@ -234,6 +238,7 @@ export class LiangxiangBackendService {
         covered_days: days.length,
         up_votes: days.reduce((sum, day) => sum + day.up_votes, 0),
         down_votes: days.reduce((sum, day) => sum + day.down_votes, 0),
+        unique_voters: this.store.countUniqueVoters(month.startDate, month.endDate),
         finalized_at: now,
         archive_version: archiveVersion,
         aggregation_policy_version: LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
@@ -754,12 +759,7 @@ export class LiangxiangBackendService {
         archiveVersion: row.archive_version,
         aggregationPolicyVersion: row.aggregation_policy_version,
         liangziPolicyVersion: row.liangzi_policy_version,
-        upVotes: row.up_votes,
-        downVotes: row.down_votes,
-        totalIncense: row.up_votes + row.down_votes,
-        upRatio: row.up_votes + row.down_votes === 0 ? null : row.up_votes / (row.up_votes + row.down_votes),
-        downRatio: row.up_votes + row.down_votes === 0 ? null : row.down_votes / (row.up_votes + row.down_votes),
-        liangziState: deriveLiangziState(row.up_votes, row.down_votes, this.policy),
+        ...deriveArchiveResult(row.up_votes, row.down_votes, Number(row.unique_voters ?? 0)),
       }
     })
     const weeks = this.store.weekArchives(cursor).map(row => archivePeriodRow(row, 'week', this.policy))
@@ -772,7 +772,18 @@ export class LiangxiangBackendService {
       days,
       weeks,
       months,
+      openWeekUniqueVoters: this.openPeriodUniqueVoters('week', activeCase.business_date),
+      openMonthUniqueVoters: this.openPeriodUniqueVoters('month', activeCase.business_date),
     }, full)
+  }
+
+  /** Distinct installations in the still-open week/month, excluding today. */
+  private openPeriodUniqueVoters(kind: 'week' | 'month', businessDate: string): number {
+    const bounds = kind === 'week' ? isoWeekFor(businessDate) : monthFor(businessDate)
+    const yesterday = addBusinessDays(businessDate, -1)
+    if (yesterday < bounds.startDate) return 0
+    const end = yesterday < bounds.endDate ? yesterday : bounds.endDate
+    return this.store.countUniqueVoters(bounds.startDate, end)
   }
 
   /**
@@ -1266,16 +1277,12 @@ function archivePeriodRow(
   kind: 'week' | 'month',
   policy: LiangziThresholdPolicy,
 ): import('../domain/index.ts').LiangWeekArchive | import('../domain/index.ts').LiangMonthArchive {
-  const totalIncense = row.up_votes + row.down_votes
+  const derived = deriveArchiveResult(row.up_votes, row.down_votes, Number(row.unique_voters ?? 0))
   const common = {
     startDate: row.start_date,
     endDate: row.end_date,
     coveredDays: row.covered_days,
-    upVotes: row.up_votes,
-    downVotes: row.down_votes,
-    totalIncense,
-    upRatio: totalIncense === 0 ? null : row.up_votes / totalIncense,
-    downRatio: totalIncense === 0 ? null : row.down_votes / totalIncense,
+    ...derived,
     liangziState: deriveLiangziState(row.up_votes, row.down_votes, policy),
     finalizedAt: row.finalized_at,
     archiveVersion: row.archive_version,

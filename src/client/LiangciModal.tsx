@@ -24,6 +24,7 @@ import {
   LIANGCI_TITLE,
   LIANGCI_TODAY_LABEL,
   LIANGZI_STATE_LABELS,
+  VOTER_STAT_LABEL,
 } from '../shared/index.ts'
 import type { LiangciHistoryState } from './live-store.ts'
 import { LiangAvatar, LIANGZI_LABEL_COLOR } from './LiangAvatar.tsx'
@@ -471,12 +472,16 @@ function DetailPanel({
   days,
   weeks,
   months,
+  openWeekUniqueVoters,
+  openMonthUniqueVoters,
 }: {
   selection: Selection
   businessDate: string
   days: readonly LiangDayArchive[]
   weeks: readonly LiangWeekArchive[]
   months: readonly LiangMonthArchive[]
+  openWeekUniqueVoters: number
+  openMonthUniqueVoters: number
 }): ReactElement {
   let heading = ''
   let eyebrow = ''
@@ -497,7 +502,7 @@ function DetailPanel({
       eyebrow = `已封存日梁 · ${LIANGZI_STATE_LABELS[archive.liangziState]}`
       body = (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(230px, .8fr) 1.2fr', gap: '16px' }}>
-          <ArchiveFacts up={archive.upVotes} down={archive.downVotes} covered={`${archive.caseCount} 案`} />
+          <ArchiveFacts up={archive.upVotes} down={archive.downVotes} voters={archive.uniqueVoters} covered={`${archive.caseCount} 案`} />
           <div style={{ minWidth: 0 }}>
             <strong style={{ display: 'block', marginBottom: '3px', fontSize: '10px', color: color.textTertiary }}>当日梁案</strong>
             <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={archive.caseTitles.join('；')}>
@@ -511,7 +516,9 @@ function DetailPanel({
     const permanent = weeks.find(week => week.weekId === selection.id)
     const isFuture = selection.startDate > businessDate
     const isCurrent = businessDate >= selection.startDate && businessDate <= selection.endDate
-    const temporary = isCurrent && !isFuture ? deriveTemporaryWeek(businessDate, days) : null
+    const temporary = isCurrent && !isFuture
+      ? deriveTemporaryWeek(businessDate, days, openWeekUniqueVoters)
+      : null
     const period = permanent ?? temporary
     heading = `${selection.id} · ${shortDate(selection.startDate)}—${shortDate(selection.endDate)}`
     eyebrow = isFuture
@@ -523,11 +530,11 @@ function DetailPanel({
       ? <p style={{ margin: 0 }}>未来周期不预设周梁。</p>
       : period === null
       ? <p style={{ margin: 0 }}>该周没有永久周梁档案。</p>
-      : <ArchiveFacts up={period.upVotes} down={period.downVotes} covered={`${period.coveredDays}/7 日`} />
+      : <ArchiveFacts up={period.upVotes} down={period.downVotes} voters={period.uniqueVoters} covered={`${period.coveredDays}/7 日`} />
   } else {
     const permanent = months.find(month => month.monthId === selection.id)
     const isCurrent = selection.id === businessDate.slice(0, 7)
-    const temporary = isCurrent ? deriveTemporaryMonth(businessDate, days) : null
+    const temporary = isCurrent ? deriveTemporaryMonth(businessDate, days, openMonthUniqueVoters) : null
     const period = permanent ?? temporary
     heading = `${monthTitle(selection.id)}月梁`
     eyebrow = period === null
@@ -535,7 +542,7 @@ function DetailPanel({
       : permanent !== undefined ? '已封存月梁' : temporary?.status === 'waiting' ? '本月待积' : '本月暂梁'
     body = period === null
       ? <p style={{ margin: 0 }}>该月没有永久月梁档案。</p>
-      : <ArchiveFacts up={period.upVotes} down={period.downVotes} covered={`${period.coveredDays} 日`} />
+      : <ArchiveFacts up={period.upVotes} down={period.downVotes} voters={period.uniqueVoters} covered={`${period.coveredDays} 日`} />
   }
   return (
     <section
@@ -563,12 +570,20 @@ function DetailPanel({
   )
 }
 
-function ArchiveFacts({ up, down, covered }: { up: number, down: number, covered: string }): ReactElement {
+function ArchiveFacts({
+  up, down, covered, voters,
+}: {
+  up: number
+  down: number
+  covered: string
+  voters: number
+}): ReactElement {
   const total = up + down
   return (
-    <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(4, auto)', gap: '3px 12px', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+    <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(5, auto)', gap: '3px 12px', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
       <dt style={{ color: color.textTertiary }}>梁位</dt><dd style={{ margin: 0, color: color.textPrimary, fontWeight: 700 }}>{formatLiangPosition(up, down)}</dd>
       <dt style={{ color: color.textTertiary }}>香火</dt><dd style={{ margin: 0 }}>{total.toLocaleString('zh-CN')}</dd>
+      <dt style={{ color: color.textTertiary }}>{VOTER_STAT_LABEL}</dt><dd style={{ margin: 0 }}>{voters.toLocaleString('zh-CN')}</dd>
       <dt style={{ color: color.textTertiary }}>夯 / 拉</dt><dd style={{ margin: 0 }}>{up.toLocaleString('zh-CN')} / {down.toLocaleString('zh-CN')}</dd>
       <dt style={{ color: color.textTertiary }}>覆盖</dt><dd style={{ margin: 0 }}>{covered}</dd>
     </dl>
@@ -635,7 +650,9 @@ export function LiangciModal({
   const weekRows = dates.length / 7
   const compactCells = isCompactLiangciMonth(weekRows)
   const dayByDate = useMemo(() => new Map(days.map(day => [day.businessDate, day])), [days])
-  const currentMonthPeriod = deriveTemporaryMonth(businessDate, days)
+  const openWeekUniqueVoters = archive?.openWeekUniqueVoters ?? 0
+  const openMonthUniqueVoters = archive?.openMonthUniqueVoters ?? 0
+  const currentMonthPeriod = deriveTemporaryMonth(businessDate, days, openMonthUniqueVoters)
   const monthPeriod = displayedMonth === currentMonth
     ? currentMonthPeriod
     : months.find(month => month.monthId === displayedMonth) ?? null
@@ -783,7 +800,7 @@ export function LiangciModal({
                         const containsToday = businessDate >= startDate && businessDate <= endDate
                         const permanent = weeks.find(item => item.weekId === week.weekId)
                         const period = permanent
-                          ?? (containsToday ? deriveTemporaryWeek(businessDate, days) : null)
+                          ?? (containsToday ? deriveTemporaryWeek(businessDate, days, openWeekUniqueVoters) : null)
                         return [
                           ...rowDates.map(date => (
                             <DayCell
@@ -814,7 +831,15 @@ export function LiangciModal({
                     </div>
                   </div>
                 </div>
-                <DetailPanel selection={selection} businessDate={businessDate} days={days} weeks={weeks} months={months} />
+                <DetailPanel
+                  selection={selection}
+                  businessDate={businessDate}
+                  days={days}
+                  weeks={weeks}
+                  months={months}
+                  openWeekUniqueVoters={openWeekUniqueVoters}
+                  openMonthUniqueVoters={openMonthUniqueVoters}
+                />
               </>
             )}
       </div>

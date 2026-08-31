@@ -27,6 +27,9 @@ export const PANEL_WIDTH = 256
 export const PANEL_GAP = 10
 /** Approximate expanded panel height; used only to pick above vs below. */
 const PANEL_STACK_HEIGHT = 350
+const PANEL_STACK_HEIGHT_COMPACT = 280
+
+export type PanelDensity = 'regular' | 'compact'
 
 export const BADGE_POSITION_STORAGE_KEY = 'liangxiang:badge-position:v2'
 export const PANEL_OPEN_STORAGE_KEY = 'liangxiang:panel-open:v1'
@@ -109,8 +112,32 @@ export function saveBadgePosition(
  * @param viewport - the frame size.
  * @returns where the panel should be drawn relative to the badge.
  */
+export function panelDensityFor(viewport: Viewport): PanelDensity {
+  return viewport.height < 560 || viewport.width < 720 ? 'compact' : 'regular'
+}
+
+/** When DSH folds the sidebar, keep a left-docked badge on the frame edge. */
+export function dockForNarrowFrame(point: BadgePoint, viewport: Viewport): BadgePoint {
+  if (viewport.width < 1024 && point.x < 280) {
+    return clampBadgePosition({ x: BADGE_MARGIN, y: point.y }, viewport)
+  }
+  return clampBadgePosition(point, viewport)
+}
+
+export function availablePanelHeight(
+  point: BadgePoint,
+  viewport: Viewport,
+  placement: PanelPlacement,
+): number {
+  const room = placement.stack === 'above'
+    ? point.y - PANEL_GAP - BADGE_MARGIN
+    : viewport.height - point.y - BADGE_SIZE - PANEL_GAP - BADGE_MARGIN
+  return Math.max(200, Math.floor(room))
+}
+
 export function panelPlacementFor(point: BadgePoint, viewport: Viewport): PanelPlacement {
-  const needed = PANEL_STACK_HEIGHT + PANEL_GAP + BADGE_MARGIN
+  const compact = panelDensityFor(viewport) === 'compact'
+  const needed = (compact ? PANEL_STACK_HEIGHT_COMPACT : PANEL_STACK_HEIGHT) + PANEL_GAP + BADGE_MARGIN
   const roomAbove = point.y
   const roomBelow = viewport.height - (point.y + BADGE_SIZE)
   // Prefer above (the default dock is in the bottom-left) and only drop

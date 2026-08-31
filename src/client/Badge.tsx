@@ -18,26 +18,32 @@ import { EMPTY_INCENSE_FEEDBACK_MS, VOTE_FEEDBACK_MS, formatAcceptedVoteFeedback
 import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { readLocalEpithet, rememberLocalEpithetVote } from './local-epithet-store.ts'
 import { readLocalIncenseStats, rememberLocalIncenseVote } from './local-incense-store.ts'
-import { cycleSoundLevel, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
+import { cycleSoundLevel, playArchiveSeal, playIncenseEarn, playLiangziShift, playNoIncense, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { DUMP_AUTO_RELEASE_MS, chargeProgress, holdReleaseAction } from './vote-charge.ts'
 import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
+  availablePanelHeight,
   clampBadgePosition,
+  dockForNarrowFrame,
   loadBadgePosition,
   loadPanelOpen,
+  panelDensityFor,
   panelPlacementFor,
   saveBadgePosition,
   savePanelOpen,
   type BadgePoint,
 } from './badge-position.ts'
+import { LIANGZI_ART } from './liangzi-art.ts'
+import { preloadLiangziArt } from './liangzi-art-cache.ts'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangciModal } from './LiangciModal.tsx'
 import { createLiveLiangxiangStore, LiveTransportError } from './live-store.ts'
 import { Panel } from './Panel.tsx'
 import { color, font } from './theme.ts'
 import { useThrottleFill } from './use-throttle-fill.ts'
+import { useTweenedCount } from './use-tweened-count.ts'
 
 /** Preserve the exact earned-incense jump carried by one authoritative frame. */
 export function earnedIncenseGain(previous: number, current: number): number {
@@ -264,6 +270,8 @@ export function LiangxiangBadge(): ReactElement {
   const reducedMotion = useReducedMotion()
   // Smoothed + rate-extrapolated ring fill for the 油门 feel (presentation only).
   const throttle = useThrottleFill(state.personal, reducedMotion)
+  const displayTotalIncense = useTweenedCount(state.snapshot.totalIncense, reducedMotion)
+  const displayUniqueVoters = useTweenedCount(state.snapshot.uniqueVoters, reducedMotion)
   const [soundLevel, setSoundLevel] = useState(() => readSoundLevel())
   const onCycleSound = useCallback(() => {
     const next = cycleSoundLevel()
@@ -298,8 +306,24 @@ export function LiangxiangBadge(): ReactElement {
       typeof localStorage === 'undefined' ? null : localStorage,
     ))
   useEffect(() => {
-    setPosition((current) => clampBadgePosition(current, viewport))
+    setPosition((current) => dockForNarrowFrame(current, viewport))
   }, [viewport])
+  useEffect(() => {
+    preloadLiangziArt(LIANGZI_ART)
+  }, [])
+  const [pinnedHint, setPinnedHint] = useState<'incense' | 'epithet' | null>(null)
+  const prevArchiveVersion = useRef(0)
+  useEffect(() => {
+    const version = historyState.archive?.archiveVersion ?? 0
+    if (prevArchiveVersion.current === 0) {
+      prevArchiveVersion.current = version
+      return
+    }
+    if (version > prevArchiveVersion.current) {
+      prevArchiveVersion.current = version
+      playArchiveSeal()
+    }
+  }, [historyState.archive?.archiveVersion])
 
   const [dragging, setDragging] = useState(false)
   // A drag must not also toggle the panel: the click that follows the release
@@ -687,6 +711,8 @@ export function LiangxiangBadge(): ReactElement {
   }
 
   const placement = panelPlacementFor(position, viewport)
+  const density = panelDensityFor(viewport)
+  const maxPanelHeight = availablePanelHeight(position, viewport, placement)
 
   return (
     <div
@@ -748,6 +774,12 @@ export function LiangxiangBadge(): ReactElement {
           voteFeedback={voteFeedback}
           positionPulse={positionPulse}
           placement={placement}
+          density={density}
+          maxPanelHeight={maxPanelHeight}
+          pinnedHint={pinnedHint}
+          onToggleHint={(kind) => setPinnedHint((current) => current === kind ? null : kind)}
+          displayTotalIncense={displayTotalIncense}
+          displayUniqueVoters={displayUniqueVoters}
           onVote={onVote}
           onVoteClick={onVoteClick}
           onVotePointerDown={onVotePointerDown}

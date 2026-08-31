@@ -38,6 +38,21 @@ describe('history v1 boundary', () => {
       upRatio: 0.7,
       liangziState: 'liang_shen',
     })
+    expect(parsed.days[0]?.uniqueVoters).toBe(0)
+    expect(parsed.openWeekUniqueVoters).toBe(0)
+    expect(parseV1HistoryResponse(historyArchiveToV1(parsed, true))).toEqual(parsed)
+  })
+
+  it('round-trips unique voters and open-period pilgrim counts', () => {
+    const parsed = parseV1HistoryResponse({
+      ...base,
+      open_week_unique_voters: 4,
+      open_month_unique_voters: 9,
+      days: [{ ...base.days[0], unique_voters: 3 }],
+    })
+    expect(parsed.days[0]?.uniqueVoters).toBe(3)
+    expect(parsed.openWeekUniqueVoters).toBe(4)
+    expect(parsed.openMonthUniqueVoters).toBe(9)
     expect(parseV1HistoryResponse(historyArchiveToV1(parsed, true))).toEqual(parsed)
   })
 

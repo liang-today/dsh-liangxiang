@@ -72,6 +72,7 @@ export interface DayArchiveRow {
   case_titles_json: string
   up_votes: number
   down_votes: number
+  unique_voters: number
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -85,6 +86,7 @@ export interface WeekArchiveRow {
   covered_days: number
   up_votes: number
   down_votes: number
+  unique_voters: number
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -98,6 +100,7 @@ export interface MonthArchiveRow {
   covered_days: number
   up_votes: number
   down_votes: number
+  unique_voters: number
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -109,6 +112,7 @@ export interface DayArchiveSource {
   caseTitles: string[]
   upVotes: number
   downVotes: number
+  uniqueVoters: number
 }
 
 export interface CommunityIdentityRow {
@@ -227,6 +231,8 @@ export interface BackendStore {
   /** Increment and return the archive cursor. Caller must own a transaction. */
   bumpArchiveVersion: () => number
   unarchivedCaseDatesBefore: (businessDate: string) => string[]
+  /** Distinct installations with at least one accepted vote in the inclusive date range. */
+  countUniqueVoters: (startDate: string, endDate: string) => number
   dayArchiveSource: (businessDate: string) => DayArchiveSource | undefined
   insertDayArchive: (row: DayArchiveRow) => void
   insertWeekArchive: (row: WeekArchiveRow) => void
@@ -455,23 +461,28 @@ export function openBackendStore(databasePath: string): BackendStore {
       WHERE c.business_date = ?
       ORDER BY c.opened_at, c.id`,
   )
+  const selectUniqueVoters = db.prepare(
+    `SELECT COUNT(DISTINCT installation_id) AS n
+       FROM liang_vote
+      WHERE business_date >= ? AND business_date <= ?`,
+  )
   const insertDayArchiveStmt = db.prepare(
     `INSERT INTO liang_day_archive
-       (business_date, case_count, case_titles_json, up_votes, down_votes, finalized_at,
+       (business_date, case_count, case_titles_json, up_votes, down_votes, unique_voters, finalized_at,
         archive_version, aggregation_policy_version, liangzi_policy_version)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const insertWeekArchiveStmt = db.prepare(
     `INSERT INTO liang_week_archive
-       (week_id, start_date, end_date, covered_days, up_votes, down_votes, finalized_at,
+       (week_id, start_date, end_date, covered_days, up_votes, down_votes, unique_voters, finalized_at,
         archive_version, aggregation_policy_version, liangzi_policy_version)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const insertMonthArchiveStmt = db.prepare(
     `INSERT INTO liang_month_archive
-       (month_id, start_date, end_date, covered_days, up_votes, down_votes, finalized_at,
+       (month_id, start_date, end_date, covered_days, up_votes, down_votes, unique_voters, finalized_at,
         archive_version, aggregation_policy_version, liangzi_policy_version)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectDayArchives = db.prepare(
     'SELECT * FROM liang_day_archive WHERE archive_version > ? ORDER BY business_date',
@@ -720,6 +731,10 @@ export function openBackendStore(databasePath: string): BackendStore {
       const rows = selectUnarchivedCaseDates.all(businessDate) as unknown as Array<{ business_date: string }>
       return rows.map(row => row.business_date)
     },
+    countUniqueVoters(startDate, endDate) {
+      const row = selectUniqueVoters.get(startDate, endDate) as { n: number | bigint } | undefined
+      return Number(row?.n ?? 0)
+    },
     dayArchiveSource(businessDate) {
       const rows = selectArchiveCasesForDate.all(businessDate) as unknown as Array<{
         title: string
@@ -732,6 +747,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         caseTitles: rows.map(row => row.title),
         upVotes: rows.reduce((sum, row) => sum + Number(row.up_votes), 0),
         downVotes: rows.reduce((sum, row) => sum + Number(row.down_votes), 0),
+        uniqueVoters: this.countUniqueVoters(businessDate, businessDate),
       }
     },
     insertDayArchive(row) {
@@ -741,6 +757,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.case_titles_json,
         row.up_votes,
         row.down_votes,
+        row.unique_voters,
         row.finalized_at,
         row.archive_version,
         row.aggregation_policy_version,
@@ -755,6 +772,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.covered_days,
         row.up_votes,
         row.down_votes,
+        row.unique_voters,
         row.finalized_at,
         row.archive_version,
         row.aggregation_policy_version,
@@ -769,6 +787,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.covered_days,
         row.up_votes,
         row.down_votes,
+        row.unique_voters,
         row.finalized_at,
         row.archive_version,
         row.aggregation_policy_version,

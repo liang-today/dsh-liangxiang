@@ -16,6 +16,7 @@ export const LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION = 'liang-archive-v1-weight
 export interface LiangArchiveResult {
   upVotes: number
   downVotes: number
+  uniqueVoters: number
   totalIncense: number
   upRatio: number | null
   downRatio: number | null
@@ -62,6 +63,13 @@ export interface LiangHistoryArchive {
   days: readonly LiangDayArchive[]
   weeks: readonly LiangWeekArchive[]
   months: readonly LiangMonthArchive[]
+  /**
+   * Distinct installations that voted in the still-open week/month, excluding
+   * today. Sealed week/month rows store their own distinct count. Missing on
+   * older caches; the client then falls back to summing daily uniqueVoters.
+   */
+  openWeekUniqueVoters: number
+  openMonthUniqueVoters: number
 }
 
 export interface TemporaryLiangPeriod extends LiangArchiveResult {
@@ -136,13 +144,22 @@ export function monthFor(date: BusinessDate): {
   }
 }
 
-export function deriveArchiveResult(upVotes: number, downVotes: number): LiangArchiveResult {
+export function deriveArchiveResult(
+  upVotes: number,
+  downVotes: number,
+  uniqueVoters = 0,
+): LiangArchiveResult {
   assertCount(upVotes, 'invalid_vote_count', 'upVotes')
   assertCount(downVotes, 'invalid_vote_count', 'downVotes')
+  assertCount(uniqueVoters, 'invalid_vote_count', 'uniqueVoters')
   const totalIncense = upVotes + downVotes
+  if (uniqueVoters > totalIncense) {
+    throw new DomainError('invalid_vote_count', 'archive uniqueVoters cannot exceed total accepted votes')
+  }
   return {
     upVotes,
     downVotes,
+    uniqueVoters,
     totalIncense,
     upRatio: totalIncense === 0 ? null : upVotes / totalIncense,
     downRatio: totalIncense === 0 ? null : downVotes / totalIncense,
@@ -150,25 +167,38 @@ export function deriveArchiveResult(upVotes: number, downVotes: number): LiangAr
   }
 }
 
-export function sumDayArchives(days: readonly Pick<LiangDayArchive, 'upVotes' | 'downVotes'>[]): LiangArchiveResult {
+export function sumDayArchives(
+  days: readonly Pick<LiangDayArchive, 'upVotes' | 'downVotes' | 'uniqueVoters'>[],
+): LiangArchiveResult {
   let upVotes = 0
   let downVotes = 0
+  let uniqueVoters = 0
   for (const day of days) {
     assertCount(day.upVotes, 'invalid_vote_count', 'upVotes')
     assertCount(day.downVotes, 'invalid_vote_count', 'downVotes')
+    assertCount(day.uniqueVoters, 'invalid_vote_count', 'uniqueVoters')
     upVotes += day.upVotes
     downVotes += day.downVotes
-    if (!Number.isSafeInteger(upVotes) || !Number.isSafeInteger(downVotes)) {
+    uniqueVoters += day.uniqueVoters
+    if (!Number.isSafeInteger(upVotes) || !Number.isSafeInteger(downVotes) || !Number.isSafeInteger(uniqueVoters)) {
       throw new DomainError('invalid_vote_count', 'archive vote aggregate exceeds safe integer range')
     }
   }
-  return deriveArchiveResult(upVotes, downVotes)
+  return deriveArchiveResult(upVotes, downVotes, uniqueVoters)
+}
+
+/** One-install / demo-seed proxy: do not multiply the same pilgrims across days. */
+export function maxDayUniqueVoters(
+  days: readonly Pick<LiangDayArchive, 'uniqueVoters'>[],
+): number {
+  return days.reduce((max, day) => Math.max(max, day.uniqueVoters), 0)
 }
 
 function temporaryPeriod(
   kind: TemporaryLiangPeriod['kind'],
   businessDate: BusinessDate,
   days: readonly LiangDayArchive[],
+  uniqueVoters?: number,
 ): TemporaryLiangPeriod {
   assertBusinessDate(businessDate)
   const bounds = kind === 'week' ? isoWeekFor(businessDate) : monthFor(businessDate)
@@ -180,7 +210,10 @@ function temporaryPeriod(
       && day.businessDate <= bounds.endDate
       && day.businessDate < businessDate)
     .sort((left, right) => left.businessDate.localeCompare(right.businessDate))
-  const result = sumDayArchives(included)
+  const summed = sumDayArchives(included)
+  const result = uniqueVoters === undefined
+    ? summed
+    : deriveArchiveResult(summed.upVotes, summed.downVotes, uniqueVoters)
   return {
     kind,
     periodId,
@@ -196,13 +229,15 @@ function temporaryPeriod(
 export function deriveTemporaryWeek(
   businessDate: BusinessDate,
   days: readonly LiangDayArchive[],
+  uniqueVoters?: number,
 ): TemporaryLiangPeriod {
-  return temporaryPeriod('week', businessDate, days)
+  return temporaryPeriod('week', businessDate, days, uniqueVoters)
 }
 
 export function deriveTemporaryMonth(
   businessDate: BusinessDate,
   days: readonly LiangDayArchive[],
+  uniqueVoters?: number,
 ): TemporaryLiangPeriod {
-  return temporaryPeriod('month', businessDate, days)
+  return temporaryPeriod('month', businessDate, days, uniqueVoters)
 }
