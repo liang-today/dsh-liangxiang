@@ -3,7 +3,7 @@
  * Every value has a safe default; malformed values fall back loudly.
  */
 import { DEFAULT_TOKEN_PER_INCENSE } from '../domain/index.ts'
-import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
+import { DEFAULT_CASE_TITLE, STARTER_INCENSE_COUNT } from '../shared/index.ts'
 import { DEFAULT_BUSINESS_TIMEZONE } from '../shared/business-date.ts'
 import { readLiangxiangEnv } from '../shared/env.ts'
 import type { HostAuthorityPreference } from '../shared/wire.ts'
@@ -82,6 +82,7 @@ export function resolveHostConfig(
     snapshotRefreshSeconds,
     seed: seedRaw === 'demo' ? 'demo' : 'empty',
     caseTitle: DEFAULT_CASE_TITLE,
+    starterIncense: STARTER_INCENSE_COUNT,
   }
 }
 

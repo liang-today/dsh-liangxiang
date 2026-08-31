@@ -16,7 +16,7 @@ interface Manifest {
   homepage: string
   repository: { type: string, url: string }
   bugs: { url: string }
-  engines: { node: string }
+  engines?: { node?: string }
   type: string
   main: string
   exports: Record<string, unknown>
@@ -75,7 +75,7 @@ describe('package.json dsh manifests', () => {
       url: 'git+https://github.com/liang-today/dsh-liangxiang.git',
     })
     expect(manifest.bugs.url).toBe('https://github.com/liang-today/dsh-liangxiang/issues')
-    expect(manifest.engines.node).toBe('^22.19.0 || >=24')
+    expect(manifest.engines).toBeUndefined()
     expect(readRootFile('README.md')).not.toMatch(/梁文锋/)
     expect(readRootFile('README.md')).not.toMatch(/本页右侧/)
     expect(readRootFile('README.md')).toContain('众香成势，梁子显相')

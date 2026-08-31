@@ -30,13 +30,16 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '1.0.0'
+export const PLUGIN_VERSION = '1.0.1'
 
 /**
  * Server-only release label for the community backend. Do not bump the npm /
- * client `PLUGIN_VERSION` for a backend-only change; stamp `1.0.0-uN` instead.
+ * client `PLUGIN_VERSION` for a backend-only change; stamp `1.0.1-uN` instead.
  */
-export const SERVER_BUILD = '1.0.0-u1'
+export const SERVER_BUILD = '1.0.1-u1'
+
+/** Welcome gift: sticks credited once per device fingerprint per business date. */
+export const STARTER_INCENSE_COUNT = 10
 
 /** Cordis plugin display name of the host half. */
 export const HOST_PLUGIN_NAME = 'liangxiang'
@@ -153,15 +156,12 @@ export const ACCOUNTING_UNAVAILABLE_HINT = '记账不可用：当前 DSH 组合�
 /** Backend guard notice: a single Token claim was clamped as absurd. */
 export const ABSURD_CLAIM_NOTICE = 'Token 上报超出合理上限，已限幅（疑似异常）'
 
-/** First-run welcome: three plain-language lines (not just screen-reader copy). */
+/** First-run welcome: short copy; the gift line is the visual emphasis. */
 export const WELCOME_TITLE = '欢迎来到梁相'
 export const WELCOME_TAGLINE = '梁相还得梁人出！'
-export const WELCOME_LINES = [
-  '使用 DSH，输入 + 输出每 5 万当量凝成一炷香。',
-  '花一炷选择「夯」或「拉」，共同显出今日梁相。',
-  '每日结案后，结果收入梁祠；这是社区软信任玩法。',
-  '离线玩法与社区完全独立，只在你主动选择时启用。',
-]
+export const WELCOME_GIFT_LINE = `新香客备 ${STARTER_INCENSE_COUNT} 炷，对话还能继续攒。`
+export const WELCOME_PLAY_LINE = '点一下一炷，长按两秒倾炉。'
+export const WELCOME_LINES = [WELCOME_GIFT_LINE, WELCOME_PLAY_LINE]
 export const WELCOME_ONLINE_LABEL = '进入在线'
 export const WELCOME_LOCAL_LABEL = '离线模式'
 export const VOTE_RATE_LIMITED = '打梁过快，每分钟最多 50 炷'
@@ -182,7 +182,7 @@ export function formatAcceptedVoteFeedback(
     ? `已上香 · ${voteName} ×${spent}（剩余 ${remaining} 炷）`
     : `已上香 · ${voteName}（剩余 ${remaining} 炷）`
 }
-export const WELCOME_PRIVACY_NOTE = '在线模式不收集对话、代码、文件或账号。社区账本只用本机生成的随机安装 ID 区分不同香客，无法识别你是谁。'
+export const WELCOME_PRIVACY_NOTE = '不收集对话或账号。在线只用本机随机安装 ID。'
 export const WELCOME_DISMISS = '知道了'
 
 /** Region 4 utility drawer. Routine data flow is automatic; this is not sync. */

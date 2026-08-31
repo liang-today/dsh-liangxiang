@@ -41,4 +41,4 @@ DSH Desktop 必须先把 `DSH_HOME` 指到桌面自己的 harness 目录，再�
 
 > 梁位是社区软信任玩法，不代表实名人数、真实民意或任何个人、机构立场。
 
-当前正式版是 **v1.0.0**，请安装 `dsh-liangxiang`（npm `latest`）。开发、排障与实现说明在 [`docs/INSTALL.md`](docs/INSTALL.md)。
+当前正式版是 **v1.0.1**，请安装 `dsh-liangxiang`（npm `latest`）。开发、排障与实现说明在 [`docs/INSTALL.md`](docs/INSTALL.md)。

@@ -1,6 +1,6 @@
 # INSTALL — 安装与运行
 
-前置：Node `^22.19.0 || >=24`。插件本身**不需要任何 API key**（只有在 WebUI 里真正和模型对话才需要）。
+前置：插件本身**不绑定**特定 DSH / Node 版本，也不需要任何 API key（只有在 WebUI 里真正和模型对话才需要）。DSH 宿主自己可能仍要求 Node 22.19+；自建社区后端需要 Node 自带的 `node:sqlite`（约 22.5+）。
 
 全程先**完全退出** DeepSeek Harness WebUI，做完再启动，浏览器刷新一次。卸载和升级都**不删除**香火账本。
 
@@ -55,7 +55,7 @@ minimumReleaseAgeExclude:
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 当前正式版是 `dsh-liangxiang@1.0.0`（`latest`）。请写无标签包名；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> 当前正式版是 `dsh-liangxiang@1.0.1`（`latest`）。请写无标签包名；不要写 `@0.8.0`。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 
@@ -64,7 +64,7 @@ minimumReleaseAgeExclude:
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.1.tgz
 ```
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
@@ -150,7 +150,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 ```bash
 pnpm pack
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-1.0.0.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-1.0.1.tgz
 ```
 
 1. **不要**把 in-box bundle（如 `@deepseek-ai/dsh-web-app`）装成 profile 依赖。它只需要出现在 `dsh.profile.bundles` 里；装进 `<profile>/node_modules` 会遮蔽 launcher 的模块回退目录，造成同一个包出现两个实例，工具调用会直接报 `Cannot read properties of undefined (reading 'prepare')`。装完可以跑 `node scripts/assert-profile-modules.mjs <DSH_HOME>/profiles/<profile>` 自检。

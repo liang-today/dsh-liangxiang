@@ -1,6 +1,6 @@
 # 103 — Test Matrix（RC）
 
-`pnpm test`：**42 个文件 / 505 项，全绿**（2026-08-24，v1.0.0）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是正式版视角的总账：每条冻结性质对应到哪个文件。
+`pnpm test`：**44 个文件 / 520 项，全绿**（2026-08-31，v1.0.1）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是正式版视角的总账：每条冻结性质对应到哪个文件。
 
 ## 覆盖分布
 
@@ -10,7 +10,7 @@
 | 梁祠后端 | `backend-history`、`backend-http` | 同日多案合并、日/周/月幂等封存、版本增量、零票档、`/v1/history` query 校验 |
 | 梁祠 Host/client | `host-backend`、`live-store`、`client-panel`、`client-liangci-calendar` | 上游全量→增量、last-known-good stale、SSE 无历史数组、第四区入口、4/5/6 周月历与 UI 契约 |
 | 领域核心 | `domain-token`、`domain-incense`、`domain-incense-weight`、`domain-vote`、`vote-budget`、`local-epithet`、`local-incense`、`domain-global`、`domain-liangzi`、`domain-independence`、`domain-compact-count` | Token/香火/投票/令牌桶/本机梁号/此身香火/梁位/五态/个人与全局隔离 |
-| 后端与安全 | `backend-service`、`backend-client`、`backend-http`、`community-auth`、`identity-recovery`、`operator-identity` | 事务、幂等、并发、签名、身份恢复、运营边界、错误契约 |
+| 后端与安全 | `backend-service`、`backend-client`、`backend-http`、`community-auth`、`identity-recovery`、`operator-identity`、`starter-incense` | 事务、幂等、并发、签名、身份恢复、运营边界、错误契约、见面礼 |
 | Host | `host-service`、`host-backend`、`host-usage`、`host-dev-credit`、`host-apply` | 两种权威模式、用量水位、后端集成、生命周期 |
 | Client | `client-store`、`client-panel`、`badge`、`live-store`、`throttle-fill`、`client-apply` | 状态派生、四区、拖拽、动效、请求重试、注册与清理 |
 | 契约/打包 | `wire`、`shared`、`manifest` | Host↔Browser fail-closed、冻结文案、双清单与版本一致性 |

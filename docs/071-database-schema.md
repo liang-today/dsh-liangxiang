@@ -1,9 +1,9 @@
-# 071 — Database Schema v5（SQLite）
+# 071 — Database Schema v6（SQLite）
 
-`PRAGMA user_version = 5`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
+`PRAGMA user_version = 6`，DDL 见 `src/backend/schema.ts`（幂等，启动即 migrate）。
 比例、`liangzi_state`、`earned/remaining/fill` **一律不入库**：它们由 `domain/` 从原始计数派生，存一份就会出现第二个真相源。
 
-迁移轨迹：v2 增加 `community_identity`，v3 增加 `case_queue`，v4 增加梁祠永久档案，v5 增加 `admission_ticket`。旧库启动时逐级建表，不改既有投票账本。
+迁移轨迹：v2 增加 `community_identity`，v3 增加 `case_queue`，v4 增加梁祠永久档案，v5 增加 `admission_ticket`，v6 增加 `starter_incense_grant` 与 `daily_incense_state.starter_tokens`。旧库启动时逐级建表，不改既有投票账本。
 
 ## daily_liang_case
 
@@ -33,6 +33,7 @@ CREATE UNIQUE INDEX ux_case_one_active_per_date
 | `used_incense` | INTEGER ≥0 | 已消费香火（唯一权威） |
 | `token_per_incense` | INTEGER >0 | 该日适用政策 |
 | `claim_source` | TEXT | 恒为 `host_observed_unverified`（A3） |
+| `starter_tokens` | INTEGER ≥0 | 见面礼折算的 Token（计入 `claimed_effective_tokens`，Host 后续声明是整本账的绝对水位） |
 | `version` | INTEGER | CAS 版本，claim/spend 各 +1 |
 | `created_at` / `updated_at` | INTEGER | epoch ms |
 
@@ -104,6 +105,10 @@ total == 0 → ratio = null/null, liangzi_state = WAITING
 `ticket_id` 为主键，`secret` 唯一；`max_claims / claimed_count` 保存可认领总数与已用数，
 `status` 只能是 `active / exhausted / revoked / expired`，并记录创建、过期与最后认领时间。
 认领在 `BEGIN IMMEDIATE` 事务中同时核销券和写入 `community_identity`；并发争抢同一张单次券最多成功一次。
+
+## starter_incense_grant（v6，见面礼）
+
+`(device_fingerprint, business_date)` 主键。每个设备每个业务日最多领一次 10 炷；换 installation id / 重装同日不能再领。无指纹（部分 VM）不送。赠额写入 `daily_incense_state.claimed_effective_tokens` 与 `starter_tokens`，以满足 `used * token_per_incense <= claimed`。
 
 ## case_queue（v3，运营梁案队列）
 

@@ -9,7 +9,7 @@
 import { DEFAULT_TOKEN_PER_INCENSE } from '../domain/index.ts'
 import { AUTHORITY_MODES, type BackendAuthorityMode } from '../shared/backend-v1.ts'
 import { DEFAULT_BUSINESS_TIMEZONE } from '../shared/business-date.ts'
-import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
+import { DEFAULT_CASE_TITLE, STARTER_INCENSE_COUNT } from '../shared/index.ts'
 import { readLiangxiangEnv } from '../shared/env.ts'
 import { DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS, DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE } from './vote-rate-limit.ts'
 
@@ -84,6 +84,11 @@ export interface BackendConfig {
   admissionInventoryTarget: number
   /** When true, HTTP accepts the old unsigned installation header (localhost tests). */
   allowUnsigned: boolean
+  /**
+   * Welcome sticks credited once per device fingerprint per business date.
+   * 0 disables the gift.
+   */
+  starterIncenseCount: number
 }
 
 export class BackendConfigError extends Error {
@@ -229,6 +234,13 @@ export function resolveBackendConfig(
       'LIANGXIANG_ADMISSION_INVENTORY_TARGET',
       warn,
       { min: 0, max: 100_000 },
+    ),
+    starterIncenseCount: parseInt_(
+      readLiangxiangEnv(env, 'STARTER_INCENSE'),
+      STARTER_INCENSE_COUNT,
+      'LIANGXIANG_STARTER_INCENSE',
+      warn,
+      { min: 0, max: 500 },
     ),
     allowUnsigned,
   }

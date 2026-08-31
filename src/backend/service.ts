@@ -496,6 +496,7 @@ export class LiangxiangBackendService {
 
   bootstrap(installationId: string, now = this.clock.now()): V1Bootstrap {
     const caseRow = this.ensureActiveCase(now)
+    this.store.transaction(() => this.ensureRow(installationId, caseRow, now))
     return {
       schema_version: BACKEND_SCHEMA_VERSION,
       authority_mode: this.config.authorityMode,
@@ -582,6 +583,7 @@ export class LiangxiangBackendService {
 
   dailyState(installationId: string, now = this.clock.now()): V1PersonalStateResponse {
     const caseRow = this.ensureActiveCase(now)
+    this.store.transaction(() => this.ensureRow(installationId, caseRow, now))
     return {
       schema_version: BACKEND_SCHEMA_VERSION,
       business_date: caseRow.business_date,
@@ -1041,6 +1043,27 @@ export class LiangxiangBackendService {
       CLAIM_SOURCE_HOST_OBSERVED,
       now,
     )
+    this.tryGrantStarter(installationId, caseRow, now)
+  }
+
+  /**
+   * One welcome gift per device fingerprint per business date. Re-keying the
+   * same machine does not mint another 10 sticks; the grant row outlives the
+   * old installation id. Unsigned / fingerprint-less rows stay at zero.
+   */
+  private tryGrantStarter(installationId: string, caseRow: CaseRow, now: number): void {
+    if (this.config.starterIncenseCount <= 0) return
+    const fingerprint = this.store.identityByInstallation(installationId)?.device_fingerprint?.trim() ?? ''
+    if (fingerprint === '') return
+    const tokens = this.config.starterIncenseCount * caseRow.token_per_incense
+    if (!this.store.tryInsertStarterGrant(
+      fingerprint,
+      caseRow.business_date,
+      installationId,
+      tokens,
+      now,
+    )) return
+    this.store.addStarterTokens(installationId, caseRow.business_date, tokens, now)
   }
 
   private requireRow(installationId: string, businessDate: string): IncenseRow {

@@ -56,9 +56,12 @@ export function createBackendFixture(
     config,
     clock,
     grantIncense(installationId, count, extraTokens = 0) {
+      const date = service.businessDate()
+      service.dailyState(installationId)
+      const current = store.incenseFor(installationId, date)?.claimed_effective_tokens ?? 0
       service.applyTokenClaim(installationId, {
-        claimed_effective_tokens: count * config.tokenPerIncense + extraTokens,
-        claim_business_date: service.businessDate(),
+        claimed_effective_tokens: current + count * config.tokenPerIncense + extraTokens,
+        claim_business_date: date,
       })
     },
     close: () => store.close(),

@@ -429,6 +429,7 @@ describe('authority mode guard', () => {
     expect(config.authorityMode).toBe('DEV_STAGING_ONLY')
     expect(config.allowUnsigned).toBe(false)
     expect(config.admissionInventoryTarget).toBe(1000)
+    expect(config.starterIncenseCount).toBe(10)
   })
 
   it('refuses unsigned mode on a public listen address', () => {

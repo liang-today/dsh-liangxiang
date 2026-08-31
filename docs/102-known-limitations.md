@@ -1,4 +1,4 @@
-# 102 — Known Limitations（更新至 v1.0.0）
+# 102 — Known Limitations（更新至 v1.0.1）
 
 按严重度排列。**没有未修的 Blocker/High**；以下都是明确接受的限制，不违反冻结不变量。
 

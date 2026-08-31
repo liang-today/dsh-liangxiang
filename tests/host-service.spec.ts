@@ -100,6 +100,14 @@ const buckets = (uncached: number, cacheRead: number, cacheWrite: number, output
 })
 
 describe('real token mapping (docs/041 fixture)', () => {
+  it('paints the configured welcome sticks before any usage arrives', () => {
+    const { service } = readyService({ starterIncense: 10 })
+    expect(service.getWireState().personal.remainingIncense).toBe(10)
+    expect(service.getWireState().personal.effectiveTokensToday).toBe(500_000)
+    service.observeUsage('s1', buckets(50_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
+    expect(service.getWireState().personal.remainingIncense).toBe(11)
+  })
+
   it('10k uncached + 20k cacheRead + 5k cacheWrite + 15k output = 1 incense', () => {
     const { service } = readyService()
     service.observeUsage('s1', buckets(10_000, 20_000, 5_000, 15_000), FRESH, 'deepseek-v4-pro')

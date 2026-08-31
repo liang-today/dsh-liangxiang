@@ -1,9 +1,15 @@
-# 100 — Release Readiness（v1.0.0 梁相）
+# 100 — Release Readiness（v1.0.1 梁相）
 
-结论：**社区正式版已按 1.0.0 发布**；不得宣传为实名、一人一票、
+结论：**社区正式版已按 1.0.1 发布**；不得宣传为实名、一人一票、
 可信公投或服务器核验 Token。香港节点的数据与服务迁移已经完成，
 `hk-api.liang.today` 旁路与 `api.liang.today` 正式域名验收均已通过；这不改变
 社区模式的信任边界。详见 [`142`](142-hk-migration-report.md)。
+
+## 1.0.1 点更新
+
+- 新香客按设备指纹每个业务日送 10 炷；同机当日重装不重复领。
+- 欢迎页改疏；安装包不再声明 `engines.node`。
+- 仓库根 `screenshots.json` 供 awesome / dsh-market 自动换图。
 
 ## 本版变更
 

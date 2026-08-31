@@ -23,8 +23,10 @@ import {
   PLUGIN_PACKAGE_NAME,
   PLUGIN_VERSION,
   STAGING_MODE_NOTE,
+  WELCOME_GIFT_LINE,
   WELCOME_LOCAL_LABEL,
   WELCOME_ONLINE_LABEL,
+  WELCOME_PLAY_LINE,
   WELCOME_PRIVACY_NOTE,
   WELCOME_TAGLINE,
   WELCOME_TITLE,
@@ -164,9 +166,13 @@ describe('four visual regions', () => {
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-online'))).toBe(WELCOME_ONLINE_LABEL)
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-local'))).toBe(WELCOME_LOCAL_LABEL)
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-tagline'))).toBe(WELCOME_TAGLINE)
+    expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-gift'))).toBe(WELCOME_GIFT_LINE)
+    expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-play'))).toBe(WELCOME_PLAY_LINE)
     expect(textContent(findByAttr(tree, 'data-liangxiang-welcome-privacy'))).toBe(WELCOME_PRIVACY_NOTE)
+    expect(WELCOME_GIFT_LINE).toContain('10 炷')
     expect(WELCOME_PRIVACY_NOTE).toContain('随机安装 ID')
     expect(WELCOME_PRIVACY_NOTE).not.toContain('投票')
+    expect(textContent(welcome === undefined ? [] : [welcome])).not.toMatch(/秒后|倒计时/)
   })
 
   it('centers the case region and keeps the trust mode out of the visible copy', () => {

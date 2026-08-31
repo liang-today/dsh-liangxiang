@@ -155,6 +155,7 @@ describe('forfeit is real (old balance never follows the new key)', () => {
     // unreachable (its identity row is gone).
     const fresh = f.service.dailyState(NEW)
     expect(fresh.authoritative_personal_state.earned_incense).toBe(0)
-    expect(f.service.dailyState(OLD).authoritative_personal_state.earned_incense).toBe(5)
+    // The old id keeps both the welcome gift and the 5 granted sticks.
+    expect(f.service.dailyState(OLD).authoritative_personal_state.earned_incense).toBe(15)
   })
 })

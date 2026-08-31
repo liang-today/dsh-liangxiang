@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v5) for the Liangxiang backend.
+ * SQLite schema (v6) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -28,7 +28,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 
-export const BACKEND_SCHEMA_USER_VERSION = 5
+export const BACKEND_SCHEMA_USER_VERSION = 6
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -194,6 +194,24 @@ CREATE INDEX IF NOT EXISTS ix_admission_ticket_inventory
   ON admission_ticket (status, expires_at, created_at);
 `
 
+const DDL_V6_GRANT = `
+CREATE TABLE IF NOT EXISTS starter_incense_grant (
+  device_fingerprint  TEXT    NOT NULL,
+  business_date       TEXT    NOT NULL,
+  installation_id     TEXT    NOT NULL,
+  granted_tokens      INTEGER NOT NULL CHECK (granted_tokens > 0),
+  created_at          INTEGER NOT NULL,
+  PRIMARY KEY (device_fingerprint, business_date)
+);
+CREATE INDEX IF NOT EXISTS ix_starter_grant_install
+  ON starter_incense_grant (installation_id, business_date);
+`
+
+function tableColumns(db: DatabaseSync, table: string): string[] {
+  return (db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>)
+    .map((row) => row.name)
+}
+
 /** Apply the schema and record its user_version (idempotent). */
 export function migrate(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON')
@@ -209,6 +227,12 @@ export function migrate(db: DatabaseSync): void {
   if (current < 3) db.exec(DDL_V3)
   if (current < 4) db.exec(DDL_V4)
   if (current < 5) db.exec(DDL_V5)
+  if (current < 6) {
+    db.exec(DDL_V6_GRANT)
+    if (!tableColumns(db, 'daily_incense_state').includes('starter_tokens')) {
+      db.exec('ALTER TABLE daily_incense_state ADD COLUMN starter_tokens INTEGER NOT NULL DEFAULT 0')
+    }
+  }
   if (current !== BACKEND_SCHEMA_USER_VERSION) {
     db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
   }

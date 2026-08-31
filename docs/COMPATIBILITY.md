@@ -6,16 +6,16 @@ DSH 处于 **Developer Preview**：首个 tagged release 前不承诺兼容。�
 
 | 项 | 值 |
 |---|---|
-| 梁相版本 | 1.0.0 |
+| 梁相版本 | 1.0.1 |
 | DSH npm（类型/CLI devDeps） | `@deepseek-ai/dsh@0.1.0-rc.7` |
 | DSH 源码勘察基线 | `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`（tag `dsh-v0.1.0-rc.7`，与社区 master 一致） |
 | Web 界面层 bundle | `@deepseek-ai/dsh-web-app@0.1.0-rc.7` |
-| Node | v22.17.0（DSH 要求 `^22.19.0 \|\| >=24`，见下方偏差说明） |
+| Node | v22.17.0（梁相包不再声明 `engines.node`；DSH 宿主仍可能要求 `^22.19.0 \|\| >=24`） |
 | pnpm | 10.33.0 |
 | OS | macOS 26.5.2（darwin 25.5.0） |
 | 浏览器 | DSH WebUI 内置 Chromium 形态 |
 
-Node 偏差：实测用的是 22.17.0，低于 DSH 声明的 `^22.19.0`。所有测试与实机验证在此版本通过（`node:sqlite` 自 22.5 起可用）；正式部署请按 DSH 的要求使用 22.19+ 或 24+。
+Node：梁相本身不绑定 DSH 或 Node 版本。自建社区后端需要 Node 自带的 `node:sqlite`（约 22.5+）。DSH 宿主若声明 `^22.19.0 || >=24`，那是 DSH 的要求，不是本插件的安装门禁。实测 22.17.0 跑通本仓测试。
 
 ## 触点分级（详表见 [`003`](003-compatibility-matrix.md)）
 

@@ -68,9 +68,10 @@ import {
   UTILITY_MODE_ONLINE_LABEL,
   UTILITY_VERSION_LABEL,
   WELCOME_DISMISS,
-  WELCOME_LINES,
+  WELCOME_GIFT_LINE,
   WELCOME_LOCAL_LABEL,
   WELCOME_ONLINE_LABEL,
+  WELCOME_PLAY_LINE,
   WELCOME_PRIVACY_NOTE,
   WELCOME_TAGLINE,
   WELCOME_TITLE,
@@ -849,8 +850,8 @@ export function Panel(props: PanelProps): ReactElement {
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
-            gap: '10px',
-            padding: '18px',
+            gap: '16px',
+            padding: '22px 20px 20px',
             borderRadius: '18px',
             border: `1px solid color-mix(in srgb, ${color.ritualGold} 24%, ${color.border})`,
             background: `linear-gradient(180deg, color-mix(in srgb, ${color.ritualGold} 9%, ${color.bgLayer}), color-mix(in srgb, ${color.bgLayer} 94%, transparent))`,
@@ -859,41 +860,61 @@ export function Panel(props: PanelProps): ReactElement {
             boxSizing: 'border-box',
           }}
         >
-          <strong style={{ fontSize: '15px', fontWeight: 700, color: color.textPrimary }}>{WELCOME_TITLE}</strong>
+          <strong style={{ fontSize: '18px', fontWeight: 700, color: color.textPrimary, letterSpacing: '0.4px' }}>{WELCOME_TITLE}</strong>
           <p
             data-liangxiang-welcome-tagline=""
             style={{
-              margin: '-2px 0 1px',
-              padding: '3px 10px',
+              margin: 0,
+              padding: '4px 12px',
               borderTop: `1px solid color-mix(in srgb, ${color.ritualGold} 48%, transparent)`,
               borderBottom: `1px solid color-mix(in srgb, ${color.ritualGold} 48%, transparent)`,
               color: color.ritualEmber,
-              fontSize: '13px',
-              lineHeight: 1.45,
+              fontSize: '14px',
+              lineHeight: 1.4,
               fontWeight: 750,
-              letterSpacing: '1.2px',
+              letterSpacing: '1.4px',
             }}
           >
             {WELCOME_TAGLINE}
           </p>
-          {WELCOME_LINES.map((line) => (
-            <p key={line} style={{ margin: 0, fontSize: '12px', lineHeight: '1.6', color: color.textSecondary, textAlign: 'center' }}>
-              {line}
-            </p>
-          ))}
+          <p
+            data-liangxiang-welcome-gift=""
+            style={{
+              margin: 0,
+              fontSize: '15px',
+              lineHeight: 1.45,
+              fontWeight: 700,
+              color: color.ritualEmber,
+              textAlign: 'center',
+            }}
+          >
+            {WELCOME_GIFT_LINE}
+          </p>
+          <p
+            data-liangxiang-welcome-play=""
+            style={{
+              margin: 0,
+              fontSize: '13px',
+              lineHeight: 1.5,
+              color: color.textSecondary,
+              textAlign: 'center',
+            }}
+          >
+            {WELCOME_PLAY_LINE}
+          </p>
           <p
             data-liangxiang-welcome-privacy=""
             style={{
-              margin: '2px 0 0',
-              fontSize: '10px',
-              lineHeight: '1.5',
+              margin: 0,
+              fontSize: '11px',
+              lineHeight: 1.45,
               color: color.textTertiary,
               textAlign: 'center',
             }}
           >
             {WELCOME_PRIVACY_NOTE}
           </p>
-          <div style={{ display: 'flex', gap: '8px', marginTop: '6px', width: '100%' }}>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '2px', width: '100%' }}>
             <button
               type="button"
               data-liangxiang-welcome-online=""

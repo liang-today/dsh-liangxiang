@@ -39,6 +39,7 @@ export interface IncenseRow {
   used_incense: number
   token_per_incense: number
   claim_source: string
+  starter_tokens: number
   version: number
   created_at: number
   updated_at: number
@@ -183,6 +184,24 @@ export interface BackendStore {
   ) => void
   /** Monotonic claim ratchet; returns true when the stored claim grew. */
   raiseClaim: (installationId: string, businessDate: string, claimed: number, now: number) => boolean
+  /**
+   * Record a fingerprint+date welcome grant. False if that device already
+   * received one today (survives re-key because it is not keyed by installation).
+   */
+  tryInsertStarterGrant: (
+    fingerprint: string,
+    businessDate: string,
+    installationId: string,
+    grantedTokens: number,
+    now: number,
+  ) => boolean
+  /** Credit gift tokens into the daily ledger. Caller must own a transaction. */
+  addStarterTokens: (
+    installationId: string,
+    businessDate: string,
+    tokens: number,
+    now: number,
+  ) => boolean
   /** Conditional spend; false means unaffordable/lost race (no row changed). */
   spendOneIncense: (installationId: string, businessDate: string, now: number) => boolean
   /** Spend `count` sticks atomically; false if the pool cannot cover it. */
@@ -361,6 +380,19 @@ export function openBackendStore(databasePath: string): BackendStore {
     `UPDATE daily_incense_state
         SET claimed_effective_tokens = ?, version = version + 1, updated_at = ?
       WHERE installation_id = ? AND business_date = ? AND claimed_effective_tokens < ?`,
+  )
+  const insertStarterGrantStmt = db.prepare(
+    `INSERT OR IGNORE INTO starter_incense_grant
+       (device_fingerprint, business_date, installation_id, granted_tokens, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+  )
+  const addStarterTokensStmt = db.prepare(
+    `UPDATE daily_incense_state
+        SET claimed_effective_tokens = claimed_effective_tokens + ?,
+            starter_tokens = starter_tokens + ?,
+            version = version + 1,
+            updated_at = ?
+      WHERE installation_id = ? AND business_date = ?`,
   )
   // The affordability guard lives in the WHERE clause: integer arithmetic only,
   // no read-then-write window.
@@ -622,6 +654,10 @@ export function openBackendStore(databasePath: string): BackendStore {
     },
     raiseClaim: (installationId, businessDate, claimed, now) =>
       changed(raiseClaimStmt.run(claimed, now, installationId, businessDate, claimed)) > 0,
+    tryInsertStarterGrant: (fingerprint, businessDate, installationId, grantedTokens, now) =>
+      changed(insertStarterGrantStmt.run(fingerprint, businessDate, installationId, grantedTokens, now)) > 0,
+    addStarterTokens: (installationId, businessDate, tokens, now) =>
+      changed(addStarterTokensStmt.run(tokens, tokens, now, installationId, businessDate)) > 0,
     spendOneIncense: (installationId, businessDate, now) =>
       changed(spendStmt.run(1, now, installationId, businessDate, 1)) > 0,
     spendIncense: (installationId, businessDate, count, now) =>

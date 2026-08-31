@@ -68,6 +68,12 @@ export interface LiangServiceConfig {
   /** 'empty' boots each case at zero votes (WAITING); 'demo' seeds the frozen demo numbers. */
   seed: 'empty' | 'demo'
   caseTitle: string
+  /**
+   * Daily local welcome sticks painted into remaining incense. Tests leave
+   * this unset (treated as 0); the production host config uses the shared
+   * `STARTER_INCENSE_COUNT`.
+   */
+  starterIncense?: number
 }
 
 /** Accepted-vote record kept for idempotency (and persisted). */
@@ -501,12 +507,13 @@ export class FakeAuthoritativeLiangService {
 
   private derivePersonal(): PersonalLiangQiState {
     const usage = this.dailyUsage.get(this.currentDate) ?? EMPTY_DAILY_USAGE
-    const effectiveTokensToday = computeEffectiveTokens({
+    const observed = computeEffectiveTokens({
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
     })
+    const bonus = (this.config.starterIncense ?? 0) * this.config.tokenPerIncense
     return derivePersonalLiangQiState({
-      effectiveTokensToday,
+      effectiveTokensToday: observed + bonus,
       usedIncenseToday: this.usedIncenseToday,
       tokenPerIncense: this.config.tokenPerIncense,
     })
