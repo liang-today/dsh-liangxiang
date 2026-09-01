@@ -136,8 +136,10 @@ describe('four visual regions', () => {
       expect.stringContaining(UTILITY_LABEL),
       expect.stringContaining('进入梁祠'),
     ])
-    const slot = findByAttr(tree, 'data-liangxiang-utility-slot')[0]
-    expect(styleOf(slot).flexDirection).toBe('column')
+    const desk = findByAttr(tree, 'data-liangxiang-utility-desk')[0]
+    const entry = findByAttr(tree, 'data-liangxiang-liangci-entry')[0]
+    expect(styleOf(desk).gridRow).toBe(1)
+    expect(styleOf(entry).gridRow).toBe(2)
   })
 
   it('renders exactly case / core / vote / social, in order', () => {
@@ -327,7 +329,9 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(styleOf(findByAttr(tree, 'data-liangxiang-ring-footer')[0]).marginTop).toBe('6px')
       expect(styleOf(findByAttr(tree, 'data-liangxiang-avatar')[0]).width).toBe(AVATAR_SLOT)
       expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('256px')
-      expect(social.map((node) => styleOf(node).flex)).toEqual(['1 1 0', '1 1 0'])
+      expect(social).toHaveLength(2)
+      expect(social.map((node) => styleOf(node).gridRow)).toEqual(['1 / 3', '1 / 3'])
+      expect(social.map((node) => styleOf(node).gridColumn)).toEqual([1, 2])
     }
     const value = styleOf(findByAttr(renderPanel(small.getSnapshot()), 'data-liangxiang-liang-position-value')[0])
     expect(value.fontVariantNumeric).toBe('tabular-nums')
@@ -799,7 +803,7 @@ describe('region 4: social stats', () => {
     expect(voters?.props.title).toBeUndefined()
   })
 
-  it('puts 此身香火 under 三界香火 on hover, with local 夯拉 and 占梁', () => {
+  it('keeps 此身香火 inside the 三界香火 hover detail, not on the main face', () => {
     const mine = deriveLocalIncenseStats({
       lifetimeUp: 80,
       lifetimeDown: 20,
@@ -817,19 +821,53 @@ describe('region 4: social stats', () => {
     expect(mineHint && textContent([mineHint])).toContain('夯66%')
     expect(mineHint && textContent([mineHint])).toContain('夯80%')
     expect(voterHint && textContent([voterHint])).not.toContain(MY_INCENSE_STAT_LABEL)
-    expect(textContent(findByAttr(tree, 'data-liangxiang-stat-mine-inline'))).toContain(MY_INCENSE_STAT_LABEL)
+    expect(findByAttr(tree, 'data-liangxiang-stat-mine-inline')).toHaveLength(0)
+    expect(findByAttr(tree, 'data-liangxiang-stat', 'incense')[0]?.props.role).toBeUndefined()
+    expect(findByAttr(tree, 'data-liangxiang-stat', 'voters')[0]?.props.role).toBeUndefined()
     expect(findByAttr(tree, 'data-liangxiang-region').map((node) => node.props['data-liangxiang-region']))
       .toEqual(['case', 'core', 'vote', 'social'])
   })
 
-  it('uses Journey-to-the-West stat marks on the same row as 梁相案牍', () => {
+  it('puts 三界香火 and 五行香客 side by side: labels over numbers, aligned to the two ritual buttons', () => {
     const tree = renderPanel(demoState())
     const social = findByAttr(tree, 'data-liangxiang-region', 'social')[0]
+    const incense = findByAttr(tree, 'data-liangxiang-stat', 'incense')[0]
+    const voters = findByAttr(tree, 'data-liangxiang-stat', 'voters')[0]
+    const slot = findByAttr(social === undefined ? [] : [social], 'data-liangxiang-utility-slot')[0]
+    const desk = findByAttr(tree, 'data-liangxiang-utility-desk')[0]
+    const entry = findByAttr(tree, 'data-liangxiang-liangci-entry')[0]
+    const incenseValue = findByAttr(tree, 'data-liangxiang-stat-value', 'incense')[0]
+    const voterValue = findByAttr(tree, 'data-liangxiang-stat-value', 'voters')[0]
     expect(findByAttr(tree, 'data-liangxiang-incense-icon')).toHaveLength(1)
     expect(findByAttr(tree, 'data-liangxiang-voter-icon')).toHaveLength(1)
-    expect(findByAttr(social === undefined ? [] : [social], 'data-liangxiang-utility-slot')).toHaveLength(1)
-    expect(styleOf(findByAttr(tree, 'data-liangxiang-stat-label', 'incense')[0]).fontSize).toBe('10px')
-    expect(styleOf(findByAttr(tree, 'data-liangxiang-stat', 'incense')[0]).flex).toBe('1 1 0')
+    expect(styleOf(social).display).toBe('grid')
+    expect(styleOf(social).gridTemplateColumns).toBe('minmax(0, 1fr) minmax(0, 1fr) auto')
+    expect(styleOf(social).gridTemplateRows).toBe('auto auto')
+    expect(styleOf(social).alignItems).toBe('center')
+    expect(styleOf(incense).gridColumn).toBe(1)
+    expect(styleOf(voters).gridColumn).toBe(2)
+    expect(styleOf(incense).gridRow).toBe('1 / 3')
+    expect(styleOf(voters).gridRow).toBe('1 / 3')
+    expect(styleOf(incense).gridTemplateRows).toBe('subgrid')
+    expect(styleOf(incense).gridTemplateColumns).toBe('auto minmax(0, 1fr)')
+    expect(styleOf(incense).alignItems).toBe('center')
+    const incenseIcon = findByAttr(tree, 'data-liangxiang-stat-icon', 'incense')[0]
+    const voterIcon = findByAttr(tree, 'data-liangxiang-stat-icon', 'voters')[0]
+    expect(styleOf(incenseIcon).gridRow).toBe('1 / 3')
+    expect(styleOf(voterIcon).gridRow).toBe('1 / 3')
+    expect(styleOf(incenseIcon).alignSelf).toBe('center')
+    expect(styleOf(voterIcon).alignSelf).toBe('center')
+    expect(findByAttr(tree, 'data-liangxiang-incense-icon')[0]?.props.height).toBe(26)
+    expect(findByAttr(tree, 'data-liangxiang-voter-icon')[0]?.props.height).toBe(26)
+    expect(styleOf(slot).display).toBe('contents')
+    expect(styleOf(desk).gridRow).toBe(1)
+    expect(styleOf(entry).gridRow).toBe(2)
+    expect(styleOf(incenseValue).textAlign).toBe('center')
+    expect(styleOf(voterValue).textAlign).toBe('center')
+    expect(styleOf(findByAttr(tree, 'data-liangxiang-stat-label', 'incense')[0]).fontSize).toBe('12px')
+    expect(styleOf(findByAttr(tree, 'data-liangxiang-stat-label', 'voters')[0]).fontSize).toBe('12px')
+    expect(findByAttr(tree, 'data-liangxiang-utility-desk')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangxiang-liangci-entry')).toHaveLength(1)
   })
 })
 
@@ -846,8 +884,10 @@ describe('梁相案牍', () => {
     const votes = findByAttr(tree, 'data-liangxiang-vote')
     expect(votes).toHaveLength(2)
     const slot = findByAttr(tree, 'data-liangxiang-utility-slot')[0]
-    expect(styleOf(slot).position).toBe('relative')
-    expect(styleOf(slot).flex).toBe('0 0 auto')
+    const desk = findByAttr(tree, 'data-liangxiang-utility-desk')[0]
+    expect(styleOf(slot).display).toBe('contents')
+    expect(styleOf(desk).position).toBe('relative')
+    expect(styleOf(desk).gridRow).toBe(1)
     const control = findByAttr(tree, 'data-liangxiang-utility-trigger')[0]
     expect(control && textContent([control])).toContain(UTILITY_LABEL)
     expect(control?.props.title).toBeUndefined()

@@ -156,7 +156,7 @@ export function LiangQiRing({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    filter: intensity > 0 ? `drop-shadow(0 0 ${Math.round(3 + intensity * 5)}px rgba(216, 135, 58, ${(0.10 + intensity * 0.24).toFixed(2)}))` : undefined,
+    filter: intensity > 0 ? `drop-shadow(0 0 ${Math.round(6 + intensity * 8)}px rgba(216, 135, 58, ${(0.16 + intensity * 0.32).toFixed(2)}))` : undefined,
   }
 
   const ringLabel = `香火环：剩余香火 ${personal.remainingIncense} 炷，距下一炷还差 ${personal.tokensToNextIncense.toLocaleString('zh-CN')} 当量`
@@ -191,7 +191,7 @@ export function LiangQiRing({
           strokeDasharray={`${circumference}`}
           strokeDashoffset={`${circumference * (1 - fill)}`}
           transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-          style={reducedMotion ? undefined : { transition: 'stroke-dashoffset 0.6s ease, stroke 0.6s ease' }}
+          style={reducedMotion ? undefined : { transition: 'stroke-dashoffset 0.85s ease, stroke 0.85s ease' }}
         />
         {marks}
       </svg>

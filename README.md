@@ -42,4 +42,4 @@ DSH Desktop 必须先把 `DSH_HOME` 指到桌面自己的 harness 目录，再�
 
 > 梁位是社区软信任玩法，不代表实名人数、真实民意或任何个人、机构立场。
 
-源码本点是 **v1.0.2**（梁祠香客、倾炉 1.5 秒）。请安装 `dsh-liangxiang`（npm `latest`）；npm 与 GitHub Release 随后发。开发、排障与实现说明在 [`docs/INSTALL.md`](docs/INSTALL.md)。
+源码本点是 **v1.0.7**（第四区两列居中、梁祠日档不再横滑、悬浮即走）。请安装 `dsh-liangxiang`（npm `latest`）；GitHub Release 已附本号 tarball。开发、排障与实现说明在 [`docs/INSTALL.md`](docs/INSTALL.md)。

@@ -7,6 +7,8 @@
  *    shrank, or a monitor that went away, must not hide the entry);
  *  - the panel stacks above or below the badge and flips its horizontal edge
  *    before it could leave the viewport;
+ *  - if neither side has room for the full panel, the badge (not the panel
+ *    height) moves so the pair still fits;
  *  - `localStorage` is used ONLY for this cosmetic preference. It is never an
  *    authority for votes or balances (AGENTS.md §15).
  */
@@ -26,10 +28,7 @@ export const SETTINGS_CLEARANCE = 56
 export const PANEL_WIDTH = 256
 export const PANEL_GAP = 10
 /** Approximate expanded panel height; used only to pick above vs below. */
-const PANEL_STACK_HEIGHT = 350
-const PANEL_STACK_HEIGHT_COMPACT = 280
-
-export type PanelDensity = 'regular' | 'compact'
+export const PANEL_STACK_HEIGHT = 350
 
 export const BADGE_POSITION_STORAGE_KEY = 'liangxiang:badge-position:v2'
 export const PANEL_OPEN_STORAGE_KEY = 'liangxiang:panel-open:v1'
@@ -106,14 +105,9 @@ export function saveBadgePosition(
   }
 }
 
-/**
- * Choose above vs below for a badge position.
- * @param point - the badge's top-left in frame coordinates.
- * @param viewport - the frame size.
- * @returns where the panel should be drawn relative to the badge.
- */
-export function panelDensityFor(viewport: Viewport): PanelDensity {
-  return viewport.height < 560 || viewport.width < 720 ? 'compact' : 'regular'
+/** Vertical room the full panel needs on one side of the badge. */
+export function panelStackNeed(): number {
+  return PANEL_STACK_HEIGHT + PANEL_GAP + BADGE_MARGIN
 }
 
 /** When DSH folds the sidebar, keep a left-docked badge on the frame edge. */
@@ -124,20 +118,31 @@ export function dockForNarrowFrame(point: BadgePoint, viewport: Viewport): Badge
   return clampBadgePosition(point, viewport)
 }
 
-export function availablePanelHeight(
-  point: BadgePoint,
-  viewport: Viewport,
-  placement: PanelPlacement,
-): number {
-  const room = placement.stack === 'above'
-    ? point.y - PANEL_GAP - BADGE_MARGIN
-    : viewport.height - point.y - BADGE_SIZE - PANEL_GAP - BADGE_MARGIN
-  return Math.max(200, Math.floor(room))
+/**
+ * If the full-height panel cannot sit above or below the badge, move the
+ * badge — never shrink the panel and leave its copy hanging outside.
+ */
+export function nudgeBadgeForPanel(point: BadgePoint, viewport: Viewport): BadgePoint {
+  const clamped = clampBadgePosition(point, viewport)
+  const needed = panelStackNeed()
+  const roomAbove = clamped.y
+  const roomBelow = viewport.height - (clamped.y + BADGE_SIZE)
+  if (roomAbove >= needed || roomBelow >= needed) return clamped
+  if (roomAbove >= roomBelow) {
+    return clampBadgePosition({ x: clamped.x, y: needed }, viewport)
+  }
+  return clampBadgePosition({
+    x: clamped.x,
+    y: viewport.height - BADGE_SIZE - needed,
+  }, viewport)
+}
+
+export function settleBadgePosition(point: BadgePoint, viewport: Viewport): BadgePoint {
+  return nudgeBadgeForPanel(dockForNarrowFrame(point, viewport), viewport)
 }
 
 export function panelPlacementFor(point: BadgePoint, viewport: Viewport): PanelPlacement {
-  const compact = panelDensityFor(viewport) === 'compact'
-  const needed = (compact ? PANEL_STACK_HEIGHT_COMPACT : PANEL_STACK_HEIGHT) + PANEL_GAP + BADGE_MARGIN
+  const needed = panelStackNeed()
   const roomAbove = point.y
   const roomBelow = viewport.height - (point.y + BADGE_SIZE)
   // Prefer above (the default dock is in the bottom-left) and only drop

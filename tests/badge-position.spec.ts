@@ -1,18 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
-  availablePanelHeight,
+  BADGE_SIZE,
   dockForNarrowFrame,
-  panelDensityFor,
+  nudgeBadgeForPanel,
   panelPlacementFor,
+  panelStackNeed,
+  settleBadgePosition,
 } from '../src/client/badge-position.ts'
 
-describe('panel dock and density', () => {
-  it('compacts a short or narrow frame', () => {
-    expect(panelDensityFor({ width: 1280, height: 800 })).toBe('regular')
-    expect(panelDensityFor({ width: 1280, height: 500 })).toBe('compact')
-    expect(panelDensityFor({ width: 700, height: 800 })).toBe('compact')
-  })
-
+describe('panel dock without shrinking the panel', () => {
   it('snaps a left-docked badge to the frame edge when the sidebar would collapse', () => {
     expect(dockForNarrowFrame({ x: 120, y: 400 }, { width: 900, height: 700 })).toEqual({
       x: 12,
@@ -24,12 +20,35 @@ describe('panel dock and density', () => {
     })
   })
 
-  it('gives the panel a measured max height above a bottom-left dock', () => {
+  it('keeps a bottom-left dock stacking the full panel above', () => {
     const point = { x: 12, y: 620 }
     const viewport = { width: 1280, height: 720 }
-    const placement = panelPlacementFor(point, viewport)
-    expect(placement.stack).toBe('above')
-    expect(availablePanelHeight(point, viewport, placement)).toBeGreaterThanOrEqual(200)
-    expect(availablePanelHeight(point, viewport, placement)).toBeLessThan(620)
+    expect(panelPlacementFor(point, viewport).stack).toBe('above')
+    expect(nudgeBadgeForPanel(point, viewport)).toEqual(point)
+  })
+
+  it('flips the panel below when the badge is near the top', () => {
+    const point = { x: 12, y: 40 }
+    const viewport = { width: 1280, height: 720 }
+    expect(panelPlacementFor(point, viewport).stack).toBe('below')
+    expect(nudgeBadgeForPanel(point, viewport)).toEqual(point)
+  })
+
+  it('moves the badge instead of shrinking the panel when neither side fits', () => {
+    const viewport = { width: 1280, height: 500 }
+    const needed = panelStackNeed()
+    const nudged = nudgeBadgeForPanel({ x: 12, y: 200 }, viewport)
+    const placement = panelPlacementFor(nudged, viewport)
+    const room = placement.stack === 'above'
+      ? nudged.y
+      : viewport.height - nudged.y - BADGE_SIZE
+    expect(room).toBeGreaterThanOrEqual(needed)
+    expect(nudged.y).not.toBe(200)
+  })
+
+  it('settles a leftover compact dock after the sidebar folds', () => {
+    const settled = settleBadgePosition({ x: 120, y: 80 }, { width: 900, height: 720 })
+    expect(settled.x).toBe(12)
+    expect(panelPlacementFor(settled, { width: 900, height: 720 }).stack).toBe('below')
   })
 })

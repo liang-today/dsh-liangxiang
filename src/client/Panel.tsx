@@ -78,8 +78,8 @@ import {
   liangziRatioRangeText,
 } from '../shared/index.ts'
 import { DUMP_ARMED_CHARGE } from './vote-charge.ts'
-import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelDensity, type PanelPlacement } from './badge-position.ts'
-import { duration, radius, space } from './tokens.ts'
+import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
+import { duration, radius } from './tokens.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
 import { ArchiveDeskIcon, HomepageIcon, ModeSwitchIcon, VersionSealIcon } from './UtilityIcons.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
@@ -116,10 +116,8 @@ export interface PanelProps {
   positionPulse?: boolean
   /** Where to draw relative to the (freely placeable) badge. */
   placement?: PanelPlacement
-  density?: PanelDensity
-  maxPanelHeight?: number
-  pinnedHint?: 'incense' | 'epithet' | null
-  onToggleHint?: (kind: 'incense' | 'epithet') => void
+  pinnedHint?: 'epithet' | null
+  onToggleHint?: (kind: 'epithet') => void
   /** Presentation-only tweened counts from the container. */ 
   displayTotalIncense?: number
   displayUniqueVoters?: number
@@ -137,7 +135,7 @@ export interface PanelProps {
   dumpBurst?: VoteType | null
   /** Local-only 梁号 painted in the reserved feedback row when idle. */
   localEpithet?: LocalEpithet | null
-  /** Local-only incense ledger painted under 三界香火 on hover. */
+  /** Local-only incense ledger painted inside the 三界香火 detail. */
   localIncense?: LocalIncenseStats | null
   /** Empty-pool click: never sends a vote; plays the playful local cue. */
   onInsufficientVote: (voteType: VoteType) => void
@@ -164,18 +162,13 @@ export interface PanelProps {
   onCycleLocalCase?: () => void
 }
 
-function panelChrome(density: PanelDensity, maxPanelHeight?: number): CSSProperties {
-  const compact = density === 'compact'
+function panelChrome(): CSSProperties {
   return {
   position: 'absolute',
   width: `${PANEL_WIDTH}px`,
-  maxHeight: maxPanelHeight === undefined
-    ? `min(440px, calc(100vh - 24px))`
-    : `${maxPanelHeight}px`,
-  overflowX: 'visible',
-  overflowY: compact ? 'auto' : 'visible',
+  overflow: 'visible',
   boxSizing: 'border-box',
-  padding: compact ? `${space.sm}px ${space.md}px ${space.xs}px` : '10px 12px 8px',
+  padding: '10px 12px 8px',
   borderRadius: `${radius.xl}px`,
   border: `1px solid ${color.border}`,
   background: `radial-gradient(circle at 50% 34%, color-mix(in srgb, ${color.ritualGold} 10%, transparent), transparent 38%), linear-gradient(180deg, color-mix(in srgb, ${color.ritualEmber} 5%, ${color.bgLayer}) 0%, ${color.bgLayer} 40%)`,
@@ -188,39 +181,57 @@ function panelChrome(density: PanelDensity, maxPanelHeight?: number): CSSPropert
   }
 }
 
+const STAT_ICON_SIZE = 26
+
 const statStyle: CSSProperties = {
   position: 'relative',
-  display: 'inline-flex',
+  display: 'grid',
+  gridTemplateColumns: 'auto minmax(0, 1fr)',
+  gridTemplateRows: 'subgrid',
+  gridRow: '1 / 3',
+  columnGap: '6px',
   alignItems: 'center',
-  gap: '6px',
-  flex: '1 1 0',
   minWidth: 0,
   whiteSpace: 'nowrap',
   cursor: 'help',
   outline: 'none',
 }
 
-const statCopyStyle: CSSProperties = {
+const statIconStyle: CSSProperties = {
+  gridColumn: 1,
+  gridRow: '1 / 3',
+  alignSelf: 'center',
   display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'flex-start',
-  gap: '1px',
+  alignItems: 'center',
+  justifyContent: 'center',
+}
+
+const statLabelRowStyle: CSSProperties = {
+  gridColumn: 2,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   minWidth: 0,
 }
 
 const statLabelStyle: CSSProperties = {
-  fontSize: '10px',
-  lineHeight: 1.2,
-  color: color.textSecondary,
+  fontSize: '12px',
+  fontWeight: 600,
+  lineHeight: '16px',
+  letterSpacing: '0.2px',
+  color: color.textPrimary,
 }
 
 const statValueStyle: CSSProperties = {
+  gridColumn: 2,
   fontVariantNumeric: 'tabular-nums',
   fontFeatureSettings: '"tnum"',
   fontSize: '13px',
   fontWeight: 700,
-  lineHeight: 1.2,
+  lineHeight: '16px',
   color: color.textPrimary,
+  textAlign: 'center',
+  width: '100%',
 }
 
 /**
@@ -356,7 +367,7 @@ function placementStyle(placement: PanelPlacement): CSSProperties {
 /** Panel-scoped CSS that inline styles cannot express (focus ring, keyframes). */
 const PANEL_CSS = `
 [data-liangxiang-panel] {
-  animation: liangxiang-panel-enter 150ms cubic-bezier(.2,.8,.2,1) both;
+  animation: liangxiang-panel-enter ${duration.enterMs}ms cubic-bezier(.2,.7,.2,1) both;
 }
 [data-liangxiang-panel] button:focus-visible {
   outline: 2px solid ${color.brand};
@@ -480,13 +491,13 @@ const PANEL_CSS = `
   100% { opacity: 0; }
 }
 @keyframes liangxiang-panel-enter {
-  from { opacity: 0; transform: translateY(4px) scale(0.985); }
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes liangxiang-position-pop {
-  0% { transform: translateY(3px); opacity: 0.35; }
-  45% { transform: translateY(0); opacity: 1; filter: brightness(1.5); }
-  100% { transform: translateY(0); opacity: 1; }
+  0% { transform: translateY(6px) scale(0.92); opacity: 0.35; }
+  40% { transform: translateY(-2px) scale(1.08); opacity: 1; filter: brightness(1.7); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 [data-liangxiang-ritual] {
   position: relative;
@@ -500,9 +511,9 @@ const PANEL_CSS = `
   border-radius: 9px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.4px;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.2px;
   color: ${color.textSecondary};
   box-shadow: inset 0 0 0 1px ${color.border};
   transform: translateY(0);
@@ -617,18 +628,9 @@ const PANEL_CSS = `
   transition: opacity 40ms ease, transform 40ms ease;
 }
 [data-liangxiang-stat]:hover [data-liangxiang-stat-hint],
-[data-liangxiang-stat]:focus-visible [data-liangxiang-stat-hint],
-[data-liangxiang-stat][data-open] [data-liangxiang-stat-hint] {
+[data-liangxiang-stat]:focus-within [data-liangxiang-stat-hint] {
   opacity: 1;
   transform: translateY(0);
-}
-[data-liangxiang-stat-mine-inline] {
-  display: block;
-  margin-top: 1px;
-  font-size: 10px;
-  font-weight: 650;
-  color: ${color.textTertiary};
-  letter-spacing: 0.2px;
 }
 [data-liangxiang-epithet-hint] {
   position: absolute;
@@ -655,12 +657,12 @@ const PANEL_CSS = `
   transform: translateX(-50%) translateY(0);
 }
 @keyframes liangxiang-state-cross {
-  0% { filter: none; }
-  40% { filter: drop-shadow(0 0 10px color-mix(in srgb, ${color.ritualGold} 70%, transparent)); }
-  100% { filter: none; }
+  0% { filter: none; transform: scale(1); }
+  35% { filter: drop-shadow(0 0 16px color-mix(in srgb, ${color.ritualGold} 88%, transparent)) drop-shadow(0 0 28px color-mix(in srgb, ${color.ritualEmber} 55%, transparent)); transform: scale(1.08); }
+  100% { filter: none; transform: scale(1); }
 }
 [data-liangxiang-avatar][data-crossing] {
-  animation: liangxiang-state-cross ${duration.flashMs}ms ease-out 1;
+  animation: liangxiang-state-cross ${duration.crossMs}ms ease-out 1;
 }
 [data-liangxiang-stat-hint] strong {
   display: block;
@@ -713,10 +715,10 @@ const PANEL_CSS = `
   padding-bottom: 4px;
 }
 @keyframes liangxiang-condense {
-  0% { opacity: 0; transform: translate(-50%, 12px) scale(0.85); }
-  22% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  70% { opacity: 1; transform: translate(-50%, -3px) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -8px) scale(0.95); }
+  0% { opacity: 0; transform: translate(-50%, 16px) scale(0.72); }
+  18% { opacity: 1; transform: translate(-50%, -2px) scale(1.08); }
+  62% { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -16px) scale(0.9); }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-liangxiang-panel] * {
@@ -807,7 +809,6 @@ export function Panel(props: PanelProps): ReactElement {
     onShowVersion,     onOpenLiangci, onCycleLocalCase,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
-  const density = props.density ?? 'regular'
   const pinnedHint = props.pinnedHint ?? null
   const onToggleHint = props.onToggleHint ?? (() => undefined)
   const positionPulse = props.positionPulse ?? false
@@ -885,9 +886,8 @@ export function Panel(props: PanelProps): ReactElement {
       aria-label={panelTitle}
       data-liangxiang-panel=""
       data-liangxiang-authority={state.authorityMode}
-      data-liangxiang-density={density}
       tabIndex={-1}
-      style={{ ...panelChrome(density, props.maxPanelHeight), ...placementStyle(placement) }}
+      style={{ ...panelChrome(), ...placementStyle(placement) }}
       onKeyDown={onKeyDown}
       onPointerDownCapture={(event: PointerEvent<HTMLElement>) => {
         if (!utilityOpen) return
@@ -1453,13 +1453,18 @@ export function Panel(props: PanelProps): ReactElement {
           : null}
       </p>
 
-      {/* Region 4 — stats + the compact ritual-control column. */}
+      {/* Region 4 — two metric columns + the two ritual chips. Subgrid so
+          labels share 梁相案牍's row and numbers share 进入梁祠's row; both
+          rows vertically center. Numbers sit on the column centerline. */}
       <footer
         data-liangxiang-region="social"
         style={{
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) auto',
+          gridTemplateRows: 'auto auto',
           alignItems: 'center',
-          gap: '6px',
+          columnGap: '8px',
+          rowGap: '6px',
           marginTop: 0,
           paddingTop: '8px',
           borderTop: `1px solid ${color.border}`,
@@ -1468,61 +1473,51 @@ export function Panel(props: PanelProps): ReactElement {
       >
         <span
           data-liangxiang-stat="incense"
-          data-open={pinnedHint === 'incense' ? '' : undefined}
           tabIndex={0}
-          role="button"
-          aria-expanded={pinnedHint === 'incense'}
-          onClick={() => onToggleHint('incense')}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') return
-            event.preventDefault()
-            onToggleHint('incense')
-          }}
           aria-label={`${INCENSE_STAT_LABEL}。${INCENSE_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.totalIncense.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeIncense.toLocaleString('zh-CN')}。${MY_INCENSE_STAT_LABEL}。${MY_INCENSE_STAT_HINT}`}
-          style={{ ...statStyle, cursor: 'pointer' }}
+          style={{ ...statStyle, gridColumn: 1 }}
         >
-          <ThreeRealmsIncenseIcon size={18} />
-          <span style={statCopyStyle}>
-            <span data-liangxiang-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
-            <strong style={statValueStyle}>{shownIncense.toLocaleString('zh-CN')}</strong>
-            {localIncense === null || localIncense === undefined ? null : (
-              <span data-liangxiang-stat-mine-inline="">
-                {MY_INCENSE_STAT_LABEL}
-                {' '}
-                {localIncense.today.total.toLocaleString('zh-CN')}
-              </span>
-            )}
+          <span data-liangxiang-stat-icon="incense" style={statIconStyle}>
+            <ThreeRealmsIncenseIcon size={STAT_ICON_SIZE} />
           </span>
-          <SocialStatHint
-            kind="incense"
-            label={INCENSE_STAT_LABEL}
-            today={snapshot.totalIncense}
-            lifetime={lifetimeIncense}
-            mine={localIncense}
-          />
+          <span style={statLabelRowStyle}>
+            <span data-liangxiang-stat-label="incense" style={statLabelStyle}>{INCENSE_STAT_LABEL}</span>
+            <SocialStatHint
+              kind="incense"
+              label={INCENSE_STAT_LABEL}
+              today={snapshot.totalIncense}
+              lifetime={lifetimeIncense}
+              mine={localIncense}
+            />
+          </span>
+          <strong data-liangxiang-stat-value="incense" style={statValueStyle}>{shownIncense.toLocaleString('zh-CN')}</strong>
         </span>
         <span
           data-liangxiang-stat="voters"
           tabIndex={0}
           aria-label={`${VOTER_STAT_LABEL}。${VOTER_STAT_HINT}。${STAT_TODAY_LABEL} ${snapshot.uniqueVoters.toLocaleString('zh-CN')}，${STAT_LIFETIME_LABEL} ${lifetimeVoters.toLocaleString('zh-CN')}`}
-          style={statStyle}
+          style={{ ...statStyle, gridColumn: 2 }}
         >
-          <FivePhasePilgrimIcon size={18} />
-          <span style={statCopyStyle}>
-            <span data-liangxiang-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
-            <strong style={statValueStyle}>{shownVoters.toLocaleString('zh-CN')}</strong>
+          <span data-liangxiang-stat-icon="voters" style={statIconStyle}>
+            <FivePhasePilgrimIcon size={STAT_ICON_SIZE} />
           </span>
-          <SocialStatHint
-            kind="voters"
-            label={VOTER_STAT_LABEL}
-            today={snapshot.uniqueVoters}
-            lifetime={lifetimeVoters}
-          />
+          <span style={statLabelRowStyle}>
+            <span data-liangxiang-stat-label="voters" style={statLabelStyle}>{VOTER_STAT_LABEL}</span>
+            <SocialStatHint
+              kind="voters"
+              label={VOTER_STAT_LABEL}
+              today={snapshot.uniqueVoters}
+              lifetime={lifetimeVoters}
+            />
+          </span>
+          <strong data-liangxiang-stat-value="voters" style={statValueStyle}>{shownVoters.toLocaleString('zh-CN')}</strong>
         </span>
-        <div
-          data-liangxiang-utility-slot=""
-          style={{ position: 'relative', flex: '0 0 auto', marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}
-        >
+        <div data-liangxiang-utility-slot="" style={{ display: 'contents' }}>
+          <div
+            data-liangxiang-utility-desk=""
+            onMouseLeave={onUtilityClose}
+            style={{ position: 'relative', gridColumn: 3, gridRow: 1, justifySelf: 'end' }}
+          >
           <button
             type="button"
             data-liangxiang-utility-trigger=""
@@ -1534,17 +1529,6 @@ export function Panel(props: PanelProps): ReactElement {
             <ArchiveDeskIcon size={14} />
             {UTILITY_LABEL}
             <span data-liangxiang-hint="" aria-hidden="true">{UTILITY_HINT}</span>
-          </button>
-          <button
-            type="button"
-            data-liangxiang-liangci-entry=""
-            data-liangxiang-ritual=""
-            aria-label={`${LIANGCI_ENTRY_LABEL}：${LIANGCI_ENTRY_HINT}`}
-            onClick={onOpenLiangci}
-          >
-            <LiangciIcon size={14} />
-            {LIANGCI_ENTRY_LABEL}
-            <span data-liangxiang-hint="" aria-hidden="true">{LIANGCI_ENTRY_HINT}</span>
           </button>
           {utilityOpen
             ? (
@@ -1645,6 +1629,19 @@ export function Panel(props: PanelProps): ReactElement {
               </div>
             )
             : null}
+          </div>
+          <button
+            type="button"
+            data-liangxiang-liangci-entry=""
+            data-liangxiang-ritual=""
+            aria-label={`${LIANGCI_ENTRY_LABEL}：${LIANGCI_ENTRY_HINT}`}
+            onClick={onOpenLiangci}
+            style={{ gridColumn: 3, gridRow: 2, justifySelf: 'end' }}
+          >
+            <LiangciIcon size={14} />
+            {LIANGCI_ENTRY_LABEL}
+            <span data-liangxiang-hint="" aria-hidden="true">{LIANGCI_ENTRY_HINT}</span>
+          </button>
         </div>
       </footer>
 

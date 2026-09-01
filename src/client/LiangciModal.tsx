@@ -5,7 +5,7 @@
  * current business day is a dedicated unfinished calendar page; it never
  * borrows today's live Liangzi state and is excluded from temporary periods.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import {
   addBusinessDays,
@@ -500,17 +500,7 @@ function DetailPanel({
       body = <p style={{ margin: 0 }}>该业务日没有梁祠档案；这与“有档但零票”的待开梁不同。</p>
     } else {
       eyebrow = `已封存日梁 · ${LIANGZI_STATE_LABELS[archive.liangziState]}`
-      body = (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(230px, .8fr) 1.2fr', gap: '16px' }}>
-          <ArchiveFacts up={archive.upVotes} down={archive.downVotes} voters={archive.uniqueVoters} covered={`${archive.caseCount} 案`} />
-          <div style={{ minWidth: 0 }}>
-            <strong style={{ display: 'block', marginBottom: '3px', fontSize: '10px', color: color.textTertiary }}>当日梁案</strong>
-            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={archive.caseTitles.join('；')}>
-              {archive.caseTitles.join(' · ')}
-            </span>
-          </div>
-        </div>
-      )
+      body = <ArchiveDayFactsRow archive={archive} />
     }
   } else if (selection.kind === 'week') {
     const permanent = weeks.find(week => week.weekId === selection.id)
@@ -570,7 +560,47 @@ function DetailPanel({
   )
 }
 
-function ArchiveFacts({
+/** Day detail: five facts take their natural width; 当日梁案 uses leftover space. No scroller. */
+export const ARCHIVE_DAY_DETAIL_COLUMNS = 'max-content minmax(140px, 1fr)'
+
+export function ArchiveDayFactsRow({ archive }: { archive: LiangDayArchive }): ReactElement {
+  return (
+    <div
+      data-liangci-day-detail=""
+      style={{
+        display: 'grid',
+        gridTemplateColumns: ARCHIVE_DAY_DETAIL_COLUMNS,
+        columnGap: '28px',
+        alignItems: 'start',
+      }}
+    >
+      <ArchiveFacts up={archive.upVotes} down={archive.downVotes} voters={archive.uniqueVoters} covered={`${archive.caseCount} 案`} />
+      <div style={{ minWidth: 0 }}>
+        <strong style={{ display: 'block', marginBottom: '3px', fontSize: '10px', color: color.textTertiary }}>当日梁案</strong>
+        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={archive.caseTitles.join('；')}>
+          {archive.caseTitles.join(' · ')}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+export function buildArchiveFacts(
+  up: number,
+  down: number,
+  voters: number,
+  covered: string,
+): ReadonlyArray<{ key: string, label: string, value: string }> {
+  return [
+    { key: 'position', label: '梁位', value: formatLiangPosition(up, down) },
+    { key: 'incense', label: '香火', value: (up + down).toLocaleString('zh-CN') },
+    { key: 'voters', label: VOTER_STAT_LABEL, value: voters.toLocaleString('zh-CN') },
+    { key: 'split', label: '夯 / 拉', value: `${up.toLocaleString('zh-CN')} / ${down.toLocaleString('zh-CN')}` },
+    { key: 'covered', label: '覆盖', value: covered },
+  ]
+}
+
+export function ArchiveFacts({
   up, down, covered, voters,
 }: {
   up: number
@@ -578,14 +608,28 @@ function ArchiveFacts({
   covered: string
   voters: number
 }): ReactElement {
-  const total = up + down
   return (
-    <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(5, auto)', gap: '3px 12px', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-      <dt style={{ color: color.textTertiary }}>梁位</dt><dd style={{ margin: 0, color: color.textPrimary, fontWeight: 700 }}>{formatLiangPosition(up, down)}</dd>
-      <dt style={{ color: color.textTertiary }}>香火</dt><dd style={{ margin: 0 }}>{total.toLocaleString('zh-CN')}</dd>
-      <dt style={{ color: color.textTertiary }}>{VOTER_STAT_LABEL}</dt><dd style={{ margin: 0 }}>{voters.toLocaleString('zh-CN')}</dd>
-      <dt style={{ color: color.textTertiary }}>夯 / 拉</dt><dd style={{ margin: 0 }}>{up.toLocaleString('zh-CN')} / {down.toLocaleString('zh-CN')}</dd>
-      <dt style={{ color: color.textTertiary }}>覆盖</dt><dd style={{ margin: 0 }}>{covered}</dd>
+    <dl
+      data-liangci-facts=""
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(5, max-content)',
+        gridTemplateRows: 'auto auto',
+        gridAutoFlow: 'column',
+        columnGap: '16px',
+        rowGap: '2px',
+        margin: 0,
+        overflow: 'visible',
+        fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {buildArchiveFacts(up, down, voters, covered).map((fact) => (
+        <Fragment key={fact.key}>
+          <dt data-liangci-fact={fact.key} style={{ color: color.textTertiary }}>{fact.label}</dt>
+          <dd style={{ margin: 0, color: fact.key === 'position' ? color.textPrimary : undefined, fontWeight: fact.key === 'position' ? 700 : undefined }}>{fact.value}</dd>
+        </Fragment>
+      ))}
     </dl>
   )
 }
@@ -666,6 +710,9 @@ export function LiangciModal({
   return (
     <div
       data-liangci-backdrop=""
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
       style={{
         position: 'fixed',
         inset: 0,

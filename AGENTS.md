@@ -144,8 +144,8 @@ incense.
 ### Region 4 — Social stats
 
 ```text
-三界香火 12,846     五行香客 2,841     梁相案牍
-                                         进入梁祠
+    三界香火        五行香客      梁相案牍
+     12,846          2,841       进入梁祠
 ```
 
 - 三界香火 = accepted votes for the current case (天/人/地香火汇于一炉)

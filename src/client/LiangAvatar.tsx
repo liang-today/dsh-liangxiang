@@ -52,17 +52,17 @@ export interface LiangAvatarProps {
 const AVATAR_MOTION_CSS = `
 @keyframes liangxiang-avatar-pulse {
   0% { transform: scale3d(1, 1, 1); }
-  40% { transform: scale3d(1.12, 1.12, 1); }
+  40% { transform: scale3d(1.2, 1.2, 1); }
   100% { transform: scale3d(1, 1, 1); }
 }
 @keyframes liangxiang-avatar-cross {
   0% { filter: none; }
-  40% { filter: drop-shadow(0 0 8px rgba(226, 174, 84, 0.7)); }
+  35% { filter: drop-shadow(0 0 18px rgba(226, 174, 84, 0.95)) drop-shadow(0 0 32px rgba(216, 135, 58, 0.55)); }
   100% { filter: none; }
 }
 @keyframes liangxiang-avatar-figure-float {
   0%, 100% { transform: translate3d(0, 0, 0); }
-  50% { transform: translate3d(0, -4px, 0); }
+  50% { transform: translate3d(0, -7px, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-liangxiang-avatar-figure],
@@ -106,7 +106,7 @@ export function LiangAvatar({
     overflow: 'visible',
     background: 'transparent',
     animation: pulse && !reducedMotion
-      ? (crossing ? 'liangxiang-avatar-pulse 0.9s ease-out 1, liangxiang-avatar-cross 320ms ease-out 1' : 'liangxiang-avatar-pulse 0.9s ease-out 1')
+      ? (crossing ? 'liangxiang-avatar-pulse 1.1s ease-out 1, liangxiang-avatar-cross 520ms ease-out 1' : 'liangxiang-avatar-pulse 1.1s ease-out 1')
       : undefined,
   }
 

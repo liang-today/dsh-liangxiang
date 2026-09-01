@@ -55,7 +55,7 @@ minimumReleaseAgeExclude:
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> 源码本点是 `dsh-liangxiang@1.0.2`。请写无标签包名；不要写 `@0.8.0`。npm `latest` 随后切到本号。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> 源码本点是 `dsh-liangxiang@1.0.7`。请写无标签包名；不要写 `@0.8.0`。npm `latest` 随后切到本号。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 
@@ -64,7 +64,7 @@ minimumReleaseAgeExclude:
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.2.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.7.tgz
 ```
 
 卸载：`npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang`
@@ -123,6 +123,8 @@ pnpm run dev:web         # 启动 WebUI，默认 http://127.0.0.1:3080
 
 右缘会出现一个圆形入口，图标就是当前梁子状态，悬停显示 `今日梁相`；可以拖到任意位置。
 
+`dev:web` 再跑一次时，若 3080 已被本机已有的 `liangxiang-dev` 占用，DSH 会报 `plugin tree failed to load` / `EADDRINUSE`。**不是插件坏了。** 脚本现在会直接告诉你打开 http://127.0.0.1:3080。要换新进程：`LIANGXIANG_DEV_RESTART=1 pnpm run dev:web`。换口：`LIANGXIANG_DEV_PORT=3081 pnpm run dev:web`。
+
 默认是在线（烘焙社区后端）。首次欢迎页或「梁相案牍」可手动切换在线/离线；断网不会自动切换。`LIANGXIANG_BACKEND_URL=local` 只设置尚无保存偏好时的首次离线默认。离线模式可用 CLI 模拟入账：
 
 ```bash
@@ -150,7 +152,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 
 ```bash
 pnpm pack
-dsh plugin --profile <你的 profile> add ./dsh-liangxiang-1.0.2.tgz
+dsh plugin --profile <你的 profile> add ./dsh-liangxiang-1.0.7.tgz
 ```
 
 1. **不要**把 in-box bundle（如 `@deepseek-ai/dsh-web-app`）装成 profile 依赖。它只需要出现在 `dsh.profile.bundles` 里；装进 `<profile>/node_modules` 会遮蔽 launcher 的模块回退目录，造成同一个包出现两个实例，工具调用会直接报 `Cannot read properties of undefined (reading 'prepare')`。装完可以跑 `node scripts/assert-profile-modules.mjs <DSH_HOME>/profiles/<profile>` 自检。

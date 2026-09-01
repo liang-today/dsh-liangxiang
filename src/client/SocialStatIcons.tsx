@@ -1,7 +1,7 @@
 /**
  * Region 4 marks, using the same restrained ritual vocabulary as the repair mark:
  * 三界香火 = 天/人/地香火汇于一炉; 五行香客 = 取经五众。
- * currentColor, readable at ~18px.
+ * currentColor, readable at ~26px beside the Region 4 copy.
  */
 import type { ReactElement } from 'react'
 

@@ -24,15 +24,13 @@ import { hasSeenWelcome, markWelcomeSeen } from './welcome.ts'
 import {
   BADGE_ICON_SIZE,
   BADGE_SIZE,
-  availablePanelHeight,
   clampBadgePosition,
-  dockForNarrowFrame,
   loadBadgePosition,
   loadPanelOpen,
-  panelDensityFor,
   panelPlacementFor,
   saveBadgePosition,
   savePanelOpen,
+  settleBadgePosition,
   type BadgePoint,
 } from './badge-position.ts'
 import { LIANGZI_ART } from './liangzi-art.ts'
@@ -48,6 +46,19 @@ import { useTweenedCount } from './use-tweened-count.ts'
 /** Preserve the exact earned-incense jump carried by one authoritative frame. */
 export function earnedIncenseGain(previous: number, current: number): number {
   return Math.max(0, current - previous)
+}
+
+/** After a Host reconnect the first 0→N jump is starter / hydrate, not 凝香. */
+export const BOOTSTRAP_CONDENSE_GRACE_MS = 2_500
+
+export function shouldAnnounceCondensedIncense(
+  previous: number,
+  current: number,
+  msSinceLive: number,
+): boolean {
+  if (earnedIncenseGain(previous, current) <= 0) return false
+  if (msSinceLive < BOOTSTRAP_CONDENSE_GRACE_MS && previous === 0) return false
+  return true
 }
 
 const buttonStyle: CSSProperties = {
@@ -306,12 +317,12 @@ export function LiangxiangBadge(): ReactElement {
       typeof localStorage === 'undefined' ? null : localStorage,
     ))
   useEffect(() => {
-    setPosition((current) => dockForNarrowFrame(current, viewport))
+    setPosition((current) => settleBadgePosition(current, viewport))
   }, [viewport])
   useEffect(() => {
     preloadLiangziArt(LIANGZI_ART)
   }, [])
-  const [pinnedHint, setPinnedHint] = useState<'incense' | 'epithet' | null>(null)
+  const [pinnedHint, setPinnedHint] = useState<'epithet' | null>(null)
   const prevArchiveVersion = useRef(0)
   useEffect(() => {
     const version = historyState.archive?.archiveVersion ?? 0
@@ -363,9 +374,9 @@ export function LiangxiangBadge(): ReactElement {
         suppressClick.current = true
         setDragging(false)
         setPosition((current) => {
-          const clamped = clampBadgePosition(current, viewport)
-          saveBadgePosition(clamped, typeof localStorage === 'undefined' ? null : localStorage)
-          return clamped
+          const settled = settleBadgePosition(current, viewport)
+          saveBadgePosition(settled, typeof localStorage === 'undefined' ? null : localStorage)
+          return settled
         })
       }
     }
@@ -394,7 +405,7 @@ export function LiangxiangBadge(): ReactElement {
     prevLiangziState.current = state.snapshot.liangziState
     playLiangziShift(from, state.snapshot.liangziState)
     setAvatarPulse(true)
-    const timer = window.setTimeout(() => setAvatarPulse(false), 950)
+    const timer = window.setTimeout(() => setAvatarPulse(false), 1100)
     return () => window.clearTimeout(timer)
   }, [state.snapshot.liangziState])
 
@@ -408,7 +419,7 @@ export function LiangxiangBadge(): ReactElement {
     if (prevCounts.current === counts) return undefined
     prevCounts.current = counts
     setPositionPulse(true)
-    const timer = window.setTimeout(() => setPositionPulse(false), 520)
+    const timer = window.setTimeout(() => setPositionPulse(false), 640)
     return () => window.clearTimeout(timer)
   }, [state.snapshot.upVotes, state.snapshot.downVotes])
 
@@ -419,19 +430,26 @@ export function LiangxiangBadge(): ReactElement {
   const [condensedIncense, setCondensedIncense] = useState(0)
   const prevEarned = useRef(state.observedEarnedIncenseToday)
   const incenseEarnPrimed = useRef(false)
+  const liveSince = useRef<number | null>(null)
   useEffect(() => {
     if (state.connection !== 'live') {
       incenseEarnPrimed.current = false
+      liveSince.current = null
       return undefined
     }
+    if (liveSince.current === null) liveSince.current = performance.now()
     if (!incenseEarnPrimed.current) {
       incenseEarnPrimed.current = true
       prevEarned.current = state.observedEarnedIncenseToday
       return undefined
     }
-    const gained = earnedIncenseGain(prevEarned.current, state.observedEarnedIncenseToday)
-    prevEarned.current = state.observedEarnedIncenseToday
-    if (gained === 0) return undefined
+    const previous = prevEarned.current
+    const current = state.observedEarnedIncenseToday
+    prevEarned.current = current
+    const gained = earnedIncenseGain(previous, current)
+    if (!shouldAnnounceCondensedIncense(previous, current, performance.now() - liveSince.current)) {
+      return undefined
+    }
     setCondensedIncense(gained)
     playIncenseEarn()
     const timer = window.setTimeout(() => setCondensedIncense(0), 1400)
@@ -711,8 +729,6 @@ export function LiangxiangBadge(): ReactElement {
   }
 
   const placement = panelPlacementFor(position, viewport)
-  const density = panelDensityFor(viewport)
-  const maxPanelHeight = availablePanelHeight(position, viewport, placement)
 
   return (
     <div
@@ -774,8 +790,6 @@ export function LiangxiangBadge(): ReactElement {
           voteFeedback={voteFeedback}
           positionPulse={positionPulse}
           placement={placement}
-          density={density}
-          maxPanelHeight={maxPanelHeight}
           pinnedHint={pinnedHint}
           onToggleHint={(kind) => setPinnedHint((current) => current === kind ? null : kind)}
           displayTotalIncense={displayTotalIncense}

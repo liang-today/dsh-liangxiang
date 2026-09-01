@@ -20,15 +20,14 @@ export const radius = {
 } as const
 
 export const duration = {
-  hintMs: 40,
-  flashMs: 320,
-  pulseMs: 950,
-  positionMs: 520,
-  condenseMs: 1400,
+  hintMs: 80,
+  flashMs: 520,
+  pulseMs: 1100,
+  positionMs: 640,
+  condenseMs: 1600,
+  enterMs: 240,
+  crossMs: 520,
 } as const
 
-export const PANEL_MAX_HEIGHT_REGULAR = 440
-export const PANEL_COMPACT_VIEWPORT_HEIGHT = 560
-export const PANEL_COMPACT_VIEWPORT_WIDTH = 720
 export const NARROW_FRAME_WIDTH = 1024
 export const SIDEBAR_ZONE_WIDTH = 280

@@ -1,29 +1,32 @@
 /**
  * Tiny synthesized sound cues for 梁相 — no audio assets, Web Audio only.
  * 升梁 / 降梁 / 香火增长 / 梁子换态 each play a short tone. Volume is a
- * 4-step cosmetic preference (0=无, 1=小 33%, 2=中 66%, 3=大 100%) persisted
- * in localStorage; it scales the synthesized gain only — it never touches
- * system volume.
+ * 4-step cosmetic preference (0=无, 1=小 25%, 2=中 50%, 3=大 100%) persisted
+ * in localStorage. The Web Audio destination already multiplies this fader
+ * by the OS / browser volume; we never write the system mixer.
  */
 import type { LiangziState, VoteType } from '../domain/index.ts'
 import { LIANGZI_STATES } from '../domain/index.ts'
 export type SoundLevel = 0 | 1 | 2 | 3
 
-const LEVEL_GAIN: Record<SoundLevel, number> = { 0: 0, 1: 0.33, 2: 0.66, 3: 1 }
-const STORAGE_KEY = 'liangxiang:sound:level'
+export const SOUND_STORAGE_KEY = 'liangxiang:sound:level'
+/** Fresh install / no preference: half of the plugin fader. */
+export const DEFAULT_SOUND_LEVEL: SoundLevel = 2
+export const SOUND_LEVEL_GAIN: Record<SoundLevel, number> = { 0: 0, 1: 0.25, 2: 0.5, 3: 1 }
 
-/** Fresh install / no preference: muted. A stored 1–3 is kept. */
-let level: SoundLevel = 0
+export function parseSoundLevel(raw: string | null): SoundLevel {
+  if (raw === '0' || raw === '1' || raw === '2' || raw === '3') return Number(raw) as SoundLevel
+  return DEFAULT_SOUND_LEVEL
+}
+
+let level: SoundLevel = DEFAULT_SOUND_LEVEL
 try {
   const stored = typeof localStorage === 'undefined'
     ? null
-    : localStorage.getItem(STORAGE_KEY)
-  if (stored !== null) {
-    const parsed = Number(stored)
-    if (parsed === 0 || parsed === 1 || parsed === 2 || parsed === 3) level = parsed as SoundLevel
-  }
+    : localStorage.getItem(SOUND_STORAGE_KEY)
+  level = parseSoundLevel(stored)
 } catch {
-  /* privacy mode / quota: keep default mute */
+  level = DEFAULT_SOUND_LEVEL
 }
 
 let audioContext: AudioContext | null = null
@@ -52,7 +55,7 @@ function tone(
   if (ac === null) return
   const now = ac.currentTime
   const seconds = durationMs / 1000
-  const peak = gain * LEVEL_GAIN[level]
+  const peak = gain * SOUND_LEVEL_GAIN[level]
   const osc = ac.createOscillator()
   const envelope = ac.createGain()
   osc.type = type
@@ -75,7 +78,7 @@ export function soundLevel(): SoundLevel {
 export function cycleSoundLevel(): SoundLevel {
   level = ((level + 1) % 4) as SoundLevel
   try {
-    localStorage.setItem(STORAGE_KEY, String(level))
+    localStorage.setItem(SOUND_STORAGE_KEY, String(level))
   } catch {
     /* ignore */
   }
@@ -173,7 +176,7 @@ export function playLiangziShift(from: LiangziState, to: LiangziState): void {
   tone(698, 349, 260, 'triangle', 0.08)
 }
 
-/** 入祠: a short two-note seal, same mute-by-default volume table. */
+/** 入祠: a short two-note seal, same volume table as the other cues. */
 export function playArchiveSeal(): void {
   tone(392, 392, 160, 'sine', 0.07)
   window.setTimeout(() => tone(523, 523, 200, 'sine', 0.06), 130)

@@ -4,7 +4,7 @@
  */
 import { useEffect, useReducer, useRef } from 'react'
 
-const TWEEN_TAU_MS = 280
+const TWEEN_TAU_MS = 420
 
 export function useTweenedCount(value: number, reducedMotion: boolean, tauMs = TWEEN_TAU_MS): number {
   const displayedRef = useRef(value)

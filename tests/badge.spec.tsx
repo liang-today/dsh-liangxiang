@@ -5,7 +5,7 @@
  * placement. Placement math lives in `badge-position.ts` and is tested below.
  */
 import { describe, expect, it } from 'vitest'
-import { BadgeButton, earnedIncenseGain } from '../src/client/Badge.tsx'
+import { BadgeButton, earnedIncenseGain, shouldAnnounceCondensedIncense } from '../src/client/Badge.tsx'
 import {
   BADGE_ICON_SIZE,
   BADGE_MARGIN,
@@ -43,6 +43,13 @@ describe('LiangxiangBadge entry', () => {
     expect(earnedIncenseGain(7, 13)).toBe(6)
     expect(earnedIncenseGain(7, 7)).toBe(0)
     expect(earnedIncenseGain(7, 3)).toBe(0)
+  })
+
+  it('does not flash 凝香 for the starter hydrate right after going live', () => {
+    expect(shouldAnnounceCondensedIncense(0, 10, 80)).toBe(false)
+    expect(shouldAnnounceCondensedIncense(0, 10, 3_000)).toBe(true)
+    expect(shouldAnnounceCondensedIncense(22, 23, 80)).toBe(true)
+    expect(shouldAnnounceCondensedIncense(10, 10, 80)).toBe(false)
   })
 
   it('is a keyboard-reachable button that opens a dialog', () => {
