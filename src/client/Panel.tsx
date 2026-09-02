@@ -67,7 +67,6 @@ import {
   UTILITY_MODE_ONLINE_HINT,
   UTILITY_MODE_ONLINE_LABEL,
   UTILITY_VERSION_LABEL,
-  WELCOME_DISMISS,
   WELCOME_GIFT_LINE,
   WELCOME_LOCAL_LABEL,
   WELCOME_ONLINE_LABEL,
@@ -90,14 +89,8 @@ import { SoundIcon } from './SoundIcon.tsx'
 import type { LiangxiangViewState } from './store.ts'
 import { color, font } from './theme.ts'
 import type { ThrottledProgress } from './use-throttle-fill.ts'
-import { QQ_GROUP_QR_CODE_DATA_URL } from './qq-group-qrcode.ts'
-import {
-  RELEASE_NOTES_ITEMS,
-  RELEASE_NOTES_QQ,
-  RELEASE_NOTES_QQ_INVITE,
-  RELEASE_NOTES_THANKS,
-  RELEASE_NOTES_TITLE,
-} from './release-notes.ts'
+import { QqGroupCard } from './QqGroupCard.tsx'
+import { ReleaseNotesDialog } from './ReleaseNotesDialog.tsx'
 
 export interface PanelProps {
   state: LiangxiangViewState
@@ -1023,42 +1016,7 @@ export function Panel(props: PanelProps): ReactElement {
           >
             {WELCOME_PRIVACY_NOTE}
           </p>
-          <div
-            data-liangxiang-welcome-qq=""
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              width: '100%',
-              padding: '8px 10px',
-              border: `1px solid color-mix(in srgb, ${color.ritualGold} 30%, ${color.border})`,
-              borderRadius: '10px',
-              background: `color-mix(in srgb, ${color.ritualGold} 8%, transparent)`,
-              boxSizing: 'border-box',
-            }}
-          >
-            <img
-              src={QQ_GROUP_QR_CODE_DATA_URL}
-              alt="梁相 QQ 群 453683905 二维码"
-              data-liangxiang-welcome-qq-qrcode=""
-              width={72}
-              height={72}
-              style={{
-                flex: '0 0 auto',
-                display: 'block',
-                width: '72px',
-                height: '72px',
-                padding: '3px',
-                borderRadius: '8px',
-                background: '#ffffff',
-                boxSizing: 'border-box',
-              }}
-            />
-            <span style={{ minWidth: 0, textAlign: 'left' }}>
-              <strong style={{ display: 'block', color: color.ritualEmberText, fontSize: '13px' }}>{RELEASE_NOTES_QQ}</strong>
-              <span style={{ display: 'block', marginTop: '4px', color: color.textSecondary, fontSize: '10px', lineHeight: 1.45 }}>{RELEASE_NOTES_QQ_INVITE}</span>
-            </span>
-          </div>
+          <QqGroupCard context="welcome" />
           <div style={{ display: 'flex', gap: '8px', marginTop: '2px', width: '100%' }}>
             <button
               type="button"
@@ -1102,99 +1060,7 @@ export function Panel(props: PanelProps): ReactElement {
         </div>
       )}
 
-      {!welcomeVisible && releaseNotesVisible && (
-        <div
-          data-liangxiang-release-notes-backdrop=""
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 6,
-            display: 'flex',
-            alignItems: 'stretch',
-            justifyContent: 'center',
-            padding: '12px',
-            borderRadius: '18px',
-            background: 'rgba(10, 8, 7, 0.32)',
-            backdropFilter: 'blur(4px)',
-            boxSizing: 'border-box',
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={RELEASE_NOTES_TITLE}
-            tabIndex={-1}
-            autoFocus
-            data-liangxiang-release-notes=""
-            onKeyDown={(event) => {
-              if (event.key !== 'Tab') return
-              event.preventDefault()
-              event.currentTarget.querySelector<HTMLButtonElement>('[data-liangxiang-release-notes-close]')?.focus()
-            }}
-            style={{
-              width: '100%',
-              minHeight: 0,
-              overflowY: 'auto',
-              padding: '15px 16px 14px',
-              border: `1px solid color-mix(in srgb, ${color.ritualGold} 36%, ${color.border})`,
-              borderRadius: '14px',
-              background: `linear-gradient(180deg, color-mix(in srgb, ${color.ritualGold} 10%, ${color.bgLayer}), ${color.bgLayer})`,
-              boxShadow: '0 18px 42px rgba(0, 0, 0, 0.28)',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }}
-          >
-            <strong style={{ display: 'block', color: color.textPrimary, fontSize: '17px', letterSpacing: '0.5px', textAlign: 'center' }}>
-              {RELEASE_NOTES_TITLE}
-            </strong>
-            <ul
-              data-liangxiang-release-notes-items=""
-              style={{ margin: '12px 0 0', paddingLeft: '19px', color: color.textSecondary, fontSize: '11px', lineHeight: 1.52 }}
-            >
-              {RELEASE_NOTES_ITEMS.map((item) => <li key={item} style={{ marginTop: '5px' }}>{item}</li>)}
-            </ul>
-            <div
-              data-liangxiang-release-notes-qq=""
-              style={{
-                marginTop: '12px',
-                padding: '9px 10px',
-                border: `1px solid color-mix(in srgb, ${color.ritualGold} 30%, ${color.border})`,
-                borderRadius: '10px',
-                background: `color-mix(in srgb, ${color.ritualGold} 8%, transparent)`,
-                textAlign: 'center',
-              }}
-            >
-              <strong style={{ display: 'block', color: color.ritualEmberText, fontSize: '13px' }}>{RELEASE_NOTES_QQ}</strong>
-              <span style={{ display: 'block', marginTop: '3px', color: color.textSecondary, fontSize: '10px', lineHeight: 1.45 }}>{RELEASE_NOTES_QQ_INVITE}</span>
-            </div>
-            <p
-              data-liangxiang-release-notes-thanks=""
-              style={{ margin: '11px 0 0', color: color.textTertiary, fontSize: '10px', lineHeight: 1.5, textAlign: 'center' }}
-            >
-              {RELEASE_NOTES_THANKS}
-            </p>
-            <div style={{ marginTop: '12px', textAlign: 'center' }}>
-              <button
-                type="button"
-                data-liangxiang-release-notes-close=""
-                onClick={onReleaseNotesClose}
-                style={{
-                  minWidth: '92px',
-                  padding: '7px 14px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: color.buttonPrimaryFill,
-                  color: color.buttonPrimaryText,
-                  font: `600 11px/16px ${font.family}`,
-                  cursor: 'pointer',
-                }}
-              >
-                {WELCOME_DISMISS}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {!welcomeVisible && releaseNotesVisible && <ReleaseNotesDialog onClose={onReleaseNotesClose} />}
 
       {/* Region 1 — 今日梁案 */}
       <header

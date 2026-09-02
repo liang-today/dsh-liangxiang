@@ -84,7 +84,9 @@ test('pointer crosses from 梁相案牍 into its menu and version reopens update
   await expect(drawer).toBeVisible()
   await version.click()
 
-  await expect(page.getByRole('dialog', { name: RELEASE_NOTES_TITLE })).toBeVisible()
+  const releaseNotes = page.getByRole('dialog', { name: RELEASE_NOTES_TITLE })
+  await expect(releaseNotes).toBeVisible()
+  await expect(releaseNotes.locator('[data-liangxiang-release-notes-qq-qrcode]')).toBeVisible()
   await expect(page.locator('[data-liangxiang-version-dialog]')).toHaveCount(0)
 })
 

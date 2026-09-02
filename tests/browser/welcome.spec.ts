@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { RELEASE_NOTES_QQ } from '../../src/client/release-notes.ts'
+import { RELEASE_NOTES_QQ, RELEASE_NOTES_TITLE } from '../../src/client/release-notes.ts'
 import { bootInstalledLiangxiang, panelSelector } from './helpers.ts'
 
 test.beforeEach(async ({ page }) => {
@@ -32,4 +32,13 @@ test('first-run welcome embeds the compact QQ group QR card without leaving the 
   expect(cardBox.y).toBeGreaterThanOrEqual(panelBox.y)
   expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(panelBox.x + panelBox.width)
   expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height)
+})
+
+test('first install continues into the canonical update-notes dialog', async ({ page }) => {
+  await page.locator('[data-liangxiang-welcome-local]').click()
+
+  const dialog = page.getByRole('dialog', { name: RELEASE_NOTES_TITLE })
+  await expect(dialog).toBeVisible()
+  await expect(page.locator('[data-liangxiang-welcome]')).toHaveCount(0)
+  await expect(dialog.locator('[data-liangxiang-release-notes-qq-qrcode]')).toBeVisible()
 })

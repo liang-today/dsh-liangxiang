@@ -195,6 +195,8 @@ describe('four visual regions', () => {
     const first = renderPanel(demoState(), '', { welcomeVisible: true, releaseNotesVisible: true })
     expect(findByAttr(first, 'data-liangxiang-welcome')).toHaveLength(1)
     expect(findByAttr(first, 'data-liangxiang-release-notes')).toHaveLength(0)
+    const welcomeQqCard = findByAttr(first, 'data-liangxiang-qq-card')[0]
+    const welcomeQrCode = findByAttr(first, 'data-liangxiang-qq-qrcode')[0]
 
     let closed = 0
     const updated = renderDeep(
@@ -237,6 +239,14 @@ describe('four visual regions', () => {
     expect(textContent(notes === undefined ? [] : [notes])).toContain(RELEASE_NOTES_QQ)
     expect(textContent(notes === undefined ? [] : [notes])).toContain(RELEASE_NOTES_THANKS)
     expect(textContent(notes === undefined ? [] : [notes])).not.toContain('上次正式版以来')
+    const updateQqCard = findByAttr(updated, 'data-liangxiang-qq-card')[0]
+    const updateQrCode = findByAttr(updated, 'data-liangxiang-qq-qrcode')[0]
+    expect(findByAttr(updated, 'data-liangxiang-release-notes-qq')).toHaveLength(1)
+    expect(findByAttr(updated, 'data-liangxiang-release-notes-qq-qrcode')).toHaveLength(1)
+    expect(updateQrCode?.props.src).toBe(welcomeQrCode?.props.src)
+    expect(updateQrCode?.props.alt).toBe(welcomeQrCode?.props.alt)
+    expect(styleOf(updateQqCard).border).toBe(styleOf(welcomeQqCard).border)
+    expect(styleOf(updateQqCard).background).toBe(styleOf(welcomeQqCard).background)
     const close = findByAttr(updated, 'data-liangxiang-release-notes-close')[0]
     expect(close?.props.autoFocus).toBeUndefined()
     const onClick = close?.props.onClick as (() => void) | undefined
