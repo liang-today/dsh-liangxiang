@@ -77,7 +77,7 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 | 本地 Backend 源码 | `SERVER_BUILD=1.1.6-u1`；schema v10（v9 receipt + v10 单行限时广播） |
 | count 修复基线 | accepted 与 rejected 的 `count` 业务处置都保存 durable receipt；v7/v8→v9 migration 整体原子化 |
 | DSH 兼容基线 | `dsh-v0.1.2-alpha.5` / `db6bdc3576`；模型/Token/客户端装载缝与 alpha.4 相同，alpha.5 新增跨版本 projection cache 自恢复；Node `22.23.1` / pnpm `11.7.0` 的最终真实安装已通过 |
-| 官网 | 独立仓 `main` = `1.1.6`；GoatCounter 固定使用一方统计域名并受构建门禁保护 |
+| 官网 | 公开 Pages / 远端 `main` 仍为 `1.0.7`；独立仓本地 `main` 领先 2 个 `1.1.6` 待发布提交。GoatCounter 已改用一方统计域名；候选构建门禁会阻止漏装统计脚本 |
 | 社区服务器 | `SERVER_BUILD=1.1.6-u1` / schema v10；只通过 `scripts/deploy.sh` 更新并由 `scripts/deploy-check.sh` 核验 |
 
 服务器必须与部署分支当前 HEAD 一致。任何 Agent 都不得因为本地修复已提交，就声称
@@ -85,7 +85,7 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 
 ## 5. 社区服务器脱敏快照
 
-核对时间：2026-09-02；这是限时运维事实，不是永久常量。
+核对时间：2026-09-03；这是限时运维事实，不是永久常量。
 
 - 香港 Rocky Linux 9.8 节点；`systemd` 运行 `liangxiang-backend`，Caddy 提供 HTTPS。
 - Backend 仅监听 `127.0.0.1:4180`；部署目录 `/opt/liangxiang`，暂存目录
@@ -97,7 +97,7 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 - 首轮 Profile 冒烟在隔离逻辑收紧前短暂触发在线 bootstrap，新增 1 个零投票测试身份、
   1 条当日状态和 1 条见面礼记录；未改变全局梁位、已接受香火或香客。未获删除授权，
   故保留并记账（复核时身份总数 91）。clean-profile 现已在 Host 启动前默认锁定 `local`。
-- 梁祠 archive version 15：15 个日档、2 个周档、1 个月档。
+- 梁祠 archive version 16：16 个日档、2 个周档、1 个月档。
 - 本地部署备份存在且最近一份可读，但没有应用级定时 SQLite 备份；云备份需在云侧
   单独验收。journald 当前只在 `/run`，重启会丢失历史日志。
 
