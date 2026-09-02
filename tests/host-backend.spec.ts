@@ -351,6 +351,23 @@ describe('online bootstrap', () => {
     expect(view.personal.remainingIncense).toBe(0)
   })
 
+  it('pushes an operator broadcast through the snapshot cadence and expires back to 梁小号', async () => {
+    const s = await startStack()
+    expect(frame(s).broadcast).toBeNull()
+    const notice = s.backend.setBroadcast('QQ群 453683905 已开，来群里一起出梁案', 'important', 1)
+
+    await s.host.refreshSnapshot()
+    expect(frame(s).broadcast).toMatchObject({
+      id: notice.id,
+      level: 'important',
+      message: 'QQ群 453683905 已开，来群里一起出梁案',
+    })
+
+    s.clock.advance(60 * 60 * 1000)
+    await s.host.refreshSnapshot()
+    expect(frame(s).broadcast).toBeNull()
+  })
+
   it('keeps observing Token offline, disables authority, and recovers automatically on the next tick', async () => {
     const s = await startStack({}, { claimDebounceMs: 60_000 })
     expect(frame(s).authorityAvailable).toBe(true)

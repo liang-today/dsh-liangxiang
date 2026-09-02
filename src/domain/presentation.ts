@@ -16,10 +16,10 @@ export function liangQiIntensity(remainingIncense: number): number {
   return Math.min(1, Math.sqrt(remainingIncense / 12))
 }
 
-/** Bob period when the next-incense ring is empty: still (just earned / no progress). */
-export const LIANG_QI_FLOAT_PERIOD_STILL = null
-/** Slowest bob, just after a new stick starts accumulating. */
+/** Slowest idle bob, including an empty next-incense ring. */
 export const LIANG_QI_FLOAT_PERIOD_SLOW_MS = 4_800
+/** @deprecated Internal compatibility alias; fill=0 now keeps the slow idle bob. */
+export const LIANG_QI_FLOAT_PERIOD_STILL = LIANG_QI_FLOAT_PERIOD_SLOW_MS
 /** Fastest bob, when the ring is almost full. */
 export const LIANG_QI_FLOAT_PERIOD_FAST_MS = 1_100
 
@@ -28,15 +28,14 @@ export const LIANG_QI_FLOAT_PERIOD_FAST_MS = 1_100
  * figure-only bob period. This is personal Token progress — not remaining
  * incense, not the global 梁位.
  *
- *   fill === 0  → still
+ *   fill === 0  → slow idle bob
  *   fill → 1    → 4.8s … 1.1s
  */
-export function liangQiFloatPeriodMs(fill: number): number | null {
+export function liangQiFloatPeriodMs(fill: number): number {
   if (typeof fill !== 'number' || !Number.isFinite(fill) || fill < 0) {
     throw new DomainError('invalid_token_count', `liangQiFill must be a finite non-negative number, got ${String(fill)}`)
   }
   const t = Math.min(1, fill)
-  if (t === 0) return LIANG_QI_FLOAT_PERIOD_STILL
   return Math.round(
     LIANG_QI_FLOAT_PERIOD_SLOW_MS
     - (LIANG_QI_FLOAT_PERIOD_SLOW_MS - LIANG_QI_FLOAT_PERIOD_FAST_MS) * t,

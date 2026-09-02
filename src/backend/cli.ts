@@ -12,7 +12,8 @@
  *   node lib/backend-cli.js case queue replace --start YYYY-MM-DD <题库文件>
  *   node lib/backend-cli.js identity unbind lk_...
  *   node lib/backend-cli.js admission status|list|issue|revoke
-  node lib/backend-cli.js archive clear --yes
+ *   node lib/backend-cli.js broadcast status|set|clear
+ *   node lib/backend-cli.js archive clear --yes
  */
 import { resolveBackendConfig, BackendConfigError } from './config.ts'
 import { readFileSync } from 'node:fs'
@@ -21,7 +22,7 @@ import { PLUGIN_VERSION, SERVER_BUILD } from '../shared/index.ts'
 import { BACKEND_SCHEMA_USER_VERSION } from './schema.ts'
 import { LiangxiangBackendService } from './service.ts'
 import { openBackendStore, type QueueRow } from './store.ts'
-import { parseInstallationId, parseV1PublishCaseRequest } from '../shared/backend-v1.ts'
+import { parseInstallationId, parseV1PublishCaseRequest, type BroadcastLevel } from '../shared/backend-v1.ts'
 import { WireError } from '../shared/wire.ts'
 
 export interface OperatorCliIo {
@@ -45,6 +46,9 @@ const usage = `usage:
   node lib/backend-cli.js admission revoke <ticket_id>
   node lib/backend-cli.js admission replenish
   node lib/backend-cli.js admission replace --yes --count N [--claims N] [--ttl-hours N]
+  node lib/backend-cli.js broadcast status
+  node lib/backend-cli.js broadcast set [--level important|emergency] [--hours N] "<短消息>"
+  node lib/backend-cli.js broadcast clear
   node lib/backend-cli.js archive clear --yes
   node lib/backend-cli.js case retitle "<标题>"
   node lib/backend-cli.js case reset --yes`
@@ -121,6 +125,7 @@ export function runOperatorCli(
           revoked_tickets: admission.revokedTickets,
           total_tickets: admission.totalTickets,
         },
+        broadcast: service.broadcastStatus(),
       }, null, 2))
       io.log(
         `[liangxiang-ops] status date=${snapshot.business_date} case=${snapshot.active_case.id} `
@@ -128,6 +133,36 @@ export function runOperatorCli(
         + `queue=${queue.length} next=${queue[0]?.publish_on ?? 'fifo'}`,
       )
       io.log(`[liangxiang-ops] 入梁券 active=${admission.activeTickets} remaining=${admission.remainingClaims}`)
+      return 0
+    }
+    if (topic === 'broadcast' && command === 'status') {
+      const stored = service.broadcastStatus()
+      io.log(JSON.stringify({ broadcast: stored, active: service.activeBroadcast() !== null }, null, 2))
+      return 0
+    }
+    if (topic === 'broadcast' && command === 'set') {
+      let level: BroadcastLevel = 'important'
+      let hours = 168
+      let cursor = 2
+      while (args[cursor]?.startsWith('--') === true) {
+        const flag = args[cursor]
+        const value = args[cursor + 1]
+        if (flag === '--level' && (value === 'important' || value === 'emergency')) level = value
+        else if (flag === '--hours') hours = Number(value)
+        else throw new WireError('broadcast.options', `unknown or invalid option ${String(flag)}`)
+        cursor += 2
+      }
+      const message = args.slice(cursor).join(' ').trim()
+      const broadcast = service.setBroadcast(message, level, hours)
+      io.log(JSON.stringify(broadcast, null, 2))
+      io.log(`[liangxiang-ops] broadcast set id=${broadcast.id} level=${broadcast.level} expires_at=${broadcast.expires_at}`)
+      return 0
+    }
+    if (topic === 'broadcast' && command === 'clear') {
+      if (args.length !== 2) throw new WireError('broadcast.clear', 'does not accept arguments')
+      const cleared = service.clearBroadcast()
+      io.log(JSON.stringify({ cleared }, null, 2))
+      io.log(`[liangxiang-ops] broadcast cleared=${String(cleared)}`)
       return 0
     }
     if (topic === 'case' && command === 'reset') {

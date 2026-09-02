@@ -92,6 +92,24 @@ describe('operator CLI', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 
+  it('sets, inspects, and clears the client broadcast without an operator HTTP route', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-broadcast-'))
+    const db = join(dir, 'liangxiang.sqlite')
+    const env = { LIANGXIANG_BACKEND_DB: db }
+    const logs: string[] = []
+    const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
+    expect(runOperatorCli([
+      'broadcast', 'set', '--level', 'important', '--hours', '72',
+      'QQ群 453683905 已开，来群里一起出梁案',
+    ], env, io)).toBe(0)
+    expect(runOperatorCli(['broadcast', 'status'], env, io)).toBe(0)
+    expect(logs.join('\n')).toContain('453683905')
+    expect(logs.join('\n')).toContain('"active": true')
+    expect(runOperatorCli(['broadcast', 'clear'], env, io)).toBe(0)
+    expect(logs.join('\n')).toContain('broadcast cleared=true')
+    rmSync(dir, { recursive: true, force: true })
+  })
+
   it('accepts Rocky Linux node-22 argv prefixes', () => {
     const logs: string[] = []
     expect(runOperatorCli(

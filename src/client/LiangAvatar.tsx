@@ -42,7 +42,7 @@ export interface LiangAvatarProps {
   chrome?: 'plate' | 'none'
   /**
    * Next-incense fill (`liang_qi_fill`). Drives bob cadence for every
-   * Liangzi state: 0 = still, approaching 1 = faster. The motion always
+   * Liangzi state: 0 = slow idle bob, approaching 1 = faster. The motion always
    * lands on the figure, never on a wrapping plate.
    */
   liangQiFill?: number

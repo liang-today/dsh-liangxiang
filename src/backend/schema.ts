@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v9) for the Liangxiang backend.
+ * SQLite schema (v10) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -31,7 +31,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { VOTE_COUNT_MAX } from '../domain/index.ts'
 
-export const BACKEND_SCHEMA_USER_VERSION = 9
+export const BACKEND_SCHEMA_USER_VERSION = 10
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -250,6 +250,18 @@ SELECT installation_id, request_id, case_id, business_date, vote_type, requested
   FROM liang_vote;
 `
 
+const DDL_V10_BROADCAST = `
+CREATE TABLE IF NOT EXISTS client_broadcast (
+  singleton   INTEGER PRIMARY KEY CHECK (singleton = 1),
+  id          TEXT    NOT NULL,
+  level       TEXT    NOT NULL CHECK (level IN ('important', 'emergency')),
+  message     TEXT    NOT NULL,
+  starts_at   INTEGER NOT NULL,
+  expires_at  INTEGER NOT NULL CHECK (expires_at > starts_at),
+  updated_at  INTEGER NOT NULL
+);
+`
+
 function tableColumns(db: DatabaseSync, table: string): string[] {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>)
     .map((row) => row.name)
@@ -314,6 +326,7 @@ export function migrate(db: DatabaseSync): void {
       )
     }
     if (current < 9) db.exec(DDL_V9_REQUEST_RECEIPT)
+    if (current < 10) db.exec(DDL_V10_BROADCAST)
     if (current !== BACKEND_SCHEMA_USER_VERSION) {
       db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
     }

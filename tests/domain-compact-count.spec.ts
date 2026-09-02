@@ -97,7 +97,7 @@ describe('incensePlaceValue', () => {
 
 describe('liangQiFloatPeriodMs', () => {
   it('stays still at fill 0 and speeds up as the next stick fills', () => {
-    expect(liangQiFloatPeriodMs(0)).toBeNull()
+    expect(liangQiFloatPeriodMs(0)).toBe(LIANG_QI_FLOAT_PERIOD_SLOW_MS)
     expect(liangQiFloatPeriodMs(1)).toBe(LIANG_QI_FLOAT_PERIOD_FAST_MS)
     expect(liangQiFloatPeriodMs(0.5)).toBe(
       Math.round((LIANG_QI_FLOAT_PERIOD_SLOW_MS + LIANG_QI_FLOAT_PERIOD_FAST_MS) / 2),

@@ -40,6 +40,30 @@ import { WireError } from './wire.ts'
 export const BACKEND_API_PREFIX = '/v1'
 export const BACKEND_SCHEMA_VERSION = 1
 
+/** Short, operator-controlled notice that may temporarily replace 梁小号. */
+export const BROADCAST_LEVELS = ['important', 'emergency'] as const
+export type BroadcastLevel = (typeof BROADCAST_LEVELS)[number]
+export const BROADCAST_MESSAGE_MAX_LENGTH = 80
+
+export function isValidBroadcastMessage(message: string): boolean {
+  if (message.length === 0 || message !== message.trim() || [...message].length > BROADCAST_MESSAGE_MAX_LENGTH) {
+    return false
+  }
+  return ![...message].some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0
+    return codePoint <= 0x1f || codePoint === 0x7f
+  })
+}
+
+export interface V1Broadcast {
+  id: string
+  level: BroadcastLevel
+  message: string
+  starts_at: number
+  expires_at: number
+  updated_at: number
+}
+
 /** Frozen id of the shipped Liangzi threshold policy (50/70/85/95). */
 export const LIANGZI_POLICY_VERSION = 'liangzi-v0.1-50-70-85-95'
 
@@ -190,6 +214,8 @@ export interface V1Bootstrap {
   active_case: V1Case
   authoritative_personal_state: V1PersonalState
   global_snapshot: V1Snapshot
+  /** Active low-disruption operator notice; absent/null normally. */
+  broadcast: V1Broadcast | null
 }
 
 /** POST /v1/votes body — minimum business intent, nothing else. */
@@ -266,6 +292,7 @@ export interface V1SnapshotResponse {
   archive_version: number
   active_case: V1Case
   global_snapshot: V1Snapshot
+  broadcast: V1Broadcast | null
 }
 
 /** Operator publish case title (CLI writes SQLite; HTTP /v1/admin/* is closed). */
@@ -362,6 +389,30 @@ function requireFinite(value: unknown, field: string): number {
     throw new WireError(field, 'expected a finite number')
   }
   return value
+}
+
+function parseV1Broadcast(raw: unknown, field: string): V1Broadcast | null {
+  if (raw === undefined || raw === null) return null
+  const record = asRecord(raw, field)
+  const level = record.level
+  if (typeof level !== 'string' || !(BROADCAST_LEVELS as readonly string[]).includes(level)) {
+    throw new WireError(`${field}.level`, `expected ${BROADCAST_LEVELS.join('/')}`)
+  }
+  const message = requireString(record.message, `${field}.message`)
+  if (!isValidBroadcastMessage(message)) {
+    throw new WireError(`${field}.message`, `expected at most ${BROADCAST_MESSAGE_MAX_LENGTH} printable characters`)
+  }
+  const startsAt = requireFinite(record.starts_at, `${field}.starts_at`)
+  const expiresAt = requireFinite(record.expires_at, `${field}.expires_at`)
+  if (expiresAt <= startsAt) throw new WireError(`${field}.expires_at`, 'must be after starts_at')
+  return {
+    id: requireString(record.id, `${field}.id`),
+    level: level as BroadcastLevel,
+    message,
+    starts_at: startsAt,
+    expires_at: expiresAt,
+    updated_at: requireFinite(record.updated_at, `${field}.updated_at`),
+  }
 }
 
 function requireBusinessDate(value: unknown, field: string): string {
@@ -596,6 +647,7 @@ export function parseV1Bootstrap(raw: unknown): V1Bootstrap {
       'bootstrap.authoritative_personal_state',
     ),
     global_snapshot: snapshot,
+    broadcast: parseV1Broadcast(record.broadcast, 'bootstrap.broadcast'),
   }
 }
 
@@ -748,6 +800,7 @@ export function parseV1SnapshotResponse(raw: unknown): V1SnapshotResponse {
       : requireCount(record.archive_version, 'snapshotResponse.archive_version'),
     active_case: parseCase(record.active_case, 'snapshotResponse.active_case'),
     global_snapshot: parseV1Snapshot(record.global_snapshot, 'snapshotResponse.global_snapshot'),
+    broadcast: parseV1Broadcast(record.broadcast, 'snapshotResponse.broadcast'),
   }
 }
 

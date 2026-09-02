@@ -90,6 +90,14 @@ import { SoundIcon } from './SoundIcon.tsx'
 import type { LiangxiangViewState } from './store.ts'
 import { color, font } from './theme.ts'
 import type { ThrottledProgress } from './use-throttle-fill.ts'
+import {
+  RELEASE_NOTES_EYEBROW,
+  RELEASE_NOTES_ITEMS,
+  RELEASE_NOTES_QQ,
+  RELEASE_NOTES_QQ_INVITE,
+  RELEASE_NOTES_THANKS,
+  RELEASE_NOTES_TITLE,
+} from './release-notes.ts'
 
 export interface PanelProps {
   state: LiangxiangViewState
@@ -107,6 +115,9 @@ export interface PanelProps {
   onChooseOnline: () => void
   /** First-run: switch this Host to the in-process local loop. */
   onChooseLocal: () => void
+  /** Version-scoped update notes; first installs see this after welcome. */
+  releaseNotesVisible: boolean
+  onReleaseNotesClose: () => void
   avatarPulse: boolean
   /** Actual incense gained in the latest live update; 0 means no feedback. */
   condensedIncense: number
@@ -797,7 +808,8 @@ function SocialStatHint(props: {
 export function Panel(props: PanelProps): ReactElement {
   const {
     state, reducedMotion, throttle, soundLevel, onCycleSound, versionInfoOpen, onVersionInfoClose,
-    welcomeVisible, onChooseOnline, onChooseLocal, avatarPulse, condensedIncense, voteFeedback,
+    welcomeVisible, onChooseOnline, onChooseLocal, releaseNotesVisible, onReleaseNotesClose,
+    avatarPulse, condensedIncense, voteFeedback,
     onVote,
     onVoteClick = () => undefined,
     onVotePointerDown = () => undefined,
@@ -845,6 +857,9 @@ export function Panel(props: PanelProps): ReactElement {
       : ''
   const absurdNotice = state.accountingNotice === 'claim_capped_absurd'
   const epithetLine = localEpithet === null ? '' : formatLocalEpithetLine(localEpithet.dedication, localEpithet.stance)
+  const broadcastLine = state.broadcast === null
+    ? ''
+    : `${state.broadcast.level === 'emergency' ? '梁相急报' : '梁相广播'}：${state.broadcast.message}`
   const statusLine = offline
     ? OFFLINE_REASON
     : communityUnavailable
@@ -855,13 +870,17 @@ export function Panel(props: PanelProps): ReactElement {
         ? ABSURD_CLAIM_NOTICE
         : voteFeedback !== ''
           ? voteFeedback
-          : epithetLine
+          : broadcastLine !== ''
+            ? broadcastLine
+            : epithetLine
   const showingEpithet = statusLine === epithetLine && epithetLine !== '' && localEpithet !== null
+  const showingBroadcast = statusLine === broadcastLine && broadcastLine !== ''
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
       event.stopPropagation()
-      if (versionInfoOpen) onVersionInfoClose()
+      if (releaseNotesVisible) onReleaseNotesClose()
+      else if (versionInfoOpen) onVersionInfoClose()
       else if (modeConfirmOpen) onModeCancel()
       else if (reconcilePending) onReconcileCancel()
       else if (utilityOpen) onUtilityClose()
@@ -1019,6 +1038,103 @@ export function Panel(props: PanelProps): ReactElement {
             >
               {WELCOME_LOCAL_LABEL}
             </button>
+          </div>
+        </div>
+      )}
+
+      {!welcomeVisible && releaseNotesVisible && (
+        <div
+          data-liangxiang-release-notes-backdrop=""
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 6,
+            display: 'flex',
+            alignItems: 'stretch',
+            justifyContent: 'center',
+            padding: '12px',
+            borderRadius: '18px',
+            background: 'rgba(10, 8, 7, 0.32)',
+            backdropFilter: 'blur(4px)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={RELEASE_NOTES_TITLE}
+            tabIndex={-1}
+            autoFocus
+            data-liangxiang-release-notes=""
+            onKeyDown={(event) => {
+              if (event.key !== 'Tab') return
+              event.preventDefault()
+              event.currentTarget.querySelector<HTMLButtonElement>('[data-liangxiang-release-notes-close]')?.focus()
+            }}
+            style={{
+              width: '100%',
+              minHeight: 0,
+              overflowY: 'auto',
+              padding: '15px 16px 14px',
+              border: `1px solid color-mix(in srgb, ${color.ritualGold} 36%, ${color.border})`,
+              borderRadius: '14px',
+              background: `linear-gradient(180deg, color-mix(in srgb, ${color.ritualGold} 10%, ${color.bgLayer}), ${color.bgLayer})`,
+              boxShadow: '0 18px 42px rgba(0, 0, 0, 0.28)',
+              boxSizing: 'border-box',
+              outline: 'none',
+            }}
+          >
+            <span style={{ display: 'block', color: color.ritualEmberText, fontSize: '10px', fontWeight: 750, letterSpacing: '1.1px', textAlign: 'center' }}>
+              {RELEASE_NOTES_EYEBROW}
+            </span>
+            <strong style={{ display: 'block', marginTop: '4px', color: color.textPrimary, fontSize: '17px', letterSpacing: '0.5px', textAlign: 'center' }}>
+              {RELEASE_NOTES_TITLE}
+            </strong>
+            <ul
+              data-liangxiang-release-notes-items=""
+              style={{ margin: '12px 0 0', paddingLeft: '19px', color: color.textSecondary, fontSize: '11px', lineHeight: 1.52 }}
+            >
+              {RELEASE_NOTES_ITEMS.map((item) => <li key={item} style={{ marginTop: '5px' }}>{item}</li>)}
+            </ul>
+            <div
+              data-liangxiang-release-notes-qq=""
+              style={{
+                marginTop: '12px',
+                padding: '9px 10px',
+                border: `1px solid color-mix(in srgb, ${color.ritualGold} 30%, ${color.border})`,
+                borderRadius: '10px',
+                background: `color-mix(in srgb, ${color.ritualGold} 8%, transparent)`,
+                textAlign: 'center',
+              }}
+            >
+              <strong style={{ display: 'block', color: color.ritualEmberText, fontSize: '13px' }}>{RELEASE_NOTES_QQ}</strong>
+              <span style={{ display: 'block', marginTop: '3px', color: color.textSecondary, fontSize: '10px', lineHeight: 1.45 }}>{RELEASE_NOTES_QQ_INVITE}</span>
+            </div>
+            <p
+              data-liangxiang-release-notes-thanks=""
+              style={{ margin: '11px 0 0', color: color.textTertiary, fontSize: '10px', lineHeight: 1.5, textAlign: 'center' }}
+            >
+              {RELEASE_NOTES_THANKS}
+            </p>
+            <div style={{ marginTop: '12px', textAlign: 'center' }}>
+              <button
+                type="button"
+                data-liangxiang-release-notes-close=""
+                onClick={onReleaseNotesClose}
+                style={{
+                  minWidth: '92px',
+                  padding: '7px 14px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: color.buttonPrimaryFill,
+                  color: color.buttonPrimaryText,
+                  font: `600 11px/16px ${font.family}`,
+                  cursor: 'pointer',
+                }}
+              >
+                {WELCOME_DISMISS}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1395,8 +1511,9 @@ export function Panel(props: PanelProps): ReactElement {
         role={showingEpithet ? 'button' : 'status'}
         data-liangxiang-vote-feedback=""
         data-liangxiang-epithet={showingEpithet ? '' : undefined}
+        data-liangxiang-broadcast={showingBroadcast ? state.broadcast?.level : undefined}
         data-open={showingEpithet && pinnedHint === 'epithet' ? '' : undefined}
-        title={showingEpithet ? LOCAL_EPITHET_HINT : undefined}
+        title={showingEpithet ? LOCAL_EPITHET_HINT : showingBroadcast ? broadcastLine : undefined}
         tabIndex={showingEpithet ? 0 : undefined}
         onClick={showingEpithet ? () => onToggleHint('epithet') : undefined}
         onKeyDown={showingEpithet ? (event) => {
@@ -1414,12 +1531,14 @@ export function Panel(props: PanelProps): ReactElement {
           whiteSpace: 'nowrap',
           textOverflow: 'ellipsis',
           fontSize: '12px',
-          fontWeight: voteFeedback !== '' ? 700 : 600,
+          fontWeight: voteFeedback !== '' || showingBroadcast ? 700 : 600,
           color: offline || absurdNotice || isEmptyIncenseFeedback(voteFeedback)
             ? color.warn
-            : voteFeedback !== ''
-              ? color.textPrimary
-              : color.textSecondary,
+            : showingBroadcast
+              ? (state.broadcast?.level === 'emergency' ? color.warn : color.ritualEmberText)
+              : voteFeedback !== ''
+                ? color.textPrimary
+                : color.textSecondary,
           textAlign: 'center',
         }}
       >

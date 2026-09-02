@@ -10,6 +10,7 @@ import { Panel } from '../src/client/Panel.tsx'
 import { createMockLiangxiangStore } from '../src/client/store.ts'
 import type { LiangxiangViewState } from '../src/client/store.ts'
 import { color } from '../src/client/theme.ts'
+import { RELEASE_NOTES_QQ, RELEASE_NOTES_THANKS, RELEASE_NOTES_TITLE } from '../src/client/release-notes.ts'
 import { LIANGZI_STATES, VOTE_COUNT_MAX, deriveLocalIncenseStats, liangQiFloatPeriodMs } from '../src/domain/index.ts'
 import {
   COMMUNITY_UNAVAILABLE_REASON,
@@ -69,6 +70,7 @@ function renderPanel(
     onInsufficientVote?: (voteType: 'up' | 'down') => void
     onVoteClick?: (voteType: 'up' | 'down') => void
     welcomeVisible?: boolean
+    releaseNotesVisible?: boolean
     condensedIncense?: number
     utilityOpen?: boolean
     modeConfirmOpen?: boolean
@@ -90,6 +92,8 @@ function renderPanel(
       welcomeVisible={extra.welcomeVisible ?? false}
       onChooseOnline={() => undefined}
       onChooseLocal={() => undefined}
+      releaseNotesVisible={extra.releaseNotesVisible ?? false}
+      onReleaseNotesClose={() => undefined}
       avatarPulse={false}
       condensedIncense={extra.condensedIncense ?? 0}
       voteFeedback={voteFeedback}
@@ -177,6 +181,60 @@ describe('four visual regions', () => {
     expect(textContent(welcome === undefined ? [] : [welcome])).not.toMatch(/秒后|倒计时/)
   })
 
+  it('sequences first-run guidance before the version-scoped update notes', () => {
+    const first = renderPanel(demoState(), '', { welcomeVisible: true, releaseNotesVisible: true })
+    expect(findByAttr(first, 'data-liangxiang-welcome')).toHaveLength(1)
+    expect(findByAttr(first, 'data-liangxiang-release-notes')).toHaveLength(0)
+
+    let closed = 0
+    const updated = renderDeep(
+      <Panel
+        state={demoState()}
+        reducedMotion={false}
+        soundLevel={0}
+        onCycleSound={() => undefined}
+        versionInfoOpen={false}
+        onVersionInfoClose={() => undefined}
+        welcomeVisible={false}
+        onChooseOnline={() => undefined}
+        onChooseLocal={() => undefined}
+        releaseNotesVisible
+        onReleaseNotesClose={() => { closed += 1 }}
+        avatarPulse={false}
+        condensedIncense={0}
+        voteFeedback=""
+        onVote={() => undefined}
+        onInsufficientVote={() => undefined}
+        onClose={() => undefined}
+        reconcilePending={false}
+        utilityOpen={false}
+        onUtilityToggle={() => undefined}
+        onUtilityClose={() => undefined}
+        onOpenHomepage={() => undefined}
+        modeConfirmOpen={false}
+        modeChanging={false}
+        onModeAsk={() => undefined}
+        onModeConfirm={() => undefined}
+        onModeCancel={() => undefined}
+        onShowVersion={() => undefined}
+        onReconcileAsk={() => undefined}
+        onReconcileConfirm={() => undefined}
+        onReconcileCancel={() => undefined}
+        onOpenLiangci={() => undefined}
+      />,
+    )
+    const notes = findByAttr(updated, 'data-liangxiang-release-notes')[0]
+    expect(notes?.props['aria-label']).toBe(RELEASE_NOTES_TITLE)
+    expect(notes?.props.autoFocus).toBe(true)
+    expect(textContent(notes === undefined ? [] : [notes])).toContain(RELEASE_NOTES_QQ)
+    expect(textContent(notes === undefined ? [] : [notes])).toContain(RELEASE_NOTES_THANKS)
+    const close = findByAttr(updated, 'data-liangxiang-release-notes-close')[0]
+    expect(close?.props.autoFocus).toBeUndefined()
+    const onClick = close?.props.onClick as (() => void) | undefined
+    onClick?.()
+    expect(closed).toBe(1)
+  })
+
   it('centers the case region and keeps the trust mode out of the visible copy', () => {
     const tree = renderPanel(demoState())
     const header = findByAttr(tree, 'data-liangxiang-region', 'case')[0]
@@ -230,17 +288,17 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(textContent(findByAttr(tree, 'data-liangxiang-liangzi-title'))).toBe('梁神')
   })
 
-  it('bobs the panel 梁子 with the logo: fill drives cadence, fill 0 is still', () => {
+  it('bobs the panel 梁子 with the logo: fill drives cadence from a slow idle', () => {
     const filling = renderPanel(demoState())
     const fillingFigure = findByAttr(filling, 'data-liangxiang-avatar-figure')[0]
     expect(demoState().personal.liangQiFill).toBeCloseTo(0.94, 10)
     expect(fillingFigure?.props['data-liangxiang-float-ms']).toBe(liangQiFloatPeriodMs(0.94))
     expect(styleOf(fillingFigure).animation).toContain('liangxiang-avatar-figure-float')
 
-    const still = renderPanel(createMockLiangxiangStore({ effectiveTokensToday: 50_000, usedIncenseToday: 0 }).getSnapshot())
-    const stillFigure = findByAttr(still, 'data-liangxiang-avatar-figure')[0]
-    expect(stillFigure?.props['data-liangxiang-float-ms']).toBe(0)
-    expect(styleOf(stillFigure).animation).toBeUndefined()
+    const idle = renderPanel(createMockLiangxiangStore({ effectiveTokensToday: 50_000, usedIncenseToday: 0 }).getSnapshot())
+    const idleFigure = findByAttr(idle, 'data-liangxiang-avatar-figure')[0]
+    expect(idleFigure?.props['data-liangxiang-float-ms']).toBe(liangQiFloatPeriodMs(0))
+    expect(styleOf(idleFigure).animation).toContain('liangxiang-avatar-figure-float')
   })
 
   it('keeps 拉 as the complement in the tooltip instead of a second big number', () => {
@@ -465,6 +523,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         welcomeVisible={false}
         onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
+        releaseNotesVisible={false}
+        onReleaseNotesClose={() => undefined}
         avatarPulse={false}
         condensedIncense={0}
         voteFeedback=""
@@ -503,6 +563,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         welcomeVisible={false}
         onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
+        releaseNotesVisible={false}
+        onReleaseNotesClose={() => undefined}
         avatarPulse={false}
         condensedIncense={0}
         voteFeedback=""
@@ -709,6 +771,29 @@ describe('region 3: exactly two vote buttons', () => {
       height: '5px',
       borderRadius: '50%',
     })
+  })
+
+  it('temporarily replaces 梁小号 with a low-disruption broadcast in the same row', () => {
+    const state: LiangxiangViewState = {
+      ...demoState(),
+      broadcast: {
+        id: 'broadcast-qq',
+        level: 'important',
+        message: 'QQ群 453683905 已开，来群里一起出梁案',
+        startsAt: 1,
+        expiresAt: 2,
+        updatedAt: 1,
+      },
+    }
+    const localEpithet = { dedication: '勤香', stance: '死夯梁', label: '勤香 • 死夯梁', spent: 20 }
+    const broadcast = renderPanel(state, '', { localEpithet })
+    const row = findByAttr(broadcast, 'data-liangxiang-vote-feedback')[0]
+    expect(row?.props['data-liangxiang-broadcast']).toBe('important')
+    expect(row && textContent([row])).toBe('梁相广播：QQ群 453683905 已开，来群里一起出梁案')
+    expect(findByAttr(broadcast, 'data-liangxiang-region')).toHaveLength(4)
+
+    const vote = renderPanel(state, '已上香 · 夯（剩余 4 炷）', { localEpithet })
+    expect(textContent(findByAttr(vote, 'data-liangxiang-vote-feedback'))).toBe('已上香 · 夯（剩余 4 炷）')
   })
 
   it('charges a held vote button without adding a fifth region', () => {

@@ -151,7 +151,7 @@ describe('LiangxiangBadge entry', () => {
     expect(styleOf(findAll(tree, (node) => node.type === 'img')[0]).borderRadius).toBe(0)
   })
 
-  it('bobs 梁工 with the panel when the next stick is filling, and stops at fill 0', () => {
+  it('bobs 梁工 with the panel and keeps the slow idle bob at fill 0', () => {
     const filling = renderDeep(
       <BadgeButton
         open={false}
@@ -166,7 +166,7 @@ describe('LiangxiangBadge entry', () => {
     expect(fillingFigure?.props['data-liangxiang-float-ms']).toBe(liangQiFloatPeriodMs(0.94))
     expect(styleOf(fillingFigure).animation).toContain('liangxiang-avatar-figure-float')
 
-    const still = renderDeep(
+    const idle = renderDeep(
       <BadgeButton
         open={false}
         liangziState="liang_gong"
@@ -176,9 +176,9 @@ describe('LiangxiangBadge entry', () => {
         buttonRef={null}
       />,
     )
-    const stillFigure = findByAttr(still, 'data-liangxiang-avatar-figure')[0]
-    expect(stillFigure?.props['data-liangxiang-float-ms']).toBe(0)
-    expect(styleOf(stillFigure).animation).toBeUndefined()
+    const idleFigure = findByAttr(idle, 'data-liangxiang-avatar-figure')[0]
+    expect(idleFigure?.props['data-liangxiang-float-ms']).toBe(liangQiFloatPeriodMs(0))
+    expect(styleOf(idleFigure).animation).toContain('liangxiang-avatar-figure-float')
   })
 
   it('opts back into pointer events and advertises itself as grabbable', () => {

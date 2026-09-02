@@ -1,20 +1,30 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { RELEASE_NOTES_VERSION } from '../../src/client/release-notes.ts'
 
 export const badgeSelector = '[data-liangxiang-badge]'
 export const panelSelector = '[data-liangxiang-panel]'
 export const liangciSelector = '[data-liangci-dialog]'
 const browserAuthUrl = process.env.LIANGXIANG_BROWSER_AUTH_URL
 
-export async function bootInstalledLiangxiang(page: Page): Promise<void> {
+export async function bootInstalledLiangxiang(
+  page: Page,
+  options: { releaseNotesSeen?: boolean } = {},
+): Promise<void> {
   // The suite controls cosmetic browser preferences only. Authority is set by
   // the isolated Profile smoke before Playwright starts.
   // Apply reduced motion on the page explicitly: some DSH-created browser
   // contexts do not retain the project-level media option across token auth.
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.addInitScript(() => {
+  await page.addInitScript(({ releaseNotesSeen, releaseNotesVersion }) => {
     localStorage.setItem('liangxiang:welcome:v2', 'seen')
+    if (releaseNotesSeen) {
+      localStorage.setItem(`liangxiang:release-notes:${releaseNotesVersion}`, 'seen')
+    }
     localStorage.setItem('liangxiang:panel-open:v1', '0')
     localStorage.removeItem('liangxiang:badge-position:v2')
+  }, {
+    releaseNotesSeen: options.releaseNotesSeen ?? true,
+    releaseNotesVersion: RELEASE_NOTES_VERSION,
   })
   // Current DSH prints a process-token URL which exchanges for an HttpOnly
   // browser cookie. Older/no-auth hosts can still use the plain base URL.

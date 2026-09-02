@@ -112,6 +112,24 @@ liang tickets issue 1000 --claims 1 --ttl-hours 24
 liang tickets revoke ticket_<id>
 ```
 
+### 低打扰客户端广播
+
+紧急或重要短消息可在服务器本机直接写入 SQLite；不开放运营 HTTP 接口。客户端仍通过
+已有的约 1 秒公共 snapshot 通道收到消息，再由本机 Host SSE 转给浏览器。广播只在
+Region 3 的空闲反馈行暂代「梁小号」：断网、账务异常和上香反馈优先，过期或清除后自动
+恢复个人称号；它不会改写「今日梁案」，也不弹 toast 或新增面板区域。
+
+```bash
+set -a; source /etc/liangxiang.env; set +a
+cd /opt/liangxiang
+node lib/backend-cli.js broadcast status
+node lib/backend-cli.js broadcast set --level important --hours 168 "QQ群 453683905 已建立，来群里一起出梁案、晒梁位、催更新"
+node lib/backend-cli.js broadcast clear
+```
+
+`--level` 只接受 `important` / `emergency`，`--hours` 为 1–720 的整数，文案最多
+80 个 Unicode 字符。新消息覆盖旧消息；`status` 可查看已过期但尚未清除的记录。
+
 ## 6. 备份与重置
 
 本节手工命令只适用于新建自托管节点或已经明确授权的恢复演练。受管社区节点的日常
@@ -147,6 +165,7 @@ sudo journalctl -u liangxiang-backend -f
 - `vote 夯/拉 accepted … 梁位=… 香火=… 香客=…` — 有人投了
 - `vote … rejected …` / `deny 401 …` — 票被拒或鉴权失败；同原因一分钟内采样，避免攻击造成日志放大
 - `publish archived=… opened=… title=…` — 运营发布了新梁案
+- `[liangxiang-ops] broadcast set/cleared…` — 运营设置或清除了客户端广播
 
 不会刷：`/v1/health`、`/v1/snapshot`、`/v1/me/daily-state`、幂等重放和重复拒票。身份只打前 12 字符，不打私钥或入梁券 secret。
 

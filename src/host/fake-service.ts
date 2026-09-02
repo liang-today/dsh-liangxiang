@@ -563,6 +563,7 @@ export class FakeAuthoritativeLiangService {
         observedAt: usage.observedAt === 0 ? null : usage.observedAt,
         notice: null,
       },
+      broadcast: null,
     }
   }
 

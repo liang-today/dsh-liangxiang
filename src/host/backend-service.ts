@@ -21,6 +21,7 @@ import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
 import { DEFAULT_TOKEN_PER_INCENSE, type DailyLiangCase, type LiangHistoryArchive, type VoteResult } from '../domain/index.ts'
 import type {
   V1Bootstrap,
+  V1Broadcast,
   V1Case,
   V1PersonalState,
   V1Snapshot,
@@ -80,6 +81,7 @@ export class BackendLiangService implements LiangHostService {
   private activeCase: V1Case | null = null
   private personal: V1PersonalState | null = null
   private snapshot: V1Snapshot | null = null
+  private broadcast: V1Broadcast | null = null
   private businessDate = ''
   /** Latest scalar advertised by bootstrap/snapshot; arrays stay off SSE. */
   private archiveVersion = 0
@@ -348,6 +350,14 @@ export class BackendLiangService implements LiangHostService {
         observedAt: usage.observedAt === 0 ? null : usage.observedAt,
         notice: this.claimNotice,
       },
+      broadcast: this.broadcast === null ? null : {
+        id: this.broadcast.id,
+        level: this.broadcast.level,
+        message: this.broadcast.message,
+        startsAt: this.broadcast.starts_at,
+        expiresAt: this.broadcast.expires_at,
+        updatedAt: this.broadcast.updated_at,
+      },
     }
   }
 
@@ -397,6 +407,7 @@ export class BackendLiangService implements LiangHostService {
         observedAt: usage.observedAt === 0 ? null : usage.observedAt,
         notice: this.claimNotice,
       },
+      broadcast: null,
     }
   }
 
@@ -485,6 +496,7 @@ export class BackendLiangService implements LiangHostService {
       }
       if (!this.applySnapshotIfNewer(response.global_snapshot)) return
       this.activeCase = response.active_case
+      this.broadcast = response.broadcast
       const archiveMoved = response.archive_version > this.archiveVersion
       this.archiveVersion = response.archive_version
       this.bump()
@@ -517,6 +529,7 @@ export class BackendLiangService implements LiangHostService {
     this.activeCase = bootstrap.active_case
     this.personal = bootstrap.authoritative_personal_state
     this.snapshot = bootstrap.global_snapshot
+    this.broadcast = bootstrap.broadcast
     this.snapshotSequenceApplied = bootstrap.global_snapshot.sequence
     this.businessDate = bootstrap.business_date
     const archiveMoved = bootstrap.archive_version > this.archiveVersion

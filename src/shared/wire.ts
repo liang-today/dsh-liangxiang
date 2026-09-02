@@ -78,6 +78,15 @@ export interface WireAccounting {
   notice: string | null
 }
 
+export interface WireBroadcast {
+  id: string
+  level: 'important' | 'emergency'
+  message: string
+  startsAt: number
+  expiresAt: number
+  updatedAt: number
+}
+
 /** One full state frame (GET /state and every SSE frame). */
 export interface LiangxiangWireState {
   schemaVersion: typeof WIRE_SCHEMA_VERSION
@@ -106,6 +115,8 @@ export interface LiangxiangWireState {
   global: WireGlobalCounts
   personal: WirePersonalCounts
   accounting: WireAccounting
+  /** Short operator notice; the client paints it in the existing 梁小号 row. */
+  broadcast: WireBroadcast | null
 }
 
 /** POST /vote body — minimum intent only (no self-reported balances/identity). */
@@ -165,6 +176,25 @@ function requireFinite(value: unknown, field: string): number {
 function requireBoolean(value: unknown, field: string): boolean {
   if (typeof value !== 'boolean') throw new WireError(field, 'expected a boolean')
   return value
+}
+
+function parseBroadcast(raw: unknown): WireBroadcast | null {
+  if (raw === undefined || raw === null) return null
+  const record = asRecord(raw, 'state.broadcast')
+  if (record.level !== 'important' && record.level !== 'emergency') {
+    throw new WireError('state.broadcast.level', 'expected important/emergency')
+  }
+  const startsAt = requireFinite(record.startsAt, 'state.broadcast.startsAt')
+  const expiresAt = requireFinite(record.expiresAt, 'state.broadcast.expiresAt')
+  if (expiresAt <= startsAt) throw new WireError('state.broadcast.expiresAt', 'must be after startsAt')
+  return {
+    id: requireString(record.id, 'state.broadcast.id'),
+    level: record.level,
+    message: requireString(record.message, 'state.broadcast.message'),
+    startsAt,
+    expiresAt,
+    updatedAt: requireFinite(record.updatedAt, 'state.broadcast.updatedAt'),
+  }
 }
 
 const REJECTION_REASONS: readonly VoteRejectionReason[] = [
@@ -269,6 +299,7 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
         ? null
         : requireString(accountingRecord.notice, 'state.accounting.notice'),
     },
+    broadcast: parseBroadcast(record.broadcast),
   }
 }
 

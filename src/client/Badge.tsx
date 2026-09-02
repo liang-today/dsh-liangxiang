@@ -42,6 +42,7 @@ import { Panel } from './Panel.tsx'
 import { color, font } from './theme.ts'
 import { useThrottleFill } from './use-throttle-fill.ts'
 import { useTweenedCount } from './use-tweened-count.ts'
+import { hasSeenReleaseNotes, markReleaseNotesSeen } from './release-notes.ts'
 
 /** Preserve the exact earned-incense jump carried by one authoritative frame. */
 export function earnedIncenseGain(previous: number, current: number): number {
@@ -270,14 +271,15 @@ export function LiangxiangBadge(): ReactElement {
     return loadPanelOpen(typeof localStorage === 'undefined' ? null : localStorage)
   })
   const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
+  const [releaseNotesVisible, setReleaseNotesVisible] = useState(() => !hasSeenReleaseNotes())
   // Reopening the panel while offline reconnects; while live it forces a
   // host re-bootstrap so the expanded 今日梁案 is not up to ~1s stale.
   useEffect(() => {
     if (open) store.refresh({ force: true })
   }, [open, store])
   useEffect(() => {
-    if (welcomeVisible) setOpen(true)
-  }, [welcomeVisible])
+    if (welcomeVisible || releaseNotesVisible) setOpen(true)
+  }, [welcomeVisible, releaseNotesVisible])
   const reducedMotion = useReducedMotion()
   // Smoothed + rate-extrapolated ring fill for the 油门 feel (presentation only).
   const throttle = useThrottleFill(state.personal, reducedMotion)
@@ -304,9 +306,42 @@ export function LiangxiangBadge(): ReactElement {
   }, [store])
   const onChooseOnline = useCallback(() => selectWelcomeMode('online'), [selectWelcomeMode])
   const onChooseLocal = useCallback(() => selectWelcomeMode('local'), [selectWelcomeMode])
+  const onReleaseNotesClose = useCallback(() => {
+    markReleaseNotesSeen()
+    setReleaseNotesVisible(false)
+  }, [])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!open || welcomeVisible || !releaseNotesVisible) return
+    const dialog = anchorRef.current?.querySelector<HTMLElement>('[data-liangxiang-release-notes]') ?? null
+    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        onReleaseNotesClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+      event.preventDefault()
+      event.stopPropagation()
+      dialog?.querySelector<HTMLButtonElement>('[data-liangxiang-release-notes-close]')?.focus()
+    }
+    document.addEventListener('keydown', onKeyDown, true)
+    const frame = requestAnimationFrame(() => {
+      if (dialog === null) return
+      dialog.scrollTop = 0
+      dialog.focus({ preventScroll: true })
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', onKeyDown, true)
+      if (dialog?.contains(document.activeElement)) {
+        anchorRef.current?.querySelector<HTMLElement>('[data-liangxiang-panel]')?.focus()
+      }
+    }
+  }, [open, welcomeVisible, releaseNotesVisible, onReleaseNotesClose])
 
   // Free placement: drag the entry anywhere; the point is clamped into the
   // frame on load and on resize, and persisted as a cosmetic preference only.
@@ -756,7 +791,7 @@ export function LiangxiangBadge(): ReactElement {
             return
           }
           setOpen((value) => {
-            if (welcomeVisible && value) return value
+            if ((welcomeVisible || releaseNotesVisible) && value) return value
             const next = !value
             savePanelOpen(next, typeof localStorage === 'undefined' ? null : localStorage)
             return next
@@ -764,6 +799,10 @@ export function LiangxiangBadge(): ReactElement {
         }}
         onEscape={() => {
           if (welcomeVisible) return
+          if (releaseNotesVisible) {
+            onReleaseNotesClose()
+            return
+          }
           savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
           setOpen(false)
         }}
@@ -785,6 +824,8 @@ export function LiangxiangBadge(): ReactElement {
           welcomeVisible={welcomeVisible}
           onChooseOnline={onChooseOnline}
           onChooseLocal={onChooseLocal}
+          releaseNotesVisible={releaseNotesVisible}
+          onReleaseNotesClose={onReleaseNotesClose}
           avatarPulse={avatarPulse}
           condensedIncense={condensedIncense}
           voteFeedback={voteFeedback}
@@ -807,6 +848,10 @@ export function LiangxiangBadge(): ReactElement {
           onInsufficientVote={onInsufficientVote}
           onClose={() => {
             if (welcomeVisible) return
+            if (releaseNotesVisible) {
+              onReleaseNotesClose()
+              return
+            }
             savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
             setVersionInfoOpen(false)
             setOpen(false)

@@ -1,6 +1,6 @@
 # 062 — 并发与幂等
 
-> **历史实现记录，不是当前契约。** 当前 schema v9 / 本地 KV 为进入 service 的
+> **历史实现记录，不是当前契约。** 当前 schema v10（业务 receipt 自 v9 引入）/ 本地 KV 为进入 service 的
 > accepted/rejected 业务处置保留 durable receipt，正常 rollover 不清理。现行事实见
 > [`CURRENT_ARCHITECTURE.md`](CURRENT_ARCHITECTURE.md) 与源码测试。
 

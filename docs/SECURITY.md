@@ -26,7 +26,7 @@
 |---|---|
 | 原子扣香 | 单条带条件 `UPDATE`（CAS + 可负担性同语句），`changes()==0` 即余额不足 |
 | DB 兜底 | `CHECK (used_incense * token_per_incense <= claimed_effective_tokens)` |
-| 幂等 | schema v9 `liang_vote_request` 主键 `(installation_id, request_id)`；进入 service 的 accepted/rejected 业务处置都留 receipt，同 payload 重放既有处置 |
+| 幂等 | schema v10 中沿用 v9 `liang_vote_request` 主键 `(installation_id, request_id)`；进入 service 的 accepted/rejected 业务处置都留 receipt，同 payload 重放既有处置 |
 | 幂等冲突 | 同 id 异载荷 → 409 `idempotency_conflict` |
 | 一日一案 | partial unique index `WHERE status='active'` |
 | 快照一致性 | 比例与状态由同一行派生；跨进程帧若不自洽则拒收 |

@@ -19,6 +19,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { VoteRejectionReason, VoteType } from '../domain/index.ts'
+import type { BroadcastLevel } from '../shared/backend-v1.ts'
 import { migrate } from './schema.ts'
 
 export interface CaseRow {
@@ -175,6 +176,16 @@ export interface VoteRequestRow {
   created_at: number
 }
 
+export interface BroadcastRow {
+  singleton: 1
+  id: string
+  level: BroadcastLevel
+  message: string
+  starts_at: number
+  expires_at: number
+  updated_at: number
+}
+
 export interface InsertCaseInput {
   id: string
   businessDate: string
@@ -311,6 +322,12 @@ export interface BackendStore {
   takeQueuedTitle: (today: string, now: number) => string | undefined
   /** Change the active case title in place. Votes and `case_id` stay. */
   updateActiveCaseTitle: (caseId: string, title: string) => boolean
+  /** Stored operator notice, including one that has not started or has expired. */
+  broadcast: () => BroadcastRow | undefined
+  /** Notice visible at `now`; expiry returns 梁小号 automatically. */
+  activeBroadcast: (now: number) => BroadcastRow | undefined
+  setBroadcast: (row: Omit<BroadcastRow, 'singleton'>) => void
+  clearBroadcast: () => boolean
   close: () => void
 }
 
@@ -657,6 +674,22 @@ export function openBackendStore(databasePath: string): BackendStore {
        COALESCE(SUM(CASE WHEN status = 'revoked' THEN 1 ELSE 0 END), 0) AS revoked_tickets
      FROM admission_ticket`,
   )
+  const selectBroadcast = db.prepare('SELECT * FROM client_broadcast WHERE singleton = 1')
+  const selectActiveBroadcast = db.prepare(
+    'SELECT * FROM client_broadcast WHERE singleton = 1 AND starts_at <= ? AND expires_at > ?',
+  )
+  const upsertBroadcast = db.prepare(
+    `INSERT INTO client_broadcast (singleton, id, level, message, starts_at, expires_at, updated_at)
+     VALUES (1, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (singleton) DO UPDATE SET
+       id = excluded.id,
+       level = excluded.level,
+       message = excluded.message,
+       starts_at = excluded.starts_at,
+       expires_at = excluded.expires_at,
+       updated_at = excluded.updated_at`,
+  )
+  const deleteBroadcast = db.prepare('DELETE FROM client_broadcast WHERE singleton = 1')
 
   return {
     transaction<T>(body: () => T): T {
@@ -689,6 +722,19 @@ export function openBackendStore(databasePath: string): BackendStore {
       insertStats.run(input.id, input.businessDate, input.now)
     },
     updateActiveCaseTitle: (caseId, title) => changed(updateActiveCaseTitleStmt.run(title, caseId)) > 0,
+    broadcast: () => selectBroadcast.get() as BroadcastRow | undefined,
+    activeBroadcast: (now) => selectActiveBroadcast.get(now, now) as BroadcastRow | undefined,
+    setBroadcast(row) {
+      upsertBroadcast.run(
+        row.id,
+        row.level,
+        row.message,
+        row.starts_at,
+        row.expires_at,
+        row.updated_at,
+      )
+    },
+    clearBroadcast: () => changed(deleteBroadcast.run()) > 0,
     closeCasesBefore: (businessDate, now) => changed(closeOldCases.run(now, businessDate)),
     closeActiveCaseFor: (businessDate, now) => changed(closeActiveForDate.run(now, businessDate)),
     resetUsedIncenseForDate: (businessDate, now) => changed(resetUsedIncense.run(now, businessDate)),

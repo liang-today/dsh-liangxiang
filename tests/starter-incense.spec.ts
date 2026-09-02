@@ -36,7 +36,7 @@ afterEach(() => {
 })
 
 describe('starter incense grant', () => {
-  it('migrates the backend schema to v9 with durable vote request receipts', () => {
+  it('migrates the backend schema to v10 with durable vote receipts and broadcasts', () => {
     const db = new DatabaseSync(':memory:')
     migrate(db)
     const version = db.prepare('PRAGMA user_version').get() as { user_version: number }
@@ -66,6 +66,9 @@ describe('starter incense grant', () => {
       'rejection_reason',
       'rejection_message',
     ]))
+    expect(db.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'client_broadcast'",
+    ).get()).toEqual({ name: 'client_broadcast' })
     expect(() => db.prepare(`
       INSERT INTO liang_vote_request
         (installation_id, request_id, case_id, business_date, vote_type, requested_count,

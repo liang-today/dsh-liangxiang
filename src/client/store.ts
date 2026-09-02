@@ -20,7 +20,7 @@ import {
   type VoteType,
 } from '../domain/index.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
-import type { AuthorityMode, LiangxiangWireState } from '../shared/wire.ts'
+import type { AuthorityMode, LiangxiangWireState, WireBroadcast } from '../shared/wire.ts'
 
 export type ConnectionState = 'connecting' | 'live' | 'offline'
 
@@ -55,6 +55,8 @@ export interface LiangxiangViewState {
   personal: PersonalLiangQiState
   /** Locally observed earned incense, including usage waiting to sync online. */
   observedEarnedIncenseToday: number
+  /** Active operator notice; displayed only in the existing feedback row. */
+  broadcast: WireBroadcast | null
 }
 
 export interface LiangxiangStore {
@@ -74,6 +76,7 @@ export function wireToViewState(wire: LiangxiangWireState, connection: Connectio
     archiveVersion: wire.archiveVersion,
     accountingAvailable: wire.accounting.available,
     accountingNotice: wire.accounting.notice,
+    broadcast: wire.broadcast,
     authorityMode: wire.authorityMode,
     activeCase: wire.activeCase,
     snapshot: buildPublicSnapshot({
@@ -123,6 +126,7 @@ export function createOfflineViewState(connection: ConnectionState): LiangxiangV
     archiveVersion: 0,
     accountingAvailable: false,
     accountingNotice: null,
+    broadcast: null,
     // Connecting/offline is not a mode switch. Default online so a dead
     // backend cannot paint 今日梁案（本地） from this placeholder.
     authorityMode: 'DEV_STAGING_ONLY',
@@ -214,6 +218,7 @@ export function createMockLiangxiangStore(seed: MockStoreSeed = {}): MockLiangxi
     archiveVersion: 0,
     accountingAvailable: true,
     accountingNotice: null,
+    broadcast: null,
     authorityMode: 'LOCAL_FAKE_DEV',
     activeCase,
     snapshot: buildPublicSnapshot({ caseId: activeCase.id, aggregate, capturedAt: Date.now(), sequence }),

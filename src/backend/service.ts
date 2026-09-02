@@ -37,10 +37,15 @@ import {
 } from '../domain/index.ts'
 import {
   BACKEND_SCHEMA_VERSION,
+  BROADCAST_LEVELS,
+  BROADCAST_MESSAGE_MAX_LENGTH,
   CLAIM_SOURCE_HOST_OBSERVED,
+  isValidBroadcastMessage,
   LIANGZI_POLICY_VERSION,
   parseV1PublishCaseRequest,
   type V1Bootstrap,
+  type BroadcastLevel,
+  type V1Broadcast,
   type V1AdmissionClaimResponse,
   type V1AdmissionTicketsResponse,
   type V1Case,
@@ -112,6 +117,66 @@ export class LiangxiangBackendService {
   /** The authoritative business date (server clock + configured timezone). */
   businessDate(now = this.clock.now()): string {
     return this.dates.businessDateOf(now)
+  }
+
+  /** Current low-disruption client notice, or null outside its active window. */
+  activeBroadcast(now = this.clock.now()): V1Broadcast | null {
+    const row = this.store.activeBroadcast(now)
+    if (row === undefined) return null
+    return {
+      id: row.id,
+      level: row.level,
+      message: row.message,
+      starts_at: row.starts_at,
+      expires_at: row.expires_at,
+      updated_at: row.updated_at,
+    }
+  }
+
+  broadcastStatus(): V1Broadcast | null {
+    const row = this.store.broadcast()
+    if (row === undefined) return null
+    return {
+      id: row.id,
+      level: row.level,
+      message: row.message,
+      starts_at: row.starts_at,
+      expires_at: row.expires_at,
+      updated_at: row.updated_at,
+    }
+  }
+
+  setBroadcast(
+    message: string,
+    level: BroadcastLevel = 'important',
+    durationHours = 168,
+    now = this.clock.now(),
+  ): V1Broadcast {
+    const normalized = message.trim()
+    if (normalized.length === 0) throw new WireError('broadcast.message', 'expected a non-empty message')
+    if (!isValidBroadcastMessage(normalized)) {
+      throw new WireError('broadcast.message', `expected at most ${BROADCAST_MESSAGE_MAX_LENGTH} printable characters`)
+    }
+    if (!(BROADCAST_LEVELS as readonly string[]).includes(level)) {
+      throw new WireError('broadcast.level', `expected ${BROADCAST_LEVELS.join('/')}`)
+    }
+    if (!Number.isSafeInteger(durationHours) || durationHours < 1 || durationHours > 720) {
+      throw new WireError('broadcast.hours', 'expected an integer in [1,720]')
+    }
+    const row = {
+      id: `broadcast-${now.toString(36)}-${randomBytes(4).toString('hex')}`,
+      level,
+      message: normalized,
+      starts_at: now,
+      expires_at: now + durationHours * 60 * 60 * 1000,
+      updated_at: now,
+    }
+    this.store.setBroadcast(row)
+    return { ...row }
+  }
+
+  clearBroadcast(): boolean {
+    return this.store.clearBroadcast()
   }
 
   /**
@@ -522,6 +587,7 @@ export class LiangxiangBackendService {
       active_case: toV1Case(caseRow),
       authoritative_personal_state: this.personalState(installationId, caseRow, now),
       global_snapshot: this.publishedSnapshot(caseRow, now),
+      broadcast: this.activeBroadcast(now),
     }
   }
 
@@ -608,6 +674,7 @@ export class LiangxiangBackendService {
       archive_version: this.store.archiveVersion(),
       active_case: toV1Case(caseRow),
       global_snapshot: this.publishedSnapshot(caseRow, now),
+      broadcast: this.activeBroadcast(now),
     }
   }
 

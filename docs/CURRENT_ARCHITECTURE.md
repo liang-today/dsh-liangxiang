@@ -46,6 +46,9 @@ Host 用量差分、模型权重、跨会话高水位
 Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 ```
 
+重要短广播复用 Backend 的约 1 秒 snapshot → Host SSE 通道，只在空闲反馈行暂代
+「梁小号」并按时间失效；不新增浏览器直连、运营 HTTP 口或独立轮询。
+
 - `src/domain/`：纯规则；Token、香火、梁位、梁子、档案聚合。
 - `src/shared/`：Host、Client、Backend 的 wire/API 校验。
 - `src/host/`：DSH 用量观测、持久化、模式切换、同源路由与生命周期。
@@ -70,8 +73,8 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 
 | 组件 | 当前事实 |
 |---|---|
-| 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.0`（Unreleased）；公开稳定版仍为 `1.0.7` |
-| 本地 Backend 源码 | `SERVER_BUILD=1.1.0-u1`；schema v9 以独立 receipt 保存规范化 payload 与 accepted/rejected 业务处置 |
+| 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.1`（Unreleased）；公开稳定版仍为 `1.0.7` |
+| 本地 Backend 源码 | `SERVER_BUILD=1.1.1-u1`；schema v10（v9 receipt + v10 单行限时广播） |
 | count 修复基线 | commit `a307faf` 先保存 accepted 的 count；本开发线继续补齐拒绝回执与原子 v7/v8→v9 migration |
 | DSH 兼容基线 | `dsh-v0.1.2-alpha.4` / `4e84901e64`；已用 Node `22.23.1` / pnpm `11.7.0` 做真实临时 Profile 安装与浏览器验证 |
 | 官网 | 独立仓，审计时公开版本 `1.0.7` |
@@ -104,13 +107,13 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 
 ### 发布前阻塞
 
-- 远端 v7 尚无 `requested_count` 或 request receipt；本地 schema v9 修复未部署。
+- 远端 v7 尚无 `requested_count`、request receipt 或广播表；本地 schema v10 修复未部署。
   v7 accepted 行会回填为 count 未知的 accepted receipt：旧单票可按 count=1 安全重放，
   旧批量因无法恢复原始 count 而返回 409；历史 rejected 从未落库，无法追溯重建。v9
   对每个进入 service 的 accepted / stale / closed / insufficient 处置保存完整规范化
   payload；同 payload 重放既有处置，不同 case/type/count 必须冲突。HTTP 解析/鉴权失败、
   admission 429、网络和 500 不进入业务事务，也不占 request ID。部署前须再次验证
-  v7→v9 migration、备份、重启和真实请求回归。
+  v7→v10 migration、备份、重启和真实请求回归。
 - 为防不同 ID 的 rejected receipt 无界写盘，新 accepted 按实际扣香数消耗限流 work
   units，新 service rejection 消耗 1；已存 receipt 的 replay/conflict 绕过 live bucket。
 - 正常日切、关案和重启保留 receipt。只有带 `--yes` 的 `cases reset` / `archive clear`
