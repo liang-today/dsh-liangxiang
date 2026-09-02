@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Punch the light-gray JPEG plate out of 梁子 stickers and inline PNGs."""
+"""Punch the JPEG plate, encode lossless WebP, and inline the portraits."""
 
 from __future__ import annotations
 
@@ -114,20 +114,36 @@ def write_png(path: Path, rgba: bytes) -> None:
 
 
 def main() -> None:
-    uris: dict[str, str] = {}
+    generated: list[tuple[str, Path]] = []
     for file, state in STATES:
         jpg = ART / f'{file}.jpg'
         png = ART / f'{file}.png'
         rgba = punch(decode_jpg(jpg))
         write_png(png, rgba)
-        uris[state] = 'data:image/png;base64,' + base64.b64encode(png.read_bytes()).decode('ascii')
+        generated.append((state, png))
         print(f'{file}: {png.stat().st_size} bytes')
+
+    webps = [png.with_suffix('.webp') for _, png in generated]
+    try:
+        subprocess.check_call([
+            'node', str(ROOT / 'scripts' / 'encode-liangzi-webp.mjs'),
+            *(str(png) for _, png in generated),
+        ])
+        uris = {
+            state: 'data:image/webp;base64,' + base64.b64encode(png.with_suffix('.webp').read_bytes()).decode('ascii')
+            for state, png in generated
+        }
+    finally:
+        # The WebPs are build intermediates. Their bytes live canonically in
+        # liangzi-art.ts; keeping a second generated copy only bloats Git.
+        for webp in webps:
+            webp.unlink(missing_ok=True)
 
     order = ['waiting', 'liang_gong', 'liang_zong', 'liang_shen', 'liang_sheng', 'liang_zu']
     lines = [
         '/**',
-        ' * Compressed 梁子 portraits (256px PNG with punched-out sticker',
-        ' * background, inlined so the DSH client bundle stays a single file).',
+        ' * Compressed 梁子 portraits (256px lossless WebP with punched-out',
+        ' * sticker background, inlined so the DSH client bundle stays one file).',
         ' * Source stickers live beside this module as artwork/*.jpg;',
         ' * regenerate with scripts/punch-liangzi-art.py.',
         ' *',

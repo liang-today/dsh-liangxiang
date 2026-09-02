@@ -1,6 +1,6 @@
 /**
- * P0 usage-ledger folds: baseline on first sighting, HWM diffing, no double
- * counting under replay/replacement, daily accumulation.
+ * P0 usage-ledger folds: baseline on first sighting, HWM replay protection,
+ * the documented final-downward limitation, and daily accumulation.
  */
 import { describe, expect, it } from 'vitest'
 import { UsageProjection, type UsageProjectionSink } from '../src/host/usage-projection.ts'
@@ -60,7 +60,7 @@ describe('foldUsageObservation', () => {
     expect(replay.deltaOutput).toBe(0)
   })
 
-  it('a chunk->final replacement dip cannot double count on recovery', () => {
+  it('documents that a final downward replacement leaves prior credit outstanding', () => {
     // chunk reported 100k, final replaced it with 90k, next step adds 50k.
     const afterChunk = foldUsageObservation(undefined, { inputTokens: 0, outputTokens: 0 })
     const grew = foldUsageObservation(afterChunk.watermark, { inputTokens: 100_000, outputTokens: 0 })
@@ -68,8 +68,9 @@ describe('foldUsageObservation', () => {
     const dipped = foldUsageObservation(grew.watermark, { inputTokens: 90_000, outputTokens: 0 })
     expect(dipped.deltaInput).toBe(0)
     expect(dipped.watermark.inputHwm).toBe(100_000) // HWM never lowers
+    expect(grew.deltaInput + dipped.deltaInput).toBeGreaterThan(90_000) // open risk: final truth is lower
     const recovered = foldUsageObservation(dipped.watermark, { inputTokens: 140_000, outputTokens: 0 })
-    expect(recovered.deltaInput).toBe(40_000) // total credited: 140k, true value
+    expect(recovered.deltaInput).toBe(40_000) // later real growth eventually catches the HWM
   })
 })
 

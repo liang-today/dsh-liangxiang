@@ -1,4 +1,8 @@
-# 050 — 真实 DSH Token → Personal LiangQi
+> [!CAUTION]
+> **历史实施记录。** 当前 DSH 兼容证据只读 [`COMPATIBILITY.md`](COMPATIBILITY.md)，
+> 当前架构与信任边界只读 [`CURRENT_ARCHITECTURE.md`](CURRENT_ARCHITECTURE.md)。
+
+# 050 — 真实 DSH Token → Personal LiangQi（历史）
 
 依据 [`041`](041-dsh-token-mapping.md) 已验证 seam;Decision Gate A = A3（[`043`](043-decision-gate-a.md)）。本阶段只把真实用量接到**个人梁气**;中央梁子仍只由（本地 fake 服务发布的）全局快照决定。
 
@@ -29,7 +33,7 @@ DSH tokenUsage projection（每会话累计四桶，公开 seam）
 | replay / 投影重折 | 累计值幂等 → diff 0 | `replaying the same cumulative value` |
 | DSH restart | 水位持久化于 storage domain;重启后 catch-up 值 = 水位 | `restart: a rehydrated service…` |
 | reconnect / duplicate notification | 同上（累计值语义天然免疫） | 同上 |
-| chunk/final replacement | token-meter 已折叠;万一累计回落，HWM 不降、恢复只计超出部分（宁少勿多） | `replacement dip cannot double count` |
+| chunk/final replacement | token-meter 会替换同 attempt 样本且最终值允许下调；当前 max-HWM 无法撤销已入账信用，属于明确开放风险 | `COMPATIBILITY.md`「最终样本下调」与 `host-usage.spec.ts` |
 | pagination / compaction | 投影覆盖完整 durable log（041）;compaction 摘要自身 usage 不计（与 token-meter 口径一致，docs/004 R-4） | — |
 | new session（插件运行期间新建） | `firstLiveSeq === 0` → 从 0 全额计入 | `10k+20k+5k+15k = 1 incense` |
 | resume/fork（借入历史） | `firstLiveSeq > 0` 或 catch-up → 基线化，不追溯 | `catch-up values baseline` / `resumed/forked sessions` |

@@ -1,5 +1,9 @@
 # 061 — 投票状态机
 
+> **历史实现记录，不是当前契约。** 当前 schema v9 / 本地 KV 会持久化进入 service 的
+> accepted/rejected 业务处置，先查 receipt 再校验 case/余额，正常日切不释放 ID。
+> 现行事实见 [`CURRENT_ARCHITECTURE.md`](CURRENT_ARCHITECTURE.md) 与源码测试。
+
 实现：`fake-service.ts` `vote()`（同步事务） + `routes.ts`（边界校验） + `live-store.ts`（客户端意图）。
 
 ## 意图生命周期

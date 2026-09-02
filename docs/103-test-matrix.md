@@ -1,3 +1,7 @@
+> [!CAUTION]
+> **历史 v1.0.7 测试快照。** 不得把下列数量和人工结论当成当前门禁；当前命令与
+> 浏览器/Profile 基线见 `CURRENT_ARCHITECTURE.md`，实际覆盖以现行测试为准。
+
 # 103 — Test Matrix（RC）
 
 `pnpm test`：**45 个文件 / 532 项，全绿**（2026-09-01，v1.0.7）。逐项不变量见 [`031`](031-domain-invariants.md)、[`032`](032-p0-test-matrix.md)；本文件是正式版视角的总账：每条冻结性质对应到哪个文件。

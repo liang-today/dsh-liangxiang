@@ -85,6 +85,7 @@ function stateColor(state: LiangDayArchive['liangziState']): string {
 }
 
 const MODAL_CSS = `
+[data-liangci-dialog] { --liangxiang-ember-readable: color-mix(in srgb, var(--liangxiang-ember, #c95f38) 64%, var(--dsw-alias-label-primary, #1c2130)); }
 @keyframes liangci-enter {
   from { opacity: 0; transform: translateY(8px) scale(.988); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -123,6 +124,9 @@ const MODAL_CSS = `
 @media (prefers-reduced-motion: reduce) {
   [data-liangci-dialog] { animation: none !important; }
   [data-liangci-dialog] * { scroll-behavior: auto !important; transition: none !important; }
+}
+@media (prefers-color-scheme: dark) {
+  [data-liangci-dialog] { --liangxiang-ember-readable: #cf9a85; }
 }
 `
 
@@ -553,7 +557,7 @@ function DetailPanel({
     >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '9px', marginBottom: '7px' }}>
         <strong style={{ color: color.textPrimary, fontSize: '13px' }}>{heading}</strong>
-        <span style={{ color: color.ritualEmber, fontSize: '10px', fontWeight: 650 }}>{eyebrow}</span>
+        <span style={{ color: color.ritualEmberText, fontSize: '10px', fontWeight: 650 }}>{eyebrow}</span>
       </div>
       {body}
     </section>
@@ -670,10 +674,11 @@ export function LiangciModal({
       }
       const first = focusable[0] as HTMLElement
       const last = focusable.at(-1) as HTMLElement
-      if (event.shiftKey && document.activeElement === first) {
+      const active = document.activeElement
+      if (event.shiftKey && (active === first || active === dialog || !dialog.contains(active))) {
         event.preventDefault()
         last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && (active === last || active === dialog || !dialog.contains(active))) {
         event.preventDefault()
         first.focus()
       }

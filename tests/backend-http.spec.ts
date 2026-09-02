@@ -359,6 +359,58 @@ describe('concurrency and idempotency over HTTP', () => {
     expect(conflict.body).toMatchObject({ result: { reason: 'idempotency_conflict' } })
   })
 
+  it('replays a rejected count over the real HTTP server after incense is granted', async () => {
+    const h = await start({ voteRateLimitPerMinute: 2 })
+    const caseId = await activeCaseId(h)
+    const intent = {
+      case_id: caseId,
+      vote_type: 'up',
+      request_id: 'req-http-rejected-count',
+      count: 3,
+    }
+    const first = await h.post('/v1/votes', intent)
+    expect(first.status).toBe(409)
+    expect(first.body).toMatchObject({
+      result: {
+        status: 'rejected',
+        reason: 'insufficient_incense',
+        message: 'no remaining incense today',
+      },
+    })
+
+    await grant(h, 250_000)
+    // The rejection consumed one durable-receipt work unit. Consume the one
+    // remaining live unit with a different ID; stored replay/conflicts below
+    // must still bypass admission limiting.
+    const fresh = await h.post('/v1/votes', {
+      ...intent,
+      request_id: 'req-http-fresh-count',
+      count: 1,
+    })
+    expect(fresh.status).toBe(200)
+    expect(parseV1VoteResponse(fresh.body).result).toMatchObject({
+      status: 'accepted',
+      spent_incense: 1,
+    })
+
+    const replay = await h.post('/v1/votes', intent)
+    const countConflict = await h.post('/v1/votes', { ...intent, count: 2 })
+    const directionConflict = await h.post('/v1/votes', { ...intent, vote_type: 'down' })
+    expect(replay.status).toBe(409)
+    expect((replay.body as { result: unknown }).result).toEqual(
+      (first.body as { result: unknown }).result,
+    )
+    expect(countConflict.body).toMatchObject({ result: { reason: 'idempotency_conflict' } })
+    expect(directionConflict.body).toMatchObject({ result: { reason: 'idempotency_conflict' } })
+
+    const rateLimited = await h.post('/v1/votes', {
+      ...intent,
+      request_id: 'req-http-rate-limited',
+    })
+    expect(rateLimited.status).toBe(429)
+    expect(rateLimited.body).toMatchObject({ error: { code: 'vote_rate_limited' } })
+  })
+
   it('converges two tabs of one installation onto a single shared pool', async () => {
     const h = await start()
     await grant(h, 150_000)

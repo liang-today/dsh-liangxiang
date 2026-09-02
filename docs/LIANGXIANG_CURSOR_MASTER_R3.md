@@ -1,3 +1,9 @@
+> [!CAUTION]
+> **历史归档：旧 Cursor 一体化执行包，不再是当前事实源，也不得作为 Agent 默认上下文。**
+> 当前工作先读根目录 [`AGENTS.md`](../AGENTS.md)、
+> [`CURRENT_ARCHITECTURE.md`](CURRENT_ARCHITECTURE.md) 与 [`docs/README.md`](README.md)。
+> 本文只用于追溯旧 Phase/Prompt；任何冲突、过时实现或发布描述均由上述现行文件取代。
+
 # 梁相 V0.1 — Cursor 一体化开发手册（R3）
 
 > 将本文件放入梁相仓库：`docs/LIANGXIANG_CURSOR_MASTER_R3.md`。

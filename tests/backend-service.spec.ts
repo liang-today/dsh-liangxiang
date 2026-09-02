@@ -4,6 +4,9 @@
  * and versioning, and the personal/global separation.
  */
 import { afterEach, describe, expect, it } from 'vitest'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { CASE_BANK, nextCycledCaseTitle } from '../src/backend/case-bank.ts'
 import { deriveLiangziState } from '../src/domain/index.ts'
 import { parseV1Bootstrap, parseV1PublishCaseResponse, parseV1Snapshot, parseV1VoteResponse } from '../src/shared/backend-v1.ts'
@@ -239,6 +242,97 @@ describe('vote transaction', () => {
     expect(replay.authoritative_personal_state.used_incense).toBe(1)
   })
 
+  it('makes a rejected count intent durable across balance changes', () => {
+    const f = boot()
+    const first = vote(f, INSTALLATION, 'up', 'req-rejected-count', 3)
+    expect(first.result).toMatchObject({
+      status: 'rejected',
+      reason: 'insufficient_incense',
+      message: 'no remaining incense today',
+    })
+
+    f.grantIncense(INSTALLATION, 5)
+    const replay = vote(f, INSTALLATION, 'up', 'req-rejected-count', 3)
+    const countConflict = vote(f, INSTALLATION, 'up', 'req-rejected-count', 2)
+    const directionConflict = vote(f, INSTALLATION, 'down', 'req-rejected-count', 3)
+
+    expect(replay.result).toEqual(first.result)
+    expect(countConflict.result).toMatchObject({ status: 'rejected', reason: 'idempotency_conflict' })
+    expect(directionConflict.result).toMatchObject({ status: 'rejected', reason: 'idempotency_conflict' })
+    expect(replay.authoritative_personal_state).toMatchObject({ used_incense: 0, remaining_incense: 5 })
+    expect(f.store.voteRequestByRequestId(INSTALLATION, 'req-rejected-count')).toMatchObject({
+      requested_count: 3,
+      result_status: 'rejected',
+      rejection_reason: 'insufficient_incense',
+    })
+    expect(f.store.statsFor(f.service.ensureActiveCase().id)).toMatchObject({
+      up_votes: 0,
+      down_votes: 0,
+      unique_voters: 0,
+    })
+  })
+
+  it('checks a durable stale receipt before the current case', () => {
+    const f = boot()
+    const stale = f.service.vote(INSTALLATION, {
+      case_id: 'case-2026-08-15',
+      vote_type: 'up',
+      request_id: 'req-stale-durable',
+      count: 2,
+    })
+    expect(stale.result).toMatchObject({ status: 'rejected', reason: 'stale_case' })
+
+    f.grantIncense(INSTALLATION, 2)
+    const conflict = vote(f, INSTALLATION, 'up', 'req-stale-durable', 2)
+    expect(conflict.result).toMatchObject({ status: 'rejected', reason: 'idempotency_conflict' })
+    const replay = f.service.vote(INSTALLATION, {
+      case_id: 'case-2026-08-15',
+      vote_type: 'up',
+      request_id: 'req-stale-durable',
+      count: 2,
+    })
+    expect(replay.result).toEqual(stale.result)
+    expect(replay.authoritative_personal_state.used_incense).toBe(0)
+  })
+
+  it('replays a rejected count from a file-backed database after backend restart', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-receipt-restart-'))
+    const databasePath = join(dir, 'liangxiang.sqlite')
+    const env = { LIANGXIANG_BACKEND_DB: databasePath }
+    let first: BackendFixture | null = createBackendFixture(env)
+    let second: BackendFixture | null = null
+    try {
+      const caseId = first.service.ensureActiveCase().id
+      const intent = {
+        case_id: caseId,
+        vote_type: 'down' as const,
+        request_id: 'req-file-rejected',
+        count: 4,
+      }
+      const rejection = first.service.vote(INSTALLATION, intent).result
+      expect(rejection).toMatchObject({ status: 'rejected', reason: 'insufficient_incense' })
+      first.close()
+      first = null
+
+      second = createBackendFixture(env)
+      second.grantIncense(INSTALLATION, 5)
+      expect(second.service.vote(INSTALLATION, intent).result).toEqual(rejection)
+      expect(second.service.vote(INSTALLATION, { ...intent, count: 3 }).result).toMatchObject({
+        status: 'rejected',
+        reason: 'idempotency_conflict',
+      })
+      expect(second.store.statsFor(caseId)).toMatchObject({
+        up_votes: 0,
+        down_votes: 0,
+        unique_voters: 0,
+      })
+    } finally {
+      first?.close()
+      second?.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('scopes idempotency per installation', () => {
     const f = boot()
     f.grantIncense(INSTALLATION, 1)
@@ -455,6 +549,62 @@ describe('business date rollover', () => {
       request_id: 'req-rollover-01',
     })
     expect(stale.result).toMatchObject({ status: 'rejected', reason: 'case_not_active' })
+  })
+
+  it('replays an accepted request after rollover without leaking yesterday counters', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 2)
+    const yesterdayCaseId = f.service.ensureActiveCase().id
+    const intent = {
+      case_id: yesterdayCaseId,
+      vote_type: 'down' as const,
+      request_id: 'req-rollover-replay',
+      count: 2,
+    }
+    expect(f.service.vote(INSTALLATION, intent).result).toMatchObject({
+      status: 'accepted',
+      spent_incense: 2,
+    })
+
+    f.clock.advance(DAY_MS)
+    const replay = parseV1VoteResponse(f.service.vote(INSTALLATION, intent))
+    expect(replay.result).toMatchObject({
+      status: 'accepted',
+      replayed: true,
+      spent_incense: 0,
+      used_incense: 0,
+      remaining_incense: 0,
+    })
+    expect(replay.authoritative_personal_state.business_date).toBe('2026-08-17')
+    expect(replay.global_snapshot.business_date).toBe('2026-08-17')
+    expect(replay.global_snapshot.total_incense).toBe(0)
+  })
+
+  it('replays a rejected request after rollover with today`s envelope', () => {
+    const f = boot()
+    const yesterdayCaseId = f.service.ensureActiveCase().id
+    const intent = {
+      case_id: yesterdayCaseId,
+      vote_type: 'up' as const,
+      request_id: 'req-rollover-rejected',
+      count: 2,
+    }
+    const rejection = f.service.vote(INSTALLATION, intent).result
+    expect(rejection).toMatchObject({ status: 'rejected', reason: 'insufficient_incense' })
+
+    f.clock.advance(DAY_MS)
+    f.grantIncense(INSTALLATION, 3)
+    const replay = parseV1VoteResponse(f.service.vote(INSTALLATION, intent))
+    expect(replay.result).toEqual(rejection)
+    expect(replay.authoritative_personal_state).toMatchObject({
+      business_date: '2026-08-17',
+      used_incense: 0,
+      remaining_incense: 3,
+    })
+    expect(replay.global_snapshot).toMatchObject({
+      business_date: '2026-08-17',
+      total_incense: 0,
+    })
   })
 
   it('derives the business date from the server clock and configured timezone only', () => {

@@ -35,6 +35,7 @@ interface FakeTransportControls {
   requests: Array<{ path: string, body: string | undefined, headers: Record<string, string> | undefined }>
   failNextFetches(count: number): void
   streamsOpened: number
+  transportDisposals: number
 }
 
 function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportControls {
@@ -44,6 +45,7 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
   const controls: FakeTransportControls = {
     requests: [],
     streamsOpened: 0,
+    transportDisposals: 0,
     transport: {
       fetchJson(path, init) {
         controls.requests.push({ path, body: init?.body, headers: init?.headers })
@@ -92,6 +94,9 @@ function fakeTransport(service: FakeAuthoritativeLiangService): FakeTransportCon
         requestCounter += 1
         return `req-test-${String(requestCounter).padStart(4, '0')}`
       },
+      dispose() {
+        controls.transportDisposals += 1
+      },
     },
     pushFrame(state) {
       handlers?.onFrame(JSON.stringify(state))
@@ -111,6 +116,14 @@ async function settled(): Promise<void> {
 }
 
 describe('live store', () => {
+  it('disposes its transport exactly once', () => {
+    const controls = fakeTransport(makeService())
+    const store = createLiveLiangxiangStore(controls.transport)
+    store.dispose()
+    store.dispose()
+    expect(controls.transportDisposals).toBe(1)
+  })
+
   it('loads history once, then requests only an archive-version delta after rollover', async () => {
     let now = Date.UTC(2026, 7, 16, 4)
     const service = makeService({ now: () => now })

@@ -233,6 +233,19 @@ describe('day rollover', () => {
     expect(state.global.upVotes).toBe(0)
     expect(state.global.caseId).toBe(state.activeCase.id)
 
+    // A delayed replay keeps the old accepted disposition even though the
+    // active case and today's personal counters have changed.
+    expect(service.vote({
+      caseId: caseBefore,
+      voteType: 'up',
+      requestId: 'req-rollover-1',
+    }).result).toMatchObject({
+      status: 'accepted',
+      spentIncense: 0,
+      usedIncenseToday: 0,
+      remainingIncense: 0,
+    })
+
     // Stale case votes are rejected after rollover.
     const stale = service.vote({ caseId: caseBefore, voteType: 'up', requestId: 'req-rollover-2' })
     expect(stale.result.status).toBe('rejected')
@@ -383,10 +396,109 @@ describe('vote transaction', () => {
     if (conflict.result.status === 'rejected') expect(conflict.result.reason).toBe('idempotency_conflict')
   })
 
+  it('persists an insufficient rejection across later balance changes and conflicts on payload changes', () => {
+    const { service } = readyService()
+    const caseId = service.getWireState().activeCase.id
+    const intent = { caseId, voteType: 'up' as const, requestId: 'req-rejected-durable', count: 3 }
+
+    const first = service.vote(intent)
+    expect(first.result).toMatchObject({
+      status: 'rejected',
+      reason: 'insufficient_incense',
+      message: 'no remaining incense today',
+    })
+
+    service.observeUsage('s-rejected', buckets(250_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
+    expect(service.vote(intent).result).toEqual(first.result)
+    expect(service.vote({ ...intent, count: 2 }).result).toMatchObject({
+      status: 'rejected',
+      reason: 'idempotency_conflict',
+    })
+    expect(service.vote({ ...intent, voteType: 'down' }).result).toMatchObject({
+      status: 'rejected',
+      reason: 'idempotency_conflict',
+    })
+    expect(service.getWireState().personal.usedIncenseToday).toBe(0)
+  })
+
+  it('replays a rejected business result after a persistence restart', async () => {
+    const stored = memoryState()
+    const clock = fakeClock(NOON_SHANGHAI)
+    const first = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
+    await first.attachPersistence(memoryPort(stored))
+    const caseId = first.getWireState().activeCase.id
+    const intent = { caseId, voteType: 'down' as const, requestId: 'req-rejected-restart', count: 4 }
+    const rejection = first.vote(intent).result
+
+    const second = new FakeAuthoritativeLiangService(BASE_CONFIG, clock, () => undefined)
+    await second.attachPersistence(memoryPort(stored))
+    second.observeUsage('s-restart', buckets(250_000, 0, 0, 0), FRESH, 'deepseek-v4-pro')
+    expect(second.vote(intent).result).toEqual(rejection)
+    expect(second.getWireState().personal.usedIncenseToday).toBe(0)
+  })
+
+  it('replays the original count for a clamped dump and fails closed for legacy ambiguous counts', async () => {
+    const { service, caseId } = fundedService(2)
+    const dump = { caseId, voteType: 'up' as const, requestId: 'req-clamped-count', count: 5 }
+    expect(service.vote(dump).result).toMatchObject({ status: 'accepted', spentIncense: 2 })
+    expect(service.vote(dump).result).toMatchObject({ status: 'accepted', spentIncense: 0 })
+    expect(service.vote({ ...dump, count: 2 }).result).toMatchObject({
+      status: 'rejected',
+      reason: 'idempotency_conflict',
+    })
+
+    const stored = memoryState()
+    stored.dailyUsage.set('2026-08-16', {
+      inputTokens: 50_000,
+      outputTokens: 0,
+      weightCarry: 0,
+      observedAt: NOON_SHANGHAI,
+    })
+    stored.ledgers.set('2026-08-16', { usedIncense: 1 })
+    stored.votes.set('req-legacy-count', {
+      status: 'accepted',
+      caseId: 'local-2026-08-16-0',
+      voteType: 'up',
+      usedIncenseToday: 1,
+      remainingIncense: 0,
+      acceptedAt: NOON_SHANGHAI,
+      spentIncense: 1,
+    })
+    const legacy = new FakeAuthoritativeLiangService(BASE_CONFIG, fakeClock(NOON_SHANGHAI), () => undefined)
+    await legacy.attachPersistence(memoryPort(stored))
+    expect(legacy.vote({
+      caseId: 'local-2026-08-16-0',
+      voteType: 'up',
+      requestId: 'req-legacy-count',
+    }).result).toMatchObject({ status: 'accepted', spentIncense: 0 })
+    expect(legacy.vote({
+      caseId: 'local-2026-08-16-0',
+      voteType: 'up',
+      requestId: 'req-legacy-count',
+      count: 2,
+    }).result).toMatchObject({ status: 'rejected', reason: 'idempotency_conflict' })
+  })
+
   it('unique voters increment only on the first accepted vote', () => {
     const { service, caseId } = fundedService(3)
     service.vote({ caseId, voteType: 'up', requestId: 'req-unique-1' })
     service.vote({ caseId, voteType: 'down', requestId: 'req-unique-2' })
+    service.tick()
+    expect(service.getWireState().global.uniqueVoters).toBe(1)
+  })
+
+  it('does not treat a rejected receipt as the first accepted local voter', () => {
+    const { service, caseId } = fundedService(1)
+    expect(service.vote({
+      caseId: 'local-2026-08-15-0',
+      voteType: 'up',
+      requestId: 'req-rejected-not-voter',
+    }).result).toMatchObject({ status: 'rejected', reason: 'stale_case' })
+    expect(service.vote({
+      caseId,
+      voteType: 'down',
+      requestId: 'req-real-first-voter',
+    }).result.status).toBe('accepted')
     service.tick()
     expect(service.getWireState().global.uniqueVoters).toBe(1)
   })

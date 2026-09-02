@@ -1,3 +1,7 @@
+> [!CAUTION]
+> **历史 v1.0.7 快照。** 测试数量、图片格式、无障碍覆盖和风险结论均可能已变化；
+> 当前事实只读 `CURRENT_ARCHITECTURE.md`、`COMPATIBILITY.md` 和现行测试。
+
 # 102 — Known Limitations（更新至 v1.0.7）
 
 按严重度排列。**没有未修的 Blocker/High**；以下都是明确接受的限制，不违反冻结不变量。

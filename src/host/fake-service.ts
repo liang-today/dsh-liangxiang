@@ -44,6 +44,7 @@ import {
   type PersonalLiangQiState,
   type LiangWeekArchive,
   voteBudgetAvailable,
+  type VoteRejectionReason,
   type VoteResult,
 } from '../domain/index.ts'
 import type { LiangxiangWireState, WireGlobalCounts, WireVoteRequest } from '../shared/wire.ts'
@@ -77,17 +78,32 @@ export interface LiangServiceConfig {
   starterIncense?: number
 }
 
-/** Accepted-vote record kept for idempotency (and persisted). */
-export interface PersistedVoteRecord {
+interface PersistedVoteIntent {
   caseId: string
   voteType: WireVoteRequest['voteType']
+  /** Original normalized request (`count ?? 1`). Absent only on legacy accepts. */
+  requestedCount?: number
+}
+
+/** Accepted-vote receipt kept for idempotency and spend audit. */
+export interface PersistedAcceptedVoteRecord extends PersistedVoteIntent {
+  status: 'accepted'
   usedIncenseToday: number
   remainingIncense: number
   acceptedAt: number
   spentIncense?: number
-  /** Original requested count (`count ?? 1`); used for idempotency conflicts. */
-  requestedCount?: number
 }
+
+/** Rejected business result: later balance/case changes must not alter it. */
+export interface PersistedRejectedVoteRecord extends PersistedVoteIntent {
+  status: 'rejected'
+  requestedCount: number
+  reason: Exclude<VoteRejectionReason, 'idempotency_conflict' | 'invalid_intent'>
+  message: string
+  rejectedAt: number
+}
+
+export type PersistedVoteRecord = PersistedAcceptedVoteRecord | PersistedRejectedVoteRecord
 
 /** Everything the persistence adapter loads back at boot. */
 export interface LiangPersistedState {
@@ -314,23 +330,27 @@ export class FakeAuthoritativeLiangService {
     const respond = (result: VoteResult): { result: VoteResult, state: LiangxiangWireState } =>
       ({ result, state: this.getWireState() })
 
-    if (intent.caseId !== this.activeCase.id) {
-      return respond({
-        status: 'rejected',
-        requestId: intent.requestId,
-        reason: 'stale_case',
-        message: `case ${intent.caseId} is not the active case`,
-      })
-    }
     const existing = this.votes.get(intent.requestId)
     if (existing !== undefined) {
       const requested = intent.count ?? 1
-      const originalRequested = existing.requestedCount ?? existing.spentIncense ?? 1
+      // Legacy accepted rows did not preserve a dump's requested count. The
+      // actual spend may have been clamped, so only count=1 is safe to replay.
+      const sameCount = existing.requestedCount === undefined
+        ? requested === 1
+        : existing.requestedCount === requested
       if (
         existing.caseId === intent.caseId
         && existing.voteType === intent.voteType
-        && originalRequested === requested
+        && sameCount
       ) {
+        if (existing.status === 'rejected') {
+          return respond({
+            status: 'rejected',
+            requestId: intent.requestId,
+            reason: existing.reason,
+            message: existing.message,
+          })
+        }
         const current = this.derivePersonal()
         return respond({
           status: 'accepted',
@@ -348,16 +368,10 @@ export class FakeAuthoritativeLiangService {
         message: 'request id was already used with a different payload',
       })
     }
-    const personal = this.derivePersonal()
-    if (!canSpendIncense(personal)) {
-      return respond({
-        status: 'rejected',
-        requestId: intent.requestId,
-        reason: 'insufficient_incense',
-        message: 'no remaining incense today',
-      })
-    }
 
+    // New service-level results create durable local receipts. Admit them
+    // through the same bounded work-unit bucket before any case/balance check;
+    // stored replays/conflicts above remain available while the bucket is empty.
     const now = this.clock.now()
     const available = this.voteBucketUpdatedAt === 0
       ? VOTE_REFILL_PER_MINUTE
@@ -365,18 +379,40 @@ export class FakeAuthoritativeLiangService {
     if (available < 1) {
       throw new BackendClientError('too many vote requests; slow down', 429, 'vote_rate_limited')
     }
+    if (intent.caseId !== this.activeCase.id) {
+      return respond(this.persistRejectedVote(
+        intent,
+        'stale_case',
+        `case ${intent.caseId} is not the active case`,
+        available,
+        now,
+      ))
+    }
+    const personal = this.derivePersonal()
+    if (!canSpendIncense(personal)) {
+      return respond(this.persistRejectedVote(
+        intent,
+        'insufficient_incense',
+        'no remaining incense today',
+        available,
+        now,
+      ))
+    }
+
     const spent = clampVoteSpend(intent.count ?? 1, personal.remainingIncense, available)
     if (spent < 1) {
-      return respond({
-        status: 'rejected',
-        requestId: intent.requestId,
-        reason: 'insufficient_incense',
-        message: 'no remaining incense today',
-      })
+      return respond(this.persistRejectedVote(
+        intent,
+        'insufficient_incense',
+        'no remaining incense today',
+        available,
+        now,
+      ))
     }
 
     // Commit (no awaits between the check above and the writes below).
-    const firstAcceptedVote = ![...this.votes.values()].some(record => record.caseId === this.activeCase.id)
+    const firstAcceptedVote = ![...this.votes.values()].some(record =>
+      record.status === 'accepted' && record.caseId === this.activeCase.id)
     this.usedIncenseToday += spent
     this.aggregate = applyAcceptedVotes(this.aggregate, intent.voteType, spent, firstAcceptedVote)
     this.aggregates.set(this.activeCase.id, this.aggregate)
@@ -384,6 +420,7 @@ export class FakeAuthoritativeLiangService {
     this.voteBucketTokens = available - spent
     this.voteBucketUpdatedAt = now
     const record: PersistedVoteRecord = {
+      status: 'accepted',
       caseId: intent.caseId,
       voteType: intent.voteType,
       usedIncenseToday: this.usedIncenseToday,
@@ -407,6 +444,34 @@ export class FakeAuthoritativeLiangService {
       remainingIncense: record.remainingIncense,
       spentIncense: spent,
     })
+  }
+
+  private persistRejectedVote(
+    intent: WireVoteRequest,
+    reason: PersistedRejectedVoteRecord['reason'],
+    message: string,
+    available: number,
+    now: number,
+  ): VoteResult {
+    const record: PersistedRejectedVoteRecord = {
+      status: 'rejected',
+      caseId: intent.caseId,
+      voteType: intent.voteType,
+      requestedCount: intent.count ?? 1,
+      reason,
+      message,
+      rejectedAt: now,
+    }
+    this.voteBucketTokens = available - 1
+    this.voteBucketUpdatedAt = now
+    this.votes.set(intent.requestId, record)
+    this.persistence?.putVote(intent.requestId, record)
+    return {
+      status: 'rejected',
+      requestId: intent.requestId,
+      reason,
+      message,
+    }
   }
 
   /** Cadence hook: rollover check + publish when the raw aggregate moved. */
@@ -565,15 +630,9 @@ export class FakeAuthoritativeLiangService {
       this.ledgers.set(date, { usedIncense: earned })
       this.persistence?.putLedger(date, { usedIncense: earned })
     }
-    // Yesterday's idempotency records cannot collide with the new case;
-    // prune them (stale-case retries are rejected by case id anyway).
-    // Deleting the current entry during Map iteration is spec-safe.
-    for (const [requestId, record] of this.votes) {
-      if (record.caseId !== this.activeCase.id) {
-        this.votes.delete(requestId)
-        this.persistence?.deleteVote(requestId)
-      }
-    }
+    // Request ids are installation-global. Keep accepted and rejected
+    // receipts across business dates so a delayed retry cannot acquire a new
+    // meaning after rollover.
     this.publishSnapshot()
   }
 

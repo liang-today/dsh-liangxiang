@@ -13,7 +13,7 @@
 | 每个 `/v1` 载荷运行时校验 | `shared/backend-v1.ts` 的手写校验器（无新增依赖），Host 与 Backend 共用同一份 |
 | 每个 Host↔Client 帧运行时校验 | `shared/wire.ts` |
 | 拒绝客户端自报权威字段 | `parseV1VoteRequest` 对 `user_id`/`remaining_incense`/`liangzi_state` 等**报错**而非忽略 |
-| 投票只接受三个字段 | `case_id` / `vote_type` / `request_id` |
+| 投票只接受最小意图 | `case_id` / `vote_type` / `request_id` / 可选 `count`（1..500） |
 | `request_id` 格式 | `[A-Za-z0-9._-]{8,128}` |
 | 安装标识格式 | `[A-Za-z0-9._-]{8,64}`；正式客户端使用 `lk_` + Ed25519 公钥派生标识，拒绝空/过短/超长/路径穿越/注入串/非 latin1 |
 | 请求体上限 | 4KB → **413** + `connection: close`（不掐 socket，避免「已拒绝」与「网络故障」不可区分） |
@@ -26,19 +26,21 @@
 |---|---|
 | 原子扣香 | 单条带条件 `UPDATE`（CAS + 可负担性同语句），`changes()==0` 即余额不足 |
 | DB 兜底 | `CHECK (used_incense * token_per_incense <= claimed_effective_tokens)` |
-| 幂等 | `UNIQUE (installation_id, request_id)`，只记 accepted，重放返回原结果 |
+| 幂等 | schema v9 `liang_vote_request` 主键 `(installation_id, request_id)`；进入 service 的 accepted/rejected 业务处置都留 receipt，同 payload 重放既有处置 |
 | 幂等冲突 | 同 id 异载荷 → 409 `idempotency_conflict` |
 | 一日一案 | partial unique index `WHERE status='active'` |
 | 快照一致性 | 比例与状态由同一行派生；跨进程帧若不自洽则拒收 |
 | 事务边界 | `BEGIN IMMEDIATE` + 失败 `ROLLBACK`；`busy_timeout=5000`、WAL |
 
 实测：200 并发抢 1 炷 → 恰好 1 票；200 并发抢 50 炷 → 恰好 50 票；50 并发同 id → 只扣 1 炷。
+鉴权/结构校验失败、投票 admission 429、网络错误与 500 都未进入业务事务，不占用
+`request_id`；客户端只在结果不确定时用原 ID 重试，不能换新 ID 逃逸幂等。
 
 ## 资源与拒服务
 
 | 控制 | 实现 |
 |---|---|
-| 投票限流 | 每安装每分钟 `LIANGXIANG_VOTE_RATE_LIMIT`（默认 50，0 关闭）→ 429 |
+| 投票限流 | 每安装每分钟 `LIANGXIANG_VOTE_RATE_LIMIT` work units（默认 50，0 关闭）→ 429；新 accepted 按实际扣香 N 消耗，新 service rejection 因写 durable receipt 消耗 1，既有 replay/conflict 消耗 0 |
 | 限流表不无界增长 | 投票限流器最多保留 4,096 个活跃安装 key；满载先清过期窗口，仍满则拒绝新 key |
 | 首次登记总量有界 | 入梁券限次数、限有效期；`admission/claim` 使用不按攻击者指纹分桶的服务器全局每分钟上限 |
 | 入梁券库存可运维 | SQLite v5 保存 active/exhausted/revoked/expired 状态；`liang tickets` 查询、发行和作废 |

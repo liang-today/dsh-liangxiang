@@ -23,7 +23,7 @@ interface Manifest {
   files: string[]
   dsh: {
     bundle?: { patch?: string }
-    client?: { platform?: string }
+    client?: { inject?: string[], platform?: string }
   }
 }
 
@@ -47,19 +47,13 @@ describe('package.json dsh manifests', () => {
     expect(SERVER_BUILD).not.toBe(PLUGIN_VERSION)
   })
 
-  it('keeps every current-facing release document on the package version', () => {
+  it('keeps current authority documents on the source version without rewriting history', () => {
     const escaped = manifest.version.replaceAll('.', '\\.')
     const markers: Array<[string, RegExp]> = [
       ['CHANGELOG.md', new RegExp(`^## ${escaped}\\b`, 'm')],
-      ['SECURITY.md', new RegExp(`梁相 v${escaped}\\b`)],
-      ['docs/100-release-readiness.md', new RegExp(`^# .*v${escaped}\\b`, 'm')],
-      ['docs/102-known-limitations.md', new RegExp(`更新至 v${escaped}`)],
-      ['docs/103-test-matrix.md', new RegExp(`v${escaped}`)],
-      ['docs/142-hk-migration-report.md', new RegExp(`dsh-liangxiang@${escaped}`)],
+      ['SECURITY.md', new RegExp(`梁相当前源码版本 v${escaped}\\b`)],
       ['docs/COMPATIBILITY.md', new RegExp(`\\| 梁相版本 \\| ${escaped} \\|`)],
-      ['docs/BUGFIX.md', new RegExp('当前版本 `v' + escaped + '`')],
-      ['docs/INSTALL.md', new RegExp(`dsh-liangxiang-${escaped}\\.tgz`)],
-      ['docs/144-client-recovery-and-update.md', new RegExp(`dsh-liangxiang-${escaped}\\.tgz`)],
+      ['docs/CURRENT_ARCHITECTURE.md', new RegExp(`PLUGIN_VERSION` + String.raw`[^\n]*` + escaped)],
     ]
     for (const [path, marker] of markers) {
       expect(readRootFile(path), `${path} must identify release ${manifest.version}`).toMatch(marker)
@@ -97,7 +91,11 @@ describe('package.json dsh manifests', () => {
     expect(manifest.dsh.bundle?.patch).toBe('./cordis.patch.yml')
   })
 
-  it('declares dsh.client with platform web (client scan requirement)', () => {
+  it('declares the alpha.4 renderer/layout injections and web platform', () => {
+    expect(manifest.dsh.client?.inject).toEqual([
+      '@deepseek-ai/dsh-client-ui-renderer',
+      '@deepseek-ai/dsh-client-ui-layout',
+    ])
     expect(manifest.dsh.client?.platform).toBe('web')
   })
 

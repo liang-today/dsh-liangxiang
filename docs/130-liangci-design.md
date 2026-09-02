@@ -1,6 +1,7 @@
 # 130 — 梁祠（日梁 / 周梁 / 月梁）设计方案
 
-> 状态：**已于 v0.4.0 实现**。本文既是产品契约，也是实现验收基线。
+> 状态：**已实现的视觉/交互参考**。本文不是独立产品契约；若有冲突，以根目录
+> `AGENTS.md` 和当前实现/测试为准。
 >
 > 本方案延续 `AGENTS.md` 的二元投票、梁位、梁子五态、业务日、快照一致性与软信任边界。
 > 梁祠只读，不改变今日梁案、个人香火、投票资格或权威账本。
@@ -9,13 +10,13 @@
 
 - 领域归档与暂梁派生：`src/domain/archive.ts`
 - 严格历史 wire：`src/shared/history-v1.ts`
-- SQLite v4 归档表与幂等封存：`src/backend/schema.ts`、`src/backend/service.ts`
+- 当前 SQLite schema 的归档表与幂等封存：`src/backend/schema.ts`、`src/backend/service.ts`
 - 独立后端/Host 历史路由：`GET /v1/history`、`GET /liangxiang/api/history`
 - 浏览器冷数据缓存：`src/client/live-store.ts`
 - 月历浮层与三层图标：`src/client/LiangciModal.tsx`、`src/client/LiangciIcon.tsx`
 
 社区 staging 是否可用取决于后端是否已通过 `scripts/deploy.sh` 部署到包含
-SQLite v4 与 `/v1/history` 的版本；客户端在旧后端上会诚实显示 `档案未更新`，
+归档表与 `/v1/history` 的版本；客户端在旧后端上会诚实显示 `档案未更新`，
 而今日梁案与投票照常工作。
 
 ## 1. 产品目标

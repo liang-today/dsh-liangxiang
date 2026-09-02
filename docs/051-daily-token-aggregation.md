@@ -1,5 +1,9 @@
 # 051 — 当日 Token 聚合规则
 
+> **历史实现记录，不是当前契约。** 当前 DSH alpha.4 的最终样本可向下修正，max-HWM
+> 可能多计；本地 request receipt 也不再随正常 rollover 清理。现行事实只读
+> [`COMPATIBILITY.md`](COMPATIBILITY.md) 与 [`CURRENT_ARCHITECTURE.md`](CURRENT_ARCHITECTURE.md)。
+
 实现：`src/host/usage-ledger.ts`（纯函数） + `src/host/fake-service.ts`（账目所有者）。持久化：storage domain `liangxiang` v1（`watermarks` / `daily_usage` 表）。
 
 ## 规则汇总

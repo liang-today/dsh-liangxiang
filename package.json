@@ -1,6 +1,6 @@
 {
   "name": "dsh-liangxiang",
-  "version": "1.0.7",
+  "version": "1.1.0",
   "description": "用 DeepSeek Harness 凝聚香火，投下一炷夯或拉；众香汇成梁位，共同显出今日梁相。",
   "homepage": "https://liang.today/",
   "repository": {
@@ -36,6 +36,10 @@
       "patch": "./cordis.patch.yml"
     },
     "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ],
       "platform": "web"
     }
   },
@@ -46,7 +50,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src tests",
     "test": "vitest run",
-    "verify": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build",
+    "verify": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run check:client-budget",
     "prepack": "bash scripts/swap-readme.sh prepack",
     "postpack": "bash scripts/swap-readme.sh postpack",
     "pack:tarball": "pnpm pack",
@@ -58,7 +62,12 @@
     "backend:start": "node lib/backend.js",
     "backend:dev": "pnpm run build && node lib/backend.js",
     "backend:ops": "node lib/backend-cli.js",
+    "browser:install": "playwright install chromium",
+    "check:client-budget": "node scripts/check-client-budget.mjs",
+    "test:browser": "playwright test",
     "smoke:clean-profile": "bash scripts/smoke-clean-profile.sh",
+    "smoke:browser-clean-profile": "LIANGXIANG_SMOKE_BROWSER=1 bash scripts/smoke-clean-profile.sh",
+    "smoke:browser-profile": "bash scripts/smoke-browser-profile.sh",
     "smoke:online": "bash scripts/smoke-online.sh",
     "reset:staging": "bash scripts/reset-staging.sh",
     "reset:identity": "bash scripts/reset-identity.sh",
@@ -66,15 +75,19 @@
     "queue:case": "bash scripts/queue-case.sh"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.1",
-    "@deepseek-ai/dsh": "0.1.0-rc.7",
-    "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.7",
-    "@deepseek-ai/dsh-client-ui-layout": "0.1.0-rc.7",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.7",
+    "@axe-core/playwright": "4.13.0",
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh": "0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-alpha.4",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-alpha.4",
+    "@playwright/test": "1.62.1",
     "@types/node": "^22.0.0",
     "@types/react": "~18.3.1",
     "oxlint": "1.76.0",
-    "react": "^18.2.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "sharp": "0.35.4",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
     "unrun": "^0.3.1",

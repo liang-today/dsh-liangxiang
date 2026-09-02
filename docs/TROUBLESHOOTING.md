@@ -17,19 +17,19 @@ export DSH_HOME="$HOME/.dsh"
 npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang
 ```
 
-启动一次带 1.0.0 Host 的 WebUI 后，`$DSH_HOME/profiles/web/package.json` 的依赖应是 `latest`，不应再是 `file:…tgz`、`beta` 或旧精确号。清单已排除本包的 pnpm 24 小时冷静期，以后升级继续这条命令即可。
+启动一次带版本浮动能力（v1.0.0 起）的 Host 后，`$DSH_HOME/profiles/web/package.json` 的依赖应是 `latest`，不应再是 `file:…tgz`、`beta` 或旧精确号。清单已排除本包的 pnpm 24 小时冷静期，以后升级继续这条命令即可。
 
 若仍钉死：先启动一次让 Host 改写清单，退出后再 `add dsh-liangxiang`。只有旧 Host 从未改写过清单时，才需要 `remove` 再 `add dsh-liangxiang`。
 
-刚发版当天若市场或 pnpm 先拿到了上一个够龄号：启动一次（写入冷静期排除）后再执行同一条 `add`，不要 remove。也可以从 GitHub Release 下载 `./dsh-liangxiang-1.0.0.tgz` 装一次，启动后会自动切回 `latest`。
+刚发版当天若市场或 pnpm 先拿到了上一个够龄号：启动一次（写入冷静期排除）后再执行同一条 `add`，不要 remove。也可以从 GitHub Release 下载当前公开稳定版 tarball（例如 `./dsh-liangxiang-1.0.7.tgz`）装一次，启动后会自动切回 `latest`。
 
 ## 更新脚本提示没有 `dsh` 命令
 
 没有全局安装 DSH CLI。两种用法等价：
 
 ```bash
-dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
+dsh plugin --profile web add ./dsh-liangxiang-1.0.7.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.7.tgz
 ```
 
 `scripts/update-plugin.sh` 现在会在找不到 `dsh` 时自动改用 npx。也可以显式指定：`--dsh npx`。
@@ -39,7 +39,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
 典型日志是：
 
 ```text
-GET https://registry.npmjs.org/dsh-liangxiang-1.0.0.tgz: Not Found - 404
+GET https://registry.npmjs.org/dsh-liangxiang-1.0.7.tgz: Not Found - 404
 ```
 
 这不是包坏了，是 pnpm 把参数当成了 **npm 包名**。DSH 的 `plugin add` 只是把参数转给 pnpm，而且只有以 `./` 或 `../` 开头的路径才会按你当前目录重写。
@@ -48,7 +48,7 @@ GET https://registry.npmjs.org/dsh-liangxiang-1.0.0.tgz: Not Found - 404
 
 ```bash
 # 少了 ./
-npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-1.0.0.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-1.0.7.tgz
 ```
 
 能装上的写法：
@@ -56,7 +56,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web add dsh-liangxiang-1.0.0.tgz
 ```bash
 export DSH_HOME="$HOME/.dsh"
 cd "$HOME/Desktop/liangxiang"
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.0.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.0.7.tgz
 ```
 
 ## 本轮运行失败：`Cannot read properties of undefined (reading 'prepare')`
@@ -93,13 +93,18 @@ Host 通道不可用，或在线 bootstrap 超时。检查：
 
 ## 面板显示「记账不可用」
 
-DSH 的 `sessionProjections` / `sessions` 没注入（组合里缺插件，或版本变更）。梁气会停在 0 炷；投票按钮因此禁用。查 `docs/003` 的对应行与 `compat/dsh/usage-observer.ts` 的告警。
+DSH 的 `sessionProjections` / `sessions` 没注入（组合里缺插件，或版本变更）。香火环会停在 0 炷；投票按钮因此禁用。查 `COMPATIBILITY.md` 的当前触点表与 `compat/dsh/usage-observer.ts` 的告警。
 
 ## 香火一直是 0（在线模式）
 
-大概率是**业务日不一致**：Host 用自己的时区给本地观测分桶，后端只接受 `claim_business_date == 服务器业务日` 的声明，不一致就忽略并告警（宁可少记不错记）。把两侧的 `LIANGXIANG_BUSINESS_TZ` 对齐后重启。
+先看 Host 日志里的 `business_date`。在线模式以 backend bootstrap 返回的业务日为权威，
+Host 会把本机观测桶对齐到该日期；浏览器日期和 Host 本地时区都不能决定在线资格。
+若 claim 仍被报 `wrong_date`，说明 bootstrap/claim 跨过了服务端日切或后端配置异常，
+应检查服务端 `LIANGXIANG_BUSINESS_TZ`、时钟与重连日志，不能靠改浏览器日期修复。
 
-也可能是当天确实还没产生用量：`LIANGXIANG_TOKEN_PER_INCENSE=50000` 意味着要 5 万 Effective Token 才有第一炷；本地演示可以调小。
+也可能是当天确实还没产生足够用量：`LIANGXIANG_TOKEN_PER_INCENSE=50000` 表示
+5 万 Pro 当量才有第一炷。`deepseek-v4-pro` 权重为 1；Flash、未知和其他 route 权重
+为 0.5，因此通常需要约 10 万 raw Input+Output Token。本地演示可以显式调小策略值。
 
 ## 打梁报 502 / 「打梁失败」
 
@@ -152,5 +157,5 @@ Node 的 fetch（undici）会拒绝 WHATWG「bad port」名单上的端口（404
 位置存在浏览器 `localStorage`，读取时会按当前窗口尺寸夹回可视区。真丢了就清掉这一项：
 
 ```js
-localStorage.removeItem('liangxiang:badge-position:v1')
+localStorage.removeItem('liangxiang:badge-position:v2')
 ```

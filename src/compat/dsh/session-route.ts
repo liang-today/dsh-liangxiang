@@ -1,11 +1,11 @@
 /**
  * Read the in-force DSH route model id from a live session.
  *
- * Verified @ 47f94385:
- *   packages/core/session/src/index.ts `requestHeader()` L670-680,
- *   `requestContext()` L691-698;
+ * Verified against deepseek-harness 0.1.2-alpha.4 @ 4e84901e:
+ *   packages/core/session/src/index.ts `Session.requestHeader()` and
+ *   `Session.requestContext()`;
  *   EpochHeader.config.model / RequestContext.model are registration route
- *   ids, not display names (docs/001 Q11; types.ts:201-220).
+ *   ids, not display names (packages/core/session/src/types.ts).
  *
  * Latest-header is the model of the request that just ran when `tokenUsage`
  * moves. Stepwise log walk is more precise across a batched multi-step fold;

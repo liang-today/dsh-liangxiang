@@ -1,19 +1,20 @@
 /**
  * compat/dsh — the only layer allowed to import DSH APIs directly.
  *
- * `shell.overlay` registration adapter (docs/003 rows C1 + C2):
+ * `shell.overlay` registration adapter (see docs/COMPATIBILITY.md):
  *
  * - `ctx.slots.inject(key, cb)` waits for the target slot's declaration,
  *   re-runs on redeclaration, and disposes with the caller's fiber, so plugin
- *   unload removes the entry automatically
- *   (packages/client/runtime/src/client/slots.ts:143 @ 47f94385).
+ *   unload removes the entry automatically (SlotRegistry in
+ *   packages/client/ui-renderer/src/client/registry.ts @ 4e84901e).
  * - `shell.overlay` is the frame-wide floating list slot (root scope,
  *   click-through; entries opt back into pointer events), declared by
- *   ui-layout (packages/client/ui-layout/src/client/index.ts:83 @ 47f94385).
- *   The type-only import below merges its SlotMap declaration.
+ *   ui-layout (packages/client/ui-layout/src/client/index.ts:86 @ 4e84901e).
+ *   The type-only import below merges only that package's SlotMap row;
+ *   client-context.ts owns the renderer's `ctx.slots` augmentation.
  * - Registration form mirrors the official slot-catalog example for
  *   `shell.overlay` (packages/extensions/cordis-client-runner/src/client/
- *   slot-catalog.ts:1474 @ 47f94385).
+ *   slot-catalog.ts:1844 @ 4e84901e).
  */
 import type { ReactElement } from 'react'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'

@@ -114,6 +114,10 @@ liang tickets revoke ticket_<id>
 
 ## 6. 备份与重置
 
+本节手工命令只适用于新建自托管节点或已经明确授权的恢复演练。受管社区节点的日常
+更新、迁移、备份、重启和版本戳只能通过仓库 `scripts/deploy.sh` 执行；不得把下面的
+片段当成绕过该流程的部署步骤。
+
 正常 staging 发布必须使用 `scripts/deploy.sh`：脚本在重启/迁移前通过
 `node:sqlite backup()` 将包含 WAL 状态的一致性备份写入
 `/var/backups/liangxiang/`，通过 health 与 history smoke 后才更新 `VERSION`。

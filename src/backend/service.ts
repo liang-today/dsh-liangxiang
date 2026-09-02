@@ -71,6 +71,7 @@ import {
   type QueueRow,
   type SnapshotRow,
   type StatsRow,
+  type VoteRequestRow,
   type WeekArchiveRow,
 } from './store.ts'
 import { WireError } from '../shared/wire.ts'
@@ -916,7 +917,7 @@ export class LiangxiangBackendService {
     } catch (error) {
       if (error instanceof DuplicateRequestSignal) {
         // The concurrent winner already committed; report its outcome verbatim.
-        result = this.replayResult(installationId, intent)
+        result = this.replayResult(installationId, intent, activeCase)
       } else {
         throw error
       }
@@ -945,28 +946,52 @@ export class LiangxiangBackendService {
     now: number,
     maxSpend: number,
   ): V1VoteResult {
-    const target = this.store.caseById(intent.case_id)
-    if (target === undefined) {
-      return rejected(intent, 'stale_case', `case ${intent.case_id} does not exist`)
-    }
-    if (target.status !== 'active') {
-      return rejected(intent, 'case_not_active', `case ${intent.case_id} is closed`)
-    }
-    if (target.id !== activeCase.id || target.business_date !== activeCase.business_date) {
-      return rejected(intent, 'stale_case', `case ${intent.case_id} is not the active case`)
-    }
-
     const requestedCount = intent.count ?? 1
-    const existing = this.store.voteByRequestId(installationId, intent.request_id)
-    if (existing !== undefined) {
-      if (!this.sameVoteIntent(existing, intent, requestedCount)) {
+    const existingRequest = this.store.voteRequestByRequestId(installationId, intent.request_id)
+    if (existingRequest !== undefined) {
+      if (!this.sameVoteIntent(existingRequest, intent, requestedCount)) {
         return rejected(
           intent,
           'idempotency_conflict',
           'request id was already used with a different payload',
         )
       }
-      return this.replayAccepted(installationId, intent, existing, target)
+      return this.replayStoredRequest(installationId, intent, existingRequest, activeCase)
+    }
+
+    const target = this.store.caseById(intent.case_id)
+    if (target === undefined) {
+      return this.recordRejectedRequest(
+        installationId,
+        intent,
+        activeCase,
+        requestedCount,
+        now,
+        'stale_case',
+        `case ${intent.case_id} does not exist`,
+      )
+    }
+    if (target.status !== 'active') {
+      return this.recordRejectedRequest(
+        installationId,
+        intent,
+        activeCase,
+        requestedCount,
+        now,
+        'case_not_active',
+        `case ${intent.case_id} is closed`,
+      )
+    }
+    if (target.id !== activeCase.id || target.business_date !== activeCase.business_date) {
+      return this.recordRejectedRequest(
+        installationId,
+        intent,
+        activeCase,
+        requestedCount,
+        now,
+        'stale_case',
+        `case ${intent.case_id} is not the active case`,
+      )
     }
 
     this.ensureRow(installationId, target, now)
@@ -975,10 +1000,26 @@ export class LiangxiangBackendService {
     const remaining = this.remainingFor(installationId, target)
     const spent = clampVoteSpend(requestedCount, remaining, maxSpend)
     if (spent < 1) {
-      return rejected(intent, 'insufficient_incense', 'no remaining incense today')
+      return this.recordRejectedRequest(
+        installationId,
+        intent,
+        activeCase,
+        requestedCount,
+        now,
+        'insufficient_incense',
+        'no remaining incense today',
+      )
     }
     if (!this.store.spendIncense(installationId, target.business_date, spent, now)) {
-      return rejected(intent, 'insufficient_incense', 'no remaining incense today')
+      return this.recordRejectedRequest(
+        installationId,
+        intent,
+        activeCase,
+        requestedCount,
+        now,
+        'insufficient_incense',
+        'no remaining incense today',
+      )
     }
     const row = this.requireRow(installationId, target.business_date)
     const earned = Math.floor(row.claimed_effective_tokens / row.token_per_incense)
@@ -992,6 +1033,18 @@ export class LiangxiangBackendService {
         requested_count: requestedCount,
         used_incense_after: row.used_incense,
         remaining_incense_after: earned - row.used_incense,
+        created_at: now,
+      })
+      this.store.insertVoteRequest({
+        installation_id: installationId,
+        request_id: intent.request_id,
+        case_id: intent.case_id,
+        business_date: activeCase.business_date,
+        vote_type: intent.vote_type,
+        requested_count: requestedCount,
+        result_status: 'accepted',
+        rejection_reason: null,
+        rejection_message: null,
         created_at: now,
       })
     } catch (error) {
@@ -1013,15 +1066,38 @@ export class LiangxiangBackendService {
     }
   }
 
-  private replayResult(installationId: string, intent: V1VoteRequest): V1VoteResult {
-    const stored = this.store.voteByRequestId(installationId, intent.request_id)
+  private replayResult(
+    installationId: string,
+    intent: V1VoteRequest,
+    activeCase: CaseRow,
+  ): V1VoteResult {
+    const stored = this.store.voteRequestByRequestId(installationId, intent.request_id)
     if (stored === undefined) {
       return rejected(intent, 'invalid_intent', 'vote could not be recorded; retry with the same request id')
     }
     if (!this.sameVoteIntent(stored, intent, intent.count ?? 1)) {
       return rejected(intent, 'idempotency_conflict', 'request id was already used with a different payload')
     }
-    return this.replayAccepted(installationId, intent, stored, this.store.caseById(stored.case_id))
+    return this.replayStoredRequest(installationId, intent, stored, activeCase)
+  }
+
+  private replayStoredRequest(
+    installationId: string,
+    intent: V1VoteRequest,
+    stored: VoteRequestRow,
+    activeCase: CaseRow,
+  ): V1VoteResult {
+    if (stored.result_status === 'rejected') {
+      if (stored.rejection_reason === null || stored.rejection_message === null) {
+        return rejected(intent, 'invalid_intent', 'stored vote rejection is incomplete')
+      }
+      return rejected(intent, stored.rejection_reason, stored.rejection_message)
+    }
+    const vote = this.store.voteByRequestId(installationId, intent.request_id)
+    if (vote === undefined) {
+      return rejected(intent, 'invalid_intent', 'stored accepted vote is missing its ledger row')
+    }
+    return this.replayAccepted(installationId, intent, vote, activeCase)
   }
 
   private replayAccepted(
@@ -1033,9 +1109,13 @@ export class LiangxiangBackendService {
     const row = caseRow === undefined
       ? undefined
       : this.store.incenseFor(installationId, caseRow.business_date)
-    const used = row?.used_incense ?? stored.used_incense_after
+    // The accepted disposition is immutable, while these counters belong to
+    // the response's current business-date envelope. After rollover (or an
+    // operator case reset) there may be no current row yet; that means 0/0,
+    // never yesterday's stored counters.
+    const used = row?.used_incense ?? 0
     const remaining = row === undefined
-      ? stored.remaining_incense_after
+      ? 0
       : Math.floor(row.claimed_effective_tokens / row.token_per_incense) - row.used_incense
     return {
       status: 'accepted',
@@ -1049,7 +1129,7 @@ export class LiangxiangBackendService {
   }
 
   /**
-   * Compare the complete normalized vote intent persisted by schema v8.
+   * Compare the complete normalized vote intent persisted by schema v9.
    *
    * V7 rows have no recoverable requested count: the accepted spend may have
    * been clamped by the remaining balance or the token bucket. Fail closed for
@@ -1065,6 +1145,36 @@ export class LiangxiangBackendService {
       && (stored.requested_count === null
         ? requestedCount === 1
         : stored.requested_count === requestedCount)
+  }
+
+  private recordRejectedRequest(
+    installationId: string,
+    intent: V1VoteRequest,
+    activeCase: CaseRow,
+    requestedCount: number,
+    now: number,
+    reason: Extract<V1VoteResult, { status: 'rejected' }>['reason'],
+    message: string,
+  ): V1VoteResult {
+    const result = rejected(intent, reason, message)
+    try {
+      this.store.insertVoteRequest({
+        installation_id: installationId,
+        request_id: intent.request_id,
+        case_id: intent.case_id,
+        business_date: activeCase.business_date,
+        vote_type: intent.vote_type,
+        requested_count: requestedCount,
+        result_status: 'rejected',
+        rejection_reason: reason,
+        rejection_message: message,
+        created_at: now,
+      })
+    } catch (error) {
+      if (isUniqueConstraintError(error)) throw new DuplicateRequestSignal(intent.request_id)
+      throw error
+    }
+    return result
   }
 
   private ensureRow(installationId: string, caseRow: CaseRow, now: number): void {

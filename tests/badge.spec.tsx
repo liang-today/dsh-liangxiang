@@ -122,7 +122,7 @@ describe('LiangxiangBadge entry', () => {
       const portrait = findAll(tree, (node) => node.type === 'img')[0]
       expect(portrait?.props.width).toBe(BADGE_ICON_SIZE)
       expect(portrait?.props.width).toBe(42)
-      expect(portrait?.props.src).toEqual(expect.stringMatching(/^data:image\/png;base64,/))
+      expect(portrait?.props.src).toEqual(expect.stringMatching(/^data:image\/webp;base64,/))
     }
     const { button } = renderButton(false)
     expect(button.props['data-liangxiang-badge-state']).toBe('liang_sheng')

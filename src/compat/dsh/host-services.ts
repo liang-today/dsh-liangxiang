@@ -1,20 +1,19 @@
 /**
  * compat/dsh — narrow STRUCTURAL types for the host-side DSH services this
  * plugin touches, plus the single documented cast that resolves them off the
- * cordis context. We deliberately do not depend on the DSH host type
- * packages: their npm line (0.0.1-rc.x) is versioned independently of the
- * pinned source baseline, so structural seams with exact source citations
- * are the more honest contract (docs/044). Every member below is verified
- * against `../deepseek-harness` @ 47f94385:
+ * cordis context. We keep these faces structural to minimize direct package
+ * coupling and isolate Developer Preview churn. Every member below is
+ * verified against deepseek-harness 0.1.2-alpha.4 @ 4e84901e:
  *
  * - sessionProjections: packages/session/session-projection/src/index.ts
- *   (`onChanged` L230-238, `snapshot` L248-255, listener shape L81-86)
- * - sessions: packages/core/session/src/index.ts (`list()` L1050-1065,
- *   `requestHeader()` L670-680, `requestContext()` L691-698)
- * - webServer: packages/host/webserver/src/index.ts (`register` L94-101,
- *   `WebRoute` L28-34)
- * - storageDomain: packages/storage/storage-domain/src/index.ts (`open`),
- *   spec shape src/spec.ts, table handle src/domain.ts (L40-90)
+ *   (`ProjectionChangeListener`, `onChanged`, `snapshot`)
+ * - sessions: packages/core/session/src/index.ts (`Session.firstLiveSeq`,
+ *   `SessionStore.list`, `Session.requestHeader`, `Session.requestContext`)
+ * - webServer: packages/host/webserver/src/index.ts (`WebRoute`,
+ *   `WebServer.register`)
+ * - storageDomain: packages/storage/storage-domain/src/index.ts
+ *   (`DomainFacility.open`), src/spec.ts (`DomainSpec`), and src/domain.ts
+ *   (`KvTable`, `Domain`)
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { DshHostContext } from './host-context.ts'
@@ -22,7 +21,8 @@ import type { DshHostContext } from './host-context.ts'
 /**
  * Minimal live-session face. `firstLiveSeq` is the seed length (0 for a
  * genuinely fresh session; >0 for resume/fork whose prefix is borrowed
- * history) — packages/core/session/src/index.ts:450-472,539 @ 47f94385. The
+ * history) — packages/core/session/src/index.ts (`Session.firstLiveSeq`) @
+ * 4e84901e. The
  * ledger uses it to decide between crediting-from-zero (fresh) and
  * baselining (borrowed history must never earn retroactive incense).
  */
@@ -78,7 +78,7 @@ export interface DshWebServer {
   register(route: DshWebRoute): () => void
 }
 
-/** Zod-compatible minimum the storage runtime calls on stored records (spec.ts:29, index.ts:121). */
+/** Zod-compatible minimum `DomainFacility.open` calls on stored records. */
 export interface DshValueSchema {
   parse(raw: unknown): unknown
 }

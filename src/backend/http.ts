@@ -625,7 +625,10 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       const intent = parseV1VoteRequest(body)
       const limiterNow = Date.now()
       const lastVoteAt = store.lastAcceptedVoteAt(installationId)
-      const existing = store.voteByRequestId(installationId, intent.request_id)
+      // Every valid business result (accepted or rejected) has a durable
+      // receipt. Replays bypass the live rate bucket and return that receipt;
+      // a conflicting payload is rejected by the service.
+      const existing = store.voteRequestByRequestId(installationId, intent.request_id)
       let available = Number.POSITIVE_INFINITY
       if (existing === undefined) {
         const decision = voteLimiter.inspect(installationId, limiterNow, lastVoteAt)
@@ -646,6 +649,12 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       if (response.result.status === 'accepted' && !response.result.replayed) {
         const spent = response.result.spent_incense ?? 1
         if (spent > 0) voteLimiter.consume(installationId, spent, limiterNow, lastVoteAt)
+      } else if (existing === undefined && response.result.status === 'rejected') {
+        // A new service-level rejection now creates a durable SQLite receipt.
+        // Charge one admission unit so distinct rejected request IDs cannot
+        // grow that table without bound. Stored replays/conflicts bypass this
+        // branch and remain available even while the live bucket is empty.
+        voteLimiter.consume(installationId, 1, limiterNow, lastVoteAt)
       }
       const status = response.result.status === 'accepted' ? 200 : statusForRejection(response.result.reason)
       writeJson(res, status, response)

@@ -366,6 +366,7 @@ function placementStyle(placement: PanelPlacement): CSSProperties {
 
 /** Panel-scoped CSS that inline styles cannot express (focus ring, keyframes). */
 const PANEL_CSS = `
+[data-liangxiang-panel] { --liangxiang-ember-readable: color-mix(in srgb, var(--liangxiang-ember, #c95f38) 64%, var(--dsw-alias-label-primary, #1c2130)); }
 [data-liangxiang-panel] {
   animation: liangxiang-panel-enter ${duration.enterMs}ms cubic-bezier(.2,.7,.2,1) both;
 }
@@ -721,10 +722,14 @@ const PANEL_CSS = `
   100% { opacity: 0; transform: translate(-50%, -16px) scale(0.9); }
 }
 @media (prefers-reduced-motion: reduce) {
+  [data-liangxiang-panel],
   [data-liangxiang-panel] * {
     animation: none !important;
     transition: none !important;
   }
+}
+@media (prefers-color-scheme: dark) {
+  [data-liangxiang-panel] { --liangxiang-ember-readable: #cf9a85; }
 }
 `
 
@@ -1221,7 +1226,7 @@ export function Panel(props: PanelProps): ReactElement {
                 <span
                   data-liangxiang-liangzi-title=""
                   title={`${LIANGZI_STATE_LABELS[snapshot.liangziState]}：${liangziRatioRangeText(snapshot.liangziState)}`}
-                  style={{ ...positionFactStyle, color: color.ritualEmber }}
+                  style={{ ...positionFactStyle, color: color.ritualEmberText }}
                 >
                   {LIANGZI_STATE_LABELS[snapshot.liangziState]}
                 </span>

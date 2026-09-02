@@ -3,7 +3,9 @@
 > This file defines the permanent product and engineering rules for the Liangxiang repository.
 > It applies to Cursor, Codex, and any other coding agent working in this repo.
 > If old code, tests, docs, prompts, comments, or mock data conflict with this file, this file wins.
-> For the full execution plan, also read `docs/LIANGXIANG_CURSOR_MASTER_R3.md` when present.
+> Read `docs/CURRENT_ARCHITECTURE.md` next for the current repository/runtime
+> map and evidence routing. `docs/LIANGXIANG_CURSOR_MASTER_R3.md` is a historical
+> prompt archive and must not be loaded as a current execution plan.
 > Brand theme and release copy are centralized in `docs/140-liangxiang-brand.md`.
 
 ---
@@ -966,7 +968,7 @@ Animation may be playful but must not continuously flash or overwhelm the UI.
 For substantial work:
 
 1. read this file first
-2. read the relevant current docs/source/tests
+2. read `docs/CURRENT_ARCHITECTURE.md`, then only the relevant current docs/source/tests
 3. inspect the pinned DSH source before using DSH APIs
 4. make a concrete implementation plan
 5. implement the complete phase rather than leaving fake production claims

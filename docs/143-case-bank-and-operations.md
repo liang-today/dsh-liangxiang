@@ -58,7 +58,9 @@ liang cases retitle "为了多一炷香熬夜攒当量是夯还是拉"
 liang cases reset --yes
 ```
 
-这会删除今日票、快照和同日已结旧案，保留题目、身份、已声明 Token 和入梁券。
+这会删除今日票、快照、对应 request receipt 和同日已结旧案，保留题目、身份、已声明
+Token 和入梁券。被删 receipt 的 request ID 会被释放；这是显式破坏性重置，不是正常
+日切行为。
 
 库存默认只补不换：每个业务日 0 点开当日梁案时检查一次
 `ADMISSION_INVENTORY_TARGET`（默认 1000）。不足则按默认 TTL/次数补差额，
@@ -85,7 +87,9 @@ liang tickets replace --yes --count 1000 --claims 1 --ttl-hours 168
 liang archive clear --yes
 ```
 
-保留今日梁案、社区身份、入梁券、香火账和未发布排期。会删掉昨日及更早的旧案行，避免下次日切把旧票重新封进梁祠。已打开的 WebUI 需重启后才会看到空梁祠。没有 `--yes` 不会执行。
+保留今日梁案、社区身份、入梁券、香火账和未发布排期。会删掉昨日及更早的旧案、票据
+及其 request receipt，避免下次日切把旧票重新封进梁祠；相应旧 request ID 也会被
+明确释放。已打开的 WebUI 需重启后才会看到空梁祠。没有 `--yes` 不会执行。
 
 ## 配置修改
 

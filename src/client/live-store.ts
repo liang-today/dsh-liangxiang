@@ -45,6 +45,8 @@ export interface LiveStoreTransport {
   fetchJson(path: string, init?: { method?: string, body?: string, headers?: Record<string, string> }): Promise<unknown>
   openEvents(path: string, handlers: { onFrame(data: string): void, onError(): void }): { close(): void }
   randomRequestId(): string
+  /** Abort browser fetches owned by this transport. */
+  dispose?(): void
 }
 
 export class LiveTransportError extends Error {
@@ -55,9 +57,13 @@ export class LiveTransportError extends Error {
 }
 
 function createBrowserTransport(): LiveStoreTransport {
+  const controllers = new Set<AbortController>()
+  let disposed = false
   return {
     async fetchJson(path, init) {
+      if (disposed) throw new Error('梁相连接已关闭')
       const controller = new AbortController()
+      controllers.add(controller)
       const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
       try {
         const headers: Record<string, string> = { ...init?.headers }
@@ -73,6 +79,7 @@ function createBrowserTransport(): LiveStoreTransport {
         return (await response.json()) as unknown
       } finally {
         clearTimeout(timeout)
+        controllers.delete(controller)
       }
     },
     openEvents(path, handlers) {
@@ -82,6 +89,11 @@ function createBrowserTransport(): LiveStoreTransport {
       return { close: () => source.close() }
     },
     randomRequestId: () => crypto.randomUUID(),
+    dispose() {
+      disposed = true
+      for (const controller of controllers) controller.abort()
+      controllers.clear()
+    },
   }
 }
 
@@ -135,6 +147,21 @@ export function createLiveLiangxiangStore(
   let historyInFlight: Promise<void> | null = null
   let historyEpoch = 0
   const historyListeners = new Set<() => void>()
+  const retryWaits = new Set<{
+    timer: ReturnType<typeof setTimeout>
+    reject(error: Error): void
+  }>()
+
+  const waitForVoteRetry = (): Promise<void> => new Promise((resolve, reject) => {
+    const pending = {
+      timer: setTimeout(() => {
+        retryWaits.delete(pending)
+        resolve()
+      }, VOTE_RETRY_DELAY_MS),
+      reject,
+    }
+    retryWaits.add(pending)
+  })
 
   const setHistoryState = (next: LiangciHistoryState): void => {
     historyState = next
@@ -336,7 +363,9 @@ export function createLiveLiangxiangStore(
     } catch (error) {
       if (error instanceof LiveTransportError && error.status >= 400 && error.status < 500) throw error
       // One bounded retry with the SAME requestId — idempotency, not a new intent.
-      await new Promise((resolve) => setTimeout(resolve, VOTE_RETRY_DELAY_MS))
+      if (disposed) throw new Error('梁相连接已关闭')
+      await waitForVoteRetry()
+      if (disposed) throw new Error('梁相连接已关闭')
       raw = await attempt()
     }
     const response = parseWireVoteResponse(raw)
@@ -396,14 +425,21 @@ export function createLiveLiangxiangStore(
     },
     loadHistory,
     dispose: () => {
+      if (disposed) return
       disposed = true
       clearReconnect()
+      for (const pending of retryWaits) {
+        clearTimeout(pending.timer)
+        pending.reject(new Error('梁相连接已关闭'))
+      }
+      retryWaits.clear()
       if (stream !== null) {
         stream.close()
         stream = null
       }
       listeners.clear()
       historyListeners.clear()
+      transport.dispose?.()
     },
   }
 }

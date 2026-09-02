@@ -1,10 +1,11 @@
 /**
- * compat/dsh — liangxiang storage-domain adapter (docs/044 持久化).
+ * compat/dsh — liangxiang storage-domain adapter (docs/COMPATIBILITY.md).
  *
  * Domain `liangxiang` v1 over `ctx.storageDomain.open(spec)`. The spec's
  * `valueSchema` objects only need `.parse(raw)` at open time (verified:
- * packages/storage/storage-domain/src/spec.ts:29 + src/index.ts:121
- * @ 47f94385), so we pass hand-written validators instead of adding a zod
+ * packages/storage/storage-domain/src/spec.ts `DomainTableSpec` and
+ * src/index.ts `DomainFacility.open`, deepseek-harness 0.1.2-alpha.4 @
+ * 4e84901e), so we pass hand-written validators instead of adding a zod
  * dependency. A record failing validation rejects the whole open
  * (`invalid-record`), and the host falls back to memory-only mode loudly.
  *
@@ -24,6 +25,7 @@ import {
   isoWeekFor,
   LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
   monthFor,
+  VOTE_COUNT_MAX,
 } from '../../domain/index.ts'
 import type {
   LiangPersistedState,
@@ -53,6 +55,14 @@ function requireCountField(record: Record<string, unknown>, field: string): numb
   const value = record[field]
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
     throw new RecordShapeError(`field ${field} must be a non-negative safe integer`)
+  }
+  return value
+}
+
+function requireVoteCountField(record: Record<string, unknown>, field: string): number {
+  const value = requireCountField(record, field)
+  if (value < 1 || value > VOTE_COUNT_MAX) {
+    throw new RecordShapeError(`field ${field} must be an integer in [1,${VOTE_COUNT_MAX}]`)
   }
   return value
 }
@@ -109,14 +119,34 @@ const voteSchema: DshValueSchema = {
     const voteType = record.voteType
     if (typeof caseId !== 'string' || caseId.length === 0) throw new RecordShapeError('caseId must be a string')
     if (voteType !== 'up' && voteType !== 'down') throw new RecordShapeError('voteType must be up/down')
+    if (record.status === 'rejected') {
+      const requestedCount = requireVoteCountField(record, 'requestedCount')
+      const reason = record.reason
+      if (reason !== 'insufficient_incense' && reason !== 'case_not_active' && reason !== 'stale_case') {
+        throw new RecordShapeError('rejected vote reason is unsupported')
+      }
+      return {
+        status: 'rejected',
+        caseId,
+        voteType,
+        requestedCount,
+        reason,
+        message: requireStringField(record, 'message'),
+        rejectedAt: requireTimestampField(record, 'rejectedAt'),
+      }
+    }
+    if (record.status !== undefined && record.status !== 'accepted') {
+      throw new RecordShapeError('vote status must be accepted/rejected')
+    }
     return {
+      status: 'accepted',
       caseId,
       voteType,
       usedIncenseToday: requireCountField(record, 'usedIncenseToday'),
       remainingIncense: requireCountField(record, 'remainingIncense'),
       acceptedAt: requireCountField(record, 'acceptedAt'),
-      ...(record.spentIncense === undefined ? {} : { spentIncense: requireCountField(record, 'spentIncense') }),
-      ...(record.requestedCount === undefined ? {} : { requestedCount: requireCountField(record, 'requestedCount') }),
+      ...(record.spentIncense === undefined ? {} : { spentIncense: requireVoteCountField(record, 'spentIncense') }),
+      ...(record.requestedCount === undefined ? {} : { requestedCount: requireVoteCountField(record, 'requestedCount') }),
     }
   },
 }

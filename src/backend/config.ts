@@ -65,7 +65,7 @@ export interface BackendConfig {
   tokenPerIncense: number
   snapshotRefreshSeconds: number
   caseTitle: string
-  /** Per-installation vote rate limit (requests per minute); 0 disables it. */
+  /** Per-installation vote work units/minute (accepted=N, new rejected=1); 0 disables it. */
   voteRateLimitPerMinute: number
   /** Hard cap on installation keys retained by the in-memory vote limiter. */
   voteRateLimitMaxKeys: number

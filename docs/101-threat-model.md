@@ -1,3 +1,7 @@
+> [!CAUTION]
+> **历史威胁模型快照。** 当前服务已经经过后续公网软信任加固，本文部分部署描述过期；
+> 当前边界只读 `SECURITY.md`、`CURRENT_ARCHITECTURE.md` 与根目录 `AGENTS.md`。
+
 # 101 — Threat Model（v0.1 / AUTHORITY_MODE=DEV_STAGING_ONLY）
 
 前提：Decision Gate A = **A3**（[`075`](075-backend-decision.md)）。没有可验证身份，也没有可验证 Token 用量。本文把「能防住的」和「防不住的」分开写清，避免把 staging 当生产。

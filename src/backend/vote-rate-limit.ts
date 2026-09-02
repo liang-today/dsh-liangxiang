@@ -1,12 +1,15 @@
 import { VOTE_BUDGET_WINDOW_MS, voteBudgetAvailable } from '../domain/vote-budget.ts'
 
 /**
- * Hard-bounded in-memory limiter for vote incense, not raw HTTP requests.
+ * Hard-bounded in-memory limiter for vote-intent work units, not arbitrary
+ * raw HTTP traffic. A new accepted intent consumes its actual incense spend;
+ * a new service-level rejection consumes one unit because it creates a durable
+ * receipt. Stored replays/conflicts consume nothing.
  * Process-local: sharing one SQLite file across N processes multiplies the
  * budget. A community node must run a single backend process (docs/102).
  */
 export const VOTE_RATE_WINDOW_MS = VOTE_BUDGET_WINDOW_MS
-/** Per-installation incense allowed to refill each minute. */
+/** Per-installation vote-intent work units allowed to refill each minute. */
 export const DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE = 50
 export const DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS = 4_096
 
@@ -28,7 +31,7 @@ export class VoteRateLimiter {
   private readonly windows = new Map<string, Bucket>()
 
   constructor(
-    private readonly requestsPerMinute: number,
+    private readonly workUnitsPerMinute: number,
     private readonly maxActiveKeys: number,
   ) {
     if (!Number.isSafeInteger(maxActiveKeys) || maxActiveKeys <= 0) {
@@ -39,11 +42,11 @@ export class VoteRateLimiter {
   /**
    * Current spendable incense. `lastVoteAt` reconstructs a missing bucket from
    * the last accepted vote (no new schema): idle refill from empty.
-   * A new installation (no last vote) starts at `requestsPerMinute` (50),
+   * A new installation (no last vote) starts at `workUnitsPerMinute` (50),
    * not the 10-minute burst cap of 500.
    */
   inspect(installationId: string, now: number, lastVoteAt?: number | null): VoteRateDecision {
-    if (this.requestsPerMinute <= 0) {
+    if (this.workUnitsPerMinute <= 0) {
       return { allowed: true, reason: null, retryAfterMs: 0, available: Number.POSITIVE_INFINITY }
     }
     const existing = this.windows.get(installationId)
@@ -55,8 +58,8 @@ export class VoteRateLimiter {
         }
       }
       const available = lastVoteAt == null
-        ? this.requestsPerMinute
-        : Math.floor(voteBudgetAvailable(0, lastVoteAt, now, this.requestsPerMinute))
+        ? this.workUnitsPerMinute
+        : Math.floor(voteBudgetAvailable(0, lastVoteAt, now, this.workUnitsPerMinute))
       return {
         allowed: available >= 1,
         reason: available >= 1 ? null : 'per_installation',
@@ -68,7 +71,7 @@ export class VoteRateLimiter {
       existing.tokens,
       existing.updatedAt,
       now,
-      this.requestsPerMinute,
+      this.workUnitsPerMinute,
     ))
     return {
       allowed: available >= 1,
@@ -84,7 +87,7 @@ export class VoteRateLimiter {
 
   /** Spend `count` incense from the bucket. `check(id, now)` is consume(1). */
   consume(installationId: string, count: number, now: number, lastVoteAt?: number | null): VoteRateDecision {
-    if (this.requestsPerMinute <= 0) {
+    if (this.workUnitsPerMinute <= 0) {
       return { allowed: true, reason: null, retryAfterMs: 0, available: Number.POSITIVE_INFINITY }
     }
     const want = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0
@@ -102,9 +105,9 @@ export class VoteRateLimiter {
 
     const tokens = existing === undefined
       ? (lastVoteAt == null
-          ? this.requestsPerMinute
-          : voteBudgetAvailable(0, lastVoteAt, now, this.requestsPerMinute))
-      : voteBudgetAvailable(existing.tokens, existing.updatedAt, now, this.requestsPerMinute)
+          ? this.workUnitsPerMinute
+          : voteBudgetAvailable(0, lastVoteAt, now, this.workUnitsPerMinute))
+      : voteBudgetAvailable(existing.tokens, existing.updatedAt, now, this.workUnitsPerMinute)
     if (tokens < want) {
       if (existing !== undefined) this.windows.set(installationId, { tokens, updatedAt: now })
       return {
@@ -133,7 +136,7 @@ export class VoteRateLimiter {
   private retryAfterMs(tokens: number, want: number): number {
     const need = want - tokens
     if (need <= 0) return 1
-    return Math.max(1, Math.ceil((need / this.requestsPerMinute) * VOTE_RATE_WINDOW_MS))
+    return Math.max(1, Math.ceil((need / this.workUnitsPerMinute) * VOTE_RATE_WINDOW_MS))
   }
 
   private evictExpired(now: number): void {

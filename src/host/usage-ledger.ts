@@ -1,14 +1,16 @@
 /**
  * Per-session high-water-mark diffing of the cumulative DSH `tokenUsage`
- * projection (seam facts: docs/041). Pure functions — the service owns the
- * maps and persistence.
+ * projection (seam facts: docs/COMPATIBILITY.md). Pure functions — the
+ * service owns the maps and persistence.
  *
  * Rules (docs/041 §聚合与防重):
  *  - first sighting of a session BASELINES (contribution 0, no retroactive
  *    credit, fork parent prefixes never double-count);
  *  - contributions are `max(0, cumulative - hwm)` per side; HWMs only rise,
- *    so a chunk->final replacement that momentarily lowers a cumulative can
- *    never double-count on recovery (direction-safe: never over-counts);
+ *    so replay cannot lower the stored mark. A chunk->final replacement can
+ *    revise the real cumulative downward, however, and this irreversible HWM
+ *    may then retain already-credited excess until later real growth catches
+ *    up. This is an explicit open compatibility risk, not direction safety;
  *  - replay/restart produce identical cumulative values => diff 0.
  */
 import {

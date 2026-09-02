@@ -2,8 +2,8 @@
  * compat/dsh — the only layer allowed to depend on DSH shapes directly.
  *
  * V0.1 bucket mapping for the durable `tokenUsage` projection
- * (`TokenUsageProjection`, packages/llm/token-meter/src/projection.ts:13-18
- * @ 47f94385). Verified facts from that source:
+ * (`TokenUsageProjection`, packages/llm/token-meter/src/projection.ts,
+ * deepseek-harness 0.1.2-alpha.4 @ 4e84901e). Verified facts:
  *
  * - the four buckets are DISJOINT;
  * - reasoning tokens are already included in `outputTokens` (never re-added);
@@ -26,7 +26,7 @@ export interface DshTokenUsageBuckets {
   cacheWriteTokens: number
 }
 
-/** The DSH projection key this plugin consumes (projection.ts:71). */
+/** The DSH projection key registered by `tokenUsageProjectionDefinition`. */
 export const DSH_TOKEN_USAGE_KEY = 'tokenUsage'
 
 function isCount(value: unknown): value is number {

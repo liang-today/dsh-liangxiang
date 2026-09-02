@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v8) for the Liangxiang backend.
+ * SQLite schema (v9) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -12,10 +12,11 @@
  *    CHECK constraint `used_incense * token_per_incense <= claimed_effective_tokens`
  *    means the database itself refuses an overspend, so a bug in the service
  *    cannot produce a row that violates `used <= earned`.
- *  - `liang_vote`: `UNIQUE (installation_id, request_id)` is the idempotency
- *    key. `requested_count` preserves the normalized business intent so a
- *    retry cannot change a one-stick click into a dump (or vice versa). Only
- *    ACCEPTED votes are recorded, so a rejection never poisons a request id.
+ *  - `liang_vote_request`: the durable idempotency receipt for every valid
+ *    vote intent, accepted or rejected. The complete normalized payload and
+ *    rejected business result are persisted so later balance/case changes
+ *    cannot turn a retry into a different outcome. `liang_vote` remains the
+ *    accepted-vote ledger used for spend/audit/aggregation only.
  *  - `daily_liang_stats`: the raw aggregate, updated inside the vote
  *    transaction (immediately consistent).
  *  - `public_liang_snapshot`: append-only published snapshots. Ratios and
@@ -28,8 +29,9 @@
  * source of truth for something the domain already derives.
  */
 import type { DatabaseSync } from 'node:sqlite'
+import { VOTE_COUNT_MAX } from '../domain/index.ts'
 
-export const BACKEND_SCHEMA_USER_VERSION = 8
+export const BACKEND_SCHEMA_USER_VERSION = 9
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -209,6 +211,45 @@ CREATE INDEX IF NOT EXISTS ix_starter_grant_install
   ON starter_incense_grant (installation_id, business_date);
 `
 
+const DDL_V9_REQUEST_RECEIPT = `
+CREATE TABLE IF NOT EXISTS liang_vote_request (
+  installation_id    TEXT    NOT NULL,
+  request_id          TEXT    NOT NULL,
+  case_id             TEXT    NOT NULL,
+  business_date       TEXT    NOT NULL,
+  vote_type           TEXT    NOT NULL CHECK (vote_type IN ('up', 'down')),
+  requested_count     INTEGER CHECK (
+    requested_count IS NULL OR requested_count BETWEEN 1 AND ${VOTE_COUNT_MAX}
+  ),
+  result_status       TEXT    NOT NULL CHECK (result_status IN ('accepted', 'rejected')),
+  rejection_reason    TEXT CHECK (rejection_reason IS NULL OR rejection_reason IN (
+    'insufficient_incense', 'case_not_active', 'stale_case',
+    'idempotency_conflict', 'invalid_intent'
+  )),
+  rejection_message   TEXT,
+  created_at          INTEGER NOT NULL,
+  PRIMARY KEY (installation_id, request_id),
+  CHECK (
+    (result_status = 'accepted' AND rejection_reason IS NULL AND rejection_message IS NULL)
+    OR
+    (result_status = 'rejected' AND requested_count IS NOT NULL
+      AND rejection_reason IS NOT NULL AND rejection_message IS NOT NULL)
+  )
+);
+CREATE INDEX IF NOT EXISTS ix_vote_request_business_date
+  ON liang_vote_request (business_date, installation_id);
+
+-- A prior failed development migration must not leave a partial receipt set.
+-- Official migrations are transactional, so this is normally a no-op.
+DELETE FROM liang_vote_request;
+INSERT INTO liang_vote_request
+  (installation_id, request_id, case_id, business_date, vote_type, requested_count,
+   result_status, rejection_reason, rejection_message, created_at)
+SELECT installation_id, request_id, case_id, business_date, vote_type, requested_count,
+       'accepted', NULL, NULL, created_at
+  FROM liang_vote;
+`
+
 function tableColumns(db: DatabaseSync, table: string): string[] {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>)
     .map((row) => row.name)
@@ -217,7 +258,6 @@ function tableColumns(db: DatabaseSync, table: string): string[] {
 /** Apply the schema and record its user_version (idempotent). */
 export function migrate(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON')
-  db.exec(DDL)
   const row = db.prepare('PRAGMA user_version').get() as { user_version?: number } | undefined
   const current = typeof row?.user_version === 'number' ? row.user_version : 0
   if (current > BACKEND_SCHEMA_USER_VERSION) {
@@ -225,52 +265,65 @@ export function migrate(db: DatabaseSync): void {
       `liangxiang backend database is at schema version ${current}, newer than this build (${BACKEND_SCHEMA_USER_VERSION})`,
     )
   }
-  if (current < 2) db.exec(DDL_V2)
-  if (current < 3) db.exec(DDL_V3)
-  if (current < 4) db.exec(DDL_V4)
-  if (current < 5) db.exec(DDL_V5)
-  if (current < 6) {
-    db.exec(DDL_V6_GRANT)
-    if (!tableColumns(db, 'daily_incense_state').includes('starter_tokens')) {
-      db.exec('ALTER TABLE daily_incense_state ADD COLUMN starter_tokens INTEGER NOT NULL DEFAULT 0')
-    }
-  }
-  if (current < 7) {
-    for (const table of ['liang_day_archive', 'liang_week_archive', 'liang_month_archive'] as const) {
-      if (!tableColumns(db, table).includes('unique_voters')) {
-        db.exec(`ALTER TABLE ${table} ADD COLUMN unique_voters INTEGER NOT NULL DEFAULT 0`)
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    db.exec(DDL)
+    if (current < 2) db.exec(DDL_V2)
+    if (current < 3) db.exec(DDL_V3)
+    if (current < 4) db.exec(DDL_V4)
+    if (current < 5) db.exec(DDL_V5)
+    if (current < 6) {
+      db.exec(DDL_V6_GRANT)
+      if (!tableColumns(db, 'daily_incense_state').includes('starter_tokens')) {
+        db.exec('ALTER TABLE daily_incense_state ADD COLUMN starter_tokens INTEGER NOT NULL DEFAULT 0')
       }
     }
-    db.exec(`
-      CREATE INDEX IF NOT EXISTS ix_vote_business_date
-        ON liang_vote (business_date, installation_id);
-      UPDATE liang_day_archive SET unique_voters = (
-        SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
-         WHERE v.business_date = liang_day_archive.business_date
-      );
-      UPDATE liang_week_archive SET unique_voters = (
-        SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
-         WHERE v.business_date >= liang_week_archive.start_date
-           AND v.business_date <= liang_week_archive.end_date
-      );
-      UPDATE liang_month_archive SET unique_voters = (
-        SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
-         WHERE v.business_date >= liang_month_archive.start_date
-           AND v.business_date <= liang_month_archive.end_date
-      );
-    `)
-  }
-  if (current < 8 && !tableColumns(db, 'liang_vote').includes('requested_count')) {
-    // V7 did not persist the requested dump size. It cannot be reconstructed
-    // from the accepted spend because remaining incense and the rate budget
-    // may have clamped it. Keep legacy rows NULL and let the service accept
-    // only the canonical one-stick replay for those ambiguous records.
-    db.exec(
-      'ALTER TABLE liang_vote ADD COLUMN requested_count INTEGER '
-      + 'CHECK (requested_count IS NULL OR requested_count > 0)',
-    )
-  }
-  if (current !== BACKEND_SCHEMA_USER_VERSION) {
-    db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
+    if (current < 7) {
+      for (const table of ['liang_day_archive', 'liang_week_archive', 'liang_month_archive'] as const) {
+        if (!tableColumns(db, table).includes('unique_voters')) {
+          db.exec(`ALTER TABLE ${table} ADD COLUMN unique_voters INTEGER NOT NULL DEFAULT 0`)
+        }
+      }
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS ix_vote_business_date
+          ON liang_vote (business_date, installation_id);
+        UPDATE liang_day_archive SET unique_voters = (
+          SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
+           WHERE v.business_date = liang_day_archive.business_date
+        );
+        UPDATE liang_week_archive SET unique_voters = (
+          SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
+           WHERE v.business_date >= liang_week_archive.start_date
+             AND v.business_date <= liang_week_archive.end_date
+        );
+        UPDATE liang_month_archive SET unique_voters = (
+          SELECT COUNT(DISTINCT installation_id) FROM liang_vote v
+           WHERE v.business_date >= liang_month_archive.start_date
+             AND v.business_date <= liang_month_archive.end_date
+        );
+      `)
+    }
+    if (current < 8 && !tableColumns(db, 'liang_vote').includes('requested_count')) {
+      // V7 did not persist the requested dump size. It cannot be reconstructed
+      // from the accepted spend because remaining incense and the rate budget
+      // may have clamped it. Keep legacy rows NULL and let the service accept
+      // only the canonical one-stick replay for those ambiguous records.
+      db.exec(
+        'ALTER TABLE liang_vote ADD COLUMN requested_count INTEGER '
+        + 'CHECK (requested_count IS NULL OR requested_count > 0)',
+      )
+    }
+    if (current < 9) db.exec(DDL_V9_REQUEST_RECEIPT)
+    if (current !== BACKEND_SCHEMA_USER_VERSION) {
+      db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
+    }
+    db.exec('COMMIT')
+  } catch (error) {
+    try {
+      db.exec('ROLLBACK')
+    } catch {
+      // Preserve the migration error if SQLite already resolved the transaction.
+    }
+    throw error
   }
 }

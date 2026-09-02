@@ -15,8 +15,12 @@ fi
 
 export DSH_HOME="${DSH_HOME:-$REPO_ROOT/.dsh-home}"
 PROFILE="${LIANGXIANG_PROFILE:-liangxiang-dev}"
-WEB_APP_SPEC="${LIANGXIANG_WEB_APP_SPEC:-@deepseek-ai/dsh-web-app@0.1.0-rc.7}"
+WEB_APP_SPEC="${LIANGXIANG_WEB_APP_SPEC:-@deepseek-ai/dsh-web-app@0.1.2-alpha.4}"
+
+pnpm_cli() {
+  command pnpm "$@"
+}
 
 dsh_cli() {
-  pnpm exec dsh "$@"
+  pnpm_cli exec dsh "$@"
 }

@@ -132,6 +132,7 @@ describe('梁祠 backend archive', () => {
       f.service.ensureActiveCase()
       f.grantIncense(installation, 1)
       vote(f, installation, 'up', 'history-wipe-0001')
+      expect(f.store.voteRequestByRequestId(installation, 'history-wipe-0001')).toBeDefined()
 
       f.clock.advance(DAY_MS)
       const today = f.service.ensureActiveCase()
@@ -151,6 +152,7 @@ describe('梁祠 backend archive', () => {
       expect(empty.months).toEqual([])
       expect(empty.archiveVersion).toBe(0)
       expect(f.service.ensureActiveCase().id).toBe(today.id)
+      expect(f.store.voteRequestByRequestId(installation, 'history-wipe-0001')).toBeUndefined()
 
       f.clock.advance(DAY_MS)
       f.service.ensureActiveCase()
@@ -170,6 +172,7 @@ describe('梁祠 backend archive', () => {
       f.grantIncense(installation, 2)
       vote(f, installation, 'up', 'history-reset-0001')
       vote(f, installation, 'down', 'history-reset-0002')
+      expect(f.store.voteRequestByRequestId(installation, 'history-reset-0001')).toBeDefined()
       expect(f.service.snapshotResponse().global_snapshot.total_incense).toBe(2)
 
       const reset = f.service.resetTodayCase()
@@ -185,6 +188,13 @@ describe('梁祠 backend archive', () => {
         liangzi_state: 'waiting',
       })
       expect(f.service.ensureActiveCase().id).toBe(today.id)
+      expect(f.store.voteRequestByRequestId(installation, 'history-reset-0001')).toBeUndefined()
+      // Explicit reset releases the old request id together with the ledger.
+      expect(f.service.vote(installation, {
+        case_id: today.id,
+        vote_type: 'up',
+        request_id: 'history-reset-0001',
+      }).result).toMatchObject({ status: 'accepted', replayed: false })
     } finally {
       f.close()
     }

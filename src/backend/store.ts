@@ -7,9 +7,10 @@
  *   - `spendOneIncense` is a conditional UPDATE (compare-and-set on
  *     `used_incense` + affordability). `changes === 0` means "someone else got
  *     the last stick", which is exactly the overspend guard.
- *   - `insertVote` relies on `UNIQUE (installation_id, request_id)`; a losing
- *     concurrent duplicate raises a constraint error the service turns into an
- *     idempotent replay instead of a second spend.
+ *   - `insertVoteRequest` relies on `PRIMARY KEY (installation_id, request_id)`;
+ *     every accepted/rejected business result owns one durable receipt. A
+ *     losing concurrent duplicate rolls back the whole transaction and replays
+ *     the winner instead of spending or changing outcome twice.
  *
  * WAL + a busy timeout keep this valid for multiple processes/tabs sharing one
  * database file.
@@ -17,7 +18,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { VoteType } from '../domain/index.ts'
+import type { VoteRejectionReason, VoteType } from '../domain/index.ts'
 import { migrate } from './schema.ts'
 
 export interface CaseRow {
@@ -159,6 +160,21 @@ export interface VoteRow {
   created_at: number
 }
 
+/** Durable idempotency receipt for every valid vote intent, including rejection. */
+export interface VoteRequestRow {
+  installation_id: string
+  request_id: string
+  case_id: string
+  business_date: string
+  vote_type: VoteType
+  /** NULL only for accepted rows backfilled from schema v7. */
+  requested_count: number | null
+  result_status: 'accepted' | 'rejected'
+  rejection_reason: VoteRejectionReason | null
+  rejection_message: string | null
+  created_at: number
+}
+
 export interface InsertCaseInput {
   id: string
   businessDate: string
@@ -212,6 +228,8 @@ export interface BackendStore {
   spendOneIncense: (installationId: string, businessDate: string, now: number) => boolean
   /** Spend `count` sticks atomically; false if the pool cannot cover it. */
   spendIncense: (installationId: string, businessDate: string, count: number, now: number) => boolean
+  voteRequestByRequestId: (installationId: string, requestId: string) => VoteRequestRow | undefined
+  insertVoteRequest: (row: VoteRequestRow) => void
   voteByRequestId: (installationId: string, requestId: string) => VoteRow | undefined
   /** Latest accepted vote time for this installation; null if they have never voted. */
   lastAcceptedVoteAt: (installationId: string) => number | null
@@ -413,6 +431,9 @@ export function openBackendStore(databasePath: string): BackendStore {
   const selectVote = db.prepare(
     'SELECT * FROM liang_vote WHERE installation_id = ? AND request_id = ?',
   )
+  const selectVoteRequest = db.prepare(
+    'SELECT * FROM liang_vote_request WHERE installation_id = ? AND request_id = ?',
+  )
   const selectLastVoteAt = db.prepare(
     'SELECT MAX(created_at) AS last_at FROM liang_vote WHERE installation_id = ?',
   )
@@ -424,6 +445,12 @@ export function openBackendStore(databasePath: string): BackendStore {
        (request_id, installation_id, case_id, business_date, vote_type, requested_count,
         used_incense_after, remaining_incense_after, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const insertVoteRequestStmt = db.prepare(
+    `INSERT INTO liang_vote_request
+       (installation_id, request_id, case_id, business_date, vote_type, requested_count,
+        result_status, rejection_reason, rejection_message, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectLatestSnapshot = db.prepare(
     'SELECT * FROM public_liang_snapshot WHERE case_id = ? ORDER BY sequence DESC LIMIT 1',
@@ -501,6 +528,9 @@ export function openBackendStore(databasePath: string): BackendStore {
   const deleteOldVotes = db.prepare(
     'DELETE FROM liang_vote WHERE business_date < ?',
   )
+  const deleteOldVoteRequests = db.prepare(
+    'DELETE FROM liang_vote_request WHERE business_date < ?',
+  )
   const deleteOldStats = db.prepare(
     'DELETE FROM daily_liang_stats WHERE business_date < ?',
   )
@@ -515,6 +545,9 @@ export function openBackendStore(databasePath: string): BackendStore {
   )
   const deleteVotesForDate = db.prepare(
     'DELETE FROM liang_vote WHERE business_date = ?',
+  )
+  const deleteVoteRequestsForDate = db.prepare(
+    'DELETE FROM liang_vote_request WHERE business_date = ?',
   )
   const deleteSnapshotsForDate = db.prepare(
     'DELETE FROM public_liang_snapshot WHERE business_date = ?',
@@ -675,6 +708,22 @@ export function openBackendStore(databasePath: string): BackendStore {
       changed(spendStmt.run(1, now, installationId, businessDate, 1)) > 0,
     spendIncense: (installationId, businessDate, count, now) =>
       count >= 1 && changed(spendStmt.run(count, now, installationId, businessDate, count)) > 0,
+    voteRequestByRequestId: (installationId, requestId) =>
+      selectVoteRequest.get(installationId, requestId) as VoteRequestRow | undefined,
+    insertVoteRequest(row) {
+      insertVoteRequestStmt.run(
+        row.installation_id,
+        row.request_id,
+        row.case_id,
+        row.business_date,
+        row.vote_type,
+        row.requested_count,
+        row.result_status,
+        row.rejection_reason,
+        row.rejection_message,
+        row.created_at,
+      )
+    },
     voteByRequestId: (installationId, requestId) =>
       selectVote.get(installationId, requestId) as VoteRow | undefined,
     lastAcceptedVoteAt(installationId) {
@@ -805,6 +854,7 @@ export function openBackendStore(databasePath: string): BackendStore {
       selectMonthArchives.all(afterVersion) as unknown as MonthArchiveRow[],
     clearHistoryArchives(keepBusinessDate) {
       deleteOldSnapshots.run(keepBusinessDate)
+      deleteOldVoteRequests.run(keepBusinessDate)
       deleteOldVotes.run(keepBusinessDate)
       deleteOldStats.run(keepBusinessDate)
       const closedCases = changed(deleteOldCases.run(keepBusinessDate))
@@ -816,6 +866,7 @@ export function openBackendStore(databasePath: string): BackendStore {
     },
     resetBusinessDate(businessDate, now) {
       const votes = changed(deleteVotesForDate.run(businessDate))
+      deleteVoteRequestsForDate.run(businessDate)
       deleteSnapshotsForDate.run(businessDate)
       deleteStatsForDate.run(businessDate)
       const closedCases = changed(deleteClosedCasesForDate.run(businessDate))

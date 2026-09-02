@@ -1,0 +1,8 @@
+allowBuilds:
+  # Keep these decisions aligned with the pinned DSH 0.1.2-alpha.4 workspace.
+  '@deepseek-ai/dsh-subprocess-local': true
+  '@google/genai': false
+  koffi: true
+  node-pty: true
+  protobufjs: false
+  sharp: true

@@ -1,5 +1,9 @@
 # 062 — 并发与幂等
 
+> **历史实现记录，不是当前契约。** 当前 schema v9 / 本地 KV 为进入 service 的
+> accepted/rejected 业务处置保留 durable receipt，正常 rollover 不清理。现行事实见
+> [`CURRENT_ARCHITECTURE.md`](CURRENT_ARCHITECTURE.md) 与源码测试。
+
 ## 并发模型
 
 - **单进程单权威**：所有票权状态住在 DSH Host 进程内的 `FakeAuthoritativeLiangService`;`vote()` 从检查到提交全同步（无 await 间隙），Node 事件循环保证互斥 → 并发 HTTP/多 tab 天然无双花。

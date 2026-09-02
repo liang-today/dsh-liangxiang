@@ -36,7 +36,7 @@ afterEach(() => {
 })
 
 describe('starter incense grant', () => {
-  it('migrates the backend schema to v8 with archive voters and vote request counts', () => {
+  it('migrates the backend schema to v9 with durable vote request receipts', () => {
     const db = new DatabaseSync(':memory:')
     migrate(db)
     const version = db.prepare('PRAGMA user_version').get() as { user_version: number }
@@ -54,6 +54,25 @@ describe('starter incense grant', () => {
     const voteColumns = (db.prepare('PRAGMA table_info(liang_vote)').all() as Array<{ name: string }>)
       .map((row) => row.name)
     expect(voteColumns).toContain('requested_count')
+    const receiptColumns = (db.prepare('PRAGMA table_info(liang_vote_request)').all() as Array<{ name: string }>)
+      .map((row) => row.name)
+    expect(receiptColumns).toEqual(expect.arrayContaining([
+      'installation_id',
+      'request_id',
+      'case_id',
+      'vote_type',
+      'requested_count',
+      'result_status',
+      'rejection_reason',
+      'rejection_message',
+    ]))
+    expect(() => db.prepare(`
+      INSERT INTO liang_vote_request
+        (installation_id, request_id, case_id, business_date, vote_type, requested_count,
+         result_status, rejection_reason, rejection_message, created_at)
+      VALUES ('bad-install', 'bad-null-count', 'missing-case', '2026-08-16', 'up', NULL,
+              'rejected', 'stale_case', 'case does not exist', 1)
+    `).run()).toThrow()
     db.close()
   })
 
@@ -85,8 +104,74 @@ describe('starter incense grant', () => {
     const legacy = db.prepare(
       "SELECT requested_count FROM liang_vote WHERE request_id = 'legacy-request'",
     ).get() as { requested_count: number | null }
+    const receipt = db.prepare(
+      "SELECT requested_count, result_status FROM liang_vote_request WHERE request_id = 'legacy-request'",
+    ).get() as { requested_count: number | null, result_status: string }
     expect(version.user_version).toBe(BACKEND_SCHEMA_USER_VERSION)
     expect(legacy.requested_count).toBeNull()
+    expect(receipt).toEqual({ requested_count: null, result_status: 'accepted' })
+    db.close()
+  })
+
+  it('preserves an existing v8 requested count when backfilling the v9 receipt', () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec(`
+      CREATE TABLE liang_vote (
+        id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id               TEXT    NOT NULL,
+        installation_id          TEXT    NOT NULL,
+        case_id                  TEXT    NOT NULL,
+        business_date            TEXT    NOT NULL,
+        vote_type                TEXT    NOT NULL CHECK (vote_type IN ('up', 'down')),
+        requested_count          INTEGER CHECK (requested_count IS NULL OR requested_count > 0),
+        used_incense_after       INTEGER NOT NULL CHECK (used_incense_after > 0),
+        remaining_incense_after  INTEGER NOT NULL CHECK (remaining_incense_after >= 0),
+        created_at               INTEGER NOT NULL,
+        UNIQUE (installation_id, request_id)
+      );
+      INSERT INTO liang_vote
+        (request_id, installation_id, case_id, business_date, vote_type, requested_count,
+         used_incense_after, remaining_incense_after, created_at)
+      VALUES ('v8-request', 'v8-install', 'v8-case', '2026-08-16', 'down', 3, 3, 2, 1);
+      PRAGMA user_version = 8;
+    `)
+
+    migrate(db)
+
+    expect(db.prepare(
+      "SELECT requested_count, result_status FROM liang_vote_request WHERE request_id = 'v8-request'",
+    ).get()).toEqual({ requested_count: 3, result_status: 'accepted' })
+    db.close()
+  })
+
+  it('rolls back the whole v9 migration when a legacy row violates the receipt contract', () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec(`
+      CREATE TABLE liang_vote (
+        id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id               TEXT    NOT NULL,
+        installation_id          TEXT    NOT NULL,
+        case_id                  TEXT    NOT NULL,
+        business_date            TEXT    NOT NULL,
+        vote_type                TEXT    NOT NULL CHECK (vote_type IN ('up', 'down')),
+        requested_count          INTEGER CHECK (requested_count IS NULL OR requested_count > 0),
+        used_incense_after       INTEGER NOT NULL CHECK (used_incense_after > 0),
+        remaining_incense_after  INTEGER NOT NULL CHECK (remaining_incense_after >= 0),
+        created_at               INTEGER NOT NULL,
+        UNIQUE (installation_id, request_id)
+      );
+      INSERT INTO liang_vote
+        (request_id, installation_id, case_id, business_date, vote_type, requested_count,
+         used_incense_after, remaining_incense_after, created_at)
+      VALUES ('bad-v8-request', 'v8-install', 'v8-case', '2026-08-16', 'up', 501, 1, 0, 1);
+      PRAGMA user_version = 8;
+    `)
+
+    expect(() => migrate(db)).toThrow()
+    expect(db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 8 })
+    expect(db.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'liang_vote_request'",
+    ).get()).toBeUndefined()
     db.close()
   })
 

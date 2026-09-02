@@ -1,6 +1,12 @@
-# 041 — DSH Token 映射（已验证 seam）
+> [!CAUTION]
+> **历史证据：本文基于旧 DSH RC，不再是兼容性事实源。** 当前 DSH 路径、符号、
+> 投影下调风险与升级门禁只读 [`COMPATIBILITY.md`](COMPATIBILITY.md)；产品规则只读
+> 根目录 `AGENTS.md`。以下内容仅用于追溯早期实现。
 
-基线 `47f94385`。本文是梁相真实 Token 集成唯一允许使用的 seam 记录;实现落点 `src/compat/dsh/`。
+# 041 — DSH Token 映射（历史 seam 记录）
+
+旧基线 `47f94385`。本文只记录当时的 Token seam 与实现过程；当前实现落点仍是
+`src/compat/dsh/`，但任何兼容判断必须回到 `COMPATIBILITY.md` 和钉住的 DSH 源码。
 
 ## 权威数据源
 
