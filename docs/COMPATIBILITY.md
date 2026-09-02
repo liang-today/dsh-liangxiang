@@ -8,9 +8,9 @@ DSH 仍处于 Developer Preview，任何升级都必须重新审计，不能从�
 
 | 项 | 当前事实 |
 |---|---|
-| 梁相版本 | 1.1.5 |
+| 梁相版本 | 1.1.6 |
 | 发布状态 | Unreleased（公开稳定版仍为 `1.0.7`） |
-| npm 包 | 当前源码 `dsh-liangxiang@1.1.5`，未发布 |
+| npm 包 | 当前源码 `dsh-liangxiang@1.1.6`，未发布 |
 | DSH CLI / 包线 | `0.1.2-alpha.5` |
 | DSH tag | `dsh-v0.1.2-alpha.5` |
 | DSH commit | `db6bdc3576c2d4e7c965e8e3ed0c2a731eed87f5` |

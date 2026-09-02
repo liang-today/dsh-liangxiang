@@ -57,6 +57,17 @@ test('keyboard opens and closes the panel and returns focus to 今日梁相', as
   await expect(panel).toBeFocused()
 })
 
+test('fresh default dock sits just above the visible DSH settings control', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-narrow', 'DSH collapses the settings control outside the narrow frame')
+  const badgeBox = await page.locator(badgeSelector).boundingBox()
+  const settingsBox = await page.getByRole('button', { name: /^(?:Settings|设置)$/ }).boundingBox()
+
+  expect(badgeBox).not.toBeNull()
+  expect(settingsBox).not.toBeNull()
+  if (badgeBox === null || settingsBox === null) return
+  expect(Math.round(settingsBox.y - (badgeBox.y + badgeBox.height))).toBe(8)
+})
+
 test('pointer crosses from 梁相案牍 into its menu and version reopens update notes', async ({ page }) => {
   const panel = await openPanel(page)
   const trigger = panel.locator('[data-liangxiang-utility-trigger]')

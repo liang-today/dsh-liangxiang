@@ -73,8 +73,8 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 
 | 组件 | 当前事实 |
 |---|---|
-| 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.5`（Unreleased）；公开稳定版仍为 `1.0.7` |
-| 本地 Backend 源码 | `SERVER_BUILD=1.1.5-u1`；schema v10（v9 receipt + v10 单行限时广播） |
+| 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.6`（Unreleased）；公开稳定版仍为 `1.0.7` |
+| 本地 Backend 源码 | `SERVER_BUILD=1.1.6-u1`；schema v10（v9 receipt + v10 单行限时广播） |
 | count 修复基线 | commit `a307faf` 先保存 accepted 的 count；本开发线继续补齐拒绝回执与原子 v7/v8→v9 migration |
 | DSH 兼容基线 | `dsh-v0.1.2-alpha.5` / `db6bdc3576`；模型/Token/客户端装载缝与 alpha.4 相同，alpha.5 新增跨版本 projection cache 自恢复；Node `22.23.1` / pnpm `11.7.0` 的最终真实安装已通过 |
 | 官网 | 独立仓，审计时公开版本 `1.0.7` |

@@ -18,8 +18,12 @@ export const BADGE_SIZE = 48
 /** Portrait inside the stationary interaction halo. */
 export const BADGE_ICON_SIZE = 42
 export const BADGE_MARGIN = 12
-/** Leave the DSH settings control in the bottom-left corner uncovered. */
-export const SETTINGS_CLEARANCE = 56
+/**
+ * Distance from the viewport bottom to the badge bottom at the default dock.
+ * DSH alpha.5 places the 42px Settings button above a 4px row margin and 6px
+ * sidebar inset, so 60px leaves an intentional 8px visual gap above it.
+ */
+export const SETTINGS_CLEARANCE = 60
 /**
  * DSH's default sidebar is 280px with 12px inline padding on each side. A
  * 256px panel therefore follows the sidebar's usable content width exactly

@@ -5,11 +5,11 @@
  * test deliberately fails when a version bump forgets to refresh this copy.
  * This is cosmetic localStorage only and never participates in authority.
  */
-export const RELEASE_NOTES_VERSION = '1.1.5'
+export const RELEASE_NOTES_VERSION = '1.1.6'
 export const RELEASE_NOTES_TITLE = `梁相 v${RELEASE_NOTES_VERSION} 更新`
 export const RELEASE_NOTES_ITEMS = [
   '送香了：新香客备 10 炷，当天重装不重复领取。',
-  '倾炉动效进一步优化：长按 1.5 秒，一次打出多炷香。',
+  '倾炉与入口更顺手：长按 1.5 秒倾炉，梁相默认停在设置上方。',
   '适配 DSH 新版本：安装、升级与使用更顺畅。',
   '新增梁相广播台：重要信息不错过～',
 ] as const

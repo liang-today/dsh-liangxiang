@@ -55,7 +55,7 @@ minimumReleaseAgeExclude:
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> npm 公开稳定版仍是 `dsh-liangxiang@1.0.7`；仓库当前源码为未发布的 `1.1.5` 开发线。请写无标签包名；不要从开发分支安装。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> npm 公开稳定版仍是 `dsh-liangxiang@1.0.7`；仓库当前源码为未发布的 `1.1.6` 开发线。请写无标签包名；不要从开发分支安装。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 
@@ -173,7 +173,7 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 浏览器级干净安装基线（临时 Profile，结束后自动清理）：
 
 ```bash
-LIANGXIANG_ALLOW_FRESH_DSH=1 pnpm run smoke:browser-clean-profile
+LIANGXIANG_ALLOW_FRESH_DSH=1 LIANGXIANG_SMOKE_BROWSER=1 bash scripts/smoke-clean-profile.sh
 ```
 
 离线玩法第一次启用时会创建 `<DSH_HOME>/storages/liangxiang_local.json`，保存离线香火、打梁、梁案进度和梁祠；社区身份与在线投影仍在 `liangxiang.json`。两边不会互相导入。

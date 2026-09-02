@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BADGE_MARGIN,
   BADGE_SIZE,
+  SETTINGS_CLEARANCE,
+  defaultBadgePosition,
   dockForNarrowFrame,
   nudgeBadgeForPanel,
   panelPlacementFor,
@@ -9,6 +12,16 @@ import {
 } from '../src/client/badge-position.ts'
 
 describe('panel dock without shrinking the panel', () => {
+  it('leaves an 8px gap above the DSH alpha.5 settings button', () => {
+    const viewport = { width: 1280, height: 720 }
+    const point = defaultBadgePosition(viewport)
+    const dshSettingsTop = viewport.height - 6 - 4 - 42
+
+    expect(point.x).toBe(BADGE_MARGIN)
+    expect(dshSettingsTop - (point.y + BADGE_SIZE)).toBe(8)
+    expect(SETTINGS_CLEARANCE).toBe(60)
+  })
+
   it('snaps a left-docked badge to the frame edge when the sidebar would collapse', () => {
     expect(dockForNarrowFrame({ x: 120, y: 400 }, { width: 900, height: 700 })).toEqual({
       x: 12,
