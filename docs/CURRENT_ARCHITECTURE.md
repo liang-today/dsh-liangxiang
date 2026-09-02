@@ -1,6 +1,6 @@
 # 梁相：当前架构与事实索引
 
-> Agent 默认入口，最后核对：2026-09-02。先完整阅读根目录
+> Agent 默认入口，最后核对：2026-09-03。先完整阅读根目录
 > [`AGENTS.md`](../AGENTS.md)，再读本文与 [`docs/README.md`](README.md)。
 > 本文记录“现在是什么”；产品契约冲突时永远以 `AGENTS.md` 为准，精确 DSH
 > 兼容基线以 [`COMPATIBILITY.md`](COMPATIBILITY.md) 为准。
@@ -69,15 +69,15 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 
 ## 4. 版本矩阵
 
-以下是接管校准基线，不是发布声明：
+以下是 `1.1.6` 正式发布基线：
 
 | 组件 | 当前事实 |
 |---|---|
-| 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.6`（Unreleased）；公开稳定版仍为 `1.0.7` |
+| 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.6`；npm `latest` = `1.1.6` |
 | 本地 Backend 源码 | `SERVER_BUILD=1.1.6-u1`；schema v10（v9 receipt + v10 单行限时广播） |
 | count 修复基线 | accepted 与 rejected 的 `count` 业务处置都保存 durable receipt；v7/v8→v9 migration 整体原子化 |
 | DSH 兼容基线 | 源码审计为 `dsh-v0.1.2-alpha.5` / `db6bdc3576`；npm 无标签安装实际解析到的稳定线 `0.1.1-rc.2` 也已用同一份 1.1.6 tarball 完成真实 Profile 与浏览器回归；Node `22.23.1` / pnpm `11.7.0` |
-| 官网 | 公开 Pages / 远端 `main` 仍为 `1.0.7`；独立仓本地 `main` 领先 2 个 `1.1.6` 待发布提交。GoatCounter 已改用一方统计域名；候选构建门禁会阻止漏装统计脚本 |
+| 官网 | `1.1.6` 官网源码已经验收，随本次正式发布推送独立仓 `main`；GoatCounter 使用一方统计域名，构建门禁会阻止漏装统计脚本 |
 | 社区服务器 | `SERVER_BUILD=1.1.6-u1` / schema v10；只通过 `scripts/deploy.sh` 更新并由 `scripts/deploy-check.sh` 核验 |
 
 服务器必须与部署分支当前 HEAD 一致。任何 Agent 都不得因为本地修复已提交，就声称
