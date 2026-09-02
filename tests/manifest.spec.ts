@@ -91,7 +91,7 @@ describe('package.json dsh manifests', () => {
     expect(manifest.dsh.bundle?.patch).toBe('./cordis.patch.yml')
   })
 
-  it('declares the alpha.4 renderer/layout injections and web platform', () => {
+  it('declares the alpha.5 renderer/layout injections and web platform', () => {
     expect(manifest.dsh.client?.inject).toEqual([
       '@deepseek-ai/dsh-client-ui-renderer',
       '@deepseek-ai/dsh-client-ui-layout',

@@ -55,7 +55,7 @@ minimumReleaseAgeExclude:
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> npm 公开稳定版仍是 `dsh-liangxiang@1.0.7`；仓库当前源码为未发布的 `1.1.4` 开发线。请写无标签包名；不要从开发分支安装。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> npm 公开稳定版仍是 `dsh-liangxiang@1.0.7`；仓库当前源码为未发布的 `1.1.5` 开发线。请写无标签包名；不要从开发分支安装。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 
@@ -129,7 +129,7 @@ Node 22.23.1 + pnpm 11.7.0 是下方“临时干净 Profile”自动化的审计
 
 `dev:web` 再跑一次时，若 3080 已被本机已有的 `liangxiang-dev` 占用，脚本会直接告诉你打开 http://127.0.0.1:3080。要换新进程：`LIANGXIANG_DEV_RESTART=1 pnpm run dev:web`。换口：`LIANGXIANG_DEV_PORT=3081 pnpm run dev:web`。
 
-源码开发 Profile 不需要插件市场。若旧 Profile 残留的 `dshmarket` 报 `installSettingsSection` / `settingsNamespace` 不存在，说明该市场版本的 peer range 不覆盖 DSH alpha.4；只从隔离 Profile 移除它：
+源码开发 Profile 不需要插件市场。若旧 Profile 残留的 `dshmarket` 报 `installSettingsSection` / `settingsNamespace` 不存在，说明该市场版本的 peer range 不覆盖 DSH alpha.4+；只从隔离 Profile 移除它：
 
 ```bash
 DSH_HOME="$PWD/.dsh-home" pnpm exec dsh plugin --profile liangxiang-dev remove dshmarket
@@ -137,14 +137,15 @@ DSH_HOME="$PWD/.dsh-home" pnpm exec dsh plugin --profile liangxiang-dev remove d
 
 这不会触碰日常 `~/.dsh`。需要验证最终 tgz 的安装体验时，另建临时 `web` Profile；不要把市场混进源码联调 Profile。
 
-若升级 DSH 后看到 `domain 'session_projcache': stored record ... does not match its schema`，这不是端口问题，也不是梁相账本损坏，而是旧的 DSH 会话投影缓存与 alpha.4 schema 不兼容。先停掉开发 WebUI，再运行：
+DSH `0.1.2-alpha.5` 已能读取 v3/v4/v5 会话投影缓存，并会自行备份、跳过无法解析的衍生记录。梁相不会再在启动前搬走缓存。旧命令仍保留为无损提示：
 
 ```bash
-pnpm run dev:repair-cache  # 只备份并移走可重建缓存，不碰会话日志和梁相账本
+pnpm run dev:repair-cache  # 不移动任何文件；提示先升级开发 Profile
+pnpm run dev:install
 pnpm run dev:web
 ```
 
-备份位于项目 `.dsh-home/backups/session_projcache/<UTC 时间>/`。DSH 会从保留的压缩会话日志按需重建投影。
+若 alpha.5 仍报告单条坏缓存，DSH 会把该记录改名为带 `.bak.<时间>` 后缀的备份并从会话日志重建；会话和梁相两个账本不受影响。
 
 若 pnpm 11 因刚发布不足 24 小时的 DSH Preview 拒绝临时干净安装，不要放宽日常 Profile。只有下方自动销毁的干净冒烟 Profile 才允许显式使用 `LIANGXIANG_ALLOW_FRESH_DSH=1`。
 

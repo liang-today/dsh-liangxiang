@@ -2,7 +2,7 @@
  * Build config: host half (ESM, node) + client half (browser CJS factory).
  *
  * The client artifact format REPLICATES the in-tree `clientBundle` preset
- * (deepseek-harness packages/client/tsdown.client.ts @ 4e84901e): the
+ * (deepseek-harness packages/client/tsdown.client.ts @ db6bdc3576): the
  * `window.__ModuleLoader__.load({ id, factory })` banner/footer wrapping, the
  * platform-module externals resolved through the loader's frozen module
  * table, and the NODE_ENV/import.meta.env substitutions. That preset is not
@@ -16,7 +16,7 @@ const PACKAGE_ID = 'dsh-liangxiang'
 
 /**
  * Exact mirror of PLATFORM_MODULES (packages/client/web/src/platform.ts @
- * 4e84901e). Anything NOT in this list must inline: a require() the loader's
+ * db6bdc3576). Anything NOT in this list must inline: a require() the loader's
  * frozen module table cannot answer throws at boot.
  */
 const CLIENT_EXTERNALS: readonly string[] = [

@@ -29,7 +29,7 @@ try {
   settingsPeer = market.peerDependencies?.['@deepseek-ai/dsh-settings'] ?? settingsPeer
   const settingsModule = readFileSync(join(marketRoot, 'lib', 'settings.js'), 'utf8')
   incompatibleReason = /\b(?:installSettingsSection|settingsNamespace)\b/.test(settingsModule)
-    ? 'imports settings APIs removed by DSH alpha.4'
+    ? 'imports settings APIs removed by DSH alpha.4+'
     : ''
 } catch {
   // A declared but incomplete dependency cannot load either.

@@ -1,5 +1,5 @@
 allowBuilds:
-  # Keep these decisions aligned with the pinned DSH 0.1.2-alpha.4 workspace.
+  # Keep these decisions aligned with the pinned DSH 0.1.2-alpha.5 workspace.
   '@deepseek-ai/dsh-subprocess-local': true
   '@google/genai': false
   koffi: true

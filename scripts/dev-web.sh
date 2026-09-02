@@ -3,8 +3,8 @@
 # App args after the profile flag reach the web app's own command line.
 #
 # A leftover `pnpm run dev:web` keeps 3080. A second start is handled before
-# DSH boots. Projection-cache schema drift is also diagnosed before the plugin
-# loader can bury it in a generic "plugin tree failed to load" traceback.
+# DSH boots. DSH alpha.5 now owns projection-cache cross-version recovery; the
+# Liangxiang launcher must not pre-empt it by moving rebuildable cache files.
 . "$(dirname "$0")/env.sh"
 
 PORT="${LIANGXIANG_DEV_PORT:-3080}"
@@ -121,7 +121,6 @@ if [ -n "$PIDS" ]; then
   fi
 fi
 
-node "$REPO_ROOT/scripts/check-dev-projection-cache.mjs" "$DSH_HOME"
 node "$REPO_ROOT/scripts/check-dev-profile-compat.mjs" "$DSH_HOME" "$PROFILE"
 
 if [ "${1:-}" = "--" ]; then

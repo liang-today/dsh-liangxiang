@@ -39,10 +39,10 @@ ddbaf969f18c1288b6bfc49152ba1bb1b6a7f6cbf6d2c36166b17b0d38cd125b
 ## 香港节点安全基线
 
 - Rocky Linux 9.8，SELinux `Enforcing`，已运行最新安装内核；无待重启核心更新。
-- 仅允许 `deploy-user` 使用公钥 SSH；root、密码、键盘交互认证、X11、agent、
+- 仅允许专用部署账户使用公钥 SSH；root、密码、键盘交互认证、X11、agent、
   TCP/Unix socket 转发与 tunnel 均关闭。
 - 云防火墙之外再启用 firewalld：HTTP/HTTPS 对公网开放。应运营者临时外出
-  登录需要，SSH 来源暂时对公网开放；认证仍严格限定 `deploy-user + publickey`，
+  登录需要，SSH 来源暂时对公网开放；认证仍严格限定“专用部署账户 + publickey”，
   root、密码认证和转发均保持禁用。
 - 200 GiB 数据盘独立挂载到 `/var/lib/liangxiang`，使用
   `nosuid,nodev,noexec`；数据库目录仅运行账户可写。

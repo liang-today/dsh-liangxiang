@@ -48,19 +48,19 @@ describe('local case list', () => {
 describe('identity mutation rate limit', () => {
   it('allows one hit per IP+key inside 10 minutes, then denies', () => {
     const limiter = new IdentityRateLimiter()
-    const first = limiter.check(1_000, '1.1.1.1', 'lk_a', 'hit')
+    const first = limiter.check(1_000, '192.0.2.1', 'lk_a', 'hit')
     expect(first.allowed).toBe(true)
-    const second = limiter.check(1_000 + 60_000, '1.1.1.1', 'lk_a', 'hit')
+    const second = limiter.check(1_000 + 60_000, '192.0.2.1', 'lk_a', 'hit')
     expect(second.allowed).toBe(false)
     expect(second.retryAfterMs).toBeGreaterThan(0)
-    const later = limiter.check(1_000 + IDENTITY_HIT_WINDOW_MS, '1.1.1.1', 'lk_a', 'hit')
+    const later = limiter.check(1_000 + IDENTITY_HIT_WINDOW_MS, '192.0.2.1', 'lk_a', 'hit')
     expect(later.allowed).toBe(true)
   })
 
   it('treats a public-key miss as a 30-minute probe per IP', () => {
     const limiter = new IdentityRateLimiter()
-    expect(limiter.check(0, '8.8.8.8', 'lk_unknown', 'miss').allowed).toBe(true)
-    const denied = limiter.check(1_000, '8.8.8.8', 'lk_other', 'miss')
+    expect(limiter.check(0, '198.51.100.8', 'lk_unknown', 'miss').allowed).toBe(true)
+    const denied = limiter.check(1_000, '198.51.100.8', 'lk_other', 'miss')
     expect(denied.allowed).toBe(false)
     expect(denied.retryAfterMs).toBeGreaterThan(IDENTITY_MISS_WINDOW_MS - 2_000)
   })

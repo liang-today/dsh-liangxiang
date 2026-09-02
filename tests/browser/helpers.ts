@@ -44,7 +44,7 @@ export async function bootInstalledLiangxiang(
   ] as const
   for (const prompt of dshPrompts) {
     const dialog = page.getByRole('dialog', { name: prompt.dialog })
-    // A fresh alpha.4 shell may mount onboarding one render after plugin
+    // A fresh alpha.5 shell may mount onboarding one render after plugin
     // roots become visible. Give each known prompt a short arrival window so
     // the first cold test cannot race the shell dialog.
     const appeared = await dialog.waitFor({ state: 'visible', timeout: 3_000 })

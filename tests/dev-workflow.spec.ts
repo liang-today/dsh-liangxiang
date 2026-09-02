@@ -24,9 +24,12 @@ describe('local development workflow', () => {
     )
   })
 
-  it('validates a projection cache before moving it for repair', () => {
+  it('leaves projection-cache recovery to DSH alpha.5 without moving user data', () => {
+    const devWeb = readScript('dev-web.sh')
     const repair = readScript('repair-dev-cache.sh')
-    expect(repair).toContain('check-dev-projection-cache.mjs')
-    expect(repair).toContain('already compatible; nothing was moved')
+    expect(devWeb).not.toContain('check-dev-projection-cache.mjs')
+    expect(repair).toContain('DSH 0.1.2-alpha.5')
+    expect(repair).toContain('No cache, session, profile, or Liangxiang ledger was moved.')
+    expect(repair).not.toMatch(/\bmv\b/)
   })
 })

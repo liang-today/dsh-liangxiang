@@ -8,39 +8,54 @@ DSH 仍处于 Developer Preview，任何升级都必须重新审计，不能从�
 
 | 项 | 当前事实 |
 |---|---|
-| 梁相版本 | 1.1.4 |
+| 梁相版本 | 1.1.5 |
 | 发布状态 | Unreleased（公开稳定版仍为 `1.0.7`） |
-| npm 包 | 当前源码 `dsh-liangxiang@1.1.4`，未发布 |
-| DSH CLI / 包线 | `0.1.2-alpha.4` |
-| DSH tag | `dsh-v0.1.2-alpha.4` |
-| DSH commit | `4e84901e6471b79ec0338099867ebb4606d12bb5` |
-| DSH Web App | `@deepseek-ai/dsh-web-app@0.1.2-alpha.4` |
+| npm 包 | 当前源码 `dsh-liangxiang@1.1.5`，未发布 |
+| DSH CLI / 包线 | `0.1.2-alpha.5` |
+| DSH tag | `dsh-v0.1.2-alpha.5` |
+| DSH commit | `db6bdc3576c2d4e7c965e8e3ed0c2a731eed87f5` |
+| DSH Web App | `@deepseek-ai/dsh-web-app@0.1.2-alpha.5` |
 | Cordis | DSH vendored `@deepseek-ai/cordis@4.0.2` |
 | DSH Node 要求 | `^22.19.0 || >=24.0.0` |
 | DSH 包管理器 | `pnpm@11.7.0` |
 
 以上版本、源码证据和真实安装路径已经核对。2026-09-02 使用 Node
-`22.23.1`、pnpm `11.7.0`，在隔离的临时 `DSH_HOME` 中完成源码构建、npm
+`22.23.1`、pnpm `11.7.0`，在隔离的临时 `DSH_HOME` 中重新执行源码构建、npm
 tarball 打包、DSH Web Profile 初始化、插件安装和浏览器运行验证；没有读取或改写
 用户的真实 Profile。验证覆盖鉴权后的 WebUI、revisioned config、Host 生命周期、
-在线/离线权威分离和存储初始化，随后在桌面、窄屏、暗色三种环境运行 24 项
+在线/离线权威分离和存储初始化，并在桌面、窄屏、暗色三种环境运行 36 项
 Playwright 基线，全部通过。
 
-alpha.4 包若仍处在 pnpm 的 24 小时发布时间门禁内，可在明确核对版本后临时设置
+alpha.5 包若仍处在 pnpm 的 24 小时发布时间门禁内，可在明确核对版本后临时设置
 `LIANGXIANG_ALLOW_FRESH_DSH=1`。该开关只让 smoke 命令为本次临时 Profile 传入
 `minimum-release-age=0`，默认关闭，不能进入安装文档或正式发布流程。
 使用时直接执行 `LIANGXIANG_ALLOW_FRESH_DSH=1 bash scripts/smoke-clean-profile.sh`；
+隔离 localhost 后端链路可执行
+`LIANGXIANG_ALLOW_FRESH_DSH=1 bash scripts/smoke-online.sh`。
 clean-profile 在 Host 启动前默认强制本地后端，只有显式提供
 `LIANGXIANG_SMOKE_BACKEND_URL` 才会接触社区服务。
 脚本在创建任何 Profile 前校验 Node `^22.19 || >=24` 与 pnpm `11.7.0`，不满足时
 直接失败，避免用默认旧工具链制造伪兼容结论。
+
+## alpha.5 增量审计
+
+`alpha.4..alpha.5` 的功能变化集中在 storage domain、JSON storage 与
+`session-projection-cache`：投影缓存现在声明 v3/v4 可读兼容，v5 lineage 字段可选，
+无法解析的单条衍生记录会备份后跳过。梁相不再在 `dev:web` 前检测并搬走缓存；
+保留的 `dev:repair-cache` 命令只提示升级，不修改任何缓存、会话或梁相账本。
+
+逐文件比较确认以下梁相关键缝在 alpha.5 没有源码变化：DeepSeek 默认模型目录、
+Token meter、DeepSeek session usage、`PLATFORM_MODULES` 与客户端 tsdown wrapper。
+默认模型 ID 仍为 `deepseek-v4-pro`、`deepseek-v4-flash` 和
+`deepseek-v4-flash-vision-exp`。因此当量关系保持 Pro `×1`、Flash `×0.5`，Vision
+与所有未知/其他路由按安全回退 `×0.5`；不新增未经官方证据支持的高权重模型。
 
 ## 触点与稳定性
 
 路径均相对 `../deepseek-harness`；“公开”表示从发布包入口导出或由当前包文档
 明确描述，不表示 Developer Preview 期间承诺向后兼容。
 
-| 梁相触点 | 分级 | alpha.4 源码证据 | 当前结论 |
+| 梁相触点 | 分级 | alpha.5 源码证据 | 当前结论 |
 |---|---|---|---|
 | 客户端 `Context` / `ctx.slots` | 公开包类型 | `packages/client/ui-renderer/src/client/index.ts`：Cordis `Context` augmentation、`UiRendererService`、`apply`; `packages/client/ui-renderer/src/client/registry.ts`：`SlotRegistry.inject` / `register` | 旧 `dsh-client-runtime` 已删除；从 Cordis 导出 Context，并 type-only 导入 `@deepseek-ai/dsh-client-ui-renderer/client` 激活增强 |
 | `shell.overlay` | 公开、文档化槽位 | `packages/client/ui-layout/src/client/index.ts`：`SlotMap['shell.overlay']` 及 root children declaration；`packages/client/ui-renderer/src/client/registry.ts` 的槽位说明 | additive、root-scope 的 frame-wide 浮层；`overlay-slot.ts` 仅 type-only 导入 layout 的槽位增强 |
@@ -59,7 +74,7 @@ type-only 入口，使 declaration augmentation 在类型检查时生效且不�
 
 ## Token 口径与投影语义
 
-alpha.4 的 provider `TokenUsage` 定义四类互斥输入/输出桶：
+alpha.5 的 provider `TokenUsage` 定义四类互斥输入/输出桶：
 
 ```text
 input_tokens_total
@@ -103,7 +118,7 @@ max-HWM；它能去除相同 replay，却不能撤销已经产生的信用。
 
 ## 浏览器 bundle 基线
 
-alpha.4 的精确 `PLATFORM_MODULES` 是：
+alpha.5 的精确 `PLATFORM_MODULES` 是：
 
 ```text
 react

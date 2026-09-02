@@ -73,10 +73,10 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 
 | 组件 | 当前事实 |
 |---|---|
-| 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.4`（Unreleased）；公开稳定版仍为 `1.0.7` |
-| 本地 Backend 源码 | `SERVER_BUILD=1.1.4-u1`；schema v10（v9 receipt + v10 单行限时广播） |
+| 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.5`（Unreleased）；公开稳定版仍为 `1.0.7` |
+| 本地 Backend 源码 | `SERVER_BUILD=1.1.5-u1`；schema v10（v9 receipt + v10 单行限时广播） |
 | count 修复基线 | commit `a307faf` 先保存 accepted 的 count；本开发线继续补齐拒绝回执与原子 v7/v8→v9 migration |
-| DSH 兼容基线 | `dsh-v0.1.2-alpha.4` / `4e84901e64`；已用 Node `22.23.1` / pnpm `11.7.0` 做真实临时 Profile 安装与浏览器验证 |
+| DSH 兼容基线 | `dsh-v0.1.2-alpha.5` / `db6bdc3576`；模型/Token/客户端装载缝与 alpha.4 相同，alpha.5 新增跨版本 projection cache 自恢复；Node `22.23.1` / pnpm `11.7.0` 的最终真实安装已通过 |
 | 官网 | 独立仓，审计时公开版本 `1.0.7` |
 | 社区服务器 | 仍运行 `1.0.2-u1` / `a16deb8` / schema v7；按要求暂不部署 |
 
@@ -147,7 +147,7 @@ pnpm run smoke:browser-clean-profile  # 真实临时 Profile + 浏览器/Axe/视
 pnpm run smoke:online          # Backend/API/权威流变化时
 ```
 
-当前浏览器基线为桌面、窄屏、暗色三组共 24 项，覆盖四区结构、恰好两个投票动作、
+当前浏览器基线为桌面、窄屏、暗色三组共 36 项，覆盖四区结构、恰好两个投票动作、
 键盘与焦点环/返回、梁祠弹窗、axe WCAG A/AA 自动规则、视口几何和 reduced motion。若新发布的 DSH
 包仍处于 pnpm 24 小时门禁内，只可在人工核对精确版本后为临时 smoke 设置
 `LIANGXIANG_ALLOW_FRESH_DSH=1`，并直接运行 `bash scripts/smoke-clean-profile.sh`；

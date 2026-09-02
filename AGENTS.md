@@ -991,6 +991,15 @@ most four short promotional lines; backend/security/migration/test details stay
 out of that dialog. Show the final copy to the user before requesting the
 separately required publication permission.
 
+Before preparing or approving any formal public release, read and follow
+`.agents/skills/liangxiang-release-gate/SKILL.md`. A release requires one
+evidence-backed receipt covering both repositories and their visible history,
+privacy, version alignment, local/package/server deployment identity, current
+DSH model-equivalent mapping, full functional/install/browser checks, release
+copy, rollback points, and every still-unapproved external action. Passing the
+gate never authorizes publication. Public `main`, production backend, npm,
+GitHub Release/Tag, and GitHub Pages actions wait for explicit user approval.
+
 Backend-only community server updates must not bump the npm / client number.
 Stamp `SERVER_BUILD` as `${PLUGIN_VERSION}-uN` (for example `1.0.0-u1`) and
 leave `package.json` / `PLUGIN_VERSION` alone so the plugin market stays on

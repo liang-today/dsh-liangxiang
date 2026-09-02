@@ -14,6 +14,15 @@
 DSH_HOME="$(mktemp -d)"
 export DSH_HOME
 
+# Match the clean-profile smoke escape hatch for a source-audited DSH preview
+# that is still inside pnpm's 24-hour supply-chain window. This process only
+# creates disposable profiles and a localhost database.
+case "${LIANGXIANG_ALLOW_FRESH_DSH:-0}" in
+  0) ;;
+  1) export PNPM_CONFIG_MINIMUM_RELEASE_AGE=0 ;;
+  *) echo "ERROR: LIANGXIANG_ALLOW_FRESH_DSH must be 0 or 1" >&2; exit 2 ;;
+esac
+
 BACKEND_PORT="${LIANGXIANG_SMOKE_BACKEND_PORT:-4181}"
 WEB_PORT="${LIANGXIANG_SMOKE_ONLINE_PORT:-3982}"
 ONLINE_PROFILE="${LIANGXIANG_SMOKE_ONLINE_PROFILE:-liangxiang-online-smoke}"
@@ -22,6 +31,7 @@ BACKEND_LOG="$(mktemp)"
 WEB_LOG="$(mktemp)"
 BACKEND_PID=""
 WEB_PID=""
+TARBALL=""
 
 cleanup() {
   # Never `wait` here: the long-running servers below are background jobs too.
@@ -34,6 +44,7 @@ cleanup() {
     kill -9 "$WEB_PID" 2>/dev/null || true
   fi
   [ -n "$BACKEND_PID" ] && kill "$BACKEND_PID" 2>/dev/null || true
+  [ -n "$TARBALL" ] && rm -f "./$TARBALL"
   rm -rf "${DSH_HOME:?}"
 }
 trap cleanup EXIT
@@ -64,11 +75,17 @@ json_field() { # json, jq-ish path via node
 
 echo "== build =="
 pnpm run build >/dev/null
+TARBALL="$(pnpm pack --silent | tail -n 1)"
+echo "packed: $TARBALL"
 
 echo "== create isolated online-smoke profile =="
 rm -rf "${DSH_HOME:?}/profiles/$ONLINE_PROFILE"
+dsh_cli plugin --profile "$ONLINE_PROFILE" help >/dev/null
+node "$REPO_ROOT/scripts/prepare-smoke-profile-policy.mjs" \
+  "$DSH_HOME/profiles/$ONLINE_PROFILE/pnpm-workspace.yaml" \
+  "$REPO_ROOT/pnpm-workspace.yaml"
 dsh_cli plugin --profile "$ONLINE_PROFILE" add "$WEB_APP_SPEC" >/dev/null
-dsh_cli plugin --profile "$ONLINE_PROFILE" add . >/dev/null
+dsh_cli plugin --profile "$ONLINE_PROFILE" add --ignore-scripts "./$TARBALL" >/dev/null
 pnpm --dir "$DSH_HOME/profiles/$ONLINE_PROFILE" remove "${WEB_APP_SPEC%@*}" >/dev/null
 node "$REPO_ROOT/scripts/assert-profile-modules.mjs" "$DSH_HOME/profiles/$ONLINE_PROFILE"
 

@@ -1,6 +1,6 @@
 {
   "name": "dsh-liangxiang",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "用 DeepSeek Harness 凝聚香火，投下一炷夯或拉；众香汇成梁位，共同显出今日梁相。",
   "homepage": "https://liang.today/",
   "repository": {
@@ -78,10 +78,10 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/dsh": "0.1.2-alpha.4",
-    "@deepseek-ai/dsh-client-ui-layout": "0.1.2-alpha.4",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-alpha.4",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-alpha.4",
+    "@deepseek-ai/dsh": "0.1.2-alpha.5",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.2-alpha.5",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-alpha.5",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-alpha.5",
     "@playwright/test": "1.62.1",
     "@types/node": "^22.0.0",
     "@types/react": "~18.3.1",

@@ -499,8 +499,8 @@ describe('trusted proxy client address', () => {
   })
 
   it('ignores forged, malformed, or chained forwarding from untrusted peers', () => {
-    expect(trustedClientAddress('203.0.113.7', '1.1.1.1')).toBe('203.0.113.7')
-    expect(trustedClientAddress('127.0.0.1', '1.1.1.1, 2.2.2.2')).toBe('127.0.0.1')
+    expect(trustedClientAddress('203.0.113.7', '192.0.2.1')).toBe('203.0.113.7')
+    expect(trustedClientAddress('127.0.0.1', '192.0.2.1, 192.0.2.2')).toBe('127.0.0.1')
     expect(trustedClientAddress('127.0.0.1', 'not-an-ip')).toBe('127.0.0.1')
   })
 })

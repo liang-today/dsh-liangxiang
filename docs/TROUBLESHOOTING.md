@@ -4,16 +4,17 @@
 
 这不是已有进程。已有进程只会占用端口；先用 `lsof -nP -iTCP:3080 -sTCP:LISTEN` 即可确认。
 
-该错误表示开发专用 `$DSH_HOME/storages/session_projcache/` 里还留着旧 DSH 写入的会话投影缓存。DSH 0.1.2-alpha.4 当前记录身份要求 `isSeeded` 与 `inheritedEventCount`，旧记录没有这两个字段，因此插件树会在梁相加载前中止。投影缓存只是从会话日志折叠出的加速副本，不是会话日志，也不是梁相香火/投票账本。
+这是 DSH `0.1.2-alpha.4` 的已知跨版本缓存问题。`0.1.2-alpha.5` 已兼容 v3/v4/v5 会话投影缓存，并会备份、跳过仍无法解析的单条衍生记录。投影缓存只是从会话日志折叠出的加速副本，不是会话日志，也不是梁相香火/投票账本。
 
-先停掉开发 WebUI，然后执行：
+先停掉开发 WebUI并升级隔离开发 Profile：
 
 ```bash
 pnpm run dev:repair-cache
+pnpm run dev:install
 pnpm run dev:web
 ```
 
-脚本把旧的 `session_projcache.json` 和 `session_projcache/` 一起移入 `$DSH_HOME/backups/session_projcache/<UTC 时间>/`，避免遗留整单元文件再次引导出不兼容记录。以下内容不会被移动：
+`dev:repair-cache` 现在只说明 alpha.5 的自恢复策略，不移动任何文件。DSH 若遇到真正坏掉的单条缓存，会在原目录生成 `.bak.<时间>` 备份并从会话日志重建。以下内容始终不会被移动：
 
 - `$DSH_HOME/sessions/`：权威压缩会话日志；
 - `$DSH_HOME/storages/liangxiang.json`：社区身份与在线投影；
@@ -25,7 +26,7 @@ Node `22.23.1` + pnpm `11.7.0` 只约束自动销毁的干净 Profile 冒烟，�
 
 先退出 WebUI，对同一个 `DSH_HOME` 执行 `plugin --profile web add dshmarket`，再打开并刷新。
 
-注意：DSH 0.1.2-alpha.4 已移除旧的 `installSettingsSection` / `settingsNamespace` 导出。若市场或其他第三方插件因此让整个插件树失败，该版本尚未覆盖 alpha.4，不能靠重装梁相解决。源码联调用隔离的 `liangxiang-dev` Profile，移除其中无关的市场残留；日常 `web` Profile 则应等待对应插件发布明确兼容版本，或暂时使用 CLI 安装包。
+注意：DSH 0.1.2-alpha.4+ 已移除旧的 `installSettingsSection` / `settingsNamespace` 导出。若市场或其他第三方插件因此让整个插件树失败，该版本尚未覆盖 alpha.4+，不能靠重装梁相解决。源码联调用隔离的 `liangxiang-dev` Profile，移除其中无关的市场残留；日常 `web` Profile 则应等待对应插件发布明确兼容版本，或暂时使用 CLI 安装包。
 
 ```bash
 DSH_HOME="$PWD/.dsh-home" pnpm exec dsh plugin --profile liangxiang-dev remove dshmarket
