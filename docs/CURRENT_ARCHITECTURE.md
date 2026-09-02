@@ -75,13 +75,13 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 |---|---|
 | 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.6`（Unreleased）；公开稳定版仍为 `1.0.7` |
 | 本地 Backend 源码 | `SERVER_BUILD=1.1.6-u1`；schema v10（v9 receipt + v10 单行限时广播） |
-| count 修复基线 | commit `a307faf` 先保存 accepted 的 count；本开发线继续补齐拒绝回执与原子 v7/v8→v9 migration |
+| count 修复基线 | accepted 与 rejected 的 `count` 业务处置都保存 durable receipt；v7/v8→v9 migration 整体原子化 |
 | DSH 兼容基线 | `dsh-v0.1.2-alpha.5` / `db6bdc3576`；模型/Token/客户端装载缝与 alpha.4 相同，alpha.5 新增跨版本 projection cache 自恢复；Node `22.23.1` / pnpm `11.7.0` 的最终真实安装已通过 |
-| 官网 | 独立仓，审计时公开版本 `1.0.7` |
-| 社区服务器 | 仍运行 `1.0.2-u1` / `a16deb8` / schema v7；按要求暂不部署 |
+| 官网 | 独立仓 `main` = `1.1.6`；GoatCounter 固定使用一方统计域名并受构建门禁保护 |
+| 社区服务器 | `SERVER_BUILD=1.1.6-u1` / schema v10；只通过 `scripts/deploy.sh` 更新并由 `scripts/deploy-check.sh` 核验 |
 
-服务器与仓库当前故意不一致。任何 Agent 都不得因为本地修复已提交，就声称远端已
-升级；下一次获准部署前后必须分别运行 `scripts/deploy-check.sh`。
+服务器必须与部署分支当前 HEAD 一致。任何 Agent 都不得因为本地修复已提交，就声称
+远端已升级；每次获准部署前后必须分别运行 `scripts/deploy-check.sh`。
 
 ## 5. 社区服务器脱敏快照
 
@@ -91,7 +91,7 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 - Backend 仅监听 `127.0.0.1:4180`；部署目录 `/opt/liangxiang`，暂存目录
   `/var/tmp/liangxiang-deploy`，配置 `/etc/liangxiang.env`。
 - SQLite 位于独立数据盘 `/var/lib/liangxiang/data/liangxiang.sqlite`，WAL，
-  `quick_check=ok`、无外键异常；远端仍为 schema v7。
+  `quick_check=ok`、无外键异常；当前 schema v10。标准部署会在迁移前生成在线备份。
 - 初次审计时数据库有 16 个梁案（1 active）、90 个安装身份、54 个实际投票安装、
   43,304 炷累计接受香火、12,293 条投票请求记录；批量请求与聚合账可对齐。
 - 首轮 Profile 冒烟在隔离逻辑收紧前短暂触发在线 bootstrap，新增 1 个零投票测试身份、
