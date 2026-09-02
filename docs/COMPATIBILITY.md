@@ -15,16 +15,23 @@ DSH 仍处于 Developer Preview，任何升级都必须重新审计，不能从�
 | DSH tag | `dsh-v0.1.2-alpha.5` |
 | DSH commit | `db6bdc3576c2d4e7c965e8e3ed0c2a731eed87f5` |
 | DSH Web App | `@deepseek-ai/dsh-web-app@0.1.2-alpha.5` |
+| npm `latest` 兼容 | `@deepseek-ai/dsh@0.1.1-rc.2` / `@deepseek-ai/dsh-web-app@0.1.1-rc.2`，最终 tarball 真实安装通过 |
 | Cordis | DSH vendored `@deepseek-ai/cordis@4.0.2` |
 | DSH Node 要求 | `^22.19.0 || >=24.0.0` |
 | DSH 包管理器 | `pnpm@11.7.0` |
 
-以上版本、源码证据和真实安装路径已经核对。2026-09-02 使用 Node
+以上版本、源码证据和真实安装路径已经核对。2026-09-03 使用 Node
 `22.23.1`、pnpm `11.7.0`，在隔离的临时 `DSH_HOME` 中重新执行源码构建、npm
 tarball 打包、DSH Web Profile 初始化、插件安装和浏览器运行验证；没有读取或改写
 用户的真实 Profile。验证覆盖鉴权后的 WebUI、revisioned config、Host 生命周期、
-在线/离线权威分离和存储初始化，并在桌面、窄屏、暗色三种环境运行 36 项
-Playwright 基线，全部通过。
+在线/离线权威分离和存储初始化，并在桌面、窄屏、暗色三种环境运行 39 项
+Playwright 基线；38 项通过，1 项因 alpha.5 窄屏主动隐藏 DSH 设置按钮而按设计跳过。
+
+同一份 `dsh-liangxiang-1.1.6.tgz` 还在 npm 当前无版本命令实际解析到的稳定线
+`@deepseek-ai/dsh@0.1.1-rc.2` + `@deepseek-ai/dsh-web-app@0.1.1-rc.2` 上重复完成
+真实 Profile 启动与同一套浏览器基线（38 通过、1 按设计跳过）。因此用户文档的
+无标签 `npx --yes @deepseek-ai/dsh` 安装方式已经实测，不要求用户切换到 alpha 标签；
+alpha.5 仍是源码适配与前瞻兼容的权威审计基线。
 
 alpha.5 包若仍处在 pnpm 的 24 小时发布时间门禁内，可在明确核对版本后临时设置
 `LIANGXIANG_ALLOW_FRESH_DSH=1`。该开关只让 smoke 命令为本次临时 Profile 传入

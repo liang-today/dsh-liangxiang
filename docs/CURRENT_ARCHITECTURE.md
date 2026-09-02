@@ -76,7 +76,7 @@ Badge / 今日梁案 / 香火环 / 二元投票 / 梁祠
 | 插件程序号 | 当前源码 `package.json` / `PLUGIN_VERSION` = `1.1.6`（Unreleased）；公开稳定版仍为 `1.0.7` |
 | 本地 Backend 源码 | `SERVER_BUILD=1.1.6-u1`；schema v10（v9 receipt + v10 单行限时广播） |
 | count 修复基线 | accepted 与 rejected 的 `count` 业务处置都保存 durable receipt；v7/v8→v9 migration 整体原子化 |
-| DSH 兼容基线 | `dsh-v0.1.2-alpha.5` / `db6bdc3576`；模型/Token/客户端装载缝与 alpha.4 相同，alpha.5 新增跨版本 projection cache 自恢复；Node `22.23.1` / pnpm `11.7.0` 的最终真实安装已通过 |
+| DSH 兼容基线 | 源码审计为 `dsh-v0.1.2-alpha.5` / `db6bdc3576`；npm 无标签安装实际解析到的稳定线 `0.1.1-rc.2` 也已用同一份 1.1.6 tarball 完成真实 Profile 与浏览器回归；Node `22.23.1` / pnpm `11.7.0` |
 | 官网 | 公开 Pages / 远端 `main` 仍为 `1.0.7`；独立仓本地 `main` 领先 2 个 `1.1.6` 待发布提交。GoatCounter 已改用一方统计域名；候选构建门禁会阻止漏装统计脚本 |
 | 社区服务器 | `SERVER_BUILD=1.1.6-u1` / schema v10；只通过 `scripts/deploy.sh` 更新并由 `scripts/deploy-check.sh` 核验 |
 
