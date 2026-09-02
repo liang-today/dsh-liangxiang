@@ -36,7 +36,7 @@ export const PLUGIN_VERSION = '1.0.7'
  * Server-only release label for the community backend. Do not bump the npm /
  * client `PLUGIN_VERSION` for a backend-only change; stamp `1.0.7-uN` instead.
  */
-export const SERVER_BUILD = '1.0.7-u1'
+export const SERVER_BUILD = '1.0.7-u2'
 
 /** Welcome gift: sticks credited once per device fingerprint per business date. */
 export const STARTER_INCENSE_COUNT = 10

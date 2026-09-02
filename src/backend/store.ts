@@ -152,6 +152,8 @@ export interface VoteRow {
   case_id: string
   business_date: string
   vote_type: VoteType
+  /** NULL only for rows accepted before schema v8, when count was not stored. */
+  requested_count: number | null
   used_incense_after: number
   remaining_incense_after: number
   created_at: number
@@ -419,9 +421,9 @@ export function openBackendStore(databasePath: string): BackendStore {
   )
   const insertVoteStmt = db.prepare(
     `INSERT INTO liang_vote
-       (request_id, installation_id, case_id, business_date, vote_type,
+       (request_id, installation_id, case_id, business_date, vote_type, requested_count,
         used_incense_after, remaining_incense_after, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectLatestSnapshot = db.prepare(
     'SELECT * FROM public_liang_snapshot WHERE case_id = ? ORDER BY sequence DESC LIMIT 1',
@@ -689,6 +691,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.case_id,
         row.business_date,
         row.vote_type,
+        row.requested_count,
         row.used_incense_after,
         row.remaining_incense_after,
         row.created_at,

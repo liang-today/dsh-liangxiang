@@ -956,9 +956,10 @@ export class LiangxiangBackendService {
       return rejected(intent, 'stale_case', `case ${intent.case_id} is not the active case`)
     }
 
+    const requestedCount = intent.count ?? 1
     const existing = this.store.voteByRequestId(installationId, intent.request_id)
     if (existing !== undefined) {
-      if (existing.case_id !== intent.case_id || existing.vote_type !== intent.vote_type) {
+      if (!this.sameVoteIntent(existing, intent, requestedCount)) {
         return rejected(
           intent,
           'idempotency_conflict',
@@ -972,7 +973,7 @@ export class LiangxiangBackendService {
     // Read before the insert: after it, this installation always has a vote.
     const firstVoteForCase = !this.store.hasVotedForCase(installationId, target.id)
     const remaining = this.remainingFor(installationId, target)
-    const spent = clampVoteSpend(intent.count ?? 1, remaining, maxSpend)
+    const spent = clampVoteSpend(requestedCount, remaining, maxSpend)
     if (spent < 1) {
       return rejected(intent, 'insufficient_incense', 'no remaining incense today')
     }
@@ -988,6 +989,7 @@ export class LiangxiangBackendService {
         case_id: target.id,
         business_date: target.business_date,
         vote_type: intent.vote_type,
+        requested_count: requestedCount,
         used_incense_after: row.used_incense,
         remaining_incense_after: earned - row.used_incense,
         created_at: now,
@@ -1016,7 +1018,7 @@ export class LiangxiangBackendService {
     if (stored === undefined) {
       return rejected(intent, 'invalid_intent', 'vote could not be recorded; retry with the same request id')
     }
-    if (stored.case_id !== intent.case_id || stored.vote_type !== intent.vote_type) {
+    if (!this.sameVoteIntent(stored, intent, intent.count ?? 1)) {
       return rejected(intent, 'idempotency_conflict', 'request id was already used with a different payload')
     }
     return this.replayAccepted(installationId, intent, stored, this.store.caseById(stored.case_id))
@@ -1044,6 +1046,25 @@ export class LiangxiangBackendService {
       spent_incense: 0,
       replayed: true,
     }
+  }
+
+  /**
+   * Compare the complete normalized vote intent persisted by schema v8.
+   *
+   * V7 rows have no recoverable requested count: the accepted spend may have
+   * been clamped by the remaining balance or the token bucket. Fail closed for
+   * an explicit bulk retry, while retaining safe one-stick replay compatibility.
+   */
+  private sameVoteIntent(
+    stored: { case_id: string, vote_type: V1VoteRequest['vote_type'], requested_count: number | null },
+    intent: V1VoteRequest,
+    requestedCount: number,
+  ): boolean {
+    return stored.case_id === intent.case_id
+      && stored.vote_type === intent.vote_type
+      && (stored.requested_count === null
+        ? requestedCount === 1
+        : stored.requested_count === requestedCount)
   }
 
   private ensureRow(installationId: string, caseRow: CaseRow, now: number): void {

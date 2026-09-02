@@ -36,7 +36,7 @@ afterEach(() => {
 })
 
 describe('starter incense grant', () => {
-  it('migrates the backend schema to v7 with archive unique voters', () => {
+  it('migrates the backend schema to v8 with archive voters and vote request counts', () => {
     const db = new DatabaseSync(':memory:')
     migrate(db)
     const version = db.prepare('PRAGMA user_version').get() as { user_version: number }
@@ -51,6 +51,42 @@ describe('starter incense grant', () => {
     const dayColumns = (db.prepare('PRAGMA table_info(liang_day_archive)').all() as Array<{ name: string }>)
       .map((row) => row.name)
     expect(dayColumns).toContain('unique_voters')
+    const voteColumns = (db.prepare('PRAGMA table_info(liang_vote)').all() as Array<{ name: string }>)
+      .map((row) => row.name)
+    expect(voteColumns).toContain('requested_count')
+    db.close()
+  })
+
+  it('upgrades an existing v7 vote table without inventing historical request counts', () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec(`
+      CREATE TABLE liang_vote (
+        id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id               TEXT    NOT NULL,
+        installation_id          TEXT    NOT NULL,
+        case_id                  TEXT    NOT NULL,
+        business_date            TEXT    NOT NULL,
+        vote_type                TEXT    NOT NULL CHECK (vote_type IN ('up', 'down')),
+        used_incense_after       INTEGER NOT NULL CHECK (used_incense_after > 0),
+        remaining_incense_after  INTEGER NOT NULL CHECK (remaining_incense_after >= 0),
+        created_at               INTEGER NOT NULL,
+        UNIQUE (installation_id, request_id)
+      );
+      INSERT INTO liang_vote
+        (request_id, installation_id, case_id, business_date, vote_type,
+         used_incense_after, remaining_incense_after, created_at)
+      VALUES ('legacy-request', 'legacy-install', 'legacy-case', '2026-08-16', 'up', 4, 2, 1);
+      PRAGMA user_version = 7;
+    `)
+
+    migrate(db)
+
+    const version = db.prepare('PRAGMA user_version').get() as { user_version: number }
+    const legacy = db.prepare(
+      "SELECT requested_count FROM liang_vote WHERE request_id = 'legacy-request'",
+    ).get() as { requested_count: number | null }
+    expect(version.user_version).toBe(BACKEND_SCHEMA_USER_VERSION)
+    expect(legacy.requested_count).toBeNull()
     db.close()
   })
 

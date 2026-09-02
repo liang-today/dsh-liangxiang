@@ -202,6 +202,43 @@ describe('vote transaction', () => {
     expect(conflict.authoritative_personal_state.used_incense).toBe(1)
   })
 
+  it('persists count as part of the idempotency payload', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 5)
+    const first = vote(f, INSTALLATION, 'up', 'req-count-idem-01', 3)
+    const replay = vote(f, INSTALLATION, 'up', 'req-count-idem-01', 3)
+    const conflict = vote(f, INSTALLATION, 'up', 'req-count-idem-01', 2)
+
+    expect(first.result).toMatchObject({
+      status: 'accepted',
+      replayed: false,
+      spent_incense: 3,
+    })
+    expect(replay.result).toMatchObject({
+      status: 'accepted',
+      replayed: true,
+      spent_incense: 0,
+    })
+    expect(conflict.result).toMatchObject({
+      status: 'rejected',
+      reason: 'idempotency_conflict',
+    })
+    expect(conflict.authoritative_personal_state).toMatchObject({
+      used_incense: 3,
+      remaining_incense: 2,
+    })
+  })
+
+  it('normalizes an omitted vote count and count one to the same intent', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 2)
+    const first = vote(f, INSTALLATION, 'down', 'req-count-default', undefined)
+    const replay = vote(f, INSTALLATION, 'down', 'req-count-default', 1)
+    expect(first.result).toMatchObject({ status: 'accepted', spent_incense: 1 })
+    expect(replay.result).toMatchObject({ status: 'accepted', replayed: true, spent_incense: 0 })
+    expect(replay.authoritative_personal_state.used_incense).toBe(1)
+  })
+
   it('scopes idempotency per installation', () => {
     const f = boot()
     f.grantIncense(INSTALLATION, 1)

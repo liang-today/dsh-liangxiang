@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v7) for the Liangxiang backend.
+ * SQLite schema (v8) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -13,8 +13,9 @@
  *    means the database itself refuses an overspend, so a bug in the service
  *    cannot produce a row that violates `used <= earned`.
  *  - `liang_vote`: `UNIQUE (installation_id, request_id)` is the idempotency
- *    key. Only ACCEPTED votes are recorded, so a rejection never poisons a
- *    request id.
+ *    key. `requested_count` preserves the normalized business intent so a
+ *    retry cannot change a one-stick click into a dump (or vice versa). Only
+ *    ACCEPTED votes are recorded, so a rejection never poisons a request id.
  *  - `daily_liang_stats`: the raw aggregate, updated inside the vote
  *    transaction (immediately consistent).
  *  - `public_liang_snapshot`: append-only published snapshots. Ratios and
@@ -28,7 +29,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 
-export const BACKEND_SCHEMA_USER_VERSION = 7
+export const BACKEND_SCHEMA_USER_VERSION = 8
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS liang_vote (
   case_id                  TEXT    NOT NULL REFERENCES daily_liang_case (id),
   business_date            TEXT    NOT NULL,
   vote_type                TEXT    NOT NULL CHECK (vote_type IN ('up', 'down')),
+  requested_count          INTEGER CHECK (requested_count IS NULL OR requested_count > 0),
   used_incense_after       INTEGER NOT NULL CHECK (used_incense_after > 0),
   remaining_incense_after  INTEGER NOT NULL CHECK (remaining_incense_after >= 0),
   created_at               INTEGER NOT NULL,
@@ -257,6 +259,16 @@ export function migrate(db: DatabaseSync): void {
            AND v.business_date <= liang_month_archive.end_date
       );
     `)
+  }
+  if (current < 8 && !tableColumns(db, 'liang_vote').includes('requested_count')) {
+    // V7 did not persist the requested dump size. It cannot be reconstructed
+    // from the accepted spend because remaining incense and the rate budget
+    // may have clamped it. Keep legacy rows NULL and let the service accept
+    // only the canonical one-stick replay for those ambiguous records.
+    db.exec(
+      'ALTER TABLE liang_vote ADD COLUMN requested_count INTEGER '
+      + 'CHECK (requested_count IS NULL OR requested_count > 0)',
+    )
   }
   if (current !== BACKEND_SCHEMA_USER_VERSION) {
     db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
