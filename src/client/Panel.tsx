@@ -90,8 +90,8 @@ import { SoundIcon } from './SoundIcon.tsx'
 import type { LiangxiangViewState } from './store.ts'
 import { color, font } from './theme.ts'
 import type { ThrottledProgress } from './use-throttle-fill.ts'
+import { QQ_GROUP_QR_CODE_DATA_URL } from './qq-group-qrcode.ts'
 import {
-  RELEASE_NOTES_EYEBROW,
   RELEASE_NOTES_ITEMS,
   RELEASE_NOTES_QQ,
   RELEASE_NOTES_QQ_INVITE,
@@ -107,9 +107,6 @@ export interface PanelProps {
   /** Sound volume step 0-3 (无/小/中/大). */
   soundLevel: number
   onCycleSound: () => void
-  /** Version details are exposed only from 梁相案牍. */
-  versionInfoOpen: boolean
-  onVersionInfoClose: () => void
   /** First-run welcome overlay visibility. */
   welcomeVisible: boolean
   onChooseOnline: () => void
@@ -826,7 +823,7 @@ function SocialStatHint(props: {
 
 export function Panel(props: PanelProps): ReactElement {
   const {
-    state, reducedMotion, throttle, soundLevel, onCycleSound, versionInfoOpen, onVersionInfoClose,
+    state, reducedMotion, throttle, soundLevel, onCycleSound,
     welcomeVisible, onChooseOnline, onChooseLocal, releaseNotesVisible, onReleaseNotesClose,
     avatarPulse, condensedIncense, voteFeedback,
     onVote,
@@ -908,7 +905,6 @@ export function Panel(props: PanelProps): ReactElement {
     if (event.key === 'Escape') {
       event.stopPropagation()
       if (releaseNotesVisible) onReleaseNotesClose()
-      else if (versionInfoOpen) onVersionInfoClose()
       else if (modeConfirmOpen) onModeCancel()
       else if (reconcilePending) onReconcileCancel()
       else if (utilityOpen) onUtilityClose()
@@ -963,7 +959,7 @@ export function Panel(props: PanelProps): ReactElement {
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
-            gap: '16px',
+            gap: '11px',
             padding: '22px 20px 20px',
             borderRadius: '18px',
             border: `1px solid color-mix(in srgb, ${color.ritualGold} 24%, ${color.border})`,
@@ -1027,6 +1023,42 @@ export function Panel(props: PanelProps): ReactElement {
           >
             {WELCOME_PRIVACY_NOTE}
           </p>
+          <div
+            data-liangxiang-welcome-qq=""
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              width: '100%',
+              padding: '8px 10px',
+              border: `1px solid color-mix(in srgb, ${color.ritualGold} 30%, ${color.border})`,
+              borderRadius: '10px',
+              background: `color-mix(in srgb, ${color.ritualGold} 8%, transparent)`,
+              boxSizing: 'border-box',
+            }}
+          >
+            <img
+              src={QQ_GROUP_QR_CODE_DATA_URL}
+              alt="梁相 QQ 群 453683905 二维码"
+              data-liangxiang-welcome-qq-qrcode=""
+              width={72}
+              height={72}
+              style={{
+                flex: '0 0 auto',
+                display: 'block',
+                width: '72px',
+                height: '72px',
+                padding: '3px',
+                borderRadius: '8px',
+                background: '#ffffff',
+                boxSizing: 'border-box',
+              }}
+            />
+            <span style={{ minWidth: 0, textAlign: 'left' }}>
+              <strong style={{ display: 'block', color: color.ritualEmberText, fontSize: '13px' }}>{RELEASE_NOTES_QQ}</strong>
+              <span style={{ display: 'block', marginTop: '4px', color: color.textSecondary, fontSize: '10px', lineHeight: 1.45 }}>{RELEASE_NOTES_QQ_INVITE}</span>
+            </span>
+          </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '2px', width: '100%' }}>
             <button
               type="button"
@@ -1112,10 +1144,7 @@ export function Panel(props: PanelProps): ReactElement {
               outline: 'none',
             }}
           >
-            <span style={{ display: 'block', color: color.ritualEmberText, fontSize: '10px', fontWeight: 750, letterSpacing: '1.1px', textAlign: 'center' }}>
-              {RELEASE_NOTES_EYEBROW}
-            </span>
-            <strong style={{ display: 'block', marginTop: '4px', color: color.textPrimary, fontSize: '17px', letterSpacing: '0.5px', textAlign: 'center' }}>
+            <strong style={{ display: 'block', color: color.textPrimary, fontSize: '17px', letterSpacing: '0.5px', textAlign: 'center' }}>
               {RELEASE_NOTES_TITLE}
             </strong>
             <ul
@@ -1163,65 +1192,6 @@ export function Panel(props: PanelProps): ReactElement {
                 {WELCOME_DISMISS}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {versionInfoOpen && (
-        <div
-          data-liangxiang-version-backdrop=""
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 6,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '18px',
-            borderRadius: '18px',
-            background: 'rgba(10, 8, 7, 0.34)',
-            backdropFilter: 'blur(3px)',
-            boxSizing: 'border-box',
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="版本信息"
-            data-liangxiang-version-dialog=""
-            style={{
-              width: '100%',
-              padding: '16px',
-              border: `1px solid color-mix(in srgb, ${color.ritualGold} 34%, ${color.border})`,
-              borderRadius: '14px',
-              background: `linear-gradient(180deg, color-mix(in srgb, ${color.ritualGold} 10%, ${color.bgLayer}), ${color.bgLayer})`,
-              boxShadow: '0 18px 42px rgba(0, 0, 0, 0.28)',
-              textAlign: 'center',
-              boxSizing: 'border-box',
-            }}
-          >
-            <VersionSealIcon size={28} />
-            <strong style={{ display: 'block', marginTop: '6px', color: color.textPrimary, fontSize: '15px', letterSpacing: '1px' }}>梁相</strong>
-            <span data-liangxiang-version-value="" style={{ display: 'block', marginTop: '3px', color: color.ritualEmber, fontSize: '14px', fontWeight: 700 }}>v{PLUGIN_VERSION}</span>
-            <button
-              type="button"
-              autoFocus
-              data-liangxiang-version-close=""
-              onClick={onVersionInfoClose}
-              style={{
-                marginTop: '13px',
-                minWidth: '84px',
-                padding: '6px 12px',
-                border: 'none',
-                borderRadius: '8px',
-                background: color.buttonPrimaryFill,
-                color: color.buttonPrimaryText,
-                font: `600 11px/16px ${font.family}`,
-                cursor: 'pointer',
-              }}
-            >
-              {WELCOME_DISMISS}
-            </button>
           </div>
         </div>
       )}
@@ -1763,6 +1733,22 @@ export function Panel(props: PanelProps): ReactElement {
             {UTILITY_LABEL}
             <span data-liangxiang-hint="" aria-hidden="true">{UTILITY_HINT}</span>
           </button>
+          {utilityOpen
+            ? (
+              <span
+                aria-hidden="true"
+                data-liangxiang-utility-bridge=""
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  bottom: '100%',
+                  zIndex: 2,
+                  width: '220px',
+                  height: '7px',
+                }}
+              />
+            )
+            : null}
           {utilityOpen
             ? (
               <div

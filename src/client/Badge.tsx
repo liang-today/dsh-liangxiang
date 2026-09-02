@@ -500,7 +500,6 @@ export function LiangxiangBadge(): ReactElement {
   // Transient vote feedback (已上香).
   const [voteFeedback, setVoteFeedback] = useState('')
   const [utilityOpen, setUtilityOpen] = useState(false)
-  const [versionInfoOpen, setVersionInfoOpen] = useState(false)
   const [reconcilePending, setReconcilePending] = useState(false)
   const [modeConfirmOpen, setModeConfirmOpen] = useState(false)
   const [modeChanging, setModeChanging] = useState(false)
@@ -513,7 +512,6 @@ export function LiangxiangBadge(): ReactElement {
   useEffect(() => {
     if (!open) {
       setUtilityOpen(false)
-      setVersionInfoOpen(false)
       setReconcilePending(false)
       setModeConfirmOpen(false)
     }
@@ -766,7 +764,7 @@ export function LiangxiangBadge(): ReactElement {
   const onShowVersion = (): void => {
     setUtilityOpen(false)
     setModeConfirmOpen(false)
-    setVersionInfoOpen(true)
+    setReleaseNotesVisible(true)
   }
 
   const placement = panelPlacementFor(position, viewport)
@@ -825,8 +823,6 @@ export function LiangxiangBadge(): ReactElement {
           throttle={throttle}
           soundLevel={soundLevel}
           onCycleSound={onCycleSound}
-          versionInfoOpen={versionInfoOpen}
-          onVersionInfoClose={() => setVersionInfoOpen(false)}
           welcomeVisible={welcomeVisible}
           onChooseOnline={onChooseOnline}
           onChooseLocal={onChooseLocal}
@@ -861,7 +857,6 @@ export function LiangxiangBadge(): ReactElement {
               return
             }
             savePanelOpen(false, typeof localStorage === 'undefined' ? null : localStorage)
-            setVersionInfoOpen(false)
             setOpen(false)
           }}
           reconcilePending={reconcilePending}
@@ -872,7 +867,6 @@ export function LiangxiangBadge(): ReactElement {
               setReconcilePending(false)
               setModeConfirmOpen(false)
             } else {
-              setVersionInfoOpen(false)
               setUtilityOpen(true)
             }
           }}

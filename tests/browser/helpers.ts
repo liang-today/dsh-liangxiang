@@ -8,21 +8,23 @@ const browserAuthUrl = process.env.LIANGXIANG_BROWSER_AUTH_URL
 
 export async function bootInstalledLiangxiang(
   page: Page,
-  options: { releaseNotesSeen?: boolean } = {},
+  options: { welcomeSeen?: boolean, releaseNotesSeen?: boolean } = {},
 ): Promise<void> {
   // The suite controls cosmetic browser preferences only. Authority is set by
   // the isolated Profile smoke before Playwright starts.
   // Apply reduced motion on the page explicitly: some DSH-created browser
   // contexts do not retain the project-level media option across token auth.
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.addInitScript(({ releaseNotesSeen, releaseNotesVersion }) => {
-    localStorage.setItem('liangxiang:welcome:v2', 'seen')
+  await page.addInitScript(({ welcomeSeen, releaseNotesSeen, releaseNotesVersion }) => {
+    if (welcomeSeen) localStorage.setItem('liangxiang:welcome:v2', 'seen')
+    else localStorage.removeItem('liangxiang:welcome:v2')
     if (releaseNotesSeen) {
       localStorage.setItem(`liangxiang:release-notes:${releaseNotesVersion}`, 'seen')
     }
     localStorage.setItem('liangxiang:panel-open:v1', '0')
     localStorage.removeItem('liangxiang:badge-position:v2')
   }, {
+    welcomeSeen: options.welcomeSeen ?? true,
     releaseNotesSeen: options.releaseNotesSeen ?? true,
     releaseNotesVersion: RELEASE_NOTES_VERSION,
   })

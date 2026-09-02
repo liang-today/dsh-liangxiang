@@ -5,9 +5,8 @@
  * test deliberately fails when a version bump forgets to refresh this copy.
  * This is cosmetic localStorage only and never participates in authority.
  */
-export const RELEASE_NOTES_VERSION = '1.1.2'
+export const RELEASE_NOTES_VERSION = '1.1.3'
 export const RELEASE_NOTES_TITLE = `梁相 v${RELEASE_NOTES_VERSION} 更新`
-export const RELEASE_NOTES_EYEBROW = '上次正式版以来'
 export const RELEASE_NOTES_ITEMS = [
   '送香了：新香客备 10 炷，当天重装不重复领取。',
   '倾炉动效进一步优化：长按 1.5 秒，一次打出多炷香。',

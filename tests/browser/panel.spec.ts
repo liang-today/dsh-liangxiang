@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { RELEASE_NOTES_TITLE } from '../../src/client/release-notes.ts'
 
 import {
   badgeSelector,
   bootInstalledLiangxiang,
   liangciSelector,
+  openPanel,
   panelSelector,
   waitForSettledAnimations,
 } from './helpers.ts'
@@ -53,6 +55,37 @@ test('keyboard opens and closes the panel and returns focus to 今日梁相', as
   await badge.press('Space')
   await expect(panel).toBeVisible()
   await expect(panel).toBeFocused()
+})
+
+test('pointer crosses from 梁相案牍 into its menu and version reopens update notes', async ({ page }) => {
+  const panel = await openPanel(page)
+  const trigger = panel.locator('[data-liangxiang-utility-trigger]')
+  await trigger.click()
+
+  const drawer = panel.locator('[data-liangxiang-utility-drawer]')
+  await expect(drawer).toBeVisible()
+  const triggerBox = await trigger.boundingBox()
+  const drawerBox = await drawer.boundingBox()
+  expect(triggerBox).not.toBeNull()
+  expect(drawerBox).not.toBeNull()
+  if (triggerBox === null || drawerBox === null) return
+
+  // Cross the visual 6px gap explicitly. The transparent descendant bridge
+  // keeps this point inside the combined trigger + drawer hover region.
+  await page.mouse.move(triggerBox.x + triggerBox.width / 2, triggerBox.y + triggerBox.height / 2)
+  await page.mouse.move(
+    triggerBox.x + triggerBox.width / 2,
+    (drawerBox.y + drawerBox.height + triggerBox.y) / 2,
+  )
+  await expect(drawer).toBeVisible()
+
+  const version = drawer.locator('[data-liangxiang-utility-action="version"]')
+  await version.hover()
+  await expect(drawer).toBeVisible()
+  await version.click()
+
+  await expect(page.getByRole('dialog', { name: RELEASE_NOTES_TITLE })).toBeVisible()
+  await expect(page.locator('[data-liangxiang-version-dialog]')).toHaveCount(0)
 })
 
 test('梁祠 traps focus in both directions, closes with Escape, and restores entry focus', async ({ page }) => {

@@ -66,7 +66,7 @@ function renderPanel(
     onReconcileAsk?: () => void
     onReconcileConfirm?: () => void
     onReconcileCancel?: () => void
-    versionInfoOpen?: boolean
+    onShowVersion?: () => void
     onInsufficientVote?: (voteType: 'up' | 'down') => void
     onVoteClick?: (voteType: 'up' | 'down') => void
     welcomeVisible?: boolean
@@ -90,8 +90,6 @@ function renderPanel(
       reducedMotion={extra.reducedMotion ?? false}
       soundLevel={0}
       onCycleSound={() => undefined}
-      versionInfoOpen={extra.versionInfoOpen ?? false}
-      onVersionInfoClose={() => undefined}
       welcomeVisible={extra.welcomeVisible ?? false}
       onChooseOnline={() => undefined}
       onChooseLocal={() => undefined}
@@ -120,7 +118,7 @@ function renderPanel(
       onModeAsk={() => undefined}
       onModeConfirm={() => undefined}
       onModeCancel={() => undefined}
-      onShowVersion={() => undefined}
+      onShowVersion={extra.onShowVersion ?? (() => undefined)}
       onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
       onReconcileConfirm={extra.onReconcileConfirm ?? (() => undefined)}
       onReconcileCancel={extra.onReconcileCancel ?? (() => undefined)}
@@ -183,6 +181,13 @@ describe('four visual regions', () => {
     expect(WELCOME_GIFT_LINE).toContain('10 炷')
     expect(WELCOME_PRIVACY_NOTE).toContain('随机安装 ID')
     expect(WELCOME_PRIVACY_NOTE).not.toContain('投票')
+    const qqCard = findByAttr(tree, 'data-liangxiang-welcome-qq')[0]
+    const qrCode = findByAttr(tree, 'data-liangxiang-welcome-qq-qrcode')[0]
+    expect(qqCard && textContent([qqCard])).toContain(RELEASE_NOTES_QQ)
+    expect(qrCode?.props.alt).toBe('梁相 QQ 群 453683905 二维码')
+    expect(qrCode?.props.src).toMatch(/^data:image\/jpeg;base64,/)
+    expect(qrCode?.props.width).toBe(72)
+    expect(qrCode?.props.height).toBe(72)
     expect(textContent(welcome === undefined ? [] : [welcome])).not.toMatch(/秒后|倒计时/)
   })
 
@@ -198,8 +203,6 @@ describe('four visual regions', () => {
         reducedMotion={false}
         soundLevel={0}
         onCycleSound={() => undefined}
-        versionInfoOpen={false}
-        onVersionInfoClose={() => undefined}
         welcomeVisible={false}
         onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
@@ -233,6 +236,7 @@ describe('four visual regions', () => {
     expect(notes?.props.autoFocus).toBe(true)
     expect(textContent(notes === undefined ? [] : [notes])).toContain(RELEASE_NOTES_QQ)
     expect(textContent(notes === undefined ? [] : [notes])).toContain(RELEASE_NOTES_THANKS)
+    expect(textContent(notes === undefined ? [] : [notes])).not.toContain('上次正式版以来')
     const close = findByAttr(updated, 'data-liangxiang-release-notes-close')[0]
     expect(close?.props.autoFocus).toBeUndefined()
     const onClick = close?.props.onClick as (() => void) | undefined
@@ -434,16 +438,17 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(textContent(tree)).not.toContain('可打梁')
   })
 
-  it('shows installed version details only in the dedicated version dialog', () => {
-    const tree = renderPanel(demoState(), '', { versionInfoOpen: true })
-    const dialogs = findByAttr(tree, 'data-liangxiang-version-dialog')
-    expect(dialogs).toHaveLength(1)
-    expect(dialogs[0]?.props.role).toBe('dialog')
-    expect(dialogs[0]?.props['aria-modal']).toBe('true')
-    expect(textContent(dialogs)).not.toContain(PLUGIN_PACKAGE_NAME)
-    expect(textContent(dialogs)).toContain(`v${PLUGIN_VERSION}`)
-    expect(findByAttr(tree, 'data-liangxiang-version-close')).toHaveLength(1)
-    expect(findByAttr(tree, 'data-liangxiang-version')).toHaveLength(0)
+  it('routes the version seal to the reusable update-notes flow', () => {
+    let opened = 0
+    const tree = renderPanel(demoState(), '', {
+      utilityOpen: true,
+      onShowVersion: () => { opened += 1 },
+    })
+    const version = findByAttr(tree, 'data-liangxiang-utility-action', 'version')[0]
+    const onClick = version?.props.onClick as (() => void) | undefined
+    onClick?.()
+    expect(opened).toBe(1)
+    expect(findByAttr(tree, 'data-liangxiang-version-dialog')).toHaveLength(0)
   })
 
   it('compacts flank counts so thousands stay short (and keeps exact values in the tooltip / SR)', () => {
@@ -523,8 +528,6 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         reducedMotion={false}
         soundLevel={0}
         onCycleSound={() => undefined}
-        versionInfoOpen={false}
-        onVersionInfoClose={() => undefined}
         welcomeVisible={false}
         onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
@@ -563,8 +566,6 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
         reducedMotion
         soundLevel={0}
         onCycleSound={() => undefined}
-        versionInfoOpen={false}
-        onVersionInfoClose={() => undefined}
         welcomeVisible={false}
         onChooseOnline={() => undefined}
         onChooseLocal={() => undefined}
@@ -1027,6 +1028,10 @@ describe('梁相案牍', () => {
   it('opens a themed four-action drawer with an explicit offline-mode control', () => {
     const tree = renderPanel(onlineState(), '', { utilityOpen: true })
     expect(findByAttr(tree, 'data-liangxiang-utility-drawer')).toHaveLength(1)
+    const bridge = findByAttr(tree, 'data-liangxiang-utility-bridge')[0]
+    expect(styleOf(bridge).bottom).toBe('100%')
+    expect(styleOf(bridge).height).toBe('7px')
+    expect(styleOf(bridge).width).toBe('220px')
     expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(4)
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'home')).toHaveLength(1)
     const mode = findByAttr(tree, 'data-liangxiang-utility-action', 'mode')[0]

@@ -12,6 +12,7 @@ test('an upgrader sees accessible version notes once, starting from the heading'
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText(RELEASE_NOTES_QQ)
   await expect(dialog).toContainText(RELEASE_NOTES_THANKS)
+  await expect(dialog).not.toContainText('上次正式版以来')
   await expect.poll(() => dialog.evaluate(element => element.scrollTop)).toBe(0)
 
   const results = await new AxeBuilder({ page })
