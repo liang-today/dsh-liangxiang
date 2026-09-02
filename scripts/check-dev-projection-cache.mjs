@@ -42,4 +42,4 @@ console.error(
 )
 console.error('The cache is rebuildable; session logs and Liangxiang ledgers are separate and remain untouched.')
 console.error('Run: pnpm run dev:repair-cache')
-process.exit(1)
+process.exit(2)

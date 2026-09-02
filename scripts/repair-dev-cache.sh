@@ -11,6 +11,22 @@ if [ ! -e "$CACHE_FILE" ] && [ ! -e "$CACHE_DIR" ]; then
   exit 0
 fi
 
+set +e
+node "$REPO_ROOT/scripts/check-dev-projection-cache.mjs" "$DSH_HOME"
+CHECK_STATUS=$?
+set -e
+case "$CHECK_STATUS" in
+  0)
+    echo "The DSH session projection cache is already compatible; nothing was moved."
+    exit 0
+    ;;
+  2) ;;
+  *)
+    echo "Could not validate the DSH projection cache; refusing to move it." >&2
+    exit "$CHECK_STATUS"
+    ;;
+esac
+
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BACKUP_DIR="$DSH_HOME/backups/session_projcache/$STAMP"
 mkdir -p "$BACKUP_DIR"

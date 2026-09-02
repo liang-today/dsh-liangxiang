@@ -116,14 +116,14 @@ pnpm run dev:uninstall                                     # 卸载
 ## 一、从仓库开发运行（推荐）
 
 ```bash
-node --version             # ^22.19.0 或 >=24.0.0；审计基线为 22.23.1
-pnpm --version             # 安装/干净 Profile 基线必须为 11.7.0
+node --version             # 记录本机版本；日常开发沿用已工作的本机工具链
+pnpm --version
 pnpm install
 pnpm run dev:install     # 构建 + 装入 liangxiang-dev profile（含模块图断言）
 pnpm run dev:web         # 启动 WebUI，默认 http://127.0.0.1:3080
 ```
 
-本机版本偏旧时可用 `nvm install 22.23.1 && nvm use 22.23.1`，再用 Corepack 固定 `pnpm@11.7.0`。只启动已经装好的 Profile 时，pnpm 只负责分发命令；真正运行 DSH 的 Node 仍必须满足上面的版本范围。
+Node 22.23.1 + pnpm 11.7.0 是下方“临时干净 Profile”自动化的审计基线，不是日常 `dev:install` / `dev:web` 的启动门禁。已经工作的本机开发工具链不应被仓库脚本主动拦截。
 
 右缘会出现一个圆形入口，图标就是当前梁子状态，悬停显示 `今日梁相`；可以拖到任意位置。
 
@@ -146,7 +146,7 @@ pnpm run dev:web
 
 备份位于项目 `.dsh-home/backups/session_projcache/<UTC 时间>/`。DSH 会从保留的压缩会话日志按需重建投影。
 
-`dev:install` 会保留 pnpm 11 的供应链冷静期。若刚发布不足 24 小时的 DSH Preview 被拒绝，不要放宽日常 Profile；已有 Profile 直接运行 `dev:web`，否则等待冷静期结束。只有下方自动销毁的干净冒烟 Profile 才允许显式使用 `LIANGXIANG_ALLOW_FRESH_DSH=1`。
+若 pnpm 11 因刚发布不足 24 小时的 DSH Preview 拒绝临时干净安装，不要放宽日常 Profile。只有下方自动销毁的干净冒烟 Profile 才允许显式使用 `LIANGXIANG_ALLOW_FRESH_DSH=1`。
 
 默认是在线（烘焙社区后端）。首次欢迎页或「梁相案牍」可手动切换在线/离线；断网不会自动切换。`LIANGXIANG_BACKEND_URL=local` 只设置尚无保存偏好时的首次离线默认。离线模式可用 CLI 模拟入账：
 

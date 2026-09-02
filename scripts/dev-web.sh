@@ -121,8 +121,10 @@ if [ -n "$PIDS" ]; then
   fi
 fi
 
-node "$REPO_ROOT/scripts/check-dsh-runtime.mjs" --launch-only
 node "$REPO_ROOT/scripts/check-dev-projection-cache.mjs" "$DSH_HOME"
 node "$REPO_ROOT/scripts/check-dev-profile-compat.mjs" "$DSH_HOME" "$PROFILE"
 
+if [ "${1:-}" = "--" ]; then
+  shift
+fi
 exec pnpm exec dsh --profile "$PROFILE" --port "$PORT" "$@"
