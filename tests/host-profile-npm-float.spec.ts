@@ -31,10 +31,10 @@ describe('profile npm float', () => {
     expect(FLOATING_NPM_TAG).toBe('latest')
     expect(floatingRegistrySpecifier('latest')).toBe('latest')
     expect(floatingRegistrySpecifier('link:../../dsh-liangxiang')).toBe('link:../../dsh-liangxiang')
-    expect(floatingRegistrySpecifier('file:/workspace/example-user/code/dsh-liangxiang')).toBe('file:/workspace/example-user/code/dsh-liangxiang')
+    expect(floatingRegistrySpecifier('file:/workspace/dsh-liangxiang')).toBe('file:/workspace/dsh-liangxiang')
     expect(floatingRegistrySpecifier('beta')).toBe('latest')
     expect(floatingRegistrySpecifier('0.8.6-beta')).toBe('latest')
-    expect(floatingRegistrySpecifier('file:/workspace/example-user/Desktop/liangxiang/dsh-liangxiang-0.8.6-beta.tgz'))
+    expect(floatingRegistrySpecifier('file:/workspace/dsh-liangxiang-0.8.6-beta.tgz'))
       .toBe('latest')
   })
 
