@@ -79,8 +79,6 @@ function shortDate(date: string): string {
 }
 
 function stateColor(state: LiangDayArchive['liangziState']): string {
-  if (state === 'waiting') return color.textTertiary
-  if (state === 'liang_zong') return color.textPrimary
   return LIANGZI_LABEL_COLOR[state]
 }
 

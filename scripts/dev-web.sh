@@ -2,8 +2,9 @@
 # Boot the dev profile's WebUI with the plugin loaded.
 # App args after the profile flag reach the web app's own command line.
 #
-# A leftover `pnpm run dev:web` keeps 3080. A second start makes DSH report
-# "plugin tree failed to load" / EADDRINUSE — that is the port, not 梁相.
+# A leftover `pnpm run dev:web` keeps 3080. A second start is handled before
+# DSH boots. Projection-cache schema drift is also diagnosed before the plugin
+# loader can bury it in a generic "plugin tree failed to load" traceback.
 . "$(dirname "$0")/env.sh"
 
 PORT="${LIANGXIANG_DEV_PORT:-3080}"
@@ -83,21 +84,11 @@ stop_our_listeners() {
 
 describe_running() {
   local pid="$1"
-  local etime plugin
+  local etime
   etime="$(ps -p "$pid" -o etime= 2>/dev/null | tr -d ' ')"
-  echo "3080 已被占用，不是梁相插件加载失败。"
+  echo "${PORT} 已被占用，不是梁相插件加载失败。"
   echo "A ${PROFILE} WebUI is already running (pid ${pid}${etime:+, up ${etime}})."
   echo "Open http://${HOST}:${PORT}"
-  if command -v curl >/dev/null 2>&1 && curl -sf -o /dev/null --max-time 2 "http://${HOST}:${PORT}/plugins/dsh-liangxiang/client.js"; then
-    plugin="yes"
-  else
-    plugin="no"
-  fi
-  if [ "$plugin" = yes ]; then
-    echo "梁相 client.js is already being served."
-  else
-    echo "The port answers, but /plugins/dsh-liangxiang/client.js did not. Restart if the plugin is missing."
-  fi
   echo "Replace this process: LIANGXIANG_DEV_RESTART=1 pnpm run dev:web"
   echo "Use another port:     LIANGXIANG_DEV_PORT=3081 pnpm run dev:web"
 }
@@ -130,4 +121,8 @@ if [ -n "$PIDS" ]; then
   fi
 fi
 
-exec pnpm exec dsh --profile "$PROFILE" --port "$PORT"
+node "$REPO_ROOT/scripts/check-dsh-runtime.mjs" --launch-only
+node "$REPO_ROOT/scripts/check-dev-projection-cache.mjs" "$DSH_HOME"
+node "$REPO_ROOT/scripts/check-dev-profile-compat.mjs" "$DSH_HOME" "$PROFILE"
+
+exec pnpm exec dsh --profile "$PROFILE" --port "$PORT" "$@"

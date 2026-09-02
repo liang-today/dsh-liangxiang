@@ -21,6 +21,8 @@
 # HMR receiver stat-polls lib/client.js).
 . "$(dirname "$0")/env.sh"
 
+node "$REPO_ROOT/scripts/check-dsh-runtime.mjs"
+
 pnpm run build
 
 dsh_cli plugin --profile "$PROFILE" add "$WEB_APP_SPEC"

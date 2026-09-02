@@ -8,7 +8,7 @@
 #  5. tear everything down (bounded waits everywhere)
 . "$(dirname "$0")/env.sh"
 
-node "$REPO_ROOT/scripts/check-smoke-runtime.mjs"
+node "$REPO_ROOT/scripts/check-dsh-runtime.mjs"
 
 smoke_pnpm_cli() {
   # Preview re-baselines may intentionally target an exact, source-audited

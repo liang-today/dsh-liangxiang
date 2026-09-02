@@ -1,8 +1,35 @@
 # TROUBLESHOOTING
 
+## 本地启动报 `session_projcache ... does not match its schema`
+
+这不是已有进程。已有进程只会占用端口；先用 `lsof -nP -iTCP:3080 -sTCP:LISTEN` 即可确认。
+
+该错误表示开发专用 `$DSH_HOME/storages/session_projcache/` 里还留着旧 DSH 写入的会话投影缓存。DSH 0.1.2-alpha.4 当前记录身份要求 `isSeeded` 与 `inheritedEventCount`，旧记录没有这两个字段，因此插件树会在梁相加载前中止。投影缓存只是从会话日志折叠出的加速副本，不是会话日志，也不是梁相香火/投票账本。
+
+先停掉开发 WebUI，然后执行：
+
+```bash
+pnpm run dev:repair-cache
+pnpm run dev:web
+```
+
+脚本把旧的 `session_projcache.json` 和 `session_projcache/` 一起移入 `$DSH_HOME/backups/session_projcache/<UTC 时间>/`，避免遗留整单元文件再次引导出不兼容记录。以下内容不会被移动：
+
+- `$DSH_HOME/sessions/`：权威压缩会话日志；
+- `$DSH_HOME/storages/liangxiang.json`：社区身份与在线投影；
+- `$DSH_HOME/storages/liangxiang_local.json`：离线账本与梁祠。
+
+若 `dev:web` 先报告运行时不匹配，请先切到 Node `^22.19.0` 或 `>=24.0.0`；它只调度现有安装，不要求重装 pnpm。`dev:install` 与干净 Profile 则要求 pnpm `11.7.0`。当前审计/CI 基线是 Node `22.23.1` + pnpm `11.7.0`。
+
 ## 设置里找不到插件市场
 
 先退出 WebUI，对同一个 `DSH_HOME` 执行 `plugin --profile web add dshmarket`，再打开并刷新。
+
+注意：DSH 0.1.2-alpha.4 已移除旧的 `installSettingsSection` / `settingsNamespace` 导出。若市场或其他第三方插件因此让整个插件树失败，该版本尚未覆盖 alpha.4，不能靠重装梁相解决。源码联调用隔离的 `liangxiang-dev` Profile，移除其中无关的市场残留；日常 `web` Profile 则应等待对应插件发布明确兼容版本，或暂时使用 CLI 安装包。
+
+```bash
+DSH_HOME="$PWD/.dsh-home" pnpm exec dsh plugin --profile liangxiang-dev remove dshmarket
+```
 
 ## Desktop 里安装成功，界面没有「今日梁相」
 

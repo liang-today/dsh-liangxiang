@@ -116,14 +116,37 @@ pnpm run dev:uninstall                                     # 卸载
 ## 一、从仓库开发运行（推荐）
 
 ```bash
+node --version             # ^22.19.0 或 >=24.0.0；审计基线为 22.23.1
+pnpm --version             # 安装/干净 Profile 基线必须为 11.7.0
 pnpm install
 pnpm run dev:install     # 构建 + 装入 liangxiang-dev profile（含模块图断言）
 pnpm run dev:web         # 启动 WebUI，默认 http://127.0.0.1:3080
 ```
 
+本机版本偏旧时可用 `nvm install 22.23.1 && nvm use 22.23.1`，再用 Corepack 固定 `pnpm@11.7.0`。只启动已经装好的 Profile 时，pnpm 只负责分发命令；真正运行 DSH 的 Node 仍必须满足上面的版本范围。
+
 右缘会出现一个圆形入口，图标就是当前梁子状态，悬停显示 `今日梁相`；可以拖到任意位置。
 
-`dev:web` 再跑一次时，若 3080 已被本机已有的 `liangxiang-dev` 占用，DSH 会报 `plugin tree failed to load` / `EADDRINUSE`。**不是插件坏了。** 脚本现在会直接告诉你打开 http://127.0.0.1:3080。要换新进程：`LIANGXIANG_DEV_RESTART=1 pnpm run dev:web`。换口：`LIANGXIANG_DEV_PORT=3081 pnpm run dev:web`。
+`dev:web` 再跑一次时，若 3080 已被本机已有的 `liangxiang-dev` 占用，脚本会直接告诉你打开 http://127.0.0.1:3080。要换新进程：`LIANGXIANG_DEV_RESTART=1 pnpm run dev:web`。换口：`LIANGXIANG_DEV_PORT=3081 pnpm run dev:web`。
+
+源码开发 Profile 不需要插件市场。若旧 Profile 残留的 `dshmarket` 报 `installSettingsSection` / `settingsNamespace` 不存在，说明该市场版本的 peer range 不覆盖 DSH alpha.4；只从隔离 Profile 移除它：
+
+```bash
+DSH_HOME="$PWD/.dsh-home" pnpm exec dsh plugin --profile liangxiang-dev remove dshmarket
+```
+
+这不会触碰日常 `~/.dsh`。需要验证最终 tgz 的安装体验时，另建临时 `web` Profile；不要把市场混进源码联调 Profile。
+
+若升级 DSH 后看到 `domain 'session_projcache': stored record ... does not match its schema`，这不是端口问题，也不是梁相账本损坏，而是旧的 DSH 会话投影缓存与 alpha.4 schema 不兼容。先停掉开发 WebUI，再运行：
+
+```bash
+pnpm run dev:repair-cache  # 只备份并移走可重建缓存，不碰会话日志和梁相账本
+pnpm run dev:web
+```
+
+备份位于项目 `.dsh-home/backups/session_projcache/<UTC 时间>/`。DSH 会从保留的压缩会话日志按需重建投影。
+
+`dev:install` 会保留 pnpm 11 的供应链冷静期。若刚发布不足 24 小时的 DSH Preview 被拒绝，不要放宽日常 Profile；已有 Profile 直接运行 `dev:web`，否则等待冷静期结束。只有下方自动销毁的干净冒烟 Profile 才允许显式使用 `LIANGXIANG_ALLOW_FRESH_DSH=1`。
 
 默认是在线（烘焙社区后端）。首次欢迎页或「梁相案牍」可手动切换在线/离线；断网不会自动切换。`LIANGXIANG_BACKEND_URL=local` 只设置尚无保存偏好时的首次离线默认。离线模式可用 CLI 模拟入账：
 
@@ -145,6 +168,12 @@ LIANGXIANG_BACKEND_URL=http://127.0.0.1:4180 pnpm run dev:web
 此时 authority mode 变为 `DEV_STAGING_ONLY`（服务端记账的社区软信任，见 [`075`](075-backend-decision.md)）。公网 VPS 配方见 [`121-vps-deploy.md`](121-vps-deploy.md)。
 
 一键自检：`pnpm run smoke:online`（会断言拒绝 `VERIFIED_PRODUCTION`、claim 折算、幂等只扣一次、50 并发只接受 1 票、快照发布）。
+
+浏览器级干净安装基线（临时 Profile，结束后自动清理）：
+
+```bash
+LIANGXIANG_ALLOW_FRESH_DSH=1 pnpm run smoke:browser-clean-profile
+```
 
 离线玩法第一次启用时会创建 `<DSH_HOME>/storages/liangxiang_local.json`，保存离线香火、打梁、梁案进度和梁祠；社区身份与在线投影仍在 `liangxiang.json`。两边不会互相导入。
 

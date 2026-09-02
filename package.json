@@ -58,6 +58,7 @@
     "dev:uninstall": "bash scripts/dev-uninstall.sh",
     "dev:dump-config": "bash scripts/dump-config.sh",
     "dev:web": "bash scripts/dev-web.sh",
+    "dev:repair-cache": "bash scripts/repair-dev-cache.sh",
     "dev:credit": "bash scripts/dev-credit.sh",
     "backend:start": "node lib/backend.js",
     "backend:dev": "pnpm run build && node lib/backend.js",
