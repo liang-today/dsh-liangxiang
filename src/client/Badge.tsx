@@ -43,6 +43,7 @@ import { color, font } from './theme.ts'
 import { useThrottleFill } from './use-throttle-fill.ts'
 import { useTweenedCount } from './use-tweened-count.ts'
 import { hasSeenReleaseNotes, markReleaseNotesSeen } from './release-notes.ts'
+import { loadDismissedBroadcastId, markBroadcastDismissed } from './broadcast-dismissal.ts'
 
 /** Preserve the exact earned-incense jump carried by one authoritative frame. */
 export function earnedIncenseGain(previous: number, current: number): number {
@@ -272,6 +273,7 @@ export function LiangxiangBadge(): ReactElement {
   })
   const [welcomeVisible, setWelcomeVisible] = useState(() => !hasSeenWelcome())
   const [releaseNotesVisible, setReleaseNotesVisible] = useState(() => !hasSeenReleaseNotes())
+  const [dismissedBroadcastId, setDismissedBroadcastId] = useState(() => loadDismissedBroadcastId())
   // Reopening the panel while offline reconnects; while live it forces a
   // host re-bootstrap so the expanded 今日梁案 is not up to ~1s stale.
   useEffect(() => {
@@ -309,6 +311,10 @@ export function LiangxiangBadge(): ReactElement {
   const onReleaseNotesClose = useCallback(() => {
     markReleaseNotesSeen()
     setReleaseNotesVisible(false)
+  }, [])
+  const onBroadcastDismiss = useCallback((broadcastId: string) => {
+    markBroadcastDismissed(broadcastId)
+    setDismissedBroadcastId(broadcastId)
   }, [])
 
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -845,6 +851,8 @@ export function LiangxiangBadge(): ReactElement {
           dumpBurst={dumpBurst}
           localEpithet={localEpithet}
           localIncense={localIncense}
+          dismissedBroadcastId={dismissedBroadcastId}
+          onBroadcastDismiss={onBroadcastDismiss}
           onInsufficientVote={onInsufficientVote}
           onClose={() => {
             if (welcomeVisible) return

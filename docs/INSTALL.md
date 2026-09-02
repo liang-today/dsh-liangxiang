@@ -55,7 +55,7 @@ minimumReleaseAgeExclude:
 
 国内 npm 慢时：`npm config set registry https://registry.npmmirror.com`
 
-> npm 公开稳定版仍是 `dsh-liangxiang@1.0.7`；仓库当前源码为未发布的 `1.1.1` 开发线。请写无标签包名；不要从开发分支安装。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
+> npm 公开稳定版仍是 `dsh-liangxiang@1.0.7`；仓库当前源码为未发布的 `1.1.2` 开发线。请写无标签包名；不要从开发分支安装。不要运行 `npm i dsh-liangxiang`，那不是 DSH 插件安装方式。
 
 ### GitHub Release / 本地 tarball
 

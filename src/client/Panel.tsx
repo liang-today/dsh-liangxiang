@@ -148,6 +148,10 @@ export interface PanelProps {
   localEpithet?: LocalEpithet | null
   /** Local-only incense ledger painted inside the 三界香火 detail. */
   localIncense?: LocalIncenseStats | null
+  /** Last broadcast hidden by this browser; a new server ID remains visible. */
+  dismissedBroadcastId?: string | null
+  /** Cosmetic acknowledgement for the currently visible broadcast. */
+  onBroadcastDismiss?: (broadcastId: string) => void
   /** Empty-pool click: never sends a vote; plays the playful local cue. */
   onInsufficientVote: (voteType: VoteType) => void
   onClose: () => void
@@ -193,6 +197,7 @@ function panelChrome(): CSSProperties {
 }
 
 const STAT_ICON_SIZE = 26
+const BROADCAST_MARQUEE_MIN_CHARS = 20
 
 const statStyle: CSSProperties = {
   position: 'relative',
@@ -463,6 +468,16 @@ const PANEL_CSS = `
   position: relative;
   z-index: 1;
 }
+[data-liangxiang-broadcast-dismiss]:hover,
+[data-liangxiang-broadcast-dismiss]:focus-visible {
+  color: ${color.textPrimary} !important;
+  opacity: 1 !important;
+  background: color-mix(in srgb, ${color.ritualEmber} 10%, ${color.bgSubtle}) !important;
+  border-color: color-mix(in srgb, ${color.ritualEmber} 40%, ${color.border}) !important;
+}
+[data-liangxiang-broadcast-viewport]:hover [data-liangxiang-broadcast-track][data-scrolling] {
+  animation-play-state: paused;
+}
 [data-liangxiang-region="vote"][data-dump-burst] {
   animation: liangxiang-dump-row 420ms ease-out;
 }
@@ -510,6 +525,10 @@ const PANEL_CSS = `
   0% { transform: translateY(6px) scale(0.92); opacity: 0.35; }
   40% { transform: translateY(-2px) scale(1.08); opacity: 1; filter: brightness(1.7); }
   100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes liangxiang-broadcast-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 [data-liangxiang-ritual] {
   position: relative;
@@ -820,6 +839,8 @@ export function Panel(props: PanelProps): ReactElement {
     dumpBurst = null,
     localEpithet = null,
     localIncense = null,
+    dismissedBroadcastId = null,
+    onBroadcastDismiss = () => undefined,
     onInsufficientVote, onClose, onReconcileAsk, onReconcileConfirm, onReconcileCancel,
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
     modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
@@ -857,9 +878,12 @@ export function Panel(props: PanelProps): ReactElement {
       : ''
   const absurdNotice = state.accountingNotice === 'claim_capped_absurd'
   const epithetLine = localEpithet === null ? '' : formatLocalEpithetLine(localEpithet.dedication, localEpithet.stance)
-  const broadcastLine = state.broadcast === null
+  const visibleBroadcast = state.broadcast !== null && state.broadcast.id !== dismissedBroadcastId
+    ? state.broadcast
+    : null
+  const broadcastLine = visibleBroadcast === null
     ? ''
-    : `${state.broadcast.level === 'emergency' ? '梁相急报' : '梁相广播'}：${state.broadcast.message}`
+    : `${visibleBroadcast.level === 'emergency' ? '梁相急报' : '梁相广播'}：${visibleBroadcast.message}`
   const statusLine = offline
     ? OFFLINE_REASON
     : communityUnavailable
@@ -875,6 +899,10 @@ export function Panel(props: PanelProps): ReactElement {
             : epithetLine
   const showingEpithet = statusLine === epithetLine && epithetLine !== '' && localEpithet !== null
   const showingBroadcast = statusLine === broadcastLine && broadcastLine !== ''
+  const scrollingBroadcast = showingBroadcast
+    && !reducedMotion
+    && broadcastLine.length > BROADCAST_MARQUEE_MIN_CHARS
+  const broadcastMarqueeSeconds = Math.max(9, broadcastLine.length * 0.34)
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === 'Escape') {
@@ -1507,11 +1535,11 @@ export function Panel(props: PanelProps): ReactElement {
           </span>
         </button>
       </div>
-      <p
+      <div
         role={showingEpithet ? 'button' : 'status'}
         data-liangxiang-vote-feedback=""
         data-liangxiang-epithet={showingEpithet ? '' : undefined}
-        data-liangxiang-broadcast={showingBroadcast ? state.broadcast?.level : undefined}
+        data-liangxiang-broadcast={showingBroadcast ? visibleBroadcast?.level : undefined}
         data-open={showingEpithet && pinnedHint === 'epithet' ? '' : undefined}
         title={showingEpithet ? LOCAL_EPITHET_HINT : showingBroadcast ? broadcastLine : undefined}
         tabIndex={showingEpithet ? 0 : undefined}
@@ -1535,14 +1563,95 @@ export function Panel(props: PanelProps): ReactElement {
           color: offline || absurdNotice || isEmptyIncenseFeedback(voteFeedback)
             ? color.warn
             : showingBroadcast
-              ? (state.broadcast?.level === 'emergency' ? color.warn : color.ritualEmberText)
+              ? (visibleBroadcast?.level === 'emergency' ? color.warn : color.ritualEmberText)
               : voteFeedback !== ''
                 ? color.textPrimary
                 : color.textSecondary,
           textAlign: 'center',
         }}
       >
-        {showingEpithet && localEpithet !== null ? (
+        {showingBroadcast && visibleBroadcast !== null ? (
+          <span
+            data-liangxiang-broadcast-shell=""
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              minWidth: 0,
+              height: '22px',
+            }}
+          >
+            <button
+              type="button"
+              data-liangxiang-broadcast-dismiss=""
+              aria-label="关闭本条梁相广播"
+              title="关闭本条广播"
+              onClick={() => onBroadcastDismiss(visibleBroadcast.id)}
+              style={{
+                display: 'inline-grid',
+                placeItems: 'center',
+                flex: '0 0 auto',
+                width: '16px',
+                height: '16px',
+                margin: '0 5px 0 0',
+                padding: 0,
+                borderRadius: '50%',
+                border: `1px solid color-mix(in srgb, ${color.ritualEmber} 24%, ${color.border})`,
+                background: color.bgSubtle,
+                color: color.textTertiary,
+                font: 'inherit',
+                fontSize: '13px',
+                fontWeight: 650,
+                lineHeight: 1,
+                opacity: 0.78,
+                cursor: 'pointer',
+              }}
+            >
+              <span aria-hidden="true" style={{ transform: 'translateY(-0.5px)' }}>×</span>
+            </button>
+            <span
+              data-liangxiang-broadcast-viewport=""
+              title={broadcastLine}
+              style={{
+                display: 'block',
+                minWidth: 0,
+                flex: '1 1 auto',
+                overflow: 'hidden',
+                textAlign: scrollingBroadcast ? 'left' : 'center',
+                WebkitMaskImage: scrollingBroadcast
+                  ? 'linear-gradient(90deg, transparent 0, #000 7px, #000 calc(100% - 7px), transparent 100%)'
+                  : undefined,
+                maskImage: scrollingBroadcast
+                  ? 'linear-gradient(90deg, transparent 0, #000 7px, #000 calc(100% - 7px), transparent 100%)'
+                  : undefined,
+              }}
+            >
+              <span
+                data-liangxiang-broadcast-track=""
+                data-scrolling={scrollingBroadcast ? '' : undefined}
+                style={{
+                  display: scrollingBroadcast ? 'flex' : 'block',
+                  width: scrollingBroadcast ? 'max-content' : 'auto',
+                  minWidth: 0,
+                  overflow: scrollingBroadcast ? undefined : 'hidden',
+                  textOverflow: scrollingBroadcast ? undefined : 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  animation: scrollingBroadcast
+                    ? `liangxiang-broadcast-marquee ${broadcastMarqueeSeconds}s linear 1.2s infinite`
+                    : undefined,
+                  willChange: scrollingBroadcast ? 'transform' : undefined,
+                }}
+              >
+                <span data-liangxiang-broadcast-copy="" style={{ flex: '0 0 auto', paddingRight: scrollingBroadcast ? '32px' : 0 }}>
+                  {broadcastLine}
+                </span>
+                {scrollingBroadcast ? (
+                  <span aria-hidden="true" style={{ flex: '0 0 auto', paddingRight: '32px' }}>{broadcastLine}</span>
+                ) : null}
+              </span>
+            </span>
+          </span>
+        ) : showingEpithet && localEpithet !== null ? (
           <span
             data-liangxiang-epithet-line=""
             style={{
@@ -1575,7 +1684,7 @@ export function Panel(props: PanelProps): ReactElement {
         {showingEpithet && pinnedHint === 'epithet'
           ? <span data-liangxiang-epithet-hint="" role="tooltip">{LOCAL_EPITHET_HINT}</span>
           : null}
-      </p>
+      </div>
 
       {/* Region 4 — two metric columns + the two ritual chips. Subgrid so
           labels share 梁相案牍's row and numbers share 进入梁祠's row; both

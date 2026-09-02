@@ -1,0 +1,4 @@
+interface:
+  display_name: "梁相更新说明"
+  short_description: "汇总正式版本之间的用户收益并执行发布前更新说明检查"
+  default_prompt: "检查梁相从上次正式发布以来的用户可见改动，生成简短更新说明，并在发布前执行文案门禁。"

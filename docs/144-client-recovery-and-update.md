@@ -38,7 +38,10 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
   不参与身份、Token、香火、投票或服务端权威；换浏览器时会再显示一次。
 
 更新说明必须与 `package.json` / `PLUGIN_VERSION` 同步升版，内容写在
-`src/client/release-notes.ts`。不得把新行为藏在旧版本号下。
+`src/client/release-notes.ts`。它汇总上次正式版以来的用户可见收益，主列表保持 3–4 条
+宣传式短句；后台安全、数据库迁移、幂等实现、回归测试和 Commit 级施工记录不得进入
+客户端弹窗。发布准备必须先执行 `.agents/skills/liangxiang-release-notes/SKILL.md`
+中的更新说明门禁，再单独征求 npm / GitHub Release 的发布许可。不得把新行为藏在旧版本号下。
 
 重连期间保留最近一次全局快照，不伪造新梁位。Token 水位写入
 `$DSH_HOME/storages/liangxiang.json`，恢复后发送的是同一业务日的单调 claim；夯 / 拉直到

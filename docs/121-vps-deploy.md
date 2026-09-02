@@ -127,6 +127,11 @@ node lib/backend-cli.js broadcast set --level important --hours 168 "QQ群 45368
 node lib/backend-cli.js broadcast clear
 ```
 
+客户端把广播放在梁小号原有的 22px 单行槽位：短消息静止显示，长消息在固定 × 右侧
+无缝循环；用户点击 × 后仅在本浏览器隐藏当前广播 ID，新广播仍会显示。该操作是本地
+外观偏好，不会删除服务器广播，也不影响其他用户。减少动态模式不做连续滚动，完整文案
+仍保留在可访问名称与悬浮提示中。
+
 `--level` 只接受 `important` / `emergency`，`--hours` 为 1–720 的整数，文案最多
 80 个 Unicode 字符。新消息覆盖旧消息；`status` 可查看已过期但尚未清除的记录。
 

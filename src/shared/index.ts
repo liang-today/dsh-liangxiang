@@ -30,13 +30,13 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '1.1.1'
+export const PLUGIN_VERSION = '1.1.2'
 
 /**
  * Server-only release label for the community backend. Do not bump the npm /
- * client `PLUGIN_VERSION` for a backend-only change; stamp `1.1.1-uN` instead.
+ * client `PLUGIN_VERSION` for a backend-only change; stamp `1.1.2-uN` instead.
  */
-export const SERVER_BUILD = '1.1.1-u1'
+export const SERVER_BUILD = '1.1.2-u1'
 
 /** Welcome gift: sticks credited once per device fingerprint per business date. */
 export const STARTER_INCENSE_COUNT = 10

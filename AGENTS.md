@@ -139,7 +139,7 @@ incense.
   third option
 - vote availability depends only on authoritative `remaining_incense > 0`
 - click spends one stick; a long press dumps every stick the incense token bucket will allow (50/min, burst 500) in **one** `count` request — never a loop of HTTP votes
-- the reserved feedback row stays 22px / 12px type: idle shows the local-only 梁号 (`梁小号：勤香 • 死夯梁`); a dump shows `已上香 · 夯 ×N（剩余 M 炷）`; an empty furnace shows `香炉空了，先去攒香` for 3s then returns to 梁小号. A short, operator-controlled important/emergency broadcast may temporarily replace the idle 梁小号 in this same row; transport/outage and vote feedback keep priority, the message is length/time bounded, and expiry automatically restores 梁小号. Never put broadcasts in 今日梁案 or add a toast/fifth region. The 梁号 resets on the business date with 今日凝香. Vote buttons may sit at 38px to fund that row. Do not add a fifth region or a personal-growth section
+- the reserved feedback row stays 22px / 12px type: idle shows the local-only 梁号 (`梁小号：勤香 • 死夯梁`); a dump shows `已上香 · 夯 ×N（剩余 M 炷）`; an empty furnace shows `香炉空了，先去攒香` for 3s then returns to 梁小号. A short, operator-controlled important/emergency broadcast may temporarily replace the idle 梁小号 in this same row; transport/outage and vote feedback keep priority, the message is length/time bounded, and expiry automatically restores 梁小号. Long copy scrolls as a single-line loop while a subtle, fixed × at the front dismisses only that broadcast ID for this browser; a new broadcast ID appears normally. Reduced-motion keeps the full message accessible without continuous scrolling. Never put broadcasts in 今日梁案 or add a toast/fifth region. The 梁号 resets on the business date with 今日凝香. Vote buttons may sit at 38px to fund that row. Do not add a fifth region or a personal-growth section
 - do not add a third placeholder or neutral action
 - do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside the 香火环
 
@@ -983,6 +983,13 @@ flow, or community backend contract) must bump `package.json` `version` and
 `PLUGIN_VERSION` in the same change. Never ship new behavior under an old
 version number. Keep both strings identical; `tests/manifest.spec.ts` guards
 this. Historical changelog entries stay frozen.
+
+Before preparing npm or GitHub release copy, read and follow
+`.agents/skills/liangxiang-release-notes/SKILL.md`. The client update dialog
+summarizes all user-visible benefits since the previous formal release in at
+most four short promotional lines; backend/security/migration/test details stay
+out of that dialog. Show the final copy to the user before requesting the
+separately required publication permission.
 
 Backend-only community server updates must not bump the npm / client number.
 Stamp `SERVER_BUILD` as `${PLUGIN_VERSION}-uN` (for example `1.0.0-u1`) and

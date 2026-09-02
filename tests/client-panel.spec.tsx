@@ -79,12 +79,15 @@ function renderPanel(
     localIncense?: ReturnType<typeof deriveLocalIncenseStats>
     chargeVoteType?: 'up' | 'down' | null
     charge?: number
+    reducedMotion?: boolean
+    dismissedBroadcastId?: string | null
+    onBroadcastDismiss?: (broadcastId: string) => void
   } = {},
 ): RenderedNode[] {
   return renderDeep(
     <Panel
       state={state}
-      reducedMotion={false}
+      reducedMotion={extra.reducedMotion ?? false}
       soundLevel={0}
       onCycleSound={() => undefined}
       versionInfoOpen={extra.versionInfoOpen ?? false}
@@ -101,6 +104,8 @@ function renderPanel(
       {...(extra.onVoteClick === undefined ? {} : { onVoteClick: extra.onVoteClick })}
       localEpithet={extra.localEpithet ?? null}
       localIncense={extra.localIncense ?? null}
+      dismissedBroadcastId={extra.dismissedBroadcastId ?? null}
+      onBroadcastDismiss={extra.onBroadcastDismiss ?? (() => undefined)}
       chargeVoteType={extra.chargeVoteType ?? null}
       charge={extra.charge ?? 0}
       onInsufficientVote={extra.onInsufficientVote ?? (() => undefined)}
@@ -773,27 +778,51 @@ describe('region 3: exactly two vote buttons', () => {
     })
   })
 
-  it('temporarily replaces 梁小号 with a low-disruption broadcast in the same row', () => {
+  it('scrolls a long broadcast beside a fixed dismiss control and remembers that broadcast ID', () => {
     const state: LiangxiangViewState = {
       ...demoState(),
       broadcast: {
         id: 'broadcast-qq',
         level: 'important',
-        message: 'QQ群 453683905 已开，来群里一起出梁案',
+        message: 'QQ群 453683905 已开，来群里一起出梁案、晒梁位、催更新，重要信息不错过',
         startsAt: 1,
         expiresAt: 2,
         updatedAt: 1,
       },
     }
     const localEpithet = { dedication: '勤香', stance: '死夯梁', label: '勤香 • 死夯梁', spent: 20 }
-    const broadcast = renderPanel(state, '', { localEpithet })
+    let dismissed = ''
+    const broadcast = renderPanel(state, '', {
+      localEpithet,
+      onBroadcastDismiss: id => { dismissed = id },
+    })
     const row = findByAttr(broadcast, 'data-liangxiang-vote-feedback')[0]
     expect(row?.props['data-liangxiang-broadcast']).toBe('important')
-    expect(row && textContent([row])).toBe('梁相广播：QQ群 453683905 已开，来群里一起出梁案')
+    expect(row && textContent([row])).toContain('梁相广播：QQ群 453683905 已开')
+    const close = findByAttr(broadcast, 'data-liangxiang-broadcast-dismiss')[0]
+    expect(close?.props['aria-label']).toBe('关闭本条梁相广播')
+    const track = findByAttr(broadcast, 'data-liangxiang-broadcast-track')[0]
+    expect(track?.props['data-scrolling']).toBe('')
+    expect(styleOf(track).animation).toContain('liangxiang-broadcast-marquee')
+    ;(close?.props.onClick as (() => void) | undefined)?.()
+    expect(dismissed).toBe('broadcast-qq')
     expect(findByAttr(broadcast, 'data-liangxiang-region')).toHaveLength(4)
 
     const vote = renderPanel(state, '已上香 · 夯（剩余 4 炷）', { localEpithet })
     expect(textContent(findByAttr(vote, 'data-liangxiang-vote-feedback'))).toBe('已上香 · 夯（剩余 4 炷）')
+
+    const hidden = renderPanel(state, '', { localEpithet, dismissedBroadcastId: 'broadcast-qq' })
+    expect(findByAttr(hidden, 'data-liangxiang-broadcast-dismiss')).toHaveLength(0)
+    expect(textContent(findByAttr(hidden, 'data-liangxiang-vote-feedback'))).toBe('梁小号：勤香死夯梁')
+
+    const next = renderPanel({
+      ...state,
+      broadcast: state.broadcast === null ? null : { ...state.broadcast, id: 'broadcast-next' },
+    }, '', { localEpithet, dismissedBroadcastId: 'broadcast-qq' })
+    expect(findByAttr(next, 'data-liangxiang-broadcast-dismiss')).toHaveLength(1)
+
+    const reduced = renderPanel(state, '', { localEpithet, reducedMotion: true })
+    expect(findByAttr(reduced, 'data-liangxiang-broadcast-track')[0]?.props['data-scrolling']).toBeUndefined()
   })
 
   it('charges a held vote button without adding a fifth region', () => {

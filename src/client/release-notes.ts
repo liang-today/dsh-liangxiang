@@ -5,17 +5,14 @@
  * test deliberately fails when a version bump forgets to refresh this copy.
  * This is cosmetic localStorage only and never participates in authority.
  */
-export const RELEASE_NOTES_VERSION = '1.1.1'
+export const RELEASE_NOTES_VERSION = '1.1.2'
 export const RELEASE_NOTES_TITLE = `梁相 v${RELEASE_NOTES_VERSION} 更新`
-export const RELEASE_NOTES_EYEBROW = '8 月 26 日后更新合辑'
+export const RELEASE_NOTES_EYEBROW = '上次正式版以来'
 export const RELEASE_NOTES_ITEMS = [
-  '新香客备 10 炷；同一设备当天重装不重复领取。',
-  '倾炉缩短为长按 1.5 秒；面板、梁祠、五行香客和跨相反馈继续打磨。',
-  '修复批量上香幂等与 SQLite 迁移，并补真实后端重启回归。',
-  '适配 DSH 0.1.2-alpha.4，恢复每次开发后的本地升级与启动流程。',
-  '补齐浏览器无障碍、亮暗主题、视觉与真实安装 Profile 冒烟基线。',
-  '梁子原画像素保持不变；无损瘦身客户端，并恢复进度为 0 时的待机浮动。',
-  '新增低打扰梁相广播：重要消息暂代梁小号，结束后自动归还。',
+  '送香了：新香客备 10 炷，当天重装不重复领取。',
+  '倾炉动效进一步优化：长按 1.5 秒，一次打出多炷香。',
+  '适配 DSH 新版本：安装、升级与使用更顺畅。',
+  '新增梁相广播台：重要信息不错过～',
 ] as const
 export const RELEASE_NOTES_QQ = '梁相 QQ 群：453683905'
 export const RELEASE_NOTES_QQ_INVITE = '来群里一起出梁案、晒梁位、催更新，第一批梁友等你入席。'
