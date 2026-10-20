@@ -884,6 +884,7 @@ function toDomainVoteResult(result: V1VoteResult): VoteResult {
       usedIncenseToday: result.used_incense,
       remainingIncense: result.remaining_incense,
       spentIncense: result.spent_incense ?? 1,
+      ...(result.accepted_incense === undefined ? {} : { acceptedIncense: result.accepted_incense }),
     }
   }
   return {

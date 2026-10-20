@@ -13,12 +13,12 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
-import { VOTE_COUNT_MAX, type LiangziState, type VoteType } from '../domain/index.ts'
+import { deriveLocalEpithet, VOTE_COUNT_MAX, type LiangziState, type VoteType } from '../domain/index.ts'
 import { EMPTY_INCENSE_FEEDBACK_MS, VOTE_FEEDBACK_MS, formatAcceptedVoteFeedback, HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_RATE_LIMITED, VOTE_UP_NAME, isEmptyIncenseFeedback } from '../shared/index.ts'
 import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { initialDshDockClearance } from '../compat/dsh/default-dock.ts'
-import { readLocalEpithet, rememberLocalEpithetVote } from './local-epithet-store.ts'
-import { readLocalIncenseStats, rememberLocalIncenseVote } from './local-incense-store.ts'
+import { rememberLocalEpithetVote } from './local-epithet-store.ts'
+import { combineLocalIncenseStats, readLocalIncenseStats, rememberLocalIncenseVote } from './local-incense-store.ts'
 import { cycleSoundLevel, playArchiveSeal, playIncenseEarn, playLiangziShift, playNoIncense, playSquish, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { DUMP_AUTO_RELEASE_MS, chargeProgress, holdReleaseAction } from './vote-charge.ts'
 import { hasSeenWelcome, markWelcomeSeen, WELCOME_STORAGE_KEY } from './welcome.ts'
@@ -607,12 +607,12 @@ export function LiangxiangBadge(): ReactElement {
     wasOpen.current = open
   }, [open])
 
-  const [localEpithet, setLocalEpithet] = useState(() => readLocalEpithet(state.businessDate))
   const [localIncense, setLocalIncense] = useState(() => readLocalIncenseStats(state.businessDate))
   useEffect(() => {
-    setLocalEpithet(readLocalEpithet(state.businessDate))
     setLocalIncense(readLocalIncenseStats(state.businessDate))
   }, [state.businessDate])
+  const visibleIncense = combineLocalIncenseStats(localIncense, state.timedIncense)
+  const localEpithet = deriveLocalEpithet({ up: visibleIncense.today.up, down: visibleIncense.today.down })
   const [chargeVoteType, setChargeVoteType] = useState<VoteType | null>(null)
   const [charge, setCharge] = useState(0)
   const [dumpBurst, setDumpBurst] = useState<VoteType | null>(null)
@@ -664,7 +664,7 @@ export function LiangxiangBadge(): ReactElement {
     store.vote(voteType, { count: requested }).then(
       (result) => {
         if (result.status === 'accepted') {
-          const spent = Math.max(0, remainingBefore - result.remainingIncense)
+          const spent = result.spentIncense ?? 1
           if (spent > 1) {
             playVoteDump(voteType)
             setDumpBurst(voteType)
@@ -676,7 +676,7 @@ export function LiangxiangBadge(): ReactElement {
           else playVoteDown()
           if (spent > 0) {
             const date = store.getSnapshot().businessDate
-            setLocalEpithet(rememberLocalEpithetVote(voteType, spent, date))
+            rememberLocalEpithetVote(voteType, spent, date)
             setLocalIncense(rememberLocalIncenseVote(voteType, spent, date))
           }
           setVoteFeedback(formatAcceptedVoteFeedback(
@@ -796,9 +796,9 @@ export function LiangxiangBadge(): ReactElement {
     const preferences = { enabled: voteType === undefined ? !current.enabled : current.enabled, voteType: voteType ?? current.voteType }
     store.setDayEndPreferences(preferences).then(
       () => setVoteFeedback(voteType === undefined
-        ? (preferences.enabled ? '已开启日终上香 · 23:59' : '已关闭日终上香')
-        : `日终自动倾炉：默认投${voteType === 'up' ? '夯' : '拉'}`),
-      () => setVoteFeedback('日终设置未保存，请稍后重试'),
+        ? (preferences.enabled ? '已开启定时上香' : '已关闭定时上香')
+        : `定时上香：默认投${voteType === 'up' ? '夯' : '拉'}`),
+      () => setVoteFeedback('定时设置未保存，请稍后重试'),
     ).finally(() => { dayEndSaving.current = false; setDayEndPending(false) })
   }
   const onReconcileAsk = (): void => {
@@ -967,7 +967,7 @@ export function LiangxiangBadge(): ReactElement {
           charge={charge}
           dumpBurst={dumpBurst}
           localEpithet={localEpithet}
-          localIncense={localIncense}
+          localIncense={visibleIncense}
           dismissedBroadcastId={dismissedBroadcastId}
           onBroadcastDismiss={onBroadcastDismiss}
           onInsufficientVote={onInsufficientVote}

@@ -178,7 +178,7 @@ incense.
   `进入梁祠`; both remain inside Region 4 and neither is a fifth region
 - routine Token claims, snapshots, reconnects and archive refresh are automatic;
   never present a routine manual-sync action
-- 梁相案牍 opens a themed 2×2 utility drawer: 梁相主页、日终上香、在线模式/离线模式、
+- 梁相案牍 opens a themed 2×2 utility drawer: 梁相主页、定时上香、在线模式/离线模式、
   当前版本. The mode action always means switching to the other mode and requires
   explicit confirmation; network failure, reconnect, refresh and backend restart
   must never invoke it. 当前版本 opens a compact version-information dialog; the sound
@@ -193,25 +193,37 @@ incense.
 - 进入梁祠 opens the read-only in-plugin calendar
 - 进入梁祠 is not a vote, operator control, or external GitHub Pages link
 
-### Opt-in day-end incense (Issues #3/#5)
+### Opt-in timed incense (Issues #3/#5, PR #21)
 
-- Default off. The Host must be running; the browser may be closed. Use the
-  backend business clock/timezone online, the explicit local clock offline.
-- At 23:59 make one ordinary dump (at most VOTE_COUNT_MAX), respecting remaining
-  incense and the existing authority budget. This is best-effort, not a promise
-  to empty arbitrarily large balances. No per-stick queue, adaptive direction,
-  new vote type, privilege or rate-limit exemption.
+- Default off. Reuse the existing utility tile and direction gesture; add no
+  schedule panel, user interval setting or extra mode. Legacy day-end opt-in
+  must be explicitly enabled again before expanding to daytime voting.
+- The Host must run; the browser may close. Use the backend business clock and
+  timezone online, the explicit local clock offline. After the balance reaches
+  VOTE_COUNT_MAX, wait one bucket refill period (currently 10 minutes), then
+  attempt one ordinary dump. Recheck the threshold after refreshing authority.
+- At 23:59 make one additional closing dump even when less than a full request
+  remains. Respect remaining incense, the existing authority budget and the
+  per-request maximum. Best effort, never a promise to empty every balance.
+  No per-stick queue, adaptive direction, vote privilege or rate-limit exemption.
 - Right-click / keyboard context menu on 夯 or 拉 only saves the default direction
-  and shows `日终自动倾炉：默认投夯/拉`. It never votes or enables the day-end switch.
-- Clicking the entire day-end tile toggles it; show `已开启` / `已关闭` and
-  `保存中…` while persisting. Keep timing, direction and running requirements
-  in its hover/focus tooltip, never as a permanent explanatory paragraph.
-- Serialize manual and automatic intents in the Host. Give active manual work
-  priority and wait 2s after it finishes; reread authority before the auto dump.
-- Persist the exact daily intent before sending. Uncertain/restart retries keep
-  its request ID, case, direction and count. Stop new attempts 5s before close;
-  do not replay yesterday into today. Keep separate online/local daily receipts.
-- Never weaken the backend's transaction, idempotency or business-date checks.
+  and shows `定时上香：默认投夯/拉`. It never votes or enables the switch.
+- Clicking the entire timed-incense tile toggles it; show `已开启` / `已关闭`
+  and `保存中…`. Put cadence, closing time and direction
+  in the existing hover/focus tooltip, never a permanent explanatory paragraph.
+- Serialize manual and automatic intents. Manual work has priority and a 2s
+  quiet window; recheck after refresh and persistence. Invalidate stale timers
+  on date/case/mode changes or disable/re-enable, including asynchronous work.
+- Keep one durable intent per mode. Persist its date, case, ID, direction, count
+  and periodic/closing kind before sending. Uncertain/restart retries reuse
+  the exact intent; finish it before creating a later batch or closing dump.
+  Stop new attempts 5s before close and never replay yesterday into today.
+- Never weaken backend transactions, idempotency or business-date checks.
+- Count accepted automatic incense in the existing local participation and
+  epithet displays. Persist actual quantities with the completed Host receipt;
+  merge them with browser manual counts only at render time. Repeated frames,
+  tabs and reloads must not append them to browser storage. Never infer an
+  uncertain historical acceptance from a requested count or balance delta.
 
 ### Explicit online/offline separation
 
@@ -1100,6 +1112,10 @@ Privacy is a publication gate. Never publish private workflow/conversation
 labels, internal task identifiers, personal home paths, private contact data,
 or credentials in files, commit metadata/messages, PR descriptions or comments.
 Use the public GitHub handle and GitHub noreply email for maintained commits.
+Community contributors may voluntarily publish their commit email: PR CI treats
+that metadata as advisory, without requiring signed history to be rewritten.
+This exception never covers secrets, sensitive files, source text or PR prose.
+Maintained identities and local publication hooks retain their strict policy.
 Configure this identity in repository-local Git settings, not account-wide
 settings. Personal GitHub Profile names belong to the account owner; never
 change them to satisfy a project's commit or CI policy. Maintainer commits use

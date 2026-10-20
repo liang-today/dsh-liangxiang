@@ -72,8 +72,13 @@ test('next-incense tooltip uses the installed Host rules and stays within the vi
   const rows = incenseWeightRows(wire.incenseWeightPolicy!, wire.personal.tokenPerIncense)
   await expect(tooltip.locator('tbody tr')).toHaveCount(rows.length)
   for (const [index, row] of rows.entries()) {
-    await expect(tooltip.locator('tbody tr').nth(index).locator('th,td')).toHaveText([row.model, row.weight, row.stick])
+    await expect(tooltip.locator('tbody tr').nth(index).locator('th,td')).toHaveText([row.model, row.stick])
   }
+  expect(await tooltip.locator('th,td').evaluateAll(cells => cells.every(cell => {
+    const range = document.createRange()
+    range.selectNodeContents(cell)
+    return range.getClientRects().length === 1 && cell.scrollWidth <= cell.clientWidth
+  }))).toBe(true)
   const box = await tooltip.boundingBox()
   expect(box).not.toBeNull()
   if (box !== null) {
@@ -116,6 +121,18 @@ test('pointer crosses from 梁相案牍 into its menu and version reopens update
   await expect(drawer).toBeVisible()
 
   const version = drawer.locator('[data-liangxiang-utility-action="version"]')
+  const versionLayout = await version.evaluate(button => {
+    const box = button.getBoundingClientRect()
+    const label = button.querySelector('[data-liangxiang-version-label]')!
+    const group = label.getBoundingClientRect()
+    const lines = [...label.children].map(line => line.getBoundingClientRect())
+    return { fits: button.scrollWidth <= button.clientWidth && lines.every(line => line.left >= box.left && line.right <= box.right),
+      leftAligned: lines.every(line => Math.abs(line.left - group.left) < 1),
+      verticalOffset: Math.abs((group.top + group.bottom) / 2 - (box.top + box.bottom) / 2) }
+  })
+  expect(versionLayout.fits).toBe(true)
+  expect(versionLayout.leftAligned).toBe(true)
+  expect(versionLayout.verticalOffset).toBeLessThan(1)
   await version.hover()
   await expect(drawer).toBeVisible()
   await version.click()

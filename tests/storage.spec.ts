@@ -77,13 +77,13 @@ describe('liangxiang storage', () => {
     await local.close()
     await reopened.close()
   })
-  it('persists day-end preferences and exact pending intents independently from mode', async () => {
+  it('persists timed-incense preferences and the exact periodic intent independently from mode', async () => {
     const facility = new MemoryFacility()
     const handle = await openLiangxiangPersistence(facility, () => undefined)
     await handle.settings.setAuthorityPreference('local')
     const dayEnd = { ...DEFAULT_DAY_END, enabled: true, voteType: 'down' as const, jobs: {
-      online: { businessDate: '2026-10-19', caseId: 'case-test', requestId: 'durable-test', voteType: 'down' as const, count: 20, done: false },
-    } }
+      online: { businessDate: '2026-10-19', caseId: 'case-test', requestId: 'durable-test', voteType: 'down' as const, count: 500, done: false, kind: 'periodic' as const },
+    }, incense: { online: { businessDate: '2026-10-19', lifetimeUp: 50, lifetimeDown: 8, todayUp: 20, todayDown: 8 } } }
     await handle.settings.setDayEndState(dayEnd)
     await handle.close()
     const reopened = await openLiangxiangPersistence(facility, () => undefined)

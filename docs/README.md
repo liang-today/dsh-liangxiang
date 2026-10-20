@@ -24,13 +24,14 @@
 这些文件仍随实现维护，但不是新的契约。只按当前任务选读：
 
 - 数据流与用户操作：`DATA_FLOW.md`、`TROUBLESHOOTING.md`。
+- 官方安装仍显示旧版、发布等待期与版本核对：`INSTALL_VERSION_DIAGNOSIS.md`。
 - fork/dev/main 协作、三平台门禁、英国午夜批次与 DSH alpha 预警：`CI.md`。
 - 运维与恢复：`121-vps-deploy.md`、`122-identity-recovery.md`、
   `143-case-bank-and-operations.md`、`144-client-recovery-and-update.md`。
 - 梁祠视觉/交互实现参考：`130-liangci-design.md`；契约仍只在 `AGENTS.md`。
 - 小难梁、规则版本及增量验收：`ISSUE2_IMPLEMENTATION.md`。
 - PR #6 入口与旁白的现行交互、视觉及验收：`PR6_FEEDBACK_REDESIGN.md`。
-- 日终上香（Issues #3/#5）与权威刷新节奏（#4）：`DAY_END_INCENSE.md`。
+- 定时上香与 23:59 收尾（Issues #3/#5、PR #21）与权威刷新节奏（#4）：`DAY_END_INCENSE.md`。
 - PR #7、DSH 重试漏算及会话迁移回归：`PR7_REVIEW.md`。
 - 连接消息去重与保留的实时性边界：`CONNECTION_EFFICIENCY.md`。
 - 本轮功能、资料、安装与集成验证结果：`RELEASE_READINESS_1_2.md`。

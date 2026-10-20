@@ -10,7 +10,7 @@ import { createBackendHttpApi } from '../src/backend/http.ts'
 import { LiangxiangBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
 import { BackendClientError, createBackendClient, type BackendClient } from '../src/host/backend-client.ts'
-import { DayEndService } from '../src/host/day-end-service.ts'
+import { AUTO_DUMP_PERIOD_MS, DayEndService } from '../src/host/day-end-service.ts'
 import { DEFAULT_DAY_END, type DayEndState } from '../src/shared/day-end.ts'
 import { BackendLiangService } from '../src/host/backend-service.ts'
 import { generateCommunityKeypair, type CommunityKeypair } from '../src/host/community-keys.ts'
@@ -880,6 +880,45 @@ describe('online rollover', () => {
 
 
 describe('signed online day-end authority', () => {
+  it('runs periodic batches and one closing dump through signed HTTP with the existing server budget', async () => {
+    const identity = generateCommunityKeypair('f'.repeat(64))
+    const s = await startStack({ LIANGXIANG_BUSINESS_TZ: 'Asia/Shanghai' }, {
+      start: Date.UTC(2026, 9, 19, 3), signedIdentity: identity, claimDebounceMs: 0,
+    })
+    observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    observePro(s.host, SESSION, usage(1_440 * 50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+    await waitFor(() => frame(s).personal.remainingIncense === 1_450, 'the signed claim and gift')
+    let state: DayEndState = { ...structuredClone(DEFAULT_DAY_END), enabled: true }
+    const ritual = new DayEndService(s.host, s.clock, () => false, () => undefined)
+    const personal = () => s.backend.dailyState(identity.installationId).authoritative_personal_state
+    try {
+      ritual.attachDayEndPersistence({ getDayEndState: () => state, setDayEndState: async next => { state = structuredClone(next) } })
+      ritual.startDayEnd()
+      expect(state.jobs.online).toBeUndefined()
+      s.clock.advance(AUTO_DUMP_PERIOD_MS)
+      // A settings/state emission reevaluates the existing deadline; HTTP and
+      // SQLite still execute normally, without replacing network timers.
+      await ritual.setDayEndPreferences({ enabled: true, voteType: 'up' })
+      await waitFor(() => state.jobs.online?.done === true, 'first periodic receipt')
+      expect(state.jobs.online).toMatchObject({ kind: 'periodic', count: 500 })
+      expect(personal().used_incense).toBe(500)
+      expect(ritual.getWireState().timedIncense).toMatchObject({ todayUp: 500, todayDown: 0, lifetimeUp: 500 })
+      const first = state.jobs.online?.requestId
+      s.clock.advance(AUTO_DUMP_PERIOD_MS)
+      await ritual.setDayEndPreferences({ enabled: true, voteType: 'up' })
+      await waitFor(() => state.jobs.online?.done === true && state.jobs.online.requestId !== first, 'next periodic receipt')
+      expect(personal().used_incense).toBe(1_000)
+      s.clock.set(Date.UTC(2026, 9, 19, 15, 59))
+      await ritual.setDayEndPreferences({ enabled: true, voteType: 'up' })
+      await waitFor(() => state.jobs.online?.kind === 'closing' && state.jobs.online.done, 'closing receipt')
+      expect(personal().used_incense).toBe(1_450)
+      expect(ritual.getWireState().timedIncense).toMatchObject({ todayUp: 1_450, todayDown: 0, lifetimeUp: 1_450 })
+      expect(state.incense?.local).toBeUndefined()
+      expect(personal().remaining_incense).toBe(0)
+      expect(state.jobs.local).toBeUndefined()
+    } finally { ritual.dispose() }
+  })
+
   it('uses the backend business clock despite a different Host zone and wall-clock offset', async () => {
     const identity = generateCommunityKeypair('e'.repeat(64))
     const s = await startStack({ LIANGXIANG_BUSINESS_TZ: 'Europe/London', LIANGXIANG_SNAPSHOT_SECONDS: '17' }, {

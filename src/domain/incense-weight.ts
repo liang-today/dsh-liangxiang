@@ -139,7 +139,7 @@ export function incenseWeightRows(policy: IncenseWeightPolicy, tokenPerIncense: 
     groups.set(key, {
       model: rule.label,
       weight: `×${rule.weightBps / INCENSE_WEIGHT_SCALE}`,
-      stick: `${rawTokens.toLocaleString('zh-CN')} Token = 1 炷`,
+      stick: `${rawTokens % 10_000 === 0 ? `${rawTokens / 10_000}W` : rawTokens.toLocaleString('zh-CN')} Token/炷`,
     })
   }
   return [...groups.values()]

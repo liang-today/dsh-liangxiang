@@ -76,3 +76,15 @@
 ## 已知缺口
 
 见 [`102`](102-known-limitations.md) 第 17–20 条：跨进程并发未压测、真实 DSH 多会话长跑未做、仅 Chromium、无 a11y 自动化审计。
+
+## 后续增量回归索引（不改写历史验收）
+
+2026-10-20 定时上香与社区 CI 规则的当前测试入口，执行结果以当次本地/CI 为准：
+
+| 不变量 | 当前测试 |
+|---|---|
+| 满额后定时、刷新后重查、旧开关重新同意、跨日/模式作废 | `tests/auto-dump.spec.ts` |
+| 自动意图先落盘、同 ID 重试、手动优先、23:59 一次收尾 | `tests/auto-dump.spec.ts`、`tests/day-end.spec.ts` |
+| 签名 HTTP / SQLite 周期投票及尾数收尾，沿用现有预算 | `tests/host-backend.spec.ts` |
+| 原四格开关、右键方向、提示说明与跨标签同步 | `tests/browser/day-end.spec.ts` |
+| 社区公开提交邮箱提示，维护者身份与敏感内容/历史继续阻断 | `scripts/ci/check-privacy.test.mjs` |

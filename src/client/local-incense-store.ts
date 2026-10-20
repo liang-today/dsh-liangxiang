@@ -134,3 +134,12 @@ export function rememberLocalIncenseVote(
 export function readLocalIncenseStats(businessDate: string, storage?: Storage | null): LocalIncenseStats {
   return deriveLocalIncenseStats(loadLocalIncenseLedger(businessDate, storage))
 }
+
+export function combineLocalIncenseStats(manual: LocalIncenseStats, timed?: LocalIncenseLedger): LocalIncenseStats {
+  return deriveLocalIncenseStats({
+    lifetimeUp: manual.lifetime.up + (timed?.lifetimeUp ?? 0),
+    lifetimeDown: manual.lifetime.down + (timed?.lifetimeDown ?? 0),
+    todayUp: manual.today.up + (timed?.todayUp ?? 0),
+    todayDown: manual.today.down + (timed?.todayDown ?? 0),
+  })
+}

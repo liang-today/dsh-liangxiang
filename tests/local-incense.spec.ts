@@ -8,6 +8,7 @@ import {
 import { LOCAL_EPITHET_STORAGE_KEY } from '../src/client/local-epithet-store.ts'
 import {
   LOCAL_INCENSE_STORAGE_KEY,
+  combineLocalIncenseStats,
   readLocalIncenseStats,
   rememberLocalIncenseVote,
 } from '../src/client/local-incense-store.ts'
@@ -25,6 +26,18 @@ function memoryStorage(initial: Record<string, string> = {}): Storage {
 }
 
 describe('local incense ledger', () => {
+  it('combines a Host automatic projection without writing it back or double counting repeated frames', () => {
+    const storage = memoryStorage()
+    const manual = rememberLocalIncenseVote('down', 10, '2026-08-23', storage)
+    const timed = { lifetimeUp: 550, lifetimeDown: 1_000, todayUp: 550, todayDown: 1_000 }
+    const before = storage.getItem(LOCAL_INCENSE_STORAGE_KEY)
+    const combined = combineLocalIncenseStats(manual, timed)
+    expect(combined.today).toMatchObject({ up: 550, down: 1_010, total: 1_560 })
+    expect(combineLocalIncenseStats(readLocalIncenseStats('2026-08-23', storage), timed)).toEqual(combined)
+    expect(storage.getItem(LOCAL_INCENSE_STORAGE_KEY)).toBe(before)
+    expect(combineLocalIncenseStats(manual)).toEqual(manual)
+  })
+
   it('accumulates today and lifetime on the matching side', () => {
     const after = recordLocalIncenseVote({
       lifetimeUp: 10,

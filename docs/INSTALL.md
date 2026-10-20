@@ -2,7 +2,7 @@
 
 推荐使用 [DSH 官方 Desktop](https://www.deepseek.com/zh/harness/) 的内置插件安装入口。
 安装后页面边缘出现“今日梁相”；单击打开今日梁案，可拖动入口调整位置。
-本版安装包为 **dsh-liangxiang@1.2.0**；发布状态以 npm `latest` 和 GitHub Latest Release 为准。
+当前源码为 **dsh-liangxiang@1.2.1-beta.2 未发布候选**；发布状态以 npm `latest` 和 GitHub Latest Release 为准。
 
 ## Desktop：应用内安装
 
@@ -30,6 +30,22 @@
 
 **升级**：在 **插件 → 已安装 → 梁相** 卸载插件，再按上面的步骤安装新版。当前官方入口对社区插件采用卸载后重装的更新方式，见 [DSH 官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/docs/upgrade-guide/v0.2.1-alpha.2/plugin-install-over-installed/guide.md)。
 卸载不删除本机香火账本；不要额外清理 DSH 的数据目录。升级后在 **梁相案牍 → 当前版本** 核对版本与更新说明。
+
+### 装完仍显示旧版本
+
+先区分“已经安装”与“已经升级”：官方 0.2.1-rc.2 的社区插件不会因为重新搜索、点击
+安装或重启应用而自动替换旧包。应先在已安装列表卸载**梁相插件**，再添加目标版本并启用。
+无需卸载 DeepSeek 客户端，也不要删除其数据目录。
+
+新版本发布后未满 24 小时，pnpm 11 的默认等待期还可能让不带版本号的包名或 `@latest`
+安装到较旧版本。需要立即安装已确认发布的版本时，在“添加插件”输入精确版本；例如
+当前公开正式版可填写 **`dsh-liangxiang@1.2.0`**。这里指公开版，不是本文开头的未发布候选。
+精确版本在 pnpm 默认策略下可被明确选择；若安装器提示等待期或策略确认，按应用提示处理，
+不修改全局安全配置。安装后核对已安装列表和梁相案牍中的版本；它们都应变成目标版本。
+
+`latest` 是更新目标，不能使正在运行的旧包立即升级。梁相启动时的版本浮动只调整自身
+依赖规则，不会自行运行安装器或替换运行中的依赖。原理与复现见
+[`INSTALL_VERSION_DIAGNOSIS.md`](INSTALL_VERSION_DIAGNOSIS.md)。
 
 Desktop 的 `desktop` Profile 由桌面应用独占管理。普通 npm CLI 的 `web` 命令不能用于它；
 不再使用手动改 Desktop 家目录或混用桌面 pnpm 的旧安装方法。
@@ -70,7 +86,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
 在文件所在目录执行；本地相对路径必须带 `./`，避免被当成 npm 包名：
 
 ```bash
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.2.0.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.2.1-beta.2.tgz
 ```
 
 ## 在线连接与代理

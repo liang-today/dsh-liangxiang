@@ -33,6 +33,15 @@ function liveState() {
 }
 
 describe('state frame round-trip', () => {
+  it('carries Host automatic participation and rejects malformed counters', () => {
+    const { state } = liveState()
+    const timedIncense = { businessDate: state.businessDate, lifetimeUp: 500, lifetimeDown: 10, todayUp: 50, todayDown: 0 }
+    const parsed = parseWireState({ ...state, timedIncense })
+    expect(wireToViewState(parsed, 'live').timedIncense).toEqual(timedIncense)
+    expect(() => parseWireState({ ...state, timedIncense: { ...timedIncense, todayUp: 501 } })).toThrow(WireError)
+    expect(() => parseWireState({ ...state, timedIncense: { ...timedIncense, todayDown: -1 } })).toThrow(WireError)
+  })
+
   it('a real service frame parses and derives a consistent view state', () => {
     const { state } = liveState()
     const parsed = parseWireState(JSON.parse(JSON.stringify(state)) as unknown)

@@ -467,7 +467,7 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(textContent(findByAttr(demo, 'data-liangxiang-compact', 'next-incense'))).toBe('3K')
     expect(findByAttr(demo, 'data-liangxiang-compact', 'next-incense')[0]?.props.title).toBe('3,000 当量')
     expect(textContent(demo)).toContain('距下一炷还差 3,000 当量')
-    expect(textContent(demo)).toContain('攒香按 Pro 当量')
+    expect(findByAttr(demo, 'aria-label', '凝香规则')).toHaveLength(1)
     expect(textContent(demo)).toContain('V4-Flash')
 
     // 1,234 炷 / 50,000 当量 — the previous tests never reached this width.
@@ -655,16 +655,16 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(findByAttr(tree, 'data-liangxiang-overflow-aura')).toHaveLength(1)
   })
 
-  it('keeps a Pro-equivalent weight table on the next-incense flank', () => {
+  it('keeps compact Token-per-stick rules on the next-incense flank', () => {
     const tree = renderPanel(demoState())
     const hint = findByAttr(tree, 'data-liangxiang-weight-hint')[0]
     expect(hint).toBeDefined()
     const copy = hint === undefined ? '' : textContent([hint])
-    expect(copy).toContain('攒香按 Pro 当量')
+    expect(findByAttr(tree, 'aria-label', '凝香规则')).toHaveLength(1)
     expect(copy).toContain('Pro')
-    expect(copy).toContain('×1')
+    expect(copy).toContain('5W Token/炷')
     expect(copy).toContain('Flash')
-    expect(copy).toContain('×0.5')
+    expect(copy).toContain('10W Token/炷')
   })
 
   it('renders the static family table with the actual configurable incense threshold', () => {
@@ -675,11 +675,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(copy).toContain('Pro')
     expect(copy).toContain('Flash')
     expect(copy).toContain('其它')
-    expect(copy).toContain('60,000 Token = 1 炷')
-    expect(copy).toContain('×0.5')
-    expect(copy).toContain('120,000 Token = 1 炷')
+    expect(copy).toContain('6W Token/炷')
+    expect(copy).toContain('12W Token/炷')
     expect(copy).not.toContain('V4-Pro')
-    expect(copy).not.toContain('50,000 Token')
+    expect(copy).not.toContain('5W Token/炷')
   })
 
   it('does not render a leftover 演示 +1 炷 probe', () => {
@@ -1065,7 +1064,7 @@ describe('梁相案牍', () => {
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'reset-position')).toHaveLength(0)
     const version = findByAttr(tree, 'data-liangxiang-utility-action', 'version')[0]
     expect(version).toBeDefined()
-    expect(textContent(version === undefined ? [] : [version])).toContain(`v${PLUGIN_VERSION}`)
+    expect(version?.props['aria-label']).toContain(`v${PLUGIN_VERSION}`)
     expect(textContent(version === undefined ? [] : [version])).not.toContain(PLUGIN_PACKAGE_NAME)
     expect(textContent(version === undefined ? [] : [version])).not.toContain('当前版本')
   })

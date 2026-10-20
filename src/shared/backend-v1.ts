@@ -245,6 +245,8 @@ export interface V1VoteAccepted {
   remaining_incense: number
   /** Sticks actually spent this accept (1 for a click). */
   spent_incense?: number
+  /** Immutable receipt quantity; absent on older backends/receipts. */
+  accepted_incense?: number
   /** True when this response replayed an earlier accepted vote (idempotency). */
   replayed: boolean
 }
@@ -708,6 +710,7 @@ function parseVoteResult(raw: unknown, field: string): V1VoteResult {
       spent_incense: record.spent_incense === undefined
         ? 1
         : requireCount(record.spent_incense, `${field}.spent_incense`),
+      ...(record.accepted_incense === undefined ? {} : { accepted_incense: requireCount(record.accepted_incense, `${field}.accepted_incense`) }),
       replayed: record.replayed,
     }
   }

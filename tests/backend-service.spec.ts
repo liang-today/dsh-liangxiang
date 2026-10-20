@@ -45,6 +45,17 @@ function vote(
 }
 
 describe('bootstrap and token claims', () => {
+  it('retains the exact clamped receipt quantity when replay counters have moved', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 800)
+    const first = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'receipt-count-0001', 500, 50))
+    expect(first.result).toMatchObject({ spent_incense: 50, accepted_incense: 50 })
+    vote(f, INSTALLATION, 'down', 'receipt-count-0002', 200)
+    const replay = parseV1VoteResponse(vote(f, INSTALLATION, 'up', 'receipt-count-0001', 500))
+    expect(replay.result).toMatchObject({ spent_incense: 0, accepted_incense: 50, used_incense: 250 })
+    expect(f.store.voteByRequestId(INSTALLATION, 'receipt-count-0001')?.accepted_incense).toBe(50)
+  })
+
   it('opens one active case per business date and publishes a zero-vote snapshot', () => {
     const f = boot()
     const bootstrap = parseV1Bootstrap(f.service.bootstrap(INSTALLATION))

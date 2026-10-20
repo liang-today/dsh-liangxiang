@@ -49,18 +49,29 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 
 ## 用户怎么升级
 
-先退出 WebUI，再执行对应路径的**同一条安装命令**，然后重启并刷新浏览器。账本不会被删除。
+Desktop 在应用内先卸载梁相插件，再用“添加插件”安装目标版本并启用。命令行 WebUI
+则先退出，再在同一个 Profile 更新并重新启动。两条路径都保留账本，不删除数据目录。
 
-| 来源 | 升级命令 |
+| 来源 | 升级方式 |
 |---|---|
-| 插件市场 | 设置 → 插件市场 → 检查更新 / 更新。比对 npm `latest`，不必先 remove |
-| npm | 重复安装命令 `add dsh-liangxiang`（解析 `latest`）。没有全局 `dsh` 时把开头换成 `npx --yes @deepseek-ai/dsh`。支持版本浮动的 Host（v1.0.0 起）会把精确号 / tarball / 残留 `beta` 改成 `latest`，不必先 remove |
-| GitHub Release / tarball | 先 `cd` 到包目录，再 `add ./dsh-liangxiang-<version>.tgz` |
+| 官方 Desktop 插件入口 | 插件 → 已安装 → 梁相 → 卸载；再添加 `dsh-liangxiang@目标版本` 并立即启用。0.2.1-rc.2 的社区插件不支持直接覆盖安装 |
+| npm 命令行 WebUI | 退出 WebUI，再执行 `dsh plugin --profile web add dsh-liangxiang@latest`，启动并刷新。刚发布的版本可改用经过核对的精确版本 |
+| GitHub Release / tarball | Desktop 先在应用内卸载，再添加发行包的绝对路径或完整下载地址；命令行先退出，进入包目录执行 `dsh plugin --profile web add ./dsh-liangxiang-<version>.tgz` |
 | 源码 | `git pull && pnpm install && pnpm run dev:install` |
 
-没有全局 `dsh` 时，把命令开头的 `dsh` 整段换成 `npx --yes @deepseek-ai/dsh`。漏掉本地包前面的 `./`，或只写文件名，pnpm 会去请求 `registry.npmjs.org/dsh-liangxiang-<version>.tgz`，报 `ERR_PNPM_FETCH_404`。走 npm 请写 `dsh-liangxiang`；本地包必须带 `./`。
+发布后未满 24 小时，pnpm 11 的默认等待期可能将裸包名或 `@latest` 解析为旧版本。
+精确版本可明确选择目标；若策略要求确认或等待，按安装器提示处理，不关闭全局安全检查。
+Profile 是否已有梁相的等待期排除规则，也会使不同设备得到不同安装结果。Host 的
+`latest` 浮动只是设置更新目标，不会自动更新实际安装包；“已安装”不等于“最新版”。
+详见 [`INSTALL.md`](INSTALL.md#装完仍显示旧版本) 与
+[`INSTALL_VERSION_DIAGNOSIS.md`](INSTALL_VERSION_DIAGNOSIS.md)。
 
-卸载一律：`dsh plugin --profile web remove dsh-liangxiang`（源码开发 profile 用 `pnpm run dev:uninstall`）。
+没有全局 `dsh` 时，把命令开头的 `dsh` 换成 `npx --yes @deepseek-ai/dsh`。
+不要把 Desktop 的安装位置与普通命令行 `web` Profile 混用。命令行本地包必须带 `./`，
+否则会被当作注册表包名请求并出现 404。
+
+CLI 卸载：`dsh plugin --profile web remove dsh-liangxiang`；源码开发 Profile 用
+`pnpm run dev:uninstall`。Desktop 始终通过应用内的插件入口卸载。
 
 同版本号重打包时用下面的 `update-plugin.sh`，避免 DSH 报 Already up to date。
 
@@ -70,7 +81,7 @@ DSH 主进程和 WebUI 不再等待社区 bootstrap。Host 在存储打开后立
 
 ```bash
 export DSH_HOME=/实际使用的/dsh/home
-bash scripts/update-plugin.sh ./dsh-liangxiang-1.1.6.tgz --profile <profile名>
+bash scripts/update-plugin.sh ./dsh-liangxiang-1.2.0.tgz --profile <profile名>
 ```
 
 脚本先备份并校验 `storages/liangxiang.json` 与存在时的 `storages/liangxiang_local.json`，再按 tarball 内容 SHA-256 复制到持久化包缓存，并用这个

@@ -1097,6 +1097,7 @@ export class LiangxiangBackendService {
         business_date: target.business_date,
         vote_type: intent.vote_type,
         requested_count: requestedCount,
+        accepted_incense: spent,
         used_incense_after: row.used_incense,
         remaining_incense_after: earned - row.used_incense,
         created_at: now,
@@ -1128,6 +1129,7 @@ export class LiangxiangBackendService {
       used_incense: row.used_incense,
       remaining_incense: earned - row.used_incense,
       spent_incense: spent,
+      accepted_incense: spent,
       replayed: false,
     }
   }
@@ -1169,7 +1171,7 @@ export class LiangxiangBackendService {
   private replayAccepted(
     installationId: string,
     intent: V1VoteRequest,
-    stored: { vote_type: V1VoteRequest['vote_type'], used_incense_after: number, remaining_incense_after: number },
+    stored: { vote_type: V1VoteRequest['vote_type'], used_incense_after: number, remaining_incense_after: number, accepted_incense?: number | null },
     caseRow: CaseRow | undefined,
   ): V1VoteResult {
     const row = caseRow === undefined
@@ -1190,6 +1192,7 @@ export class LiangxiangBackendService {
       used_incense: used,
       remaining_incense: remaining,
       spent_incense: 0,
+      ...(stored.accepted_incense == null ? {} : { accepted_incense: stored.accepted_incense }),
       replayed: true,
     }
   }

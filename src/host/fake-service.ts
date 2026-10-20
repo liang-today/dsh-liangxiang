@@ -387,6 +387,7 @@ export class FakeAuthoritativeLiangService {
           usedIncenseToday: current.usedIncenseToday,
           remainingIncense: current.remainingIncense,
           spentIncense: 0,
+          ...(existing.spentIncense === undefined ? {} : { acceptedIncense: existing.spentIncense }),
         })
       }
       return respond({
@@ -471,6 +472,7 @@ export class FakeAuthoritativeLiangService {
       usedIncenseToday: record.usedIncenseToday,
       remainingIncense: record.remainingIncense,
       spentIncense: spent,
+      acceptedIncense: spent,
     })
   }
 

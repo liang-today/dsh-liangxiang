@@ -63,6 +63,8 @@ export type VoteResult =
     remainingIncense: number
     /** Sticks actually spent this accept (1 for a click; N for a dump). */
     spentIncense?: number
+    /** Original accepted quantity, including an idempotent replay. */
+    acceptedIncense?: number
   }
   | {
     status: 'rejected'

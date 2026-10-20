@@ -37,7 +37,7 @@ jobs:
         run: |
           node --test scripts/ci/check-privacy.test.mjs
           if [ -n "$BASE_SHA" ]; then
-            node scripts/ci/check-privacy.mjs --range "$BASE_SHA..$HEAD_SHA" --ref "$HEAD_SHA"
+            node scripts/ci/check-privacy.mjs --range "$BASE_SHA..$HEAD_SHA" --ref "$HEAD_SHA" --community-pr
           else
             node scripts/ci/check-privacy.mjs
           fi

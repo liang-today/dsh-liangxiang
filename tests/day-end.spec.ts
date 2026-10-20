@@ -36,6 +36,63 @@ function setup(enabled = true, remaining = 8) {
 }
 
 describe('one opt-in day-end dump', () => {
+  it('records the actual automatic spend and preserves it across restart and rollover', async () => {
+    const s = setup(true, 800)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(s.service.getWireState().timedIncense).toEqual({
+      businessDate: '2026-10-19', lifetimeUp: 50, lifetimeDown: 0, todayUp: 50, todayDown: 0,
+    })
+    s.service.dispose()
+    const restarted = s.wrap()
+    expect(restarted.getWireState().timedIncense?.todayUp).toBe(50)
+    await vi.advanceTimersByTimeAsync(61_000)
+    expect(restarted.getWireState().timedIncense).toMatchObject({
+      businessDate: '2026-10-20', lifetimeUp: 50, todayUp: 0, todayDown: 0,
+    })
+  })
+
+  it('recovers one accurate count after a lost accepted response and restart', async () => {
+    const s = setup(true, 800)
+    const original = s.inner.vote.bind(s.inner)
+    vi.spyOn(s.inner, 'vote').mockImplementationOnce(intent => {
+      original(intent)
+      throw new Error('response lost')
+    })
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(s.state().jobs.local?.done).toBe(false)
+    s.service.dispose()
+    const restarted = s.wrap()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(restarted.getWireState().timedIncense?.todayUp).toBe(50)
+    expect(s.inner.getWireState().personal.usedIncenseToday).toBe(50)
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(restarted.getWireState().timedIncense?.todayUp).toBe(50)
+  })
+
+  it('commits the completed receipt and automatic statistics together after a storage retry', async () => {
+    const s = setup()
+    const save = vi.mocked(s.persistence.setDayEndState).getMockImplementation()!
+    let failed = false
+    vi.spyOn(s.persistence, 'setDayEndState').mockImplementation(async next => {
+      if (next.jobs.local?.done && !failed) { failed = true; throw new Error('storage unavailable') }
+      await save(next)
+    })
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(s.state().incense).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(s.state().incense?.local?.todayUp).toBe(8)
+    expect(s.state().jobs.local?.done).toBe(true)
+    expect(s.inner.getWireState().personal.usedIncenseToday).toBe(8)
+  })
+
+  it('does not include manual votes in automatic statistics', async () => {
+    const s = setup()
+    await s.service.vote({ caseId: s.inner.getWireState().activeCase.id, voteType: 'down', requestId: 'manual-stats-0001' })
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(s.service.getWireState().timedIncense).toMatchObject({ todayUp: 7, todayDown: 0 })
+    expect(s.inner.getWireState().personal.usedIncenseToday).toBe(8)
+  })
+
   it('defaults off; setting a direction does not enable or vote', async () => {
     const s = setup(false)
     const vote = vi.spyOn(s.inner as LiangHostService, 'vote')

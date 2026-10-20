@@ -24,6 +24,8 @@ import {
   type VoteType,
 } from '../domain/index.ts'
 
+import { parseTimedIncenseLedger, type TimedIncenseLedger } from './day-end.ts'
+
 export const WIRE_SCHEMA_VERSION = 1
 
 /**
@@ -118,6 +120,8 @@ export interface LiangxiangWireState {
   snapshotRefreshSeconds: number
   /** Additive preference only; never a balance or spend authority. */
   dayEnd?: WireDayEnd
+  /** Host-local automatic participation, additive to browser manual counts. */
+  timedIncense?: TimedIncenseLedger
   businessDate: string
   /** Scalar signal only; 梁祠 arrays use the separate `/api/history` route. */
   archiveVersion: number
@@ -282,6 +286,10 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
       : requireString(record.authorityReason, 'state.authorityReason'),
     snapshotRefreshSeconds: requireCount(record.snapshotRefreshSeconds, 'state.snapshotRefreshSeconds'),
     ...(record.dayEnd === undefined ? {} : { dayEnd: parseWireDayEnd(record.dayEnd) }),
+    ...(record.timedIncense === undefined ? {} : { timedIncense: (() => {
+      try { return parseTimedIncenseLedger(record.timedIncense) }
+      catch { throw new WireError('state.timedIncense', 'invalid timed incense counts') }
+    })() }),
     businessDate: requireString(record.businessDate, 'state.businessDate'),
     archiveVersion: record.archiveVersion === undefined
       ? 0
@@ -358,6 +366,7 @@ export function parseWireVoteResult(raw: unknown): VoteResult {
       voteType: record.voteType as VoteType,
       usedIncenseToday: requireCount(record.usedIncenseToday, 'result.usedIncenseToday'),
       remainingIncense: requireCount(record.remainingIncense, 'result.remainingIncense'),
+      ...(record.acceptedIncense === undefined ? {} : { acceptedIncense: requireCount(record.acceptedIncense, 'result.acceptedIncense') }),
       spentIncense: record.spentIncense === undefined
         ? 1
         : requireCount(record.spentIncense, 'result.spentIncense'),

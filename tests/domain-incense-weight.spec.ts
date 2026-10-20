@@ -70,9 +70,9 @@ describe('incenseWeightBpsForModel', () => {
   it('derives concise family labels and thresholds from the static rule data', () => {
     expect(parseIncenseWeightPolicy(DEFAULT_INCENSE_WEIGHT_POLICY)).toEqual(DEFAULT_INCENSE_WEIGHT_POLICY)
     expect(incenseWeightRows(DEFAULT_INCENSE_WEIGHT_POLICY, 60_000)).toEqual([
-      { model: 'Flash', weight: '×0.5', stick: '120,000 Token = 1 炷' },
-      { model: 'Pro', weight: '×1', stick: '60,000 Token = 1 炷' },
-      { model: '其它', weight: '×0.5', stick: '120,000 Token = 1 炷' },
+      { model: 'Flash', weight: '×0.5', stick: '12W Token/炷' },
+      { model: 'Pro', weight: '×1', stick: '6W Token/炷' },
+      { model: '其它', weight: '×0.5', stick: '12W Token/炷' },
     ])
     expect(() => parseIncenseWeightPolicy({ ...DEFAULT_INCENSE_WEIGHT_POLICY, rules: [{ label: 'bad', model: '^(.+)+$', weightBps: 10_000 }] })).toThrow()
     expect(() => parseIncenseWeightPolicy({ ...DEFAULT_INCENSE_WEIGHT_POLICY, fallbackWeightBps: 20_000 })).toThrow()

@@ -42,6 +42,9 @@ git push -u origin feat/your-change
 不得通过 main 独立开发、squash 或反复反向同步。完整检查和权限见 [docs/CI.md](docs/CI.md)。
 代码合入不触发 npm、Release/Tag 或部署，正式版本发布需单独确认。
 
+社区贡献者可自愿公开提交邮箱，CI 仅提示，不要求重写已经签名的提交。维护者继续使用
+公开账号及 GitHub noreply 身份；密钥、Token、敏感文件和私人上下文仍是强制门禁。
+
 ## 分层红线
 
 ```

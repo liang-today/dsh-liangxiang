@@ -23,6 +23,7 @@ import {
   LEGACY_INCENSE_WEIGHT_POLICY,
 } from '../domain/index.ts'
 import { DEFAULT_CASE_TITLE } from '../shared/index.ts'
+import type { TimedIncenseLedger } from '../shared/day-end.ts'
 import type { AuthorityMode, LiangxiangWireState, WireBroadcast, WireDayEnd } from '../shared/wire.ts'
 
 export type ConnectionState = 'connecting' | 'live' | 'offline'
@@ -62,6 +63,7 @@ export interface LiangxiangViewState {
   /** Active operator notice; displayed only in the existing feedback row. */
   broadcast: WireBroadcast | null
   dayEnd?: WireDayEnd
+  timedIncense?: TimedIncenseLedger
 }
 
 export interface LiangxiangStore {
@@ -84,6 +86,7 @@ export function wireToViewState(wire: LiangxiangWireState, connection: Connectio
     accountingNotice: wire.accounting.notice,
     broadcast: wire.broadcast,
     ...(wire.dayEnd === undefined ? {} : { dayEnd: wire.dayEnd }),
+    ...(wire.timedIncense === undefined ? {} : { timedIncense: wire.timedIncense }),
     authorityMode: wire.authorityMode,
     activeCase: wire.activeCase,
     snapshot: buildPublicSnapshot({

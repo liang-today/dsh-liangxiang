@@ -30,13 +30,13 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '1.2.0'
+export const PLUGIN_VERSION = '1.2.1-beta.2'
 
 /**
  * Server-only release label for the community backend. Do not bump the npm /
  * client `PLUGIN_VERSION` for a backend-only change; stamp `1.1.6-uN` instead.
  */
-export const SERVER_BUILD = '1.2.0-u1'
+export const SERVER_BUILD = '1.2.1-beta.2-u1'
 
 /** Welcome gift: sticks credited once per device fingerprint per business date. */
 export const STARTER_INCENSE_COUNT = 10
@@ -95,7 +95,7 @@ export const NEXT_INCENSE_PROGRESS_LABEL = '已攒'
 /** Visible unit under 下一炷: Pro-equivalent tokens, not raw Flash tokens. */
 export const NEXT_INCENSE_UNIT = '当量'
 
-export const NEXT_INCENSE_WEIGHT_TITLE = '攒香按 Pro 当量'
+export const NEXT_INCENSE_WEIGHT_TITLE = '凝香规则'
 
 /** Region 4 stat labels (西游口吻：三界香火 / 取经五众). */
 export const INCENSE_STAT_LABEL = '三界香火'

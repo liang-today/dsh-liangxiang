@@ -10,6 +10,43 @@ test.afterEach(async ({ page }) => {
   expect(response.ok()).toBe(true)
 })
 
+test('automatic participation updates 此身香火 and 梁小号 without being appended again on reload or another tab', async ({ page }) => {
+  await bootInstalledLiangxiang(page)
+  const wire = await page.request.get('/liangxiang/api/state').then(r => r.json())
+  const timedIncense = { businessDate: wire.businessDate, lifetimeUp: 550, lifetimeDown: 1_000, todayUp: 550, todayDown: 1_000 }
+  // Only the additive Host projection is supplied by this fixture. Manual
+  // browser records remain separate, and real SSE frames retain live transport.
+  await page.context().route('**/liangxiang/api/state', async route => {
+    const response = await route.fetch()
+    const current = await response.json()
+    await route.fulfill({ response, json: { ...current, revision: current.revision + 100_000, timedIncense } })
+  })
+  await page.context().addInitScript(({ businessDate }) => {
+    localStorage.setItem('liangxiang:local-incense:v1', JSON.stringify({ businessDate,
+      lifetimeUp: 0, lifetimeDown: 10, todayUp: 0, todayDown: 10 }))
+    localStorage.setItem('liangxiang:local-epithet:v2', JSON.stringify({ businessDate, up: 0, down: 10 }))
+  }, { businessDate: wire.businessDate })
+  const check = async (target: typeof page) => {
+    const panel = await openPanel(target)
+    await expect(panel.locator('[data-liangxiang-vote-feedback]')).toContainText('香疯')
+    await expect(panel.locator('[data-liangxiang-vote-feedback]')).toContainText('偏拉梁')
+    const stats = panel.locator('[data-liangxiang-stat="incense"]')
+    await stats.hover()
+    await expect(stats.getByRole('tooltip')).toContainText('1,560')
+    await expect(stats.getByRole('tooltip')).toContainText('550/1010')
+  }
+  await bootInstalledLiangxiang(page, { seedPreferences: false })
+  await check(page)
+  await bootInstalledLiangxiang(page, { seedPreferences: false })
+  await check(page)
+  const other = await page.context().newPage()
+  try { await bootInstalledLiangxiang(other); await check(other) }
+  finally { await other.close() }
+  const manual = await page.evaluate(() => JSON.parse(localStorage.getItem('liangxiang:local-incense:v1')!))
+  expect(manual.todayDown).toBe(10)
+  expect(manual.todayUp).toBe(0)
+})
+
 test('day-end is explicit, right-click only sets direction, and tabs share the Host preference', async ({ page }, testInfo) => {
   await bootInstalledLiangxiang(page)
   const configure = async (enabled: boolean) => {
@@ -24,12 +61,12 @@ test('day-end is explicit, right-click only sets direction, and tabs share the H
   page.on('request', request => { if (request.url().endsWith('/liangxiang/api/vote')) votes.push(request.postData() ?? '') })
   const panel = await openPanel(page)
   await panel.locator('[data-liangxiang-vote="down"]').click({ button: 'right' })
-  await expect(panel).toContainText('日终自动倾炉：默认投拉')
+  await expect(panel).toContainText('定时上香：默认投拉')
   expect(votes).toHaveLength(0)
   await panel.locator('[data-liangxiang-vote="up"]').click({ button: 'right' })
-  await expect(panel).toContainText('日终自动倾炉：默认投夯')
+  await expect(panel).toContainText('定时上香：默认投夯')
   await panel.locator('[data-liangxiang-vote="down"]').click({ button: 'right' })
-  await expect(panel).toContainText('日终自动倾炉：默认投拉')
+  await expect(panel).toContainText('定时上香：默认投拉')
   await panel.locator('[data-liangxiang-utility-trigger]').click()
   const toggle = panel.locator('[data-liangxiang-utility-action="day-end"]')
   await expect(toggle).toHaveAttribute('aria-pressed', 'false')
@@ -39,7 +76,26 @@ test('day-end is explicit, right-click only sets direction, and tabs share the H
   await toggle.hover()
   await expect(hint).toBeVisible()
   await expect(hint).toContainText('当前：拉')
-  await expect(hint).toContainText('DSH 运行时生效')
+  await expect(hint).toContainText('满 500 炷后')
+  await expect(hint).toContainText('每 10 分钟')
+  await expect(hint).toContainText('23:59 再按限额收尾一次')
+  const hintLayout = await hint.evaluate(element => {
+    const box = element.getBoundingClientRect()
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    const text = range.getBoundingClientRect()
+    const direction = element.querySelector('[data-liangxiang-day-end-direction]')!
+    const label = direction.firstElementChild!.getBoundingClientRect()
+    const current = direction.lastElementChild!.getBoundingClientRect()
+    return { insetDifference: Math.abs((text.left - box.left) - (box.right - text.right)),
+      fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+      directionAligned: Math.abs(label.top - current.top) < 1 && label.right <= current.left,
+      overflow: element.scrollWidth > element.clientWidth }
+  })
+  expect(hintLayout.insetDifference).toBeLessThan(hintLayout.fontSize)
+  expect(hintLayout.directionAligned).toBe(true)
+  expect(hintLayout.overflow).toBe(false)
+  await expect(toggle).toContainText('定时上香')
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-pressed', 'true')
   await expect(toggle).toContainText('已开启')

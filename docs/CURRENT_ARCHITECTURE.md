@@ -1,11 +1,11 @@
 # 梁相：当前架构与事实索引
 
-核对：2026-10-19。先读 [`AGENTS.md`](../AGENTS.md)，再按本文进入专题；历史文档不能覆盖现行契约。
+核对：2026-10-20。先读 [`AGENTS.md`](../AGENTS.md)，再按本文进入专题；历史文档不能覆盖现行契约。
 
 ## 版本与边界
 
-当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.0`，`SERVER_BUILD=1.2.0-u1`。
-当前源码目标为 **1.2.0**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
+当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.1-beta.2`，`SERVER_BUILD=1.2.1-beta.2-u1`。
+当前源码为 **1.2.1-beta.2 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
 
 | 仓库 | 职责 |
 |---|---|
@@ -33,6 +33,7 @@ DSH 最终请求用量
 - 在线与离线分别保存身份投影、香火、投票、梁案和档案；共享已结算会话游标以避免同一用量重复凝香。
 - 梁位、梁子与统计来自同版权威快照。网络失败保留在线偏好、锁票并自动重连，不静默切换模式。
 - 不保存或传输提示词、回复、源码、会话正文或原始文件路径；Backend 不接收模型名。
+- 自动上香的本机夯/拉统计由 Host 按模式持久化，页面与手动记录合并展示；Backend v11 的原始成交回执用于丢回执后的准确重放，不改变投票额度。
 
 ## 当前产品行为
 
@@ -41,7 +42,7 @@ DSH 最终请求用量
 | 小难梁 | 有票且梁位 <25%；25%–<50% 为梁工。旧梁案和档案保留原规则，见 [`ISSUE2_IMPLEMENTATION.md`](ISSUE2_IMPLEMENTATION.md) |
 | 凝香 | Pro ×1；Flash、其他及未知 ×0.5；按每个请求最终用量结算。V4.1 路由与重试/迁移边界见 [`INCENSE_POLICY.md`](INCENSE_POLICY.md)、[`PR7_REVIEW.md`](PR7_REVIEW.md) |
 | 拍梁子 | 单击 200ms 判定开合；双击/连拍保持面板状态。主面板固定，独立三行短句下落渐隐，见 [`PR6_FEEDBACK_REDESIGN.md`](PR6_FEEDBACK_REDESIGN.md) |
-| 日终上香 | 默认关闭，Host 运行时按业务时区 23:59 发一笔普通倾炉；右键只设置方向，手动优先，意图持久化且不跨日补投，见 [`DAY_END_INCENSE.md`](DAY_END_INCENSE.md) |
+| 定时上香 | 默认关闭，满 500 炷后每 10 分钟按限额上香，23:59 再收尾一次；复用原开关/方向，旧开关需重新开启，手动优先、意图持久化且不跨日补投，见 [`DAY_END_INCENSE.md`](DAY_END_INCENSE.md) |
 | 连接 | Host 跟随后端 cadence；只过滤业务内容相同的 SSE 整帧，真实变化即时发送，见 [`CONNECTION_EFFICIENCY.md`](CONNECTION_EFFICIENCY.md) |
 | 更新说明 | 升级按版本显示一次，可从案牍重看；已打开标签页同步引导完成状态，保留 QQ 二维码及社区贡献者鸣谢 |
 
@@ -53,7 +54,7 @@ Desktop 通过原生“插件 → 添加插件”输入完整包名 `dsh-liangxi
 - `src/domain/`：纯业务规则、倍率、梁位与档案聚合。
 - `src/shared/`：Host、Client、Backend 的 wire 校验及版本。
 - `src/compat/dsh/`：DSH 接口、请求用量、存储与升级适配的唯一接触层。
-- `src/host/`：结算、持久化、模式、日终排期、同源路由与生命周期。
+- `src/host/`：结算、持久化、模式、定时上香排期、同源路由与生命周期。
 - `src/client/`：交互与展示，不持有余额或投票权威。
 - `src/backend/`：HTTP、SQLite 事务、身份、票据、快照与梁祠。
 

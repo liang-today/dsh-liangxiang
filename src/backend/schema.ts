@@ -31,7 +31,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { VOTE_COUNT_MAX } from '../domain/index.ts'
 
-export const BACKEND_SCHEMA_USER_VERSION = 10
+export const BACKEND_SCHEMA_USER_VERSION = 11
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -327,6 +327,10 @@ export function migrate(db: DatabaseSync): void {
     }
     if (current < 9) db.exec(DDL_V9_REQUEST_RECEIPT)
     if (current < 10) db.exec(DDL_V10_BROADCAST)
+    if (current < 11 && !tableColumns(db, 'liang_vote').includes('accepted_incense')) {
+      db.exec(`ALTER TABLE liang_vote ADD COLUMN accepted_incense INTEGER
+        CHECK (accepted_incense IS NULL OR accepted_incense BETWEEN 1 AND ${VOTE_COUNT_MAX})`)
+    }
     if (current !== BACKEND_SCHEMA_USER_VERSION) {
       db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
     }

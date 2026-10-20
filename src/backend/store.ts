@@ -157,6 +157,7 @@ export interface VoteRow {
   vote_type: VoteType
   /** NULL only for rows accepted before schema v8, when count was not stored. */
   requested_count: number | null
+  accepted_incense?: number | null
   used_incense_after: number
   remaining_incense_after: number
   created_at: number
@@ -461,8 +462,8 @@ export function openBackendStore(databasePath: string): BackendStore {
   const insertVoteStmt = db.prepare(
     `INSERT INTO liang_vote
        (request_id, installation_id, case_id, business_date, vote_type, requested_count,
-        used_incense_after, remaining_incense_after, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        used_incense_after, remaining_incense_after, created_at, accepted_incense)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const insertVoteRequestStmt = db.prepare(
     `INSERT INTO liang_vote_request
@@ -791,6 +792,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         row.used_incense_after,
         row.remaining_incense_after,
         row.created_at,
+        row.accepted_incense ?? null,
       )
     },
     applyAcceptedVoteToStats(caseId, voteType, count, firstVoter, now) {

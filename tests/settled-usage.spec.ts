@@ -310,7 +310,7 @@ describe('static rules and durable daily accounting', () => {
     usage.observe('s', batch(5, 8), { kind: 'live', firstLiveSeq: 0 })
     expect(usage.effectiveTokensFor(date)).toBe(50_000)
     expect(usage.weightPolicyFor()).toEqual(DEFAULT_INCENSE_WEIGHT_POLICY)
-    expect(incenseWeightRows(usage.weightPolicyFor(), 50_000)).toContainEqual({ model: 'Flash', weight: '×0.5', stick: '100,000 Token = 1 炷' })
+    expect(incenseWeightRows(usage.weightPolicyFor(), 50_000)).toContainEqual({ model: 'Flash', weight: '×0.5', stick: '10W Token/炷' })
   })
 
   it('ignores restored rule metadata while preserving earned totals and settlement cursors', () => {
