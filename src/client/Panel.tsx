@@ -45,7 +45,6 @@ import {
   VOTE_DOWN_NAME,
   VOTE_UP_LABEL,
   VOTE_UP_NAME,
-  LOCAL_EPITHET_HINT,
   LOCAL_EPITHET_TITLE,
   formatLocalEpithetLine,
   isEmptyIncenseFeedback,
@@ -121,8 +120,6 @@ export interface PanelProps {
   positionPulse?: boolean
   /** Where to draw relative to the (freely placeable) badge. */
   placement?: PanelPlacement
-  pinnedHint?: 'epithet' | null
-  onToggleHint?: (kind: 'epithet') => void
   /** Presentation-only tweened counts from the container. */ 
   displayTotalIncense?: number
   displayUniqueVoters?: number
@@ -734,30 +731,6 @@ const PANEL_CSS = `
   opacity: 1;
   transform: translateY(0);
 }
-[data-liangxiang-epithet-hint] {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 6px);
-  z-index: 3;
-  transform: translateX(-50%) translateY(4px);
-  min-width: 168px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  border: 1px solid ${color.border};
-  background: ${color.bgLayer};
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
-  color: ${color.textSecondary};
-  font-size: 11px;
-  line-height: 1.35;
-  white-space: normal;
-  opacity: 0;
-  pointer-events: none;
-}
-[data-liangxiang-epithet][data-open] [data-liangxiang-epithet-hint],
-[data-liangxiang-epithet]:focus-visible [data-liangxiang-epithet-hint] {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
 @keyframes liangxiang-state-cross {
   0% { filter: none; transform: scale(1); }
   35% { filter: drop-shadow(0 0 16px color-mix(in srgb, ${color.ritualGold} 88%, transparent)) drop-shadow(0 0 28px color-mix(in srgb, ${color.ritualEmber} 55%, transparent)); transform: scale(1.08); }
@@ -917,8 +890,6 @@ export function Panel(props: PanelProps): ReactElement {
     onShowVersion,     onOpenLiangci, onCycleLocalCase,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
-  const pinnedHint = props.pinnedHint ?? null
-  const onToggleHint = props.onToggleHint ?? (() => undefined)
   const positionPulse = props.positionPulse ?? false
   const { snapshot, personal, activeCase, lifetimeIncense, lifetimeVoters } = state
   const shownIncense = props.displayTotalIncense ?? snapshot.totalIncense
@@ -1453,26 +1424,18 @@ export function Panel(props: PanelProps): ReactElement {
         </button>
       </div>
       <div
-        role={showingEpithet ? 'button' : 'status'}
+        role="status"
         data-liangxiang-vote-feedback=""
         data-liangxiang-epithet={showingEpithet ? '' : undefined}
         data-liangxiang-broadcast={showingBroadcast ? visibleBroadcast?.level : undefined}
-        data-open={showingEpithet && pinnedHint === 'epithet' ? '' : undefined}
-        title={showingEpithet ? LOCAL_EPITHET_HINT : showingBroadcast ? broadcastLine : undefined}
-        tabIndex={showingEpithet ? 0 : undefined}
-        onClick={showingEpithet ? () => onToggleHint('epithet') : undefined}
-        onKeyDown={showingEpithet ? (event) => {
-          if (event.key !== 'Enter' && event.key !== ' ') return
-          event.preventDefault()
-          onToggleHint('epithet')
-        } : undefined}
+        title={showingBroadcast ? broadcastLine : undefined}
         style={{
           position: 'relative',
           margin: '6px 0 0',
           minHeight: '22px',
           height: '22px',
           lineHeight: '22px',
-          overflow: pinnedHint === 'epithet' ? 'visible' : 'hidden',
+          overflow: 'hidden',
           whiteSpace: 'nowrap',
           textOverflow: 'ellipsis',
           fontSize: '12px',
@@ -1598,9 +1561,6 @@ export function Panel(props: PanelProps): ReactElement {
             {localEpithet.stance}
           </span>
         ) : statusLine}
-        {showingEpithet && pinnedHint === 'epithet'
-          ? <span data-liangxiang-epithet-hint="" role="tooltip">{LOCAL_EPITHET_HINT}</span>
-          : null}
       </div>
 
       {/* Region 4 — two metric columns + the two ritual chips. Subgrid so

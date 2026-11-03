@@ -31,13 +31,13 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '1.2.1-beta.3'
+export const PLUGIN_VERSION = '1.2.1-beta.4'
 
 /**
  * Server-only release label for the community backend. Do not bump the npm /
  * client `PLUGIN_VERSION` for a backend-only change; stamp `1.1.6-uN` instead.
  */
-export const SERVER_BUILD = '1.2.1-beta.3-u1'
+export const SERVER_BUILD = '1.2.1-beta.4-u1'
 
 /** Welcome gift: sticks credited once per device fingerprint per business date. */
 export const STARTER_INCENSE_COUNT = 10
@@ -163,7 +163,6 @@ export const WELCOME_LOCAL_LABEL = '离线模式'
 export const VOTE_RATE_LIMITED = `打梁过快，额度每分钟恢复 ${VOTE_REFILL_PER_MINUTE} 炷`
 /** Idle-row 梁号: local-only, never sent to the backend. */
 export const LOCAL_EPITHET_TITLE = '梁小号'
-export const LOCAL_EPITHET_HINT = '仅本机可见，天庭不记账；随今日香火日清'
 
 export function formatLocalEpithetLine(dedication: string, stance: string): string {
   return `${LOCAL_EPITHET_TITLE}：${formatLocalEpithetName(dedication, stance)}`

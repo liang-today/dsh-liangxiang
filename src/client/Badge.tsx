@@ -374,7 +374,6 @@ export function LiangxiangBadge(): ReactElement {
   useEffect(() => {
     preloadLiangziArt(LIANGZI_ART)
   }, [])
-  const [pinnedHint, setPinnedHint] = useState<'epithet' | null>(null)
   const prevArchiveVersion = useRef(0)
   useEffect(() => {
     const version = historyState.archive?.archiveVersion ?? 0
@@ -956,8 +955,6 @@ export function LiangxiangBadge(): ReactElement {
           voteFeedback={voteFeedback}
           positionPulse={positionPulse}
           placement={panelPlacementFor(position, viewport)}
-          pinnedHint={pinnedHint}
-          onToggleHint={(kind) => setPinnedHint((current) => current === kind ? null : kind)}
           displayTotalIncense={displayTotalIncense}
           displayUniqueVoters={displayUniqueVoters}
           onVote={onVote}

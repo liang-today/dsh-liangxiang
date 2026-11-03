@@ -793,7 +793,12 @@ describe('region 3: exactly two vote buttons', () => {
     const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
     expect(row && textContent([row])).toBe('梁小号：勤香死夯梁')
     expect(row?.props['data-liangxiang-epithet']).toBe('')
-    expect(row?.props.title).toBe('仅本机可见，天庭不记账；随今日香火日清')
+    expect(row?.props.role).toBe('status')
+    expect(row?.props.title).toBeUndefined()
+    expect(row?.props.tabIndex).toBeUndefined()
+    expect(row?.props.onClick).toBeUndefined()
+    expect(row?.props.onKeyDown).toBeUndefined()
+    expect(findByAttr(tree, 'data-liangxiang-epithet-hint')).toHaveLength(0)
     expect(styleOf(row).height).toBe('22px')
     expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-line')[0]).alignItems).toBe('center')
     expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-mark')[0])).toMatchObject({

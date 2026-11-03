@@ -16,6 +16,21 @@
 
 固定 DSH 0.2.1-rc.2：`tests/settled-usage.spec.ts` 直接使用原生 Session 与 TokenMeter，核对最终下调、四桶、混合路由、重试、迁移、重启、模式切换和重放；`tests/domain-incense-weight.spec.ts` 核对规则。源码入口为 `src/compat/dsh/settled-usage.ts`、`src/host/usage-ledger.ts` 与 `src/domain/incense-weight.ts`。适配证据见 `COMPATIBILITY.md`。
 
+## 当前 DeepSeek 实时流边界
+
+钉住的 DSH 0.2.1-rc.2 / `687f282e86` 确有 `agent/assistant-stream` 实时帧：
+`@deepseek-ai/dsh-agent-loop/lib/index.js` 的 `AssistantStreamAttempt.push` 逐块发布，
+`ReactLoopAgent` 在请求开始/结束发布生命周期帧。
+但 `@deepseek-ai/dsh-llm-deepseek/lib/index.js` 的 `translate` 仅在 `message_stop` 处 yield
+一次 `type: 'usage'`；此前的原始 provider usage 虽被内部更新，却未通过适配器输出。
+同版 `@deepseek-ai/dsh-token-meter/lib/index.js` 的 `usageOf` 也只读取最终持久事件。
+以上从本仓锁定 npm 包的编译实现与声明核验；不修改 DSH。
+
+因此，仅恢复旧累计投影算法，不能让当前 DeepSeek 路由在回复途中提供连续的真实
+Token 数。可单独表现“请求正在进行”，但不得按字符数、时间、Context Occupancy
+或匀速动画虚构用量，也不得将临时样本提前变为可消费香火。若其他适配器实际提供
+多次 usage，预览可跟随真实样本，最终到账仍须防下调、多计和重放。
+
 ## 尚不能断言
 
 没有受影响用户的插件实装版本、DSH 版本、请求路由及单次最终用量对照，不能确认每个反馈都是正常变化，也不能宣称没有漏计。最小复核不需要对话正文或 API Key：记录同一已完成请求的模型路由、输入/输出及缓存数字，对照今日凝香和下一炷前后变化；同时注明是否刚升级、断网或开启定时上香。
@@ -44,3 +59,9 @@
 - 浏览器覆盖桌面、窄屏、真实暗色、Axe、原始吐槽动效、首次指导、最新说明防重、二维码、案牍、跨标签以及故意错误的浏览器日期。窄屏宿主不显示底部侧栏控制时跳过默认停靠测量；在线指导需要显式回环 fixture，不能用生产社区补测。
 - 客户端与后台维护分支分别通过隔离在线冒烟：真实 HTTP/SQLite、DSH 安装、同 ID 不重复扣香、50 并发抢一炷仅一笔接受。
 - 后台维护版另在 Node 26.7.0 与 22.19.0 验证 672 项测试，并通过 28 项原生检查；生产构建运行 Node 22.23.2 / pnpm 10.33.0。部署权限回归在候选源码中用真实 rsync 复现私有目录复制后检查最终 0750。
+
+### 1.2.1-beta.4 提示移除复核
+
+- 删除梁小号解释，称号、广播关闭与其他交互动效保留；不改变用量观察或结算。
+- `verify` 通过：701 项测试、类型检查、lint、构建、客户端体积；32 项 CI 原生检查通过。
+- 全新隔离 Profile 安装本次 tarball 后，面板浏览器回归 23 通过、1 窄屏宿主底部控件不可见场景按条件跳过；覆盖三种主题/视口、称号悬停/点击不弹提示、案牍与键盘焦点，不触达生产社区。

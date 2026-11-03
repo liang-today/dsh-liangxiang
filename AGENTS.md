@@ -165,6 +165,8 @@ incense.
 - Read/roll local daily participation and 梁小号 only after a real Host frame
   confirms the business date. Startup's browser-date placeholder must never
   reset or persist these records, including on reload or in another tab.
+- 梁小号 is passive text, not a button or focus stop. Do not restore its
+  removed explanatory tooltip; broadcasts keep their separate dismiss control.
 - do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside the 香火环
 
 ### Region 4 — Social stats

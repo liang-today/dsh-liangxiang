@@ -4,8 +4,8 @@
 
 ## 版本与边界
 
-当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.1-beta.3`，`SERVER_BUILD=1.2.1-beta.3-u1`。
-当前源码为 **1.2.1-beta.3 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
+当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.1-beta.4`，`SERVER_BUILD=1.2.1-beta.4-u1`。
+当前源码为 **1.2.1-beta.4 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
 
 2026-11-03 后台维护：公开客户端/npm/官网仍为 1.2.0；服务为 **1.2.0-u2 / 2f2d6e3**，
 源自正式 1.2.0，只调整社区额度并修复部署权限，不带入候选 schema 11。
@@ -52,6 +52,7 @@ DSH 最终请求用量
 
 投票额度默认每分钟恢复 500 炷，桶容量与单次请求仍各最多 500 炷；定时上香保持 10 分钟。
 凝香速度核对结论与未核验边界见 [`INCENSE_AUDIT.md`](INCENSE_AUDIT.md)。
+梁小号保留称号展示，不再响应点击、悬停或键盘聚焦弹出解释。
 
 Desktop 通过原生“插件 → 添加插件”输入完整包名 `dsh-liangxiang` 安装；命令行 WebUI 独立管理 Profile。安装图解、升级和卸载见 [`INSTALL.md`](INSTALL.md)。
 在线一直连不上时先排查 DSH Host 到社区的网络；部分地区可尝试代理，见 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)。
