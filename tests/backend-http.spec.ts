@@ -5,6 +5,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveBackendConfig, BackendConfigError } from '../src/backend/config.ts'
+import { DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE } from '../src/backend/vote-rate-limit.ts'
 import { createBackendHttpApi, trustedClientAddress } from '../src/backend/http.ts'
 import { LiangxiangBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
@@ -240,6 +241,21 @@ describe('routing and boundary validation', () => {
       spent_incense: 0,
       used_incense: 50,
     })
+  })
+
+  it('accepts a 500-stick batch once at the new default and rejects a fresh intent when empty', async () => {
+    const h = await start({ voteRateLimitPerMinute: DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE })
+    await grant(h, 1_200 * 50_000)
+    const caseId = await activeCaseId(h)
+    const intent = { case_id: caseId, vote_type: 'up', request_id: 'req-default-500-01', count: 500 }
+    const first = await h.post('/v1/votes', intent)
+    expect(first.status).toBe(200)
+    expect(parseV1VoteResponse(first.body).result).toMatchObject({ status: 'accepted', spent_incense: 500, remaining_incense: 700 })
+    const replay = await h.post('/v1/votes', intent)
+    expect(replay.status).toBe(200)
+    expect(parseV1VoteResponse(replay.body).result).toMatchObject({ status: 'accepted', replayed: true, spent_incense: 0, used_incense: 500 })
+    expect((await h.post('/v1/votes', { ...intent, request_id: 'req-default-500-02' })).status).toBe(429)
+    expect(parseV1Bootstrap((await h.get('/v1/bootstrap')).body).authoritative_personal_state.used_incense).toBe(500)
   })
 
   it('answers an oversized body with 413 instead of killing the connection', async () => {

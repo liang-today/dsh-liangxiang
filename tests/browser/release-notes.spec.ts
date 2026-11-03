@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { RELEASE_NOTES_QQ, RELEASE_NOTES_THANKS, RELEASE_NOTES_TITLE } from '../../src/client/release-notes.ts'
+import { RELEASE_NOTES_QQ, RELEASE_NOTES_THANKS, RELEASE_NOTES_TITLE, RELEASE_NOTES_VERSION, RELEASE_NOTES_LATEST_SEEN_KEY } from '../../src/client/release-notes.ts'
 import { axeSummary, bootInstalledLiangxiang } from './helpers.ts'
 
 test.beforeEach(async ({ page }) => {
@@ -38,8 +38,21 @@ test('an upgrader sees accessible version notes once, starting from the heading'
   await expect(close).toBeFocused()
   await close.click()
   await expect(dialog).toBeHidden()
+  expect(await page.evaluate(key => localStorage.getItem(key), RELEASE_NOTES_LATEST_SEEN_KEY)).toBe(RELEASE_NOTES_VERSION)
 
   await page.reload()
   await expect(page.locator('[data-liangxiang-root]')).toBeVisible()
   await expect(page.locator('[data-liangxiang-release-notes]')).toHaveCount(0)
+})
+
+test('an acknowledgement in a newer tab closes older automatic notes without replaying history', async ({ page, context }) => {
+  await expect(page.getByRole('dialog', { name: RELEASE_NOTES_TITLE })).toBeVisible()
+  const newerTab = await context.newPage()
+  await bootInstalledLiangxiang(newerTab, { releaseNotesSeen: false })
+  await newerTab.evaluate(key => localStorage.setItem(key, '99.0.0'), RELEASE_NOTES_LATEST_SEEN_KEY)
+  await expect(page.locator('[data-liangxiang-release-notes]')).toHaveCount(0)
+  await page.reload()
+  await expect(page.locator('[data-liangxiang-root]')).toBeVisible()
+  await expect(page.locator('[data-liangxiang-release-notes]')).toHaveCount(0)
+  await newerTab.close()
 })

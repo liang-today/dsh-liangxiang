@@ -1,11 +1,15 @@
 # 梁相：当前架构与事实索引
 
-核对：2026-10-20。先读 [`AGENTS.md`](../AGENTS.md)，再按本文进入专题；历史文档不能覆盖现行契约。
+核对：2026-11-03。先读 [`AGENTS.md`](../AGENTS.md)，再按本文进入专题；历史文档不能覆盖现行契约。
 
 ## 版本与边界
 
-当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.1-beta.2`，`SERVER_BUILD=1.2.1-beta.2-u1`。
-当前源码为 **1.2.1-beta.2 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
+当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.1-beta.3`，`SERVER_BUILD=1.2.1-beta.3-u1`。
+当前源码为 **1.2.1-beta.3 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
+
+2026-11-03 后台维护：公开客户端/npm/官网仍为 1.2.0；服务为 **1.2.0-u2 / 2f2d6e3**，
+源自正式 1.2.0，只调整社区额度并修复部署权限，不带入候选 schema 11。
+部署一致性检查须对照该后台维护分支；不能因未发布候选 HEAD 不同就擅自部署候选。
 
 | 仓库 | 职责 |
 |---|---|
@@ -44,7 +48,10 @@ DSH 最终请求用量
 | 拍梁子 | 单击 200ms 判定开合；双击/连拍保持面板状态。主面板固定，独立三行短句下落渐隐，见 [`PR6_FEEDBACK_REDESIGN.md`](PR6_FEEDBACK_REDESIGN.md) |
 | 定时上香 | 默认关闭，满 500 炷后每 10 分钟按限额上香，23:59 再收尾一次；复用原开关/方向，旧开关需重新开启，手动优先、意图持久化且不跨日补投，见 [`DAY_END_INCENSE.md`](DAY_END_INCENSE.md) |
 | 连接 | Host 跟随后端 cadence；只过滤业务内容相同的 SSE 整帧，真实变化即时发送，见 [`CONNECTION_EFFICIENCY.md`](CONNECTION_EFFICIENCY.md) |
-| 更新说明 | 升级按版本显示一次，可从案牍重看；已打开标签页同步引导完成状态，保留 QQ 二维码及社区贡献者鸣谢 |
+| 更新说明 | 仅展示当前版相对上次正式版的一份说明，不补播历史；最高已读版本防止旧版自动弹出，可从案牍主动重看。保留首次指导、QQ 二维码及鸣谢 |
+
+投票额度默认每分钟恢复 500 炷，桶容量与单次请求仍各最多 500 炷；定时上香保持 10 分钟。
+凝香速度核对结论与未核验边界见 [`INCENSE_AUDIT.md`](INCENSE_AUDIT.md)。
 
 Desktop 通过原生“插件 → 添加插件”输入完整包名 `dsh-liangxiang` 安装；命令行 WebUI 独立管理 Profile。安装图解、升级和卸载见 [`INSTALL.md`](INSTALL.md)。
 在线一直连不上时先排查 DSH Host 到社区的网络；部分地区可尝试代理，见 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)。

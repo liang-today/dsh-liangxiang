@@ -195,7 +195,7 @@ export class FakeAuthoritativeLiangService {
   private activeCase!: DailyLiangCase
   private aggregate: GlobalVoteAggregate = EMPTY_GLOBAL_AGGREGATE
   private usedIncenseToday = 0
-  /** Local incense token bucket: same 50/min, cap 500 as the community backend. */
+  /** Local incense token bucket: same 500/min, cap 500 as the community default. */
   private voteBucketTokens = VOTE_REFILL_PER_MINUTE
   private voteBucketUpdatedAt = 0
 

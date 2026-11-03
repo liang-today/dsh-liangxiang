@@ -9,10 +9,11 @@ import {
 } from '../src/domain/index.ts'
 
 describe('vote incense budget', () => {
-  it('refills 50 sticks per idle minute and caps at 500', () => {
-    expect(VOTE_REFILL_PER_MINUTE).toBe(50)
+  it('refills 500 sticks per idle minute and still caps at 500', () => {
+    expect(VOTE_REFILL_PER_MINUTE).toBe(500)
     expect(VOTE_BURST_CAP).toBe(500)
-    expect(voteBudgetAvailable(0, 0, 60_000)).toBe(50)
+    expect(voteBudgetAvailable(0, 0, 30_000)).toBe(250)
+    expect(voteBudgetAvailable(0, 0, 60_000)).toBe(500)
     expect(voteBudgetAvailable(0, 0, 10 * 60_000)).toBe(500)
     expect(voteBudgetAvailable(0, 0, 30 * 60_000)).toBe(500)
     expect(voteBudgetAvailable(12, 0, 0)).toBe(12)

@@ -1,4 +1,4 @@
-import { VOTE_BUDGET_WINDOW_MS, voteBudgetAvailable } from '../domain/vote-budget.ts'
+import { VOTE_BUDGET_WINDOW_MS, VOTE_REFILL_PER_MINUTE, voteBudgetAvailable, voteBurstCap } from '../domain/vote-budget.ts'
 
 /**
  * Hard-bounded in-memory limiter for vote-intent work units, not arbitrary
@@ -10,7 +10,7 @@ import { VOTE_BUDGET_WINDOW_MS, voteBudgetAvailable } from '../domain/vote-budge
  */
 export const VOTE_RATE_WINDOW_MS = VOTE_BUDGET_WINDOW_MS
 /** Per-installation vote-intent work units allowed to refill each minute. */
-export const DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE = 50
+export const DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE = VOTE_REFILL_PER_MINUTE
 export const DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS = 4_096
 
 export type VoteRateLimitReason = 'per_installation' | 'active_key_capacity'
@@ -42,8 +42,8 @@ export class VoteRateLimiter {
   /**
    * Current spendable incense. `lastVoteAt` reconstructs a missing bucket from
    * the last accepted vote (no new schema): idle refill from empty.
-   * A new installation (no last vote) starts at `workUnitsPerMinute` (50),
-   * not the 10-minute burst cap of 500.
+   * A new installation starts with one minute's allowance, bounded by the
+   * burst cap. Legacy lower-rate overrides keep their smaller initial budget.
    */
   inspect(installationId: string, now: number, lastVoteAt?: number | null): VoteRateDecision {
     if (this.workUnitsPerMinute <= 0) {
@@ -58,7 +58,7 @@ export class VoteRateLimiter {
         }
       }
       const available = lastVoteAt == null
-        ? this.workUnitsPerMinute
+        ? Math.min(this.workUnitsPerMinute, voteBurstCap(this.workUnitsPerMinute))
         : Math.floor(voteBudgetAvailable(0, lastVoteAt, now, this.workUnitsPerMinute))
       return {
         allowed: available >= 1,
@@ -105,7 +105,7 @@ export class VoteRateLimiter {
 
     const tokens = existing === undefined
       ? (lastVoteAt == null
-          ? this.workUnitsPerMinute
+          ? Math.min(this.workUnitsPerMinute, voteBurstCap(this.workUnitsPerMinute))
           : voteBudgetAvailable(0, lastVoteAt, now, this.workUnitsPerMinute))
       : voteBudgetAvailable(existing.tokens, existing.updatedAt, now, this.workUnitsPerMinute)
     if (tokens < want) {

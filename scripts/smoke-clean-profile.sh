@@ -257,7 +257,7 @@ if [ "$BROWSER_SMOKE" = "1" ]; then
   echo "== browser baseline against packed clean Profile =="
   LIANGXIANG_BROWSER_BASE_URL="$BASE" \
     LIANGXIANG_BROWSER_AUTH_URL="$AUTH_URL" \
-    bash "$REPO_ROOT/scripts/smoke-browser-profile.sh"
+    bash "$REPO_ROOT/scripts/smoke-browser-profile.sh" "$@"
 fi
 
 echo "== 5/5 teardown =="

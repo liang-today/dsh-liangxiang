@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { EMPTY_LOCAL_INCENSE, recordLocalIncenseVote, rollLocalIncenseDay, VOTE_COUNT_MAX, VOTE_REFILL_PER_MINUTE } from '../domain/index.ts'
+import { EMPTY_LOCAL_INCENSE, recordLocalIncenseVote, rollLocalIncenseDay, VOTE_COUNT_MAX } from '../domain/index.ts'
 import type { Clock } from '../shared/business-date.ts'
 import { DEFAULT_DAY_END, parseDayEndPreferences, parseDayEndState, type DayEndPersistence, type DayEndPreferences, type DayEndState, type DayEndJob } from '../shared/day-end.ts'
 import type { LiangxiangWireState, WireVoteRequest } from '../shared/wire.ts'
@@ -11,7 +11,8 @@ const STOP_BEFORE_END_MS = 5_000
 const MANUAL_IDLE_MS = 2_000
 const GESTURE_LEASE_MS = 5_000
 const RETRY_MS = 5_000
-export const AUTO_DUMP_PERIOD_MS = VOTE_COUNT_MAX / VOTE_REFILL_PER_MINUTE * 60_000
+// A rate-limit increase must not silently make opted-in automatic voting faster.
+export const AUTO_DUMP_PERIOD_MS = 10 * 60_000
 interface ScheduleContext { authority: LiangHostService, businessDate: string, caseId: string, generation: number }
 
 /** Timed ordinary dumps and one closing dump share one durable intent per mode. */
