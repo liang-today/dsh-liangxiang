@@ -108,6 +108,9 @@ rsync -a --delete \
   --exclude VERSION \
   "$STAGE"/ "$PREFIX"/
 chown -R root:liangxiang "$PREFIX"
+# rsync -a also copies a temporary worktree's private root mode (0700).
+# Normalize AFTER copying, otherwise the service user cannot enter its cwd.
+chmod 0750 "$PREFIX"
 
 NODE_BIN="$(command -v node)"
 sed "s|/usr/bin/node|$NODE_BIN|" "$PREFIX/deploy/liangxiang-backend.service" \
