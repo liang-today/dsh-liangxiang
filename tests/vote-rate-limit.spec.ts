@@ -3,8 +3,15 @@ import { DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE, VoteRateLimiter, VOTE_RATE_WINDOW_M
 import { VOTE_BURST_CAP } from '../src/domain/index.ts'
 
 describe('hard-bounded vote rate limiter', () => {
-  it('caps one installation at 50 incense submissions per minute by default', () => {
-    expect(DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE).toBe(50)
+  it('refills 500 per minute by default, without enlarging the burst', () => {
+    expect(DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE).toBe(500)
+    const limiter = new VoteRateLimiter(DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE, 16)
+    expect(limiter.consume('one', 500, 0)).toMatchObject({ allowed: true, available: 0 })
+    expect(limiter.consume('one', 1, 0).allowed).toBe(false)
+    expect(limiter.peek('one', 30_000)).toBe(250)
+    expect(limiter.consume('one', 500, 60_000)).toMatchObject({ allowed: true, available: 0 })
+    expect(limiter.peek('one', 20 * 60_000)).toBe(500)
+    expect(new VoteRateLimiter(1_000, 16).peek('fresh', 0)).toBe(500)
   })
 
   it('never retains more than the configured number of active identities', () => {

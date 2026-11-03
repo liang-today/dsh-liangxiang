@@ -157,7 +157,7 @@ incense.
 - vote type remains strictly `up` / `down` — the extra 升梁/降梁 copy is not a
   third option
 - vote availability depends only on authoritative `remaining_incense > 0`
-- click spends one stick; a long press dumps every stick the incense token bucket will allow (50/min, burst 500) in **one** `count` request — never a loop of HTTP votes
+- click spends one stick; a long press dumps every stick the incense token bucket will allow (community refill 500/min, published 1.2 offline refill 50/min, burst and request cap 500) in **one** `count` request — never a loop of HTTP votes
 - the reserved feedback row stays 22px / 12px type: idle shows the local-only 梁号 (`梁小号：勤香 • 死夯梁`); a dump shows `已上香 · 夯 ×N（剩余 M 炷）`; an empty furnace shows `香炉空了，先去攒香` for 3s then returns to 梁小号. A short, operator-controlled important/emergency broadcast may temporarily replace the idle 梁小号 in this same row; transport/outage and vote feedback keep priority, the message is length/time bounded, and expiry automatically restores 梁小号. Long copy scrolls as a single-line loop while a subtle, fixed × at the front dismisses only that broadcast ID for this browser; a new broadcast ID appears normally. Reduced-motion keeps the full message accessible without continuous scrolling. Never put broadcasts in 今日梁案 or add a toast/fifth region. The 梁号 resets on the business date with 今日凝香. Vote buttons may sit at 38px to fund that row. Do not add a fifth region or a personal-growth section
 - do not add a third placeholder or neutral action
 - do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside the 香火环
@@ -219,8 +219,10 @@ incense.
   first-run choice, the 梁相案牍 mode action, or the explicit boot default
   `LIANGXIANG_BACKEND_URL=local`. The first-run welcome waits for an explicit
   click; it must not auto-select a mode on a timer.
-- One installation may submit at most 50 incense votes per minute on the
-  community backend (`LIANGXIANG_VOTE_RATE_LIMIT`, default 50).
+- Community server build 1.2.0-u2 refills 500 incense per minute by default
+  (`LIANGXIANG_VOTE_RATE_LIMIT`), with bucket and per-request caps of 500.
+  This backend-only maintenance leaves the published client's offline budget,
+  package version, UI and update notes untouched.
 - The Host persists the preference. A network outage keeps online selected,
   continues observing Token, locks 夯/拉, and reconnects automatically.
 - Community identity, online claim projection and the shared session high-water

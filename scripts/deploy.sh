@@ -43,14 +43,14 @@ rsync -a --delete \
   --exclude '*.tgz' \
   --exclude .env \
   --exclude VERSION \
-  -e ssh "$ROOT"/ "$REMOTE:$STAGE/"
+  -e "$DEPLOY_RSYNC_SSH" "$ROOT"/ "$REMOTE:$STAGE/"
 
 # Dependency scripts and the TypeScript build run as the unprivileged deploy
 # account. Root is used only for the final installation and service lifecycle.
-ssh "$REMOTE" "cd '$STAGE' && CI=1 pnpm install --frozen-lockfile && pnpm run build"
+"${DEPLOY_SSH[@]}" "$REMOTE" "cd '$STAGE' && CI=1 pnpm install --frozen-lockfile && pnpm run build"
 
 echo "== install ${GIT_SHA} -> ${PREFIX} =="
-ssh "$REMOTE" sudo -n bash -s -- "$PREFIX" "$STAGE" "$GIT_SHA" "$STAMP" "$SERVER_BUILD" <<'REMOTE_SCRIPT'
+"${DEPLOY_SSH[@]}" "$REMOTE" sudo -n bash -s -- "$PREFIX" "$STAGE" "$GIT_SHA" "$STAMP" "$SERVER_BUILD" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 PREFIX="$1"
@@ -184,6 +184,6 @@ trap - EXIT
 REMOTE_SCRIPT
 
 echo "== deployed version =="
-ssh "$REMOTE" "sudo -n cat '$PREFIX/VERSION'"
-ssh "$REMOTE" "sudo -n systemctl is-active liangxiang-backend" && echo
+"${DEPLOY_SSH[@]}" "$REMOTE" "sudo -n cat '$PREFIX/VERSION'"
+"${DEPLOY_SSH[@]}" "$REMOTE" "sudo -n systemctl is-active liangxiang-backend" && echo
 curl -fsS --max-time 10 https://api.liang.today/v1/health && echo
