@@ -894,10 +894,11 @@ export function Panel(props: PanelProps): ReactElement {
   const { snapshot, personal, activeCase, lifetimeIncense, lifetimeVoters } = state
   const shownIncense = props.displayTotalIncense ?? snapshot.totalIncense
   const shownVoters = props.displayUniqueVoters ?? snapshot.uniqueVoters
-  // Throttled (smoothed/extrapolated) display values — presentation only. The
+  // Smoothed confirmed ring geometry, exact numeric captions. The
   // authoritative remaining incense / vote availability stay on `personal`.
   const displayFill = throttle?.fill ?? personal.liangQiFill
   const displayTokensToNext = throttle?.tokensToNext ?? personal.tokensToNextIncense
+  const streamingActive = state.connection === 'live' && state.streamingActive === true
   const offline = state.connection !== 'live'
   const communityUnavailable = state.authorityMode === 'DEV_STAGING_ONLY' && !state.authorityAvailable
   const targetMode = state.authorityMode === 'LOCAL_FAKE_DEV' ? 'online' : 'local'
@@ -1218,6 +1219,7 @@ export function Panel(props: PanelProps): ReactElement {
             personal={personal}
             reducedMotion={reducedMotion}
             condensedIncense={condensedIncense}
+            streamingActive={streamingActive}
             fillOverride={displayFill}
             footer={(
               <span
@@ -1302,8 +1304,11 @@ export function Panel(props: PanelProps): ReactElement {
             </span>
             <span style={flankUnitStyle}> {NEXT_INCENSE_UNIT}</span>
           </span>
-          <span style={flankUnitStyle}>
-            {NEXT_INCENSE_PROGRESS_LABEL} {Math.trunc(Math.min(1, Math.max(0, displayFill)) * 100)}%
+          <span style={{ ...flankUnitStyle, ...(streamingActive ? { color: color.ritualEmberText } : {}) }}
+            data-liangxiang-stream-status={streamingActive ? '' : undefined}
+            role={streamingActive ? 'status' : undefined}
+            title={streamingActive ? '回复进行中，香火按最终用量结算' : undefined}>
+            {streamingActive ? '凝香中' : `${NEXT_INCENSE_PROGRESS_LABEL} ${Math.trunc(Math.min(1, Math.max(0, personal.liangQiFill)) * 100)}%`}
           </span>
           <div data-liangxiang-weight-hint="" role="tooltip">
             <table aria-label={NEXT_INCENSE_WEIGHT_TITLE}>

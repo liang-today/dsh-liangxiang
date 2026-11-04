@@ -20,6 +20,8 @@ export class DayEndService extends AuthoritySlot {
   private state: DayEndState = structuredClone(DEFAULT_DAY_END)
   private persistence: DayEndPersistence | null = null
   private settingsRevision = 0
+  private streamingActive = false
+  private activityRevision = 0
   private mutations: Promise<void> = Promise.resolve()
   private votes: Promise<unknown> = Promise.resolve()
   private manualPending = 0
@@ -62,8 +64,17 @@ export class DayEndService extends AuthoritySlot {
     const ledger = this.state.incense?.[wire.authorityMode === 'LOCAL_FAKE_DEV' ? 'local' : 'online']
     const timedIncense = ledger === undefined ? undefined
       : ledger.businessDate === wire.businessDate ? ledger : { ...rollLocalIncenseDay(ledger), businessDate: wire.businessDate }
-    return { ...wire, ...(timedIncense === undefined ? {} : { timedIncense }), revision: wire.revision + this.settingsRevision,
+    return { ...wire, ...(timedIncense === undefined ? {} : { timedIncense }), streamingActive: this.streamingActive,
+      revision: wire.revision + this.settingsRevision + this.activityRevision,
       dayEnd: { enabled: this.state.enabled, voteType: this.state.voteType, available: this.persistence !== null } }
+  }
+
+  /** Ephemeral Host → Client metadata only; never a balance or persisted setting. */
+  setStreamingActive(active: boolean): void {
+    if (this.streamingActive === active) return
+    this.streamingActive = active
+    this.activityRevision += 1
+    this.emit()
   }
 
   async setDayEndPreferences(raw: DayEndPreferences): Promise<void> {

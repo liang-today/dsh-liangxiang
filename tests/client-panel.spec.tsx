@@ -276,6 +276,22 @@ describe('four visual regions', () => {
 })
 
 describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
+  it('shows live activity without changing confirmed incense, progress or Liangzi', () => {
+    const state = demoState()
+    const idle = renderPanel(state)
+    const active = renderPanel({ ...state, streamingActive: true })
+    expect(textContent(findByAttr(active, 'data-liangxiang-stream-status'))).toBe('凝香中')
+    expect(findByAttr(active, 'data-liangxiang-stream-activity')).toHaveLength(1)
+    for (const attribute of ['data-liangxiang-compact', 'data-liangxiang-liang-position-value']) {
+      expect(textContent(findByAttr(active, attribute))).toBe(textContent(findByAttr(idle, attribute)))
+    }
+    expect(findByAttr(active, 'data-liangxiang-ring')[0]?.props['data-fill']).toBe(findByAttr(idle, 'data-liangxiang-ring')[0]?.props['data-fill'])
+    expect(findByAttr(active, 'data-liangxiang-condensed')).toHaveLength(0)
+    const reduced = renderPanel({ ...state, streamingActive: true }, '', { reducedMotion: true })
+    for (const wisp of findByAttr(reduced, 'data-liangxiang-stream-wisp')) expect(styleOf(wisp).animation).toBeUndefined()
+    const disconnected = renderPanel({ ...state, streamingActive: true, connection: 'offline' })
+    expect(findByAttr(disconnected, 'data-liangxiang-stream-activity')).toHaveLength(0)
+  })
   it('shows the actual incense gain when one update crosses multiple sticks', () => {
     const tree = renderPanel(demoState(), '', { condensedIncense: 6 })
     const feedback = findByAttr(tree, 'data-liangxiang-condensed')[0]

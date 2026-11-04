@@ -126,6 +126,11 @@ Rules:
   Flash Token). Hover/focus on 下一炷 shows the model-weight table
   from the same static rule data used by accounting (Pro ×1,
   Flash / other / unknown ×0.5); never maintain a second static table.
+- Live requests may add restrained smoke/glow and `凝香中` inside the existing
+  core. Activity is not progress: never extrapolate numeric Token captions,
+  fill a fake percentage or mint spendable incense. Only confirmed ring
+  geometry may interpolate; preserve figure bob cadence. Reduced motion uses
+  static activity. Do not persist activity or transmit stream content.
 - visible 下一炷 当量 uses integer compact (`33K`, never `≈ 33.4K`) so the
   flank does not overlap 梁子. Hover title and the screen-reader summary keep
   the exact integer. 今日凝香 / 环上 overflow 仍可用一位小数。

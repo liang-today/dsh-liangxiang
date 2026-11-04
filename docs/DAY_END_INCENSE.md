@@ -1,6 +1,6 @@
 # 定时上香、23:59 收尾与刷新节奏
 
-2026-11-03；1.2.1-beta.4 未发布候选。初版日终方案收敛自社区 Issues
+2026-11-04；1.2.1-beta.5 未发布候选。初版日终方案收敛自社区 Issues
 [#3](https://github.com/liang-today/dsh-liangxiang/issues/3)、
 [#5](https://github.com/liang-today/dsh-liangxiang/issues/5)；刷新修复对应
 [#4](https://github.com/liang-today/dsh-liangxiang/issues/4)。

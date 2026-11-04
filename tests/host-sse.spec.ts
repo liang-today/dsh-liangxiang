@@ -111,6 +111,8 @@ describe('changed-state SSE delivery', () => {
     const host = await startSseHarness()
     const tab = await openSse(host.url)
     const updates: Array<Partial<LiangxiangWireState>> = [
+      { streamingActive: true },
+      { streamingActive: false },
       { personal: { ...host.state.personal, effectiveTokensToday: 50_000, remainingIncense: 1 } },
       { personal: { ...host.state.personal, effectiveTokensToday: 50_001, remainingIncense: 1 } },
       { accounting: { ...host.state.accounting, inputTokensToday: 1, observedAt: 1 } },

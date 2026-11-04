@@ -33,6 +33,14 @@ function liveState() {
 }
 
 describe('state frame round-trip', () => {
+  it('accepts optional activity without treating it as usage and rejects non-booleans', () => {
+    const { state } = liveState()
+    expect(wireToViewState(parseWireState(state), 'live').streamingActive).toBe(false)
+    const active = parseWireState({ ...state, streamingActive: true })
+    expect(wireToViewState(active, 'live').streamingActive).toBe(true)
+    expect(active.personal).toEqual(state.personal)
+    expect(() => parseWireState({ ...state, streamingActive: 1 })).toThrow(WireError)
+  })
   it('carries Host automatic participation and rejects malformed counters', () => {
     const { state } = liveState()
     const timedIncense = { businessDate: state.businessDate, lifetimeUp: 500, lifetimeDown: 10, todayUp: 50, todayDown: 0 }
