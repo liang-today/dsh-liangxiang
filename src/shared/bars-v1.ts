@@ -16,23 +16,27 @@
  */
 export const BARS_SCHEMA_VERSION = 1 as const
 
-/** Durable bucket width. One business day carries at most 288 of them. */
-export const BARS_BUCKET_MS = 5 * 60_000
+/**
+ * Durable bucket width. One business day carries at most 1440 of them: minute
+ * granularity is what makes a 15-minute window readable as 15 candles.
+ */
+export const BARS_BUCKET_MS = 60_000
 
 /**
  * Selectable chart intervals. `1m` is deliberately absent: samples are
  * recorded per second but only the 5-minute bucket is durable, so a 1-minute
  * view could only ever be honest for the current day.
  */
-export const BARS_INTERVALS = ['5m', '15m', '1h', '1d'] as const
+export const BARS_INTERVALS = ['1m', '5m', '15m', '1h', '1d'] as const
 
 export type BarsInterval = (typeof BARS_INTERVALS)[number]
 
 /** Millisecond width of each selectable interval. */
 export const BARS_INTERVAL_MS: Record<BarsInterval, number> = {
-  '5m': BARS_BUCKET_MS,
-  '15m': 3 * BARS_BUCKET_MS,
-  '1h': 12 * BARS_BUCKET_MS,
+  '1m': BARS_BUCKET_MS,
+  '5m': 5 * BARS_BUCKET_MS,
+  '15m': 15 * BARS_BUCKET_MS,
+  '1h': 60 * BARS_BUCKET_MS,
   '1d': 24 * 60 * 60_000,
 }
 

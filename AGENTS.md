@@ -294,6 +294,12 @@ this installation observed, not a community ledger and not a trading product.
 - A case change is a hard break: counts reset, the candle series restarts, and
   two cases are never bridged into one line. Same-day archives do not paint
   history that was never observed.
+- One candle is one minute (`BARS_BUCKET_MS = 60_000`, at most 1440 per business
+  date). Coarser views (`5m`/`15m`/`1h`/`1d`) are aggregated from raw counts by
+  the Host, never from averaged percentages. The browser picks the interval from
+  the visible span, offers `15分 / 1时 / 今日 / 全部`, and may zoom and pan by
+  asking for another `from`/`to`; the picture always comes from the server so an
+  embed and the panel cannot disagree.
 - Derived data only. Nothing here may spend incense, vote, open, archive or
   close a case, alter an archive, or influence 梁位. Failure to sample or to
   serve a bar must never make today's case or voting unavailable.

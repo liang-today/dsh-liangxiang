@@ -29,24 +29,24 @@ afterEach(() => {
 })
 
 describe('走势 display preference', () => {
-  it('starts closed on 5 minutes', () => {
+  it('starts closed on the last hour', () => {
     installStorage()
-    expect(readBarsPrefs()).toEqual({ slot: 'closed', interval: '5m' })
+    expect(readBarsPrefs()).toEqual({ slot: 'closed', range: '1h' })
   })
 
-  it('remembers a chosen surface and interval', () => {
+  it('remembers a chosen surface and range', () => {
     const fake = installStorage()
-    expect(writeBarsPrefs({ slot: 'full' })).toEqual({ slot: 'full', interval: '5m' })
-    expect(writeBarsPrefs({ interval: '1h' })).toEqual({ slot: 'full', interval: '1h' })
-    expect(JSON.parse(fake.store.get('liangxiang:bars:v1') ?? '{}')).toEqual({ slot: 'full', interval: '1h' })
+    expect(writeBarsPrefs({ slot: 'full' })).toEqual({ slot: 'full', range: '1h' })
+    expect(writeBarsPrefs({ range: 'all' })).toEqual({ slot: 'full', range: 'all' })
+    expect(JSON.parse(fake.store.get('liangxiang:bars:v1') ?? '{}')).toEqual({ slot: 'full', range: 'all' })
   })
 
   it('falls back instead of trusting junk', () => {
     const fake = installStorage()
-    fake.store.set('liangxiang:bars:v1', JSON.stringify({ slot: 'overlay', interval: '1s' }))
-    expect(readBarsPrefs()).toEqual({ slot: 'closed', interval: '5m' })
+    fake.store.set('liangxiang:bars:v1', JSON.stringify({ slot: 'overlay', range: '10y' }))
+    expect(readBarsPrefs()).toEqual({ slot: 'closed', range: '1h' })
     fake.store.set('liangxiang:bars:v1', 'not json')
-    expect(readBarsPrefs()).toEqual({ slot: 'closed', interval: '5m' })
+    expect(readBarsPrefs()).toEqual({ slot: 'closed', range: '1h' })
   })
 
   it('survives a storage that refuses writes', () => {
@@ -59,13 +59,13 @@ describe('走势 display preference', () => {
         },
       },
     })
-    expect(writeBarsPrefs({ slot: 'dock' })).toEqual({ slot: 'dock', interval: '5m' })
+    expect(writeBarsPrefs({ slot: 'dock' })).toEqual({ slot: 'dock', range: '1h' })
   })
 
   it('renders the compact card and the floating window', () => {
     const dock = renderToStaticMarkup(createElement(BarsDock, {
-      interval: '5m',
-      onInterval: () => undefined,
+      range: '1h',
+      onRange: () => undefined,
       onDisplay: () => undefined,
     }))
     expect(dock).toContain('data-liangxiang-bars-dock')
@@ -73,14 +73,14 @@ describe('走势 display preference', () => {
 
     const floating = renderToStaticMarkup(createElement(BarsWindow, {
       display: 'float',
-      interval: '15m',
-      onInterval: () => undefined,
+      range: '15m',
+      onRange: () => undefined,
       onDisplay: () => undefined,
       onClose: () => undefined,
     }))
     expect(floating).toContain('role="dialog"')
     expect(floating).toContain('data-liangxiang-bars-window="float"')
-    expect(floating).toContain('/bars.svg?interval=15m')
+    expect(floating).toContain('/bars.svg?interval=1m')
     expect(floating).toContain('不代表那段时间无人投票')
   })
 })

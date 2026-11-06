@@ -5,7 +5,7 @@
 ## 一句话
 
 走势画的是**本机看到的**梁位变化，不是社区账本。Host 每秒采一次自己的权威状态，
-按 5 分钟成桶；没采到样本的时段画成虚线并写「未统计」，绝不插值、不回填，也不影响投票。
+按 1 分钟成桶（每个业务日最多 1440 根）；没采到样本的时段画成斜线阴影带并写「未统计」，绝不插值、不回填，也不影响投票。
 
 ## 数据来源与状态语义
 
@@ -39,7 +39,7 @@ $DSH_HOME/storages/liangxiang-bars/days/<business-date>.json
 
 ### `GET /liangxiang/api/bars`
 
-查询参数：`from`、`to`（毫秒时间戳，可省）、`interval`（`5m|15m|1h|1d`，默认 `5m`）。
+查询参数：`from`、`to`（毫秒时间戳，可省）、`interval`（`1m|5m|15m|1h|1d`，默认 `5m`）。
 未知参数、重复参数、`from > to` 均 400。
 
 ```json
@@ -47,12 +47,12 @@ $DSH_HOME/storages/liangxiang-bars/days/<business-date>.json
   "schemaVersion": 1,
   "channel": "host-observation",
   "timezone": "Europe/London",
-  "interval": "5m",
+  "interval": "1m",
   "businessDate": "2026-11-06",
   "from": null,
   "to": null,
-  "days": [{ "businessDate": "2026-11-06", "intervalMs": 300000, "buckets": [], "gaps": [], "cases": [], "breaks": [] }],
-  "meta": { "schemaVersion": 1, "channel": "host-observation", "bucketMs": 300000, "intervals": ["5m", "15m", "1h", "1d"], "days": [], "newestAt": null }
+  "days": [{ "businessDate": "2026-11-06", "intervalMs": 60000, "buckets": [], "gaps": [], "cases": [], "breaks": [] }],
+  "meta": { "schemaVersion": 1, "channel": "host-observation", "bucketMs": 60000, "intervals": ["1m", "5m", "15m", "1h", "1d"], "days": [], "newestAt": null }
 }
 ```
 
@@ -80,7 +80,9 @@ $DSH_HOME/storages/liangxiang-bars/days/<business-date>.json
 ## 客户端
 
 案牍维持四格，下面新增一条通栏 `梁位走势`。四种显示状态：关闭并记住 / 右下紧凑卡 / 浮动窗 / 全屏。
-选择存 `localStorage` 的 `liangxiang:bars:v1`（`{ slot, interval }`），纯观感偏好，不是任何权威。
+显示状态与时间范围存 `localStorage` 的 `liangxiang:bars:v1`（`{ slot, range }`，`range` 为 `15m|1h|today|all`），纯观感偏好，不是任何权威。
+
+浏览器侧交互（服务端 SVG 之外）：滚轮缩放、拖动平移、双击回到最新、键盘 ←/→ 逐烛、`+`/`-` 缩放、`0` 复位、Esc 清除；悬停显示该分钟的开/高/低/收与夯/拉票数。缩放与平移只改请求的 `from`/`to`，因此嵌入方和服务端看到的是同一份几何。
 图本身来自 `/bars.svg`，客户端只补烛长切换、键盘逐烛读数与兜底文案；20 秒轮询 `/bars` 取读数。
 
 ## 明确不做

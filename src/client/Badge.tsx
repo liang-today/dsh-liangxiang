@@ -1026,16 +1026,16 @@ export function LiangxiangBadge(): ReactElement {
       )}
       {barsPrefs.slot === 'dock' && (
         <BarsDock
-          interval={barsPrefs.interval}
-          onInterval={interval => patchBarsPrefs({ interval })}
+          range={barsPrefs.range}
+          onRange={range => patchBarsPrefs({ range })}
           onDisplay={slot => patchBarsPrefs({ slot })}
         />
       )}
       {(barsPrefs.slot === 'float' || barsPrefs.slot === 'full') && (
         <BarsWindow
           display={barsPrefs.slot}
-          interval={barsPrefs.interval}
-          onInterval={interval => patchBarsPrefs({ interval })}
+          range={barsPrefs.range}
+          onRange={range => patchBarsPrefs({ range })}
           onDisplay={slot => patchBarsPrefs({ slot })}
           onClose={() => patchBarsPrefs({ slot: 'closed' })}
         />

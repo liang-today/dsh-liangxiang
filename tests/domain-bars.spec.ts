@@ -40,9 +40,9 @@ describe('bars accumulator', () => {
   it('keeps one candle per bucket with open/high/low/close taken from the counts', () => {
     const acc = accumulator()
     accrueBarsSample(acc, sample(0, 0, 0))
-    accrueBarsSample(acc, sample(30_000, 2, 0))
-    accrueBarsSample(acc, sample(60_000, 3, 1))
-    accrueBarsSample(acc, sample(90_000, 3, 2))
+    accrueBarsSample(acc, sample(10_000, 2, 0))
+    accrueBarsSample(acc, sample(20_000, 3, 1))
+    accrueBarsSample(acc, sample(30_000, 3, 2))
     const buckets = close(acc)
     expect(buckets).toHaveLength(1)
     const [candle] = buckets as [BarsCandle]
@@ -82,9 +82,9 @@ describe('bars accumulator', () => {
   it('breaks the series when the case changes instead of bridging two cases', () => {
     const acc = accumulator()
     accrueBarsSample(acc, sample(0, 4, 0, 'case-a'))
-    accrueBarsSample(acc, sample(60_000, 4, 0, 'case-a'))
+    accrueBarsSample(acc, sample(30_000, 4, 0, 'case-a'))
     accrueBarsSample(acc, sample(BARS_BUCKET_MS, 0, 0, 'case-b'))
-    accrueBarsSample(acc, sample(BARS_BUCKET_MS + 60_000, 1, 0, 'case-b'))
+    accrueBarsSample(acc, sample(BARS_BUCKET_MS + 30_000, 1, 0, 'case-b'))
     close(acc)
     expect(acc.breaks).toEqual([T0 + BARS_BUCKET_MS])
     expect(acc.cases.map(span => span.caseId)).toEqual(['case-a', 'case-b'])

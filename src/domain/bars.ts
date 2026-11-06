@@ -343,7 +343,7 @@ export interface BarsGeometry {
   window: { start: number; end: number }
 }
 
-export const BARS_AXIS_GUTTER = { left: 4, right: 46, top: 10, bottom: 18 } as const
+export const BARS_AXIS_GUTTER = { left: 6, right: 56, top: 12, bottom: 34 } as const
 
 /**
  * Turn candles into coordinates. Time-proportional x so an outage occupies the
