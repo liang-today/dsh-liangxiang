@@ -1,10 +1,11 @@
 /**
- * 走势 (K 线) client surface.
+ * 走势 (K 线) client surfaces.
  *
  * The picture itself is rendered by the Host (`/liangxiang/api/bars.svg`) so the
  * same bytes can be embedded elsewhere; this file adds only what an embed
  * cannot: wheel zoom, drag pan, a hover readout, range presets, and the four
- * display states (compact corner card / floating / full / closed-and-remembered).
+ * display states — attached under 今日梁案, floating, full screen, or closed
+ * until the 梁相案牍 row opens it again.
  *
  * The chart is read-only. A hatched band means this machine was not sampling —
  * it never means nobody voted.
@@ -16,8 +17,8 @@ import { BARS_INTERVAL_MS, type BarsInterval, type BarsPayload } from '../shared
 import { layoutBars } from '../domain/bars.ts'
 import { color, font } from './theme.ts'
 
-export type BarsDisplay = 'dock' | 'float' | 'full'
-export type BarsSlot = BarsDisplay | 'closed'
+/** Attached under 今日梁案, floating, full screen, or closed and remembered. */
+export type BarsSlot = 'attach' | 'float' | 'full' | 'closed'
 /** 15 分钟 / 1 小时 / 今日 / 全部. */
 export type BarsRange = '15m' | '1h' | 'today' | 'all'
 
@@ -29,20 +30,19 @@ const RANGES: { key: BarsRange, label: string, spanMs: number | null }[] = [
   { key: 'today', label: '今日', spanMs: null },
   { key: 'all', label: '全部', spanMs: null },
 ]
-const SIZE: Record<BarsDisplay, { height: number, fallbackWidth: number }> = {
-  dock: { height: 124, fallbackWidth: 272 },
-  float: { height: 300, fallbackWidth: 820 },
-  full: { height: 520, fallbackWidth: 1180 },
-}
 
 export interface BarsPrefs {
   slot: BarsSlot
   range: BarsRange
+  /** Floating window position, in CSS pixels. Null = centred. */
+  x: number | null
+  y: number | null
 }
 
-const DEFAULT_PREFS: BarsPrefs = { slot: 'closed', range: '1h' }
+const DEFAULT_PREFS: BarsPrefs = { slot: 'closed', range: '1h', x: null, y: null }
+const SLOTS: BarsSlot[] = ['attach', 'float', 'full', 'closed']
 
-/** Cosmetic preference only: which view was last chosen by this browser. */
+/** Cosmetic preference only: which surface was last chosen by this browser. */
 export function readBarsPrefs(): BarsPrefs {
   try {
     const raw = globalThis.localStorage?.getItem(PREF_KEY)
@@ -51,8 +51,10 @@ export function readBarsPrefs(): BarsPrefs {
     const slot = parsed.slot ?? DEFAULT_PREFS.slot
     const range = parsed.range ?? DEFAULT_PREFS.range
     return {
-      slot: slot === 'dock' || slot === 'float' || slot === 'full' ? slot : DEFAULT_PREFS.slot,
+      slot: SLOTS.includes(slot) ? slot : DEFAULT_PREFS.slot,
       range: RANGES.some(item => item.key === range) ? range : DEFAULT_PREFS.range,
+      x: typeof parsed.x === 'number' && Number.isFinite(parsed.x) ? parsed.x : null,
+      y: typeof parsed.y === 'number' && Number.isFinite(parsed.y) ? parsed.y : null,
     }
   } catch {
     return DEFAULT_PREFS
@@ -74,11 +76,14 @@ const BUTTON = {
   background: color.bgSubtle,
   color: color.textSecondary,
   borderRadius: '6px',
-  padding: '1px 7px',
+  padding: '2px 8px',
   fontSize: '10px',
   fontFamily: font.family,
   cursor: 'pointer',
+  lineHeight: 1.4,
 } as const
+
+const NOTE = { margin: '3px 0 0', fontSize: '9px', lineHeight: 1.5, color: color.textTertiary } as const
 
 /** Truncated, never rounded: a label must not claim a crossing 梁位 has not made. */
 function percent(value: number): string {
@@ -113,32 +118,33 @@ function useDark(): boolean {
   return dark
 }
 
-function useWidth(fallback: number): [RefObject<HTMLDivElement>, number] {
+function useWidth(fallback: number, height: number): [RefObject<HTMLDivElement>, number] {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(fallback)
   useEffect(() => {
     const node = ref.current
     if (node === null) return
-    const measure = (): void => setWidth(Math.max(200, Math.round(node.clientWidth)))
+    const measure = (): void => setWidth(Math.max(220, Math.round(node.clientWidth)))
     measure()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(measure)
     observer.observe(node)
     return () => observer.disconnect()
-  }, [])
+  }, [height])
   return [ref, width]
 }
 
-interface ChartProps {
-  variant: BarsDisplay
+export interface BarsChartProps {
+  variant: BarsSlot
   range: BarsRange
   onRange: (range: BarsRange) => void
 }
 
-/** The interactive surface: server picture + local zoom/pan/readout. */
-function Chart({ variant, range, onRange }: ChartProps): ReactElement {
-  const height = SIZE[variant].height
-  const [wrapRef, width] = useWidth(SIZE[variant].fallbackWidth)
+/** The interactive chart: server picture plus local zoom, pan and readout. */
+export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactElement {
+  const floating = variant === 'float' || variant === 'full'
+  const height = variant === 'attach' ? 168 : variant === 'full' ? 460 : 300
+  const [wrapRef, width] = useWidth(floating ? 780 : 330, height)
   const [view, setView] = useState<{ from: number, to: number } | null>(null)
   const [payload, setPayload] = useState<BarsPayload | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
@@ -147,45 +153,41 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
   const dark = useDark()
   const now = Date.now()
 
-  const spanOf = useCallback((current: { from: number, to: number } | null): { from: number, to: number } => {
-    if (current !== null) return current
+  const windowOf = useCallback((): { from: number, to: number } => {
+    if (view !== null) return view
     const preset = RANGES.find(item => item.key === range)
     if (preset?.spanMs !== null && preset?.spanMs !== undefined) {
       return { from: now - preset.spanMs, to: now }
     }
     if (range === 'today') return { from: todayStart(now), to: now }
-    // 全部: ask the server for everything it has.
     return { from: 0, to: now }
-  }, [range, now])
+  }, [range, now, view])
 
-  const window = spanOf(view)
-  const interval = intervalFor(Math.max(MIN_SPAN_MS, window.to - window.from))
+  const visible = windowOf()
+  const interval = intervalFor(Math.max(MIN_SPAN_MS, visible.to - visible.from))
   const query = new URLSearchParams({ interval })
-  if (view !== null) {
-    query.set('from', String(window.from))
-    query.set('to', String(window.to))
-  } else if (range !== 'all') {
-    query.set('from', String(window.from))
-    query.set('to', String(window.to))
+  if (view !== null || range !== 'all') {
+    query.set('from', String(visible.from))
+    query.set('to', String(visible.to))
   }
+  const queryKey = query.toString()
 
   useEffect(() => {
     let live = true
     const controller = new AbortController()
     const load = async (): Promise<void> => {
       try {
-        const response = await fetch(`/liangxiang/api/bars?${query.toString()}`, { signal: controller.signal })
+        const response = await fetch(`/liangxiang/api/bars?${queryKey}`, { signal: controller.signal })
         if (!response.ok) throw new Error(`走势暂不可用（${response.status}）`)
         const body = await response.json() as BarsPayload
-        if (live) {
-          setPayload(body)
-          setFailed(null)
-        }
+        if (!live) return
+        setPayload(body)
+        setFailed(null)
       } catch (cause) {
         if (live && !controller.signal.aborted) setFailed(cause instanceof Error ? cause.message : '走势暂不可用')
       }
     }
-    // A wheel storm must not turn into one request per event.
+    // A wheel storm must not become one request per event.
     const timer = setTimeout(() => void load(), 90)
     const poll = setInterval(() => void load(), 20_000)
     return () => {
@@ -194,7 +196,7 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
       clearTimeout(timer)
       clearInterval(poll)
     }
-  }, [query.toString()])
+  }, [queryKey])
 
   const candles = payload === null ? [] : payload.days.flatMap(day => day.buckets)
   const geometry = candles.length === 0
@@ -208,17 +210,15 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
 
   const clock = (t: number): string => new Intl.DateTimeFormat('zh-CN', {
     timeZone: timezone,
-    month: '2-digit',
-    day: '2-digit',
     ...(interval === '1d' ? {} : { hour: '2-digit', minute: '2-digit', hour12: false }),
+    ...(interval === '1d' ? { month: '2-digit', day: '2-digit' } : {}),
   }).format(new Date(t))
 
-  const describe = (index: number): string => {
-    const candle = columns[index]?.candle
-    if (candle === undefined) return ''
+  const describe = (column: typeof columns[number]): string => {
+    const candle = column.candle
     if (candle.gap) return `${clock(candle.t)} 未统计`
     const r = (value: number | null): string => value === null ? '待开梁' : percent(value)
-    return `${clock(candle.t)}  开${r(candle.open)} 高${r(candle.high)} 低${r(candle.low)} 收${r(candle.close)} · 夯${candle.upVotes} 拉${candle.downVotes}`
+    return `${clock(candle.t)}  开 ${r(candle.open)}  高 ${r(candle.high)}  低 ${r(candle.low)}  收 ${r(candle.close)}`
   }
 
   const pickIndex = (clientX: number, element: HTMLElement): number => {
@@ -228,26 +228,20 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
     return columns.findIndex(column => x >= column.x && x < column.x + column.width)
   }
 
-  const zoom = (factor: number, anchor: number | null): void => {
-    const span = window.to - window.from
+  const zoom = (factor: number): void => {
+    const span = visible.to - visible.from
     const nextSpan = Math.min(Math.max(span * factor, MIN_SPAN_MS), 400 * 86_400_000)
-    const ratio = anchor === null ? 1 : anchor
-    const end = window.to
-    const anchorTime = window.from + span * ratio
-    const from = anchorTime - nextSpan * ratio
-    const to = from + nextSpan
-    const capped = Math.min(to, Date.now())
-    setView({ from: Math.max(0, capped - nextSpan), to: capped })
-    void end
+    const to = Math.min(Date.now(), visible.to)
+    setView({ from: Math.max(0, to - nextSpan), to })
   }
 
-  const readout = current === undefined
-    ? failed !== null
+  const readout = current !== undefined
+    ? describe(current)
+    : failed !== null
       ? failed
       : columns.length === 0
-        ? '这个时间段还没有观察记录，换个范围或等 DSH 运行一会儿。'
-        : `本机观察，非全站账本。最新 ${lastClose === null ? '待开梁' : percent(lastClose)} · 滚轮缩放 · 拖动平移`
-    : describe(columns.indexOf(current))
+        ? '这个时间段还没有观察记录。'
+        : `${percent(lastClose ?? 0.5)} · 夯 ${columns.at(-1)?.candle.upVotes ?? 0} 拉 ${columns.at(-1)?.candle.downVotes ?? 0}`
 
   return (
     <>
@@ -262,17 +256,18 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
           drag.current = null
         }}
         onPointerDown={event => {
-          drag.current = { x: event.clientX, from: window.from, to: window.to }
+          drag.current = { x: event.clientX, from: visible.from, to: visible.to }
           event.currentTarget.setPointerCapture(event.pointerId)
         }}
         onPointerUp={event => {
-          if (drag.current !== null) {
-            const box = event.currentTarget.getBoundingClientRect()
-            if (Math.abs(event.clientX - drag.current.x) < 3) setHover(pickIndex(event.clientX, event.currentTarget) < 0 ? null : pickIndex(event.clientX, event.currentTarget))
-            void box
-          }
+          const active = drag.current
           drag.current = null
           event.currentTarget.releasePointerCapture(event.pointerId)
+          if (active === null) return
+          if (Math.abs(event.clientX - active.x) < 3) {
+            const found = pickIndex(event.clientX, event.currentTarget)
+            setHover(found < 0 ? null : found)
+          }
         }}
         onPointerMove={event => {
           const active = drag.current
@@ -294,19 +289,19 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
         }}
         onWheel={event => {
           event.preventDefault()
-          zoom(event.deltaY > 0 ? 1.25 : 0.8, null)
+          zoom(event.deltaY > 0 ? 1.25 : 0.8)
         }}
         onKeyDown={event => {
           if (event.key === 'Escape') setHover(null)
           else if (event.key === 'ArrowLeft') setHover(Math.max(0, (hover ?? columns.length) - 1))
           else if (event.key === 'ArrowRight') setHover(Math.min(columns.length - 1, (hover ?? -1) + 1))
-          else if (event.key === '+' || event.key === '=') zoom(0.8, null)
-          else if (event.key === '-') zoom(1.25, null)
+          else if (event.key === '+' || event.key === '=') zoom(0.8)
+          else if (event.key === '-') zoom(1.25)
           else if (event.key === '0') setView(null)
           else return
           event.preventDefault()
         }}
-        style={{ position: 'relative', height: `${height}px`, outline: 'none', cursor: drag.current === null ? 'crosshair' : 'grabbing', touchAction: 'none' }}
+        style={{ position: 'relative', height: `${height}px`, outline: 'none', cursor: 'crosshair', touchAction: 'none' }}
       >
         <img
           data-liangxiang-bars-image=""
@@ -315,34 +310,23 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
           width={width}
           height={height}
           draggable={false}
-          style={{ width: '100%', height: '100%', display: 'block', borderRadius: '10px' }}
+          style={{ width: '100%', height: '100%', display: 'block', borderRadius: '10px', border: `1px solid ${color.border}` }}
         />
         {current === undefined ? null : (
           <>
-            <span
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                left: `${((current.x + current.width / 2) / width) * 100}%`,
-                top: 0,
-                bottom: 0,
-                width: '1px',
-                background: color.ritualEmber,
-                opacity: 0.5,
-              }}
-            />
+            <span aria-hidden="true" style={{ position: 'absolute', left: `${((current.x + current.width / 2) / width) * 100}%`, top: 0, bottom: 0, width: '1px', background: color.ritualEmber, opacity: 0.45 }} />
             <span
               role="tooltip"
               style={{
                 position: 'absolute',
-                left: `${Math.min(76, Math.max(2, ((current.x + current.width / 2) / width) * 100))}%`,
-                top: '2px',
-                padding: '3px 6px',
-                borderRadius: '5px',
+                left: `${Math.min(70, Math.max(1, ((current.x + current.width / 2) / width) * 100))}%`,
+                top: '3px',
+                padding: '3px 7px',
+                borderRadius: '6px',
                 background: color.bgLayer,
                 border: `1px solid ${color.border}`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
-                fontSize: '9px',
+                boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
+                fontSize: '10px',
                 lineHeight: 1.45,
                 color: color.textPrimary,
                 whiteSpace: 'nowrap',
@@ -350,12 +334,12 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
-              {describe(columns.indexOf(current))}
+              {describe(current)}
             </span>
           </>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '5px', minWidth: 0 }}>
         {RANGES.map(item => (
           <button
             key={item.key}
@@ -378,9 +362,7 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
           </button>
         ))}
         {view === null ? null : (
-          <button type="button" data-liangxiang-bars-action="latest" onClick={() => setView(null)} style={BUTTON}>
-            回到最新
-          </button>
+          <button type="button" data-liangxiang-bars-action="latest" onClick={() => setView(null)} style={BUTTON}>最新</button>
         )}
         <span style={{ flex: 1 }} />
         <span
@@ -395,117 +377,125 @@ function Chart({ variant, range, onRange }: ChartProps): ReactElement {
   )
 }
 
+export interface BarsAttachedProps {
+  range: BarsRange
+  onRange: (range: BarsRange) => void
+  onSlot: (slot: BarsSlot) => void
+}
+
+/** The compact surface that rides directly under 今日梁案 inside the panel. */
+export function BarsAttached({ range, onRange, onSlot }: BarsAttachedProps): ReactElement {
+  return (
+    <section
+      data-liangxiang-bars-attached=""
+      aria-label="梁位走势"
+      style={{ marginTop: '9px', paddingTop: '8px', borderTop: `1px solid ${color.border}` }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <strong style={{ fontSize: '10px', letterSpacing: '1px' }}>梁位走势</strong>
+        <span style={{ fontSize: '9px', color: color.textTertiary }}>本机观察 · 只读</span>
+        <span style={{ flex: 1 }} />
+        <button type="button" data-liangxiang-bars-action="float" onClick={() => onSlot('float')} style={BUTTON}>浮窗</button>
+        <button type="button" data-liangxiang-bars-action="full" onClick={() => onSlot('full')} style={BUTTON}>全屏</button>
+        <button type="button" data-liangxiang-bars-action="close" onClick={() => onSlot('closed')} aria-label="收起走势" style={BUTTON}>×</button>
+      </div>
+      <BarsChart variant="attach" range={range} onRange={onRange} />
+      <p style={NOTE}>斜线区间表示本机 DSH 未运行、没采到样本，不代表无人投票。</p>
+    </section>
+  )
+}
+
 export interface BarsWindowProps {
   display: 'float' | 'full'
   range: BarsRange
   onRange: (range: BarsRange) => void
-  onDisplay: (slot: BarsSlot) => void
+  onSlot: (slot: BarsSlot) => void
+  position: { x: number | null, y: number | null }
+  onMove: (position: { x: number, y: number }) => void
   onClose: () => void
 }
 
-/** Floating / full-screen presentation. */
-export function BarsWindow({ display, range, onRange, onDisplay, onClose }: BarsWindowProps): ReactElement {
+/** Floating (draggable) and full-screen presentation. */
+export function BarsWindow({ display, range, onRange, onSlot, position, onMove, onClose }: BarsWindowProps): ReactElement {
+  const [origin, setOrigin] = useState<{ x: number, y: number } | null>(null)
+  const drag = useRef<{ x: number, y: number, left: number, top: number } | null>(null)
+  const box = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    if (display !== 'float') return
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose()
     }
     globalThis.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = previous
-      globalThis.removeEventListener('keydown', onKey)
-    }
-  }, [onClose])
+    return () => globalThis.removeEventListener('keydown', onKey)
+  }, [display, onClose])
+
+  const left = origin?.x ?? position.x ?? Math.max(16, Math.round((globalThis.innerWidth ?? 1200) / 2 - 410))
+  const top = origin?.y ?? position.y ?? 88
+
+  const frame = display === 'full'
+    ? { position: 'fixed' as const, inset: '16px', zIndex: 2_147_483_000 }
+    : { position: 'fixed' as const, left: `${left}px`, top: `${top}px`, width: 'min(820px, calc(100vw - 32px))', zIndex: 2_147_483_000 }
 
   return (
-    <div
-      data-liangxiang-bars-backdrop=""
-      onMouseDown={event => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 2_147_483_000,
-        background: 'rgba(0,0,0,0.34)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="梁位走势"
-        data-liangxiang-bars-window={display}
-        style={{
-          width: display === 'full' ? 'min(1180px, calc(100vw - 24px))' : 'min(820px, calc(100vw - 24px))',
-          borderRadius: '14px',
-          border: `1px solid ${color.border}`,
-          background: color.bgLayer,
-          boxShadow: '0 22px 54px rgba(0,0,0,0.3)',
-          padding: '10px 12px 8px',
-          fontFamily: font.family,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+    <>
+      {display === 'full' ? (
+        <div
+          data-liangxiang-bars-backdrop=""
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) onClose()
+          }}
+          style={{ position: 'fixed', inset: 0, zIndex: 2_147_482_999, background: 'rgba(0,0,0,0.34)' }}
+        />
+      ) : null}
+      <div role="dialog" aria-modal="true" aria-label="梁位走势" data-liangxiang-bars-window={display} ref={box} style={{
+        ...frame,
+        borderRadius: '14px',
+        border: `1px solid ${color.border}`,
+        background: color.bgLayer,
+        boxShadow: '0 22px 54px rgba(0,0,0,0.3)',
+        padding: '8px 11px 7px',
+        fontFamily: font.family,
+        color: color.textPrimary,
+      }}>
+        <div
+          data-liangxiang-bars-handle=""
+          onPointerDown={event => {
+            if (display === 'full') return
+            drag.current = { x: event.clientX, y: event.clientY, left, top }
+            event.currentTarget.setPointerCapture(event.pointerId)
+          }}
+          onPointerMove={event => {
+            const active = drag.current
+            if (active === null) return
+            const x = Math.min(Math.max(0, active.left + event.clientX - active.x), Math.max(0, (globalThis.innerWidth ?? 1200) - 240))
+            const y = Math.min(Math.max(0, active.top + event.clientY - active.y), Math.max(0, (globalThis.innerHeight ?? 800) - 160))
+            setOrigin({ x, y })
+          }}
+          onPointerUp={event => {
+            const active = drag.current
+            drag.current = null
+            try {
+              event.currentTarget.releasePointerCapture(event.pointerId)
+            } catch {
+              // The capture may already be gone; nothing to do.
+            }
+            if (active !== null) onMove({ x: left, y: top })
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: display === 'float' ? 'grab' : 'default', touchAction: 'none', paddingBottom: '5px' }}
+        >
           <strong style={{ fontSize: '12px', letterSpacing: '1px' }}>梁位走势</strong>
           <span style={{ fontSize: '9px', color: color.textTertiary }}>本机观察 · 只读</span>
           <span style={{ flex: 1 }} />
-          <button type="button" data-liangxiang-bars-action="dock" onClick={() => onDisplay('dock')} style={BUTTON}>紧凑</button>
-          <button
-            type="button"
-            data-liangxiang-bars-action={display === 'full' ? 'float' : 'full'}
-            onClick={() => onDisplay(display === 'full' ? 'float' : 'full')}
-            style={BUTTON}
-          >
+          <button type="button" data-liangxiang-bars-action="attach" onClick={() => onSlot('attach')} style={BUTTON}>挂回梁案</button>
+          <button type="button" data-liangxiang-bars-action={display === 'full' ? 'float' : 'full'} onClick={() => onSlot(display === 'full' ? 'float' : 'full')} style={BUTTON}>
             {display === 'full' ? '缩小' : '全屏'}
           </button>
           <button type="button" data-liangxiang-bars-action="close" onClick={onClose} aria-label="关闭走势" style={BUTTON}>×</button>
         </div>
-        <Chart variant={display} range={range} onRange={onRange} />
-        <p style={{ margin: '4px 0 0', fontSize: '9px', color: color.textTertiary, lineHeight: 1.5 }}>
-          虚线区间表示本机 DSH 未运行、没有采到样本，不代表那段时间无人投票；期间的票仍计入累计。
-        </p>
+        <BarsChart variant={display} range={range} onRange={onRange} />
+        <p style={NOTE}>斜线区间表示本机 DSH 未运行、没采到样本，不代表无人投票；期间的票仍计入累计。</p>
       </div>
-    </div>
-  )
-}
-
-export interface BarsDockProps {
-  range: BarsRange
-  onRange: (range: BarsRange) => void
-  onDisplay: (slot: BarsSlot) => void
-}
-
-/** Compact card in the lower-right corner, remembered until closed. */
-export function BarsDock({ range, onRange, onDisplay }: BarsDockProps): ReactElement {
-  return (
-    <div
-      data-liangxiang-bars-dock=""
-      style={{
-        position: 'fixed',
-        right: '16px',
-        bottom: '88px',
-        zIndex: 2_147_482_900,
-        width: '304px',
-        borderRadius: '10px',
-        border: `1px solid ${color.border}`,
-        background: color.bgLayer,
-        boxShadow: '0 8px 22px rgba(0,0,0,0.16)',
-        padding: '6px 8px 4px',
-        fontFamily: font.family,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-        <strong style={{ fontSize: '10px', letterSpacing: '1px' }}>走势</strong>
-        <span style={{ flex: 1 }} />
-        <button type="button" data-liangxiang-bars-action="float" onClick={() => onDisplay('float')} style={BUTTON}>展开</button>
-        <button type="button" data-liangxiang-bars-action="close" onClick={() => onDisplay('closed')} aria-label="收起走势" style={BUTTON}>×</button>
-      </div>
-      <Chart variant="dock" range={range} onRange={onRange} />
-    </div>
+    </>
   )
 }
