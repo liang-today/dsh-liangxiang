@@ -175,7 +175,14 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
   const [hover, setHover] = useState<number | null>(null)
   const drag = useRef<{ x: number, from: number, to: number } | null>(null)
   const dark = useDark()
-  const now = Date.now()
+  // A clock we own: it advances once per refresh period, so hover and drag
+  // renders cannot change the requested window (which used to re-fetch on
+  // every pointer move).
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 20_000)
+    return () => clearInterval(timer)
+  }, [])
 
   const window = barsWindow(range, view, now)
   const visible = window ?? { from: 0, to: now }
@@ -205,14 +212,13 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
         if (live && !controller.signal.aborted) setFailed(cause instanceof Error ? cause.message : '走势暂不可用')
       }
     }
-    // A wheel storm must not become one request per event.
+    // One debounce per window change; the clock above schedules the refresh,
+    // so there is no second timer racing it.
     const timer = setTimeout(() => void load(), 90)
-    const poll = setInterval(() => void load(), 20_000)
     return () => {
       live = false
       controller.abort()
       clearTimeout(timer)
-      clearInterval(poll)
     }
   }, [queryKey])
 
@@ -441,13 +447,12 @@ export function BarsWindow({ display, range, onRange, onSlot, position, onMove, 
   const box = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (display !== 'float') return
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose()
     }
     globalThis.addEventListener('keydown', onKey)
     return () => globalThis.removeEventListener('keydown', onKey)
-  }, [display, onClose])
+  }, [onClose])
 
   const left = origin?.x ?? position.x ?? Math.max(16, Math.round((globalThis.innerWidth ?? 1200) / 2 - 410))
   const top = origin?.y ?? position.y ?? 88
@@ -480,7 +485,10 @@ export function BarsWindow({ display, range, onRange, onSlot, position, onMove, 
         <div
           data-liangxiang-bars-handle=""
           onPointerDown={event => {
+            // Pointer capture on the handle would steal the button's pointerup
+            // and the click would never fire.
             if (display === 'full') return
+            if ((event.target as HTMLElement).closest('button') !== null) return
             drag.current = { x: event.clientX, y: event.clientY, left, top }
             event.currentTarget.setPointerCapture(event.pointerId)
           }}
