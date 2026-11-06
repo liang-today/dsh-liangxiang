@@ -4,6 +4,8 @@
     "16209318+niya193@users.noreply.github.com": ["NiYa193", "liangxiang-CI"],
     "niya193@users.noreply.github.com": ["NiYa193", "liangxiang-CI"]
   },
+  "signed_commit_names": ["hanxi-cat", "NiYa193", "liangxiang-CI"],
+  "blocked_commit_names": ["infinsys-agent", "infinity-agent", "dsh-agent"],
   "blocked_phrase_hashes": [
     {
       "length": 5,

@@ -1156,7 +1156,22 @@ the current client release.
 Privacy is a publication gate. Never publish private workflow/conversation
 labels, internal task identifiers, personal home paths, private contact data,
 or credentials in files, commit metadata/messages, PR descriptions or comments.
-Use the public GitHub handle and GitHub noreply email for maintained commits.
+Commit only as yourself. The author and committer of every commit you create
+must be the identity configured for this clone (`user.name` / `user.email`),
+which must be your own account and the address your signing key carries.
+Never borrow another account's handle or email to satisfy a document, a
+template, an example or a gate: a maintainer handle quoted in docs, a
+teammate's noreply address, a PR author's identity and a tool's default bot
+identity are all the wrong author for your work. If a hook, script or document
+demands a different identity, fix that demand instead of changing who you claim
+to be.
+Every commit you create must carry a GPG signature attributable to that author:
+`git config commit.gpgsign true` plus your own `user.signingkey`, with the key's
+UID email equal to the commit author email. Confirm `%G?` is `G` or `U` and
+`%GS` names the author before pushing; amend an unsigned or misattributed commit
+rather than pushing it. Your key over someone else's author field is not a
+signed commit, it is a forged one. Upload the matching public key to the hosting
+account so the signature also displays as verified there.
 Community contributors may voluntarily publish their commit email: PR CI treats
 that metadata as advisory, without requiring signed history to be rewritten.
 This exception never covers secrets, sensitive files, source text or PR prose.
@@ -1164,7 +1179,7 @@ Maintained identities and local publication hooks retain their strict policy.
 Configure this identity in repository-local Git settings, not account-wide
 settings. Personal GitHub Profile names belong to the account owner; never
 change them to satisfy a project's commit or CI policy. Maintainer commits use
-the public handle; GitHub App operations use the App's bot identity. PR-list
+the maintainer's own account; GitHub App operations use the App's bot identity. PR-list
 usernames alone do not verify commit author/committer metadata. If an operation
 cannot preserve the required public commit identity, explain the specific
 manual action to the user before proceeding; do not rename their Profile.
