@@ -24,6 +24,7 @@ import { DUMP_AUTO_RELEASE_MS, chargeProgress, holdReleaseAction } from './vote-
 import { hasSeenWelcome, markWelcomeSeen, WELCOME_STORAGE_KEY } from './welcome.ts'
 import { pickSquishLabel, SQUISH_ANIM_MS, SQUISH_DOUBLE_MS, SQUISH_COMMENT_GAP_MS, SQUISH_LABEL_LINGER_MS, SQUISH_MAX_ROWS } from './badge-squish.ts'
 import { BadgeFeedback } from './BadgeFeedback.tsx'
+import { BarsDock, BarsWindow, readBarsPrefs, writeBarsPrefs, type BarsPrefs } from './BarsWindow.tsx'
 import type { BadgeComment } from './badge-feedback.ts'
 import {
   BADGE_ICON_SIZE,
@@ -295,6 +296,12 @@ export function LiangxiangBadge(): ReactElement {
     playVolumePreview()
   }, [])
   const [liangciOpen, setLiangciOpen] = useState(false)
+  // 走势 display state: remembered per browser, never authority. A reload keeps
+  // the last choice so a half-screen chart does not pop back on its own.
+  const [barsPrefs, setBarsPrefs] = useState<BarsPrefs>(() => readBarsPrefs())
+  const patchBarsPrefs = useCallback((patch: Partial<BarsPrefs>) => {
+    setBarsPrefs(writeBarsPrefs(patch))
+  }, [])
   const closeLiangci = useCallback(() => setLiangciOpen(false), [])
   const selectWelcomeMode = useCallback((preference: HostAuthorityPreference) => {
     void store.selectAuthorityMode(preference).then(
@@ -1005,9 +1012,32 @@ export function LiangxiangBadge(): ReactElement {
             setLiangciOpen(true)
             void store.loadHistory()
           }}
+          // The drawer row is one toggle: first press opens the floating chart,
+          // the next press closes whatever surface is up.
+          onOpenBars={() => {
+            setUtilityOpen(false)
+            patchBarsPrefs({ slot: barsPrefs.slot === 'closed' ? 'float' : 'closed' })
+          }}
+          barsOpen={barsPrefs.slot !== 'closed'}
           {...(state.authorityMode === 'LOCAL_FAKE_DEV'
             ? { onCycleLocalCase: () => store.cycleLocalCase() }
             : {})}
+        />
+      )}
+      {barsPrefs.slot === 'dock' && (
+        <BarsDock
+          interval={barsPrefs.interval}
+          onInterval={interval => patchBarsPrefs({ interval })}
+          onDisplay={slot => patchBarsPrefs({ slot })}
+        />
+      )}
+      {(barsPrefs.slot === 'float' || barsPrefs.slot === 'full') && (
+        <BarsWindow
+          display={barsPrefs.slot}
+          interval={barsPrefs.interval}
+          onInterval={interval => patchBarsPrefs({ interval })}
+          onDisplay={slot => patchBarsPrefs({ slot })}
+          onClose={() => patchBarsPrefs({ slot: 'closed' })}
         />
       )}
       {liangciOpen && (

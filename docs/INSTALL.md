@@ -2,7 +2,7 @@
 
 推荐使用 [DSH 官方 Desktop](https://www.deepseek.com/zh/harness/) 的内置插件安装入口。
 安装后页面边缘出现“今日梁相”；单击打开今日梁案，可拖动入口调整位置。
-当前源码为 **dsh-liangxiang@1.2.1-beta.2 未发布候选**；发布状态以 npm `latest` 和 GitHub Latest Release 为准。
+当前源码为 **dsh-liangxiang@1.2.2-beta.1 未发布候选**；发布状态以 npm `latest` 和 GitHub Latest Release 为准。
 
 ## Desktop：应用内安装
 
@@ -86,7 +86,7 @@ npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
 在文件所在目录执行；本地相对路径必须带 `./`，避免被当成 npm 包名：
 
 ```bash
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.2.1-beta.2.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.2.2-beta.1.tgz
 ```
 
 ## 在线连接与代理

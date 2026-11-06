@@ -148,3 +148,26 @@ export {
   type IncensePlaceValue,
   type RatioPercentPair,
 } from './presentation.ts'
+export {
+  BARS_AXIS_GUTTER,
+  BARS_GAP_FLOOR_MS,
+  accrueBarsSample,
+  aggregateBars,
+  barsBucketStart,
+  barsGapThresholdMs,
+  barsRatio,
+  createBarsAccumulator,
+  finalizeBarsBuckets,
+  fromBarsDay,
+  layoutBars,
+  toBarsDay,
+  type BarsAccumulator,
+  type BarsAccumulatorInit,
+  type BarsColumn,
+  type BarsGeometry,
+  type BarsGeometryOptions,
+  type BarsPoint,
+  type BarsSample,
+  type BarsSegment,
+} from './bars.ts'
+export { BARS_SVG_PALETTES, renderBarsSvg, type BarsSvgInput, type BarsSvgPalette } from './bars-svg.ts'

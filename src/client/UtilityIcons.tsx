@@ -46,3 +46,17 @@ export function VersionSealIcon({ size = 19 }: IconProps): ReactElement {
     </svg>
   )
 }
+
+/** Three wicks and a trend line: the 走势 strip's own mark. */
+export function BarsGlyphIcon({ size = 19 }: IconProps): ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden="true" focusable="false" data-liangxiang-utility-icon="bars">
+      <path fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" d="M4.2 4.6v6.2M8 3.4v9.4M11.8 6.2v5M15.6 4.8v6.8" />
+      <rect x="2.9" y="6.1" width="2.6" height="4.1" rx=".6" fill="currentColor" opacity=".55" />
+      <rect x="6.7" y="5.6" width="2.6" height="4.6" rx=".6" fill="currentColor" opacity=".55" />
+      <rect x="10.5" y="7.8" width="2.6" height="3.4" rx=".6" fill="currentColor" opacity=".55" />
+      <rect x="14.3" y="6.4" width="2.6" height="4.2" rx=".6" fill="currentColor" opacity=".55" />
+      <path fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity=".7" d="M2.4 17.2h15.2" />
+    </svg>
+  )
+}

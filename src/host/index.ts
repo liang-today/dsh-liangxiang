@@ -44,6 +44,7 @@ import { FakeAuthoritativeLiangService } from './fake-service.ts'
 import { DayEndService } from './day-end-service.ts'
 import { startSnapshotCadence } from './snapshot-cadence.ts'
 import { createLiangxiangApi } from './routes.ts'
+import { createBarsRecorder } from './bars.ts'
 import { createHostFileLog } from './file-log.ts'
 import { ensureProfileTracksLatest } from './profile-npm-float.ts'
 import type { LiangHostService } from './service.ts'
@@ -278,18 +279,28 @@ export function apply(ctx: DshHostContext): void {
     const { webServer } = resolveDshHostServices(scoped)
     if (webServer === undefined) return
     scoped.effect(() => {
+      // 走势 samples this Host's own state; it never asks the backend for a
+      // series, because the backend does not have one. One writer, one timer.
+      const bars = createBarsRecorder({
+        getWireState: () => service.getWireState(),
+        timezone: serviceConfig.timezone,
+        warn,
+      })
       const api = createLiangxiangApi(service, warn, {
         selectAuthorityMode,
         setDayEndPreferences: preferences => slot.setDayEndPreferences(preferences),
         noteManualGesture: () => slot.noteManualGesture(),
         isAuthorityModeChanging: () => modeTransitioning,
+        ...(bars === null ? {} : { bars }),
       })
       const disposeRoute = webServer.register({
         kind: 'prefix',
         path: '/liangxiang/api',
         handler: api.handler,
       })
+      bars?.start()
       return () => {
+        bars?.dispose()
         disposeRoute()
         api.closeAllConnections()
       }
