@@ -6,7 +6,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { BarsAttached, BarsWindow, readBarsPrefs, writeBarsPrefs } from '../src/client/BarsWindow.tsx'
+import { BarsAttached, BarsWindow, barsWindow, readBarsPrefs, writeBarsPrefs } from '../src/client/BarsWindow.tsx'
 
 interface FakeStorage {
   store: Map<string, string>
@@ -84,5 +84,15 @@ describe('走势 display preference', () => {
     expect(floating).toContain('data-liangxiang-bars-window="float"')
     expect(floating).toContain('/bars.svg?interval=1m')
     expect(floating).toContain('不代表无人投票')
+  })
+
+  it('asks for whole milliseconds, never fractions', () => {
+    const now = 1_800_000_000_123
+    // Drag/zoom maths can leave fractions; the wire contract accepts integers only.
+    expect(barsWindow('15m', { from: 1.6, to: now + 0.7 }, now)).toEqual({ from: 2, to: now + 1 })
+    expect(barsWindow('1h', null, now)).toEqual({ from: now - 3_600_000, to: now })
+    expect(barsWindow('today', null, now)).toEqual({ from: new Date(now).setHours(0, 0, 0, 0), to: now })
+    expect(barsWindow('all', null, now)).toBeNull()
+    expect(barsWindow('all', { from: -5, to: now }, now)).toEqual({ from: 0, to: now })
   })
 })

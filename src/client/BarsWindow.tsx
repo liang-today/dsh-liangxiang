@@ -10,7 +10,7 @@
  * The chart is read-only. A hatched band means this machine was not sampling —
  * it never means nobody voted.
  */
-import { useCallback, useEffect, useRef, useState, type ReactElement, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react'
 import { BARS_INTERVAL_MS, type BarsInterval, type BarsPayload } from '../shared/bars-v1.ts'
 // Import the pure geometry directly: the barrel also re-exports the server-only
 // SVG renderer, which must never ride along into the client bundle.
@@ -105,6 +105,30 @@ function todayStart(now: number): number {
   return date.getTime()
 }
 
+
+/**
+ * The window the chart asks for, in whole epoch milliseconds.
+ *
+ * Drag and zoom maths produce fractions; the wire contract only accepts
+ * integers, so rounding happens here — one place, not at every call site.
+ * `null` means "everything this Host has".
+ */
+export function barsWindow(range: BarsRange, view: { from: number, to: number } | null, now: number): { from: number, to: number } | null {
+  const clamp = (value: number, fallback: number): number => (Number.isFinite(value) ? Math.round(value) : fallback)
+  if (view !== null) {
+    const from = clamp(view.from, 0)
+    const to = clamp(view.to, now)
+    return { from: Math.max(0, Math.min(from, to)), to: Math.max(0, to) }
+  }
+  const preset = RANGES.find(item => item.key === range)
+  if (preset?.spanMs !== null && preset?.spanMs !== undefined) {
+    const to = Math.round(now)
+    return { from: Math.max(0, to - preset.spanMs), to }
+  }
+  if (range === 'today') return { from: Math.round(todayStart(now)), to: Math.round(now) }
+  return null
+}
+
 function useDark(): boolean {
   const [dark, setDark] = useState(false)
   useEffect(() => {
@@ -153,22 +177,13 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
   const dark = useDark()
   const now = Date.now()
 
-  const windowOf = useCallback((): { from: number, to: number } => {
-    if (view !== null) return view
-    const preset = RANGES.find(item => item.key === range)
-    if (preset?.spanMs !== null && preset?.spanMs !== undefined) {
-      return { from: now - preset.spanMs, to: now }
-    }
-    if (range === 'today') return { from: todayStart(now), to: now }
-    return { from: 0, to: now }
-  }, [range, now, view])
-
-  const visible = windowOf()
+  const window = barsWindow(range, view, now)
+  const visible = window ?? { from: 0, to: now }
   const interval = intervalFor(Math.max(MIN_SPAN_MS, visible.to - visible.from))
   const query = new URLSearchParams({ interval })
-  if (view !== null || range !== 'all') {
-    query.set('from', String(visible.from))
-    query.set('to', String(visible.to))
+  if (window !== null) {
+    query.set('from', String(window.from))
+    query.set('to', String(window.to))
   }
   const queryKey = query.toString()
 
@@ -178,7 +193,10 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
     const load = async (): Promise<void> => {
       try {
         const response = await fetch(`/liangxiang/api/bars?${queryKey}`, { signal: controller.signal })
-        if (!response.ok) throw new Error(`走势暂不可用（${response.status}）`)
+        if (!response.ok) {
+          // Never show a raw wire error to a player: it reads as a crash.
+          throw new Error(response.status >= 500 ? '走势数据暂时读不到，稍后自会重试。' : '这个时间段暂时没有可用的走势。')
+        }
         const body = await response.json() as BarsPayload
         if (!live) return
         setPayload(body)
@@ -229,9 +247,9 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
   }
 
   const zoom = (factor: number): void => {
-    const span = visible.to - visible.from
-    const nextSpan = Math.min(Math.max(span * factor, MIN_SPAN_MS), 400 * 86_400_000)
-    const to = Math.min(Date.now(), visible.to)
+    const span = Math.max(MIN_SPAN_MS, visible.to - visible.from)
+    const nextSpan = Math.round(Math.min(Math.max(span * factor, MIN_SPAN_MS), 400 * 86_400_000))
+    const to = Math.round(Math.min(Date.now(), visible.to))
     setView({ from: Math.max(0, to - nextSpan), to })
   }
 
@@ -275,7 +293,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
             const box = event.currentTarget.getBoundingClientRect()
             const span = active.to - active.from
             const shift = ((event.clientX - active.x) / Math.max(1, box.width)) * span
-            const to = Math.min(Date.now(), Math.max(span, active.to - shift))
+            const to = Math.round(Math.min(Date.now(), Math.max(span, active.to - shift)))
             setView({ from: to - span, to })
             setHover(null)
             return
@@ -310,6 +328,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
           width={width}
           height={height}
           draggable={false}
+          onError={() => setFailed('走势图暂时画不出来，稍后自会重试。')}
           style={{ width: '100%', height: '100%', display: 'block', borderRadius: '10px', border: `1px solid ${color.border}` }}
         />
         {current === undefined ? null : (
