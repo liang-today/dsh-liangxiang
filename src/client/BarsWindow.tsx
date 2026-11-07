@@ -11,7 +11,8 @@
  * it never means nobody voted.
  */
 import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react'
-import { BARS_INTERVAL_MS, type BarsInterval, type BarsPayload } from '../shared/bars-v1.ts'
+import { BARS_INTERVAL_MS, type BarsCandle, type BarsInterval, type BarsMeta, type BarsPayload } from '../shared/bars-v1.ts'
+import { businessDateStartsAt, createBusinessDateProvider } from '../shared/business-date.ts'
 // Import the pure geometry directly: the barrel also re-exports the server-only
 // SVG renderer, which must never ride along into the client bundle.
 import { layoutBars } from '../domain/bars.ts'
@@ -99,13 +100,6 @@ function intervalFor(spanMs: number): BarsInterval {
   return '1d'
 }
 
-function todayStart(now: number): number {
-  const date = new Date(now)
-  date.setHours(0, 0, 0, 0)
-  return date.getTime()
-}
-
-
 /**
  * The window the chart asks for, in whole epoch milliseconds.
  *
@@ -113,7 +107,7 @@ function todayStart(now: number): number {
  * integers, so rounding happens here — one place, not at every call site.
  * `null` means "everything this Host has".
  */
-export function barsWindow(range: BarsRange, view: { from: number, to: number } | null, now: number): { from: number, to: number } | null {
+export function barsWindow(range: BarsRange, view: { from: number, to: number } | null, now: number, timezone = 'UTC', days: readonly string[] = []): { from: number, to: number } | null {
   const clamp = (value: number, fallback: number): number => (Number.isFinite(value) ? Math.round(value) : fallback)
   if (view !== null) {
     const from = clamp(view.from, 0)
@@ -125,8 +119,27 @@ export function barsWindow(range: BarsRange, view: { from: number, to: number } 
     const to = Math.round(now)
     return { from: Math.max(0, to - preset.spanMs), to }
   }
-  if (range === 'today') return { from: Math.round(todayStart(now)), to: Math.round(now) }
+  const dates = createBusinessDateProvider(timezone)
+  if (range === 'today') return { from: businessDateStartsAt(dates, dates.businessDateOf(now)), to: Math.round(now) }
+  if (range === 'all') {
+    for (const date of days) {
+      try {
+        return { from: businessDateStartsAt(dates, date), to: Math.round(now) }
+      } catch {
+        // A corrupt derived day filename must not take down the main panel.
+      }
+    }
+  }
   return null
+}
+
+/** A zero-vote case and an unobserved interval must never invent a ratio. */
+export function barsSummary(candles: readonly BarsCandle[]): string {
+  const last = candles.at(-1)
+  if (last === undefined) return '这个时间段还没有观察记录。'
+  if (last.gap) return '未统计'
+  const ratio = last.close === null ? '待开梁' : percent(last.close)
+  return `${ratio} · 夯 ${last.upVotes} 拉 ${last.downVotes}`
 }
 
 function useDark(): boolean {
@@ -148,7 +161,7 @@ function useWidth(fallback: number, height: number): [RefObject<HTMLDivElement>,
   useEffect(() => {
     const node = ref.current
     if (node === null) return
-    const measure = (): void => setWidth(Math.max(220, Math.round(node.clientWidth)))
+    const measure = (): void => setWidth(Math.min(1600, Math.max(320, Math.round(node.clientWidth))))
     measure()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(measure)
@@ -171,6 +184,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
   const [wrapRef, width] = useWidth(floating ? 780 : 330, height)
   const [view, setView] = useState<{ from: number, to: number } | null>(null)
   const [payload, setPayload] = useState<BarsPayload | null>(null)
+  const [meta, setMeta] = useState<BarsMeta | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [hover, setHover] = useState<number | null>(null)
   const drag = useRef<{ x: number, from: number, to: number } | null>(null)
@@ -184,8 +198,9 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
     return () => clearInterval(timer)
   }, [])
 
-  const window = barsWindow(range, view, now)
-  const visible = window ?? { from: 0, to: now }
+  const timezone = meta?.timezone ?? 'UTC'
+  const window = barsWindow(range, view, now, timezone, meta?.days)
+  const visible = window ?? { from: now - 3_600_000, to: now }
   const interval = intervalFor(Math.max(MIN_SPAN_MS, visible.to - visible.from))
   const query = new URLSearchParams({ interval })
   if (window !== null) {
@@ -193,8 +208,23 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
     query.set('to', String(window.to))
   }
   const queryKey = query.toString()
+  const needsMeta = meta === null
 
   useEffect(() => {
+    if (!needsMeta) return
+    const controller = new AbortController()
+    void fetch('/liangxiang/api/bars/meta', { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('走势数据暂时读不到，稍后自会重试。')
+        return await response.json() as BarsMeta
+      })
+      .then(value => { if (!controller.signal.aborted) setMeta(value) })
+      .catch(() => { if (!controller.signal.aborted) setFailed('走势数据暂时读不到，稍后自会重试。') })
+    return () => controller.abort()
+  }, [needsMeta, now])
+
+  useEffect(() => {
+    if (needsMeta) return
     let live = true
     const controller = new AbortController()
     const load = async (): Promise<void> => {
@@ -207,6 +237,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
         const body = await response.json() as BarsPayload
         if (!live) return
         setPayload(body)
+        setMeta(body.meta)
         setFailed(null)
       } catch (cause) {
         if (live && !controller.signal.aborted) setFailed(cause instanceof Error ? cause.message : '走势暂不可用')
@@ -220,7 +251,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
       controller.abort()
       clearTimeout(timer)
     }
-  }, [queryKey])
+  }, [queryKey, needsMeta])
 
   const candles = payload === null ? [] : payload.days.flatMap(day => day.buckets)
   const geometry = candles.length === 0
@@ -228,8 +259,6 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
     : layoutBars(candles, { width, height, intervalMs: payload?.days[0]?.intervalMs ?? BARS_INTERVAL_MS[interval] })
   const columns = geometry?.columns ?? []
   const current = hover === null ? undefined : columns[hover]
-  const lastClose = [...columns].reverse().find(column => column.candle.close !== null && !column.candle.gap)?.candle.close ?? null
-  const timezone = payload?.timezone ?? 'UTC'
   const src = `/liangxiang/api/bars.svg?${new URLSearchParams({ ...Object.fromEntries(query), theme: dark ? 'dark' : 'light', w: String(width), h: String(height) }).toString()}`
 
   const clock = (t: number): string => new Intl.DateTimeFormat('zh-CN', {
@@ -263,9 +292,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
     ? describe(current)
     : failed !== null
       ? failed
-      : columns.length === 0
-        ? '这个时间段还没有观察记录。'
-        : `${percent(lastClose ?? 0.5)} · 夯 ${columns.at(-1)?.candle.upVotes ?? 0} 拉 ${columns.at(-1)?.candle.downVotes ?? 0}`
+      : needsMeta ? '正在读取走势…' : barsSummary(candles)
 
   return (
     <>
@@ -329,7 +356,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
       >
         <img
           data-liangxiang-bars-image=""
-          src={src}
+          src={needsMeta ? undefined : src}
           alt={`梁位走势图（${RANGES.find(item => item.key === range)?.label ?? ''}）`}
           width={width}
           height={height}
@@ -425,7 +452,7 @@ export function BarsAttached({ range, onRange, onSlot }: BarsAttachedProps): Rea
         <button type="button" data-liangxiang-bars-action="close" onClick={() => onSlot('closed')} aria-label="收起走势" style={BUTTON}>×</button>
       </div>
       <BarsChart variant="attach" range={range} onRange={onRange} />
-      <p style={NOTE}>斜线区间表示本机 DSH 未运行、没采到样本，不代表无人投票。</p>
+      <p style={NOTE}>斜线区间表示未采到样本，不代表无人投票；期间投票仍计入累计。</p>
     </section>
   )
 }
@@ -521,7 +548,7 @@ export function BarsWindow({ display, range, onRange, onSlot, position, onMove, 
           <button type="button" data-liangxiang-bars-action="close" onClick={onClose} aria-label="关闭走势" style={BUTTON}>×</button>
         </div>
         <BarsChart variant={display} range={range} onRange={onRange} />
-        <p style={NOTE}>斜线区间表示本机 DSH 未运行、没采到样本，不代表无人投票；期间的票仍计入累计。</p>
+        <p style={NOTE}>斜线区间表示未采到样本，不代表无人投票；期间投票仍计入累计。</p>
       </div>
     </>
   )

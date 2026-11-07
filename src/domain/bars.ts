@@ -119,6 +119,7 @@ function noteCase(acc: BarsAccumulator, sample: BarsSample): void {
     return
   }
   if (current !== undefined) current.to = sample.t
+  acc.lastClose = null
   acc.cases.push({ caseId: sample.caseId, title: sample.caseTitle, from: sample.t, to: null })
   if (acc.buckets.length > 0) {
     // Counts restart at zero in a new case; bridging would draw a fake plunge.
@@ -152,6 +153,12 @@ export function accrueBarsSample(acc: BarsAccumulator, sample: BarsSample): void
 
   const ratio = barsRatio(sample.upVotes, sample.downVotes)
   const start = barsBucketStart(sample.t, acc.intervalMs)
+  const existing = bucketAt(acc, start)
+  if (existing !== null && existing.caseId !== sample.caseId) {
+    // One candle per minute: when cases share a minute, only the latest case
+    // owns that candle. Combining their counts or extremes would invent a line.
+    acc.buckets.pop()
+  }
   const bucket = bucketAt(acc, start) ?? openBucket(acc, start, sample, ratio)
   if (bucket.t !== start) {
     // Unreachable: bucketAt only returns the tail, openBucket already used start.
@@ -170,7 +177,7 @@ export function accrueBarsSample(acc: BarsAccumulator, sample: BarsSample): void
   bucket.upVotes = sample.upVotes
   bucket.downVotes = sample.downVotes
   bucket.samples += 1
-  if (ratio !== null) acc.lastClose = ratio
+  acc.lastClose = ratio
   acc.lastSampleAt = sample.t
 }
 
@@ -271,7 +278,10 @@ export function aggregateBars(buckets: readonly BarsCandle[], sourceMs: number, 
   for (const bucket of buckets) {
     const slot = barsBucketStart(bucket.t, targetMs)
     const last = out.at(-1)
-    if (last === undefined || last.t !== slot) {
+    if (last === undefined || last.t !== slot || (bucket.samples > 0 && last.caseId !== bucket.caseId)) {
+      // A wider candle must likewise never mix two cases. The latest case
+      // replaces the shared display interval, while raw minute data stays intact.
+      if (last?.t === slot) out.pop()
       out.push({
         t: slot,
         open: bucket.open,
@@ -287,7 +297,7 @@ export function aggregateBars(buckets: readonly BarsCandle[], sourceMs: number, 
       continue
     }
     if (bucket.samples > 0) {
-      if (last.samples === 0) {
+      if (last.samples === 0 || last.close === null) {
         last.open = bucket.open
         last.high = bucket.high
         last.low = bucket.low

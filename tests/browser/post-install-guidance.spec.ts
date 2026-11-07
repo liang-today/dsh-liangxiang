@@ -79,7 +79,7 @@ for (const mode of ['online', 'local'] as const) {
 
     const notes = page.getByRole('dialog', { name: RELEASE_NOTES_TITLE })
     await expect(notes).toBeVisible()
-    await expect(notes.locator('[data-liangxiang-release-notes-items]')).toContainText(/23:59.*右键/)
+    await expect(notes.locator('[data-liangxiang-release-notes-items]')).toContainText(/满 500 炷.*10 分钟.*23:59/)
     await expect(notes.locator('[data-liangxiang-release-notes-qq-qrcode]')).toBeVisible()
     for (const handle of ['@XChen446', '@Ritanlisa', '@xunxiaoQ']) {
       await expect(notes.locator('[data-liangxiang-release-notes-thanks]')).toContainText(handle)

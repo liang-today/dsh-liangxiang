@@ -152,6 +152,80 @@ describe('bars recorder', () => {
     rec.dispose()
   })
 
+  it('returns every retained business date when no window is supplied', () => {
+    const root = tempRoot()
+    const clock = { t: T0 }
+    const rec = recorder(root, clock, () => null)
+    rec.sampleOnce(wire(clock.t, 3, 1))
+    clock.t += 86_400_000
+    rec.sampleOnce({ ...wire(clock.t, 4, 1), businessDate: '2026-11-06' })
+    rec.flush()
+    expect(rec.read({ from: null, to: null, interval: '1m' }).days.map(day => day.businessDate))
+      .toEqual(['2026-11-05', '2026-11-06'])
+    expect(rec.read({ from: T0 + 86_400_000, to: clock.t + 60_000, interval: '1m' }).days.map(day => day.businessDate))
+      .toEqual(['2026-11-06'])
+    rec.dispose()
+  })
+
+  it('does not sample stale authority during an outage and shows the live gap', () => {
+    const root = tempRoot()
+    const clock = { t: T0 }
+    const rec = recorder(root, clock, () => null)
+    const original = wire(T0, 3, 1)
+    rec.sampleOnce(original)
+    for (let i = 1; i <= 90; i++) {
+      clock.t = T0 + i * 1_000
+      rec.sampleOnce({ ...original, authorityAvailable: false })
+    }
+    const unavailable = rec.read({ from: null, to: null, interval: '1m' }).days[0]!
+    expect(unavailable.buckets.reduce((sum, candle) => sum + candle.samples, 0)).toBe(1)
+    expect(unavailable.lastSampleAt).toBe(T0)
+    expect(unavailable.gaps).toEqual([{ from: T0, to: clock.t, reason: 'host-down' }])
+    expect(unavailable.buckets.some(candle => candle.gap)).toBe(true)
+    rec.flush()
+    clock.t += 30_000
+    rec.sampleOnce(wire(clock.t, 4, 2))
+    const recovered = rec.read({ from: null, to: null, interval: '1m' }).days[0]!
+    expect(recovered.gaps).toHaveLength(1)
+    expect(recovered.gaps[0]?.to).toBe(clock.t)
+    expect(recovered.buckets.reduce((sum, candle) => sum + candle.samples, 0)).toBe(2)
+    expect(recovered.buckets.at(-1)?.close).toBeCloseTo(4 / 6)
+    rec.dispose()
+  })
+
+  it('seals a multi-day outage at the old business midnight without creating future buckets', () => {
+    const root = tempRoot()
+    const clock = { t: Date.parse('2026-11-05T15:59:00Z') }
+    const rec = recorder(root, clock, () => null)
+    rec.sampleOnce(wire(clock.t, 3, 1))
+    clock.t += 2 * 86_400_000
+    rec.sampleOnce(null)
+    const old = rec.read({ from: null, to: null, interval: '1m' }).days[0]!
+    expect(old.buckets).toHaveLength(1)
+    expect(old.gaps[0]?.to).toBe(Date.parse('2026-11-05T16:00:00Z'))
+    rec.sampleOnce({ ...wire(clock.t, 1, 1), businessDate: '2026-11-07' })
+    const sealed = readBarsDay(root, '2026-11-05', () => undefined)!
+    expect(sealed.gaps).toEqual(old.gaps)
+    expect(rec.meta().days).toEqual(['2026-11-05', '2026-11-07'])
+    rec.dispose()
+  })
+
+  it('extends a persisted ongoing outage once when restarting', () => {
+    const root = tempRoot()
+    const clock = { t: T0 }
+    const first = recorder(root, clock, () => null)
+    first.sampleOnce(wire(T0, 3, 1))
+    clock.t += 90_000
+    first.sampleOnce(null)
+    first.dispose()
+    clock.t += 90_000
+    const second = recorder(root, clock, () => null)
+    second.sampleOnce(wire(clock.t, 4, 1))
+    const day = second.read({ from: null, to: null, interval: '1m' }).days[0]!
+    expect(day.gaps).toEqual([{ from: T0, to: clock.t, reason: 'host-down' }])
+    second.dispose()
+  })
+
   it('is switched off by LIANGXIANG_BARS=0', () => {
     const root = tempRoot()
     expect(createBarsRecorder({
