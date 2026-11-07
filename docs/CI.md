@@ -6,7 +6,8 @@
 
 - 社区 main 是唯一日常集成分支；维护者与贡献者均从最新 main 在个人 fork 建分支，
   向社区 main 提 PR。PR 模板与工作流统一使用 main，不再经过 dev。
-- 三平台检查验证来源为个人 fork，PR head 包含事件的 base 与当前 main。
+- 三平台检查验证来源是 PR 作者本人个人账号拥有的 fork，且 head 是非默认功能分支；
+  拒绝主仓分支、组织 fork、他人 fork 和个人默认分支。PR head 必须包含事件的 base 与当前 main。
   GitHub 在测试合并提交上运行检查；main 更新后必须先同步并重新通过检查。
 - main 保持严格分支保护、管理员受约束、禁止强推和直接推送，讨论必须解决。
   必需检查名称不变：`privacy`、`verify-locked (ubuntu-latest)`、
@@ -19,12 +20,24 @@
   管理员在全部检查通过后人工审核合并。作者无法批准自己的 PR；单维护者合并不声称独立审批。
 - 个人 fork 推送与合入后的 push 不重复触发同一轮云端检查；本地验证仍必须完成。
 
-## 遗留分支
+## 自动运行与合并权限
 
-旧 dev 暂时冻结，不再作为 PR 目标；自动晋级工作流及其写入控制器已移除。
-整合保留原提交历史。删除 dev 前必须重新确认其 tip 是 main 的祖先，且没有遗漏的新提交，
-然后由维护者单独批准删除；本次流程变更本身不删除 dev。
-遗留 GitHub App、Secret 与组织安装的撤销须单独核对，不从删除工作流推断已撤销。
+仓库级 Actions 运行审批已设为 `first_time_contributors_new_to_github`：普通账号提交 PR、
+更新提交或重新打开 PR 时自动运行，首次向本仓贡献也不再要求逐一批准。
+新注册 GitHub 账号首次贡献仍可能需要人工批准；GitHub 没有全部免审批的原生选项。
+这项设置不在工作流 YAML 中，修改 YAML 本身不能取消平台审批。
+CI 成功后仍须维护者审核合并，不启用无人审核自动合并。
+
+- [GitHub 的 fork 工作流审批设置](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)
+- [Actions 审批策略 API](https://docs.github.com/en/rest/actions/permissions#set-fork-pr-contributor-approval-permissions-for-a-repository)
+
+## 单一社区分支
+
+dev 已确认完整纳入 main 后删除，本机 `upstream/dev` 跟踪引用已清理，原跟踪配置改为 main。
+主仓仅保留 main；启用限制分支创建的规则集，覆盖全部社区分支，无绕过名单。
+功能分支留在个人 fork；main 保留 PR、严格同步、必需检查、管理员约束及禁止强推/删除的保护。
+公开仓库无法禁止 clone；规则限制的是向主仓创建、推送和合并代码的权限。
+主仓的分支规则不限制个人 fork 创建功能分支；此规则不是传播至整个 fork 网络的 push ruleset。
 
 ## 上游兼容预警
 
