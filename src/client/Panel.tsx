@@ -10,7 +10,7 @@ import { liangziPolicyForVersion, LIANGZI_POLICY_VERSION } from '../domain/index
  * No personal-growth section, no ranking, no third option.
  * Presentational only (no hooks); the container wires state and callbacks.
  */
-import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement, ReactNode } from 'react'
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement } from 'react'
 import { LIANG_POSITION_DECIMALS, VOTE_COUNT_MAX, formatCompactCount, formatIncenseShare, formatRatioPercents, incenseWeightRows, LEGACY_INCENSE_WEIGHT_POLICY, type LocalEpithet, type LocalIncenseStats, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
@@ -177,13 +177,8 @@ export interface PanelProps {
    * the 2x2 tiles and never becomes a fifth panel region.
    */
   onOpenBars?: () => void
-  /** Whether any chart surface (attached / float / full) is on screen. */
+  /** Whether the chart dialog is on screen. */
   barsOpen?: boolean
-  /**
-   * 走势 surface attached directly under the panel body. Rendered here so it
-   * shares the panel's own column and never becomes a floating window.
-   */
-  barsSlot?: ReactNode
   /** LOCAL_FAKE_DEV only: cycle the prepared 今日梁案 list. */
   onCycleLocalCase?: () => void
 }
@@ -931,7 +926,6 @@ export function Panel(props: PanelProps): ReactElement {
     onShowVersion,     onOpenLiangci, onCycleLocalCase,
     onOpenBars = () => undefined,
     barsOpen = false,
-    barsSlot = null,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
   const pinnedHint = props.pinnedHint ?? null
@@ -1872,7 +1866,6 @@ export function Panel(props: PanelProps): ReactElement {
         </div>
       </footer>
 
-      {barsSlot}
 
       {/* Screen-reader summary of the full state. */}
       <p aria-live="polite" style={visuallyHidden}>{summary}</p>

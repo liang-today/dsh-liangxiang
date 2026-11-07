@@ -24,7 +24,7 @@ import { DUMP_AUTO_RELEASE_MS, chargeProgress, holdReleaseAction } from './vote-
 import { hasSeenWelcome, markWelcomeSeen, WELCOME_STORAGE_KEY } from './welcome.ts'
 import { pickSquishLabel, SQUISH_ANIM_MS, SQUISH_DOUBLE_MS, SQUISH_COMMENT_GAP_MS, SQUISH_LABEL_LINGER_MS, SQUISH_MAX_ROWS } from './badge-squish.ts'
 import { BadgeFeedback } from './BadgeFeedback.tsx'
-import { BarsAttached, BarsWindow, readBarsPrefs, writeBarsPrefs, type BarsPrefs } from './BarsWindow.tsx'
+import { BarsWindow, readBarsPrefs, writeBarsPrefs, type BarsPrefs } from './BarsWindow.tsx'
 import type { BadgeComment } from './badge-feedback.ts'
 import {
   BADGE_ICON_SIZE,
@@ -1012,20 +1012,11 @@ export function LiangxiangBadge(): ReactElement {
             setLiangciOpen(true)
             void store.loadHistory()
           }}
-          // The drawer row is one toggle: first press attaches the chart under
-          // 今日梁案, the next press closes whatever surface is up.
           onOpenBars={() => {
             setUtilityOpen(false)
-            patchBarsPrefs({ slot: barsPrefs.slot === 'closed' ? 'attach' : 'closed' })
+            patchBarsPrefs({ slot: 'float' })
           }}
           barsOpen={barsPrefs.slot !== 'closed'}
-          barsSlot={barsPrefs.slot === 'attach' ? (
-            <BarsAttached
-              range={barsPrefs.range}
-              onRange={range => patchBarsPrefs({ range })}
-              onSlot={slot => patchBarsPrefs({ slot })}
-            />
-          ) : null}
           {...(state.authorityMode === 'LOCAL_FAKE_DEV'
             ? { onCycleLocalCase: () => store.cycleLocalCase() }
             : {})}

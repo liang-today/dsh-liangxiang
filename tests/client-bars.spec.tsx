@@ -6,7 +6,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { BarsAttached, BarsWindow, barsSummary, barsWindow, readBarsPrefs, writeBarsPrefs } from '../src/client/BarsWindow.tsx'
+import { BarsWindow, barsSummary, barsWindow, readBarsPrefs, writeBarsPrefs } from '../src/client/BarsWindow.tsx'
 
 interface FakeStorage {
   store: Map<string, string>
@@ -59,18 +59,10 @@ describe('走势 display preference', () => {
         },
       },
     })
-    expect(writeBarsPrefs({ slot: 'attach' })).toEqual({ slot: 'attach', range: '1h', x: null, y: null })
+    expect(writeBarsPrefs({ slot: 'float' })).toEqual({ slot: 'float', range: '1h', x: null, y: null })
   })
 
-  it('renders the attached section and the floating window', () => {
-    const attached = renderToStaticMarkup(createElement(BarsAttached, {
-      range: '1h',
-      onRange: () => undefined,
-      onSlot: () => undefined,
-    }))
-    expect(attached).toContain('data-liangxiang-bars-attached')
-    expect(attached).toContain('data-liangxiang-bars-chart')
-
+  it('renders only a dialog with a full-screen action', () => {
     const floating = renderToStaticMarkup(createElement(BarsWindow, {
       display: 'float',
       range: '15m',
@@ -82,8 +74,10 @@ describe('走势 display preference', () => {
     }))
     expect(floating).toContain('role="dialog"')
     expect(floating).toContain('data-liangxiang-bars-window="float"')
-    expect(floating).toContain('正在读取走势')
-    expect(floating).toContain('不代表无人投票')
+    expect(floating).not.toContain('data-liangxiang-bars-attached')
+    expect(floating).not.toContain('挂回梁案')
+    expect(floating).toContain('全屏')
+    expect(floating).toContain('未统计区间不补线')
   })
 
   it('asks for whole milliseconds, never fractions', () => {
@@ -95,6 +89,13 @@ describe('走势 display preference', () => {
     expect(barsWindow('all', null, now)).toBeNull()
     expect(barsWindow('all', { from: -5, to: now }, now)).toEqual({ from: 0, to: now })
   })
+
+  it('migrates an embedded preference to an independent dialog', () => {
+    const fake = installStorage()
+    fake.store.set('liangxiang:bars:v1', JSON.stringify({ slot: 'attach', range: 'today' }))
+    expect(readBarsPrefs()).toEqual({ slot: 'float', range: 'today', x: null, y: null })
+  })
+
   it('keeps a zero-vote case distinct from the previous case and from an outage', () => {
     const candle = { t: 1, open: null, high: null, low: null, close: null, upVotes: 0, downVotes: 0, samples: 1, caseId: 'new-case', gap: false }
     expect(barsSummary([candle])).toBe('待开梁 · 夯 0 拉 0')

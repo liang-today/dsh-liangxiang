@@ -12,9 +12,8 @@
  * - deterministic: same input, same bytes (cache keys hash the output)
  * - no pointer-only information: each candle carries a native `<title>`
  *
- * Visual contract (kept deliberately close to a stock chart so it reads at a
- * glance): three horizontal guides with right-hand percentages, a 50% 梁位
- * baseline, red 夯 candles and green 拉 candles, a dashed current-value marker
+ * Visual contract: three horizontal guides with right-hand percentages, a 50%
+ * 梁位 baseline, vermilion rises and cool-grey falls, a dashed current-value marker
  * with a value pill, and hatched 未统计 bands for unobserved stretches.
  */
 import type { BarsGeometry } from './bars.ts'
@@ -36,13 +35,13 @@ export interface BarsSvgPalette {
 
 export const BARS_SVG_PALETTES: Record<'light' | 'dark', BarsSvgPalette> = {
   light: {
-    background: '#fffdf9',
+    background: 'transparent',
     text: '#3c3730',
     textMuted: '#8a8271',
     grid: 'rgba(60,55,48,0.10)',
     frame: 'rgba(60,55,48,0.18)',
-    up: '#d2503f',
-    down: '#2f9e74',
+    up: '#c95f38',
+    down: '#74839f',
     gap: 'rgba(138,130,113,0.16)',
     gapText: '#8a8271',
     baseline: 'rgba(60,55,48,0.30)',
@@ -50,13 +49,13 @@ export const BARS_SVG_PALETTES: Record<'light' | 'dark', BarsSvgPalette> = {
     pillText: '#fffdf9',
   },
   dark: {
-    background: '#171a20',
+    background: 'transparent',
     text: '#e6e1d6',
     textMuted: '#9aa3b2',
     grid: 'rgba(230,225,214,0.10)',
     frame: 'rgba(230,225,214,0.16)',
-    up: '#e0574c',
-    down: '#2fae7a',
+    up: '#c95f38',
+    down: '#74839f',
     gap: 'rgba(154,163,178,0.14)',
     gapText: '#9aa3b2',
     baseline: 'rgba(230,225,214,0.30)',
@@ -79,7 +78,7 @@ export interface BarsSvgInput {
   formatRatio: (value: number) => string
 }
 
-const FONT_STACK = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+const FONT_STACK = "system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif"
 const GUTTER_RIGHT = 52
 
 function escapeXml(value: string): string {

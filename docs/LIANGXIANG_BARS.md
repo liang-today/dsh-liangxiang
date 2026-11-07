@@ -80,13 +80,15 @@ $DSH_HOME/storages/liangxiang-bars/days/<business-date>.json
 
 ## 客户端
 
-案牍维持四格，下面新增一条通栏 `梁位走势`。四种显示状态：关闭并记住 / 右下紧凑卡 / 浮动窗 / 全屏。
-显示状态与时间范围存 `localStorage` 的 `liangxiang:bars:v1`（`{ slot, range }`，`range` 为 `15m|1h|today|all`），纯观感偏好，不是任何权威。
+案牍维持四格，下面新增一条通栏 `梁位走势`。从案牍直接打开独立弹窗，仅支持弹窗 / 全屏；关闭状态会记住，不在主面板嵌入走势图。
+显示状态与时间范围存 `localStorage` 的 `liangxiang:bars:v1`（`{ slot, range, x, y }`，`range` 为 `15m|1h|today|all`），纯观感偏好，不是任何权威。
 
-浏览器侧交互（服务端 SVG 之外）：滚轮缩放、拖动平移、双击回到最新、键盘 ←/→ 逐烛、`+`/`-` 缩放、`0` 复位、Esc 清除；悬停显示该分钟的开/高/低/收与夯/拉票数。缩放与平移只改请求的 `from`/`to`，因此嵌入方和服务端看到的是同一份几何。
+浏览器侧交互（服务端 SVG 之外）：滚轮缩放、拖动平移、双击回到最新、键盘 ←/→ 逐烛、`+`/`-` 缩放、`0` 复位、Esc 关闭弹窗；悬停显示该分钟的开/高/低/收。缩放与平移只改请求的 `from`/`to`，因此嵌入方和服务端看到的是同一份几何。
 图本身来自 `/bars.svg`，客户端只补烛长切换、键盘逐烛读数与兜底文案；20 秒轮询 `/bars` 取读数。
 
 “今日”与历史日期以 Host 返回的业务时区为准，包含夏令时边界；“全部”读取最近最多 400 个保留的业务日。零票读数为“待开梁”，断线期间不把旧数值重复采成新记录。
+
+弹窗沿用梁相语义色与暖色背景；SVG 背景透明，涨跌使用朱砂与青灰，深浅出图跟随 DSH 实际主题。
 
 ## 明确不做
 
@@ -99,4 +101,5 @@ $DSH_HOME/storages/liangxiang-bars/days/<business-date>.json
 - `tests/bars-svg.spec.ts`：无脚本/无外链、字节确定、转义、缺口标签唯一、深浅主题。
 - `tests/host-bars.spec.ts`：日文件原子写读、坏文件跳过、重启与跨日缺口、三个路由、ETag/CSP/400/503。
 - `tests/client-panel.spec.tsx`：案牍六行结构与走势文案。
-- `tests/client-bars.spec.tsx`：零票读数、业务时区、跨日历史与夏令时。
+- `tests/client-bars.spec.tsx`：零票读数、独立弹窗偏好、业务时区与夏令时。
+- `tests/browser/bars.spec.ts`：真实安装后的弹窗、全屏还原、窄屏布局、焦点与主题可访问性。
