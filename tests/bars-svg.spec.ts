@@ -104,4 +104,13 @@ describe('bars svg', () => {
     })
     expect(light).not.toBe(dark)
   })
+
+  it('shows waiting without a fabricated percentage for a zero-vote day', () => {
+    const svg = render([{ ...candle(0, 0, 0), samples: 1 }])
+    expect(svg).toContain('待开梁')
+    expect(svg).not.toContain('50%')
+    expect(svg).not.toContain('50.00%')
+    expect(svg).not.toContain('data-candle=')
+  })
+
 })

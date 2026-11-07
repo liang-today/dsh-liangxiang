@@ -118,7 +118,8 @@ export function renderBarsSvg(input: BarsSvgInput): string {
   }
 
   // Guides: top / middle / bottom of the visible domain, labelled on the right.
-  const guides = [geometry.domain.high, (geometry.domain.high + geometry.domain.low) / 2, geometry.domain.low]
+  const hasValue = columns.some(column => column.candle.close !== null && !column.candle.gap)
+  const guides = hasValue ? [geometry.domain.high, (geometry.domain.high + geometry.domain.low) / 2, geometry.domain.low] : []
   for (const value of guides) {
     const y = round(yOf(value))
     parts.push(`<line x1="${round(plot.left)}" y1="${y}" x2="${round(plotRight)}" y2="${y}" stroke="${palette.grid}" stroke-width="1"/>`)
@@ -127,7 +128,7 @@ export function renderBarsSvg(input: BarsSvgInput): string {
 
   // The 50% line turns "which side of the case is winning" into something you
   // can read without doing arithmetic.
-  if (geometry.domain.low < 0.5 && geometry.domain.high > 0.5) {
+  if (hasValue && geometry.domain.low < 0.5 && geometry.domain.high > 0.5) {
     const y = round(yOf(0.5))
     parts.push(`<line x1="${round(plot.left)}" y1="${y}" x2="${round(plotRight)}" y2="${y}" stroke="${palette.baseline}" stroke-width="1" stroke-dasharray="4 4"/>`)
     parts.push(`<text x="${round(plot.left + 3)}" y="${y - 3}" font-family="${FONT_STACK}" font-size="8" fill="${palette.gapText}">50%</text>`)
@@ -190,7 +191,8 @@ export function renderBarsSvg(input: BarsSvgInput): string {
   }
 
   // Current value: dashed rule, end dot and a pill in the right gutter.
-  const lastValued = [...columns].reverse().find(column => column.candle.close !== null && !column.candle.gap)
+  const latest = columns.at(-1)
+  const lastValued = latest !== undefined && !latest.candle.gap ? latest : undefined
   if (lastValued !== undefined && lastValued.candle.close !== null) {
     const value = lastValued.candle.close
     const y = round(yOf(value))
@@ -203,6 +205,9 @@ export function renderBarsSvg(input: BarsSvgInput): string {
   }
 
   parts.push(`<rect x="${round(plot.left)}" y="${round(plot.top)}" width="${round(plot.width)}" height="${round(plot.height)}" fill="none" stroke="${palette.frame}" stroke-width="1" rx="2"/>`)
+  if (!hasValue && columns.some(column => column.candle.samples > 0 && !column.candle.gap)) {
+    parts.push(`<text x="${round(plot.left + plot.width / 2)}" y="${round(plot.top + plot.height / 2)}" text-anchor="middle" font-family="${FONT_STACK}" font-size="12" fill="${palette.textMuted}">待开梁</text>`)
+  }
 
   // Three time labels: enough to orient, never a wall of ticks.
   for (const fraction of [0, 0.5, 1]) {

@@ -23,9 +23,7 @@ export const BARS_SCHEMA_VERSION = 1 as const
 export const BARS_BUCKET_MS = 60_000
 
 /**
- * Selectable chart intervals. `1m` is deliberately absent: samples are
- * recorded per second but only the 5-minute bucket is durable, so a 1-minute
- * view could only ever be honest for the current day.
+ * Selectable chart intervals, aggregated from durable one-minute buckets.
  */
 export const BARS_INTERVALS = ['1m', '5m', '15m', '1h', '1d'] as const
 
@@ -48,7 +46,7 @@ export const BARS_CHANNELS = ['host-observation'] as const
 
 export type BarsChannel = (typeof BARS_CHANNELS)[number]
 
-/** Why a stretch of the axis has no samples. `host-down` = DSH was not running. */
+/** `host-down` covers intervals without a live Host authority observation. */
 export const BARS_GAP_REASONS = ['host-down'] as const
 
 export type BarsGapReason = (typeof BARS_GAP_REASONS)[number]

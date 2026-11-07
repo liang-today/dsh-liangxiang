@@ -35,6 +35,7 @@ import type { BarsAccumulator, BarsSample } from '../domain/bars.ts'
 import { homedir } from 'node:os'
 import { renderBarsSvg } from '../domain/bars-svg.ts'
 import type { LiangxiangWireState } from '../shared/wire.ts'
+import { businessDayEndsAt, createBusinessDateProvider, type BusinessDateProvider } from '../shared/business-date.ts'
 import { listBarsDayDates, readBarsDay, resolveBarsRoot, writeBarsDay } from './bars-store.ts'
 
 export const DEFAULT_BARS_SAMPLE_MS = 1_000
@@ -55,6 +56,7 @@ export interface BarsRecorderOptions {
 export class BarsRecorder {
   private readonly root: string
   private readonly timezone: string
+  private readonly dates: BusinessDateProvider
   private readonly sampleMs: number
   private readonly flushMs: number
   private readonly now: () => number
@@ -64,10 +66,12 @@ export class BarsRecorder {
   private timer: ReturnType<typeof setInterval> | null = null
   private lastFlushAt = 0
   private disposed = false
+  private observationUnavailable = false
 
   constructor(options: BarsRecorderOptions) {
     this.root = options.root
     this.timezone = options.timezone
+    this.dates = createBusinessDateProvider(options.timezone)
     this.sampleMs = options.sampleMs ?? DEFAULT_BARS_SAMPLE_MS
     this.flushMs = options.flushMs ?? DEFAULT_BARS_FLUSH_MS
     this.now = options.now ?? Date.now
@@ -96,7 +100,11 @@ export class BarsRecorder {
    * @param state - latest authoritative wire state, or `null` while booting.
    */
   sampleOnce(state: LiangxiangWireState | null): void {
-    if (this.disposed || state === null) return
+    if (this.disposed) return
+    if (state === null || state.authorityAvailable === false) {
+      this.observationUnavailable = true
+      return
+    }
     const businessDate = state.businessDate
     if (typeof businessDate !== 'string' || businessDate.length === 0) return
     const t = this.now()
@@ -105,6 +113,7 @@ export class BarsRecorder {
       this.flush()
       this.accumulator = null
     }
+    this.observationUnavailable = false
     const accumulator = this.accumulator ?? this.startDay(businessDate, t)
     const sample: BarsSample = {
       t,
@@ -140,7 +149,9 @@ export class BarsRecorder {
       accumulator.lastSampleAt = carried.lastSampleAt
       accumulator.lastClose = carried.lastClose
       if (carried.lastSampleAt !== 0 && t - carried.lastSampleAt > accumulator.gapThresholdMs) {
-        accumulator.gaps.push({ from: carried.lastSampleAt, to: t, reason: 'host-down' })
+        const pending = accumulator.gaps.at(-1)
+        if (pending?.from === carried.lastSampleAt) pending.to = t
+        else accumulator.gaps.push({ from: carried.lastSampleAt, to: t, reason: 'host-down' })
         // Own the restart instant here so the first sample after it does not
         // record the same silence a second time.
         accumulator.lastSampleAt = t
@@ -156,13 +167,28 @@ export class BarsRecorder {
     const accumulator = this.accumulator
     if (accumulator === null) return
     try {
-      const day = toBarsDay(accumulator, null)
+      const day = this.currentDay(accumulator)
       if (day.buckets.length === 0) return
       writeBarsDay(this.root, day)
       this.lastFlushAt = this.now()
     } catch (error) {
       this.warn(`bars flush failed: ${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+
+  /** Show an ongoing outage without advancing the last genuine observation. */
+  private currentDay(accumulator: BarsAccumulator): BarsDay {
+    const day = toBarsDay(accumulator, null)
+    if (!this.observationUnavailable || accumulator.lastSampleAt === 0
+      || this.now() - accumulator.lastSampleAt <= accumulator.gapThresholdMs) return day
+    // An ongoing outage may span days; keep each derived file inside its own
+    // business date rather than manufacturing thousands of future-day buckets.
+    const until = Math.min(this.now(), businessDayEndsAt(this.dates, accumulator.lastSampleAt))
+    const pending = fromBarsDay(day, this.sampleMs)
+    const last = pending.gaps.at(-1)
+    if (last?.from === accumulator.lastSampleAt) last.to = until
+    else pending.gaps.push({ from: accumulator.lastSampleAt, to: until, reason: 'host-down' })
+    return toBarsDay(pending, null)
   }
 
   /** What this installation can answer for. */
@@ -238,7 +264,7 @@ export class BarsRecorder {
       theme: options.theme,
       title: `梁位走势 ${payload.businessDate}`,
       subtitle: `本机观察 · ${payload.interval} · ${payload.timezone}`,
-      footer: hasGap ? '虚线区间：本机 DSH 未运行，未统计；期间投票仍计入累计' : null,
+      footer: hasGap ? '未统计区间不补线，期间投票仍计入累计' : null,
       emptyText: '这一天还没有观察记录',
       gapLabel: '未统计',
       formatTime: (t: number) => this.formatTime(t, payload.interval),
@@ -256,18 +282,14 @@ export class BarsRecorder {
   private loadDays(query: BarsQuery): BarsDay[] {
     const today = this.accumulator
     const wanted: string[] = []
-    for (const date of listBarsDayDates(this.root)) {
-      if (!this.inWindow(date, query)) continue
-      wanted.push(date)
-      if (wanted.length >= BARS_MAX_WINDOW_DAYS) break
-    }
+    wanted.push(...listBarsDayDates(this.root).filter(date => this.inWindow(date, query)))
     if (today !== null && this.inWindow(today.businessDate, query) && !wanted.includes(today.businessDate)) {
       wanted.push(today.businessDate)
     }
     const loaded: BarsDay[] = []
-    for (const date of wanted) {
+    for (const date of wanted.sort().slice(-BARS_MAX_WINDOW_DAYS)) {
       if (today !== null && date === today.businessDate) {
-        loaded.push(toBarsDay(today, null))
+        loaded.push(this.currentDay(today))
         continue
       }
       const day = readBarsDay(this.root, date, this.warn)
@@ -279,7 +301,6 @@ export class BarsRecorder {
   private inWindow(date: string, query: BarsQuery): boolean {
     const fromDate = query.from === null ? null : this.businessDateOf(query.from)
     const toDate = query.to === null ? null : this.businessDateOf(query.to)
-    if (fromDate === null && toDate === null) return date === (this.accumulator?.businessDate ?? this.businessDateOf(this.now()))
     if (fromDate !== null && date < fromDate) return false
     if (toDate !== null && date > toDate) return false
     return true

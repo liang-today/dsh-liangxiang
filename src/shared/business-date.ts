@@ -45,6 +45,21 @@ export function createBusinessDateProvider(timezone: string): BusinessDateProvid
   }
 }
 
+/** First instant of a calendar date in its business timezone, including DST. */
+export function businessDateStartsAt(dates: BusinessDateProvider, businessDate: string): number {
+  const midnight = Date.parse(`${businessDate}T00:00:00.000Z`)
+  if (!Number.isFinite(midnight)) throw new Error('invalid business date')
+  let lo = midnight - 48 * 60 * 60 * 1000
+  let hi = midnight + 48 * 60 * 60 * 1000
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2)
+    if (dates.businessDateOf(mid) < businessDate) lo = mid
+    else hi = mid
+  }
+  if (dates.businessDateOf(hi) !== businessDate) throw new Error('business date does not exist in this timezone')
+  return hi
+}
+
 /** First instant outside this business date, including 23/25-hour DST days. */
 export function businessDayEndsAt(dates: BusinessDateProvider, now: number): number {
   const date = dates.businessDateOf(now)

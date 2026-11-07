@@ -6,7 +6,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { BarsAttached, BarsWindow, barsWindow, readBarsPrefs, writeBarsPrefs } from '../src/client/BarsWindow.tsx'
+import { BarsAttached, BarsWindow, barsSummary, barsWindow, readBarsPrefs, writeBarsPrefs } from '../src/client/BarsWindow.tsx'
 
 interface FakeStorage {
   store: Map<string, string>
@@ -82,7 +82,7 @@ describe('走势 display preference', () => {
     }))
     expect(floating).toContain('role="dialog"')
     expect(floating).toContain('data-liangxiang-bars-window="float"')
-    expect(floating).toContain('/bars.svg?interval=1m')
+    expect(floating).toContain('正在读取走势')
     expect(floating).toContain('不代表无人投票')
   })
 
@@ -91,8 +91,36 @@ describe('走势 display preference', () => {
     // Drag/zoom maths can leave fractions; the wire contract accepts integers only.
     expect(barsWindow('15m', { from: 1.6, to: now + 0.7 }, now)).toEqual({ from: 2, to: now + 1 })
     expect(barsWindow('1h', null, now)).toEqual({ from: now - 3_600_000, to: now })
-    expect(barsWindow('today', null, now)).toEqual({ from: new Date(now).setHours(0, 0, 0, 0), to: now })
+    expect(barsWindow('today', null, now, 'UTC')).toEqual({ from: Date.parse(new Date(now).toISOString().slice(0, 10) + 'T00:00:00Z'), to: now })
     expect(barsWindow('all', null, now)).toBeNull()
     expect(barsWindow('all', { from: -5, to: now }, now)).toEqual({ from: 0, to: now })
   })
+  it('keeps a zero-vote case distinct from the previous case and from an outage', () => {
+    const candle = { t: 1, open: null, high: null, low: null, close: null, upVotes: 0, downVotes: 0, samples: 1, caseId: 'new-case', gap: false }
+    expect(barsSummary([candle])).toBe('待开梁 · 夯 0 拉 0')
+    expect(barsSummary([{ ...candle, close: 0.75 }, candle])).toBe('待开梁 · 夯 0 拉 0')
+    expect(barsSummary([{ ...candle, gap: true, samples: 0 }])).toBe('未统计')
+  })
+
+  it('uses the business timezone and retained dates for today and all', () => {
+    const now = Date.parse('2026-11-07T03:00:00Z')
+    expect(barsWindow('today', null, now, 'Asia/Shanghai')).toEqual({ from: Date.parse('2026-11-06T16:00:00Z'), to: now })
+    expect(barsWindow('all', null, now, 'Asia/Shanghai', ['2026-11-05', '2026-11-06', '2026-11-07']))
+      .toEqual({ from: Date.parse('2026-11-04T16:00:00Z'), to: now })
+  })
+
+  it('finds the business midnight on short and long daylight-saving days', () => {
+    const spring = Date.parse('2026-03-09T03:00:00Z')
+    expect(barsWindow('today', null, spring, 'America/New_York')?.from).toBe(Date.parse('2026-03-08T05:00:00Z'))
+    const autumn = Date.parse('2026-11-02T04:00:00Z')
+    expect(barsWindow('today', null, autumn, 'America/New_York')?.from).toBe(Date.parse('2026-11-01T04:00:00Z'))
+  })
+
+  it('skips invalid derived dates instead of crashing the panel on all', () => {
+    const now = Date.parse('2026-11-07T03:00:00Z')
+    expect(barsWindow('all', null, now, 'Asia/Shanghai', ['2026-00-00', '2026-11-05']))
+      .toEqual({ from: Date.parse('2026-11-04T16:00:00Z'), to: now })
+    expect(barsWindow('all', null, now, 'Asia/Shanghai', ['2026-00-00'])).toBeNull()
+  })
+
 })

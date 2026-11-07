@@ -95,6 +95,18 @@ describe('bars accumulator', () => {
     expect(second?.close).toBeCloseTo(1)
   })
 
+  it('immediately resets a new zero-vote case even inside the previous minute', () => {
+    const acc = accumulator()
+    accrueBarsSample(acc, sample(0, 3, 1, 'case-a'))
+    accrueBarsSample(acc, sample(10_000, 0, 0, 'case-b'))
+    accrueBarsSample(acc, sample(BARS_BUCKET_MS, 0, 0, 'case-b'))
+    const buckets = close(acc)
+    expect(buckets).toHaveLength(2)
+    expect(buckets.every(bucket => bucket.caseId === 'case-b' && bucket.open === null && bucket.close === null)).toBe(true)
+    expect(buckets.reduce((sum, bucket) => sum + bucket.samples, 0)).toBe(2)
+    expect(acc.breaks).toEqual([T0 + 10_000])
+  })
+
   it('rejects a sample that travels back in time', () => {
     const acc = accumulator()
     accrueBarsSample(acc, sample(60_000, 1, 0))
@@ -127,6 +139,17 @@ describe('bars aggregation', () => {
     expect(hourly[0]?.upVotes).toBe(6)
     expect(hourly[0]?.downVotes).toBe(1)
     expect(hourly[0]?.close).toBeCloseTo(6 / 7)
+  })
+
+  it('keeps a wider candle within one case and does not inherit the old case extremes', () => {
+    const acc = accumulator()
+    accrueBarsSample(acc, sample(0, 4, 0, 'case-a'))
+    accrueBarsSample(acc, sample(BARS_BUCKET_MS, 0, 0, 'case-b'))
+    const waiting = aggregateBars(close(acc), BARS_BUCKET_MS, 15 * 60_000)
+    expect(waiting).toEqual([expect.objectContaining({ caseId: 'case-b', open: null, high: null, low: null, close: null, upVotes: 0, downVotes: 0, samples: 1 })])
+    accrueBarsSample(acc, sample(2 * BARS_BUCKET_MS, 1, 3, 'case-b'))
+    const voted = aggregateBars(close(acc), BARS_BUCKET_MS, 15 * 60_000)
+    expect(voted).toEqual([expect.objectContaining({ caseId: 'case-b', open: 0.25, high: 0.25, low: 0.25, close: 0.25 })])
   })
 
   it('never invents a candle for a longer interval the day does not cover', () => {
