@@ -1208,33 +1208,26 @@ Historical cleanup must preserve code and third-party attribution. Changes
 to protected published history require a prepared mapping/backup and explicit
 approval for the force update; never silently rewrite another active checkout.
 
-Community collaboration (approved 2026-10-19): upstream
-`liang-today/dsh-liangxiang` has two long-lived branches, `dev` and `main`.
-Every developer, including the maintainer, works in a personal fork. The local
-`origin` and default push remote must be the fork; `upstream` fetches the
-community repository and has a disabled push URL. Independent concurrent
-agents use separate worktrees/directories, never change each other's checkout.
-Submit feature PRs to upstream `dev`; after required CI and maintainer review,
-an administrator merges them. Authors cannot approve their own GitHub PRs;
-the single-maintainer setup uses manual administrator merge, not a claim of
-independent approval. See `CONTRIBUTING.md` and `docs/CI.md`.
+Community collaboration: `liang-today/dsh-liangxiang` uses `main` as its only
+active integration branch. Every developer, including the maintainer, works in
+a personal fork. Local `origin` and the default push remote must be the fork;
+`upstream` fetches the community repository and has a disabled push URL.
+Concurrent work uses separate worktrees/directories, never another checkout.
 
-Personal fork pushes use local Codex verification only. Cloud CI runs on PRs
-to upstream dev/main, never on personal pushes or duplicate post-merge pushes.
+Create feature branches from current upstream main, push to the personal fork,
+and submit PRs to upstream main. Sync main before merging. Required gates are
+privacy, all three locked-dependency platforms, and full packed installation,
+browser and isolated online smoke checks. All PR test jobs are read-only.
+An administrator reviews and merges after checks; authors cannot approve their
+own GitHub PRs, and a single-maintainer merge is not independent approval.
+See `CONTRIBUTING.md` and `docs/CI.md`.
 
-Only the trusted nightly controller promotes a frozen dev batch to main after
-full PR checks. Main must remain an ancestor of dev. Promotion atomically
-fast-forwards main to the existing verified dev SHA (`beforeOid`, `force: false`);
-never create promotion merge/squash/rebase or reverse-sync commits. Features
-and CI repairs enter dev first. Its temporary `automation/promote-*` branch is
-deleted after the attempt. Never force-push, bypass branch protection, copy a personal CLI
-token into CI, or put repository-write credentials in PR test jobs. Scheduled
-source merges do not authorize npm publication, Release/Tag, or deployment.
-The initial workflow migration is an explicit maintainer operation with the
-same full checks; preserve all existing published history.
-
-The accepted PR #6 follow-up is submitted as new commits on a personal fork
-work branch; do not create or reopen a PR for that batch.
+Personal pushes and post-merge pushes do not duplicate cloud PR checks. The
+former dev-to-main controller is retired. Preserve existing published history;
+keep dev frozen until its entire history is verified in main and the maintainer
+separately authorizes deleting it. Never force-push, bypass branch protection,
+copy personal CLI tokens into CI or put write credentials in PR test jobs.
+Source integration does not authorize npm, Release/Tag, Pages or deployment.
 
 After every completed change in this repository, **before considering the
 task done**:

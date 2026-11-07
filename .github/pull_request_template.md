@@ -1,5 +1,5 @@
-<!-- 功能 PR 请将 base 选择为 liang-today/dsh-liangxiang:dev；个人 fork 为 head。
-main 只接收夜间固定批次，以及维护者明确执行的 CI 引导/修复。 -->
+<!-- base 选择 liang-today/dsh-liangxiang:main；head 使用个人 fork 的功能分支。
+提交前同步最新 main；合入须通过三平台、隐私和完整安装冒烟检查。 -->
 
 ## 改动与效果
 

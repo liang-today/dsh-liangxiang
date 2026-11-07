@@ -2,19 +2,8 @@ name: verify
 
 on:
   pull_request:
-    branches: [dev, main]
+    branches: [main]
   workflow_dispatch:
-  workflow_call:
-    inputs:
-      base_sha:
-        type: string
-        default: ''
-      head_sha:
-        type: string
-        default: ''
-      full_smoke:
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -41,26 +30,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          ref: ${{ inputs.base_sha || github.sha }}
           fetch-depth: 0
-      - name: Require dev to contain main and main candidates to come from dev
+      - name: Require a personal fork based on current main
         if: github.event_name == 'pull_request'
         env:
           BASE_BRANCH: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          if [ "$BASE_BRANCH" = dev ]; then
-            git merge-base --is-ancestor origin/main HEAD
-          else
-            git merge-base --is-ancestor origin/main "$PR_HEAD_SHA"
-            git merge-base --is-ancestor "$PR_HEAD_SHA" origin/dev
-          fi
-      - name: Build the frozen integration tree for a dry run
-        if: inputs.head_sha != ''
-        env:
-          BASE_SHA: ${{ inputs.base_sha }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-        run: bash scripts/ci/merge-snapshot.sh
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: node scripts/ci/check-pr-base.mjs
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.28.5
@@ -80,7 +58,7 @@ jobs:
       - name: Typecheck, lint, tests, build and client budget
         id: checks
         run: |
-          node --test scripts/ci/nightly-promotion.test.mjs
+          node --test scripts/ci/check-pr-base.test.mjs scripts/ci/deploy-ssh.test.mjs scripts/ci/deploy-permissions.test.mjs
           pnpm run verify
       - name: Summarize the required check
         if: always()
@@ -98,21 +76,14 @@ jobs:
 
   smoke:
     name: smoke-installed
-    if: github.repository == 'liang-today/dsh-liangxiang' && (inputs.full_smoke || github.base_ref == 'main' || github.event_name == 'workflow_dispatch')
+    if: github.repository == 'liang-today/dsh-liangxiang'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          ref: ${{ inputs.base_sha || github.sha }}
           fetch-depth: 0
-      - name: Build the frozen integration tree for a dry run
-        if: inputs.head_sha != ''
-        env:
-          BASE_SHA: ${{ inputs.base_sha }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-        run: bash scripts/ci/merge-snapshot.sh
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.28.5

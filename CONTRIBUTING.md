@@ -1,8 +1,8 @@
 # 参与梁相
 
 感谢每一位提出想法、报告问题和贡献代码的朋友。请先 fork
-`liang-today/dsh-liangxiang` 到自己的账号，再从社区 `dev` 创建功能分支。
-维护者本人也遵守这一流程；社区 `dev` 接受日常改动，`main` 接收验证后的每日批次。
+`liang-today/dsh-liangxiang` 到自己的账号，再从社区 `main` 创建功能分支。
+维护者本人也遵守这一流程；社区 `main` 通过 PR 接受通过检查的改动。
 
 ## 本地准备
 
@@ -14,7 +14,7 @@ git remote set-url --push upstream DISABLED
 git config remote.pushDefault origin
 git config push.default simple
 git fetch upstream
-git switch -c feat/your-change upstream/dev
+git switch -c feat/your-change upstream/main
 git push -u origin feat/your-change
 ```
 
@@ -22,24 +22,24 @@ git push -u origin feat/your-change
 各自的 worktree/目录、分支和隔离测试 Profile；不要共享 checkout、切换别人的分支
 或使用别人的手测端口。先读 `AGENTS.md` 与 `docs/CURRENT_ARCHITECTURE.md`。
 
-个人推送不跑云端 CI，先完成本地验证。云端 CI 在向社区 dev 提 PR 时执行；合入后
-不重复跑同一轮，英国午夜的 main 批次再执行完整安装和浏览器等检查。
+个人推送先完成本地验证；云端 CI 在向社区 main 提 PR 时执行三平台、隐私、完整
+安装、浏览器与隔离在线检查。合入后不重复跑同一轮 push 检查。
 
 ## 提交 PR
 
 1. 使用仓库指定的 Node、pnpm 和锁文件，完成适合改动的验证。
-2. 提交并推送到个人 fork，向社区 **dev** 提 PR，说明问题、用户效果和验证结果。
-3. CI 通过且与最新 dev 无冲突后，由管理员审核、人工合并。自己提交的 PR 不能自己
+2. 提交并推送到个人 fork，向社区 **main** 提 PR，说明问题、用户效果和验证结果。
+3. CI 通过且与最新 main 无冲突后，由管理员审核、人工合并。自己提交的 PR 不能自己
    Approve；当前单维护者使用人工确认合并，独立审批需要第二位有权限的维护者。
-4. 合并后可删除个人功能分支；同步 dev 后再开始下一项工作。不要直接在个人 main
+4. 合并后可删除个人功能分支；同步 main 后再开始下一项工作。不要直接在个人 main
    上堆叠所有开发，也不要在社区创建个人功能分支。
 
 修订贡献者的方案时保留来源提交与署名，说明维护者修正，不替换贡献归属。
-合入 dev/main 代表源码集成；正式发布时再通知大家更新测试。
+合入 main 代表源码集成；正式发布时再通知大家更新测试。
 
-每天英国午夜冻结 dev 做完整验收，通过后 main 只快进到该提交，不额外生成合并记录。
-因此 dev 始终包含 main：开发时领先，验收后相同。功能和 CI 修复都先提 dev；
-不得通过 main 独立开发、squash 或反复反向同步。完整检查和权限见 [docs/CI.md](docs/CI.md)。
+社区只使用 main 进行日常集成，不再经过 dev 或自动晋级。遗留 dev 暂时冻结，
+确认所有提交均已进入 main 后，需维护者另行批准才可删除。
+完整检查和权限见 [docs/CI.md](docs/CI.md)。
 代码合入不触发 npm、Release/Tag 或部署，正式版本发布需单独确认。
 
 社区贡献者可自愿公开提交邮箱，CI 仅提示，不要求重写已经签名的提交。维护者用自己的
