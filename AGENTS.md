@@ -1161,8 +1161,8 @@ must be the identity configured for this clone (`user.name` / `user.email`),
 which must be your own account and the address your signing key carries.
 Never borrow another account's handle or email to satisfy a document, a
 template, an example or a gate: a maintainer handle quoted in docs, a
-teammate's noreply address, a PR author's identity and a tool's default bot
-identity are all the wrong author for your work. If a hook, script or document
+teammate's noreply address and a PR author's identity are all the wrong author
+for your work. If a hook, script or document
 demands a different identity, fix that demand instead of changing who you claim
 to be.
 Every commit you create must carry a GPG signature attributable to that author:

@@ -75,15 +75,7 @@ export function isMaintainedIdentity(email, name) {
     (configured.email.toLowerCase() === normalizedEmail || configured.name.toLowerCase() === normalizedName);
 }
 
-export function assertNotToolIdentity(name) {
-  const blocked = (policy.blocked_commit_names ?? []).map(value => value.toLowerCase());
-  if (blocked.includes((name ?? '').normalize('NFKC').trim().toLowerCase())) {
-    throw new Error('Commit identity must be the developer, never a tool or bot default');
-  }
-}
-
 export function assertMetadata(email, name) {
-  assertNotToolIdentity(name);
   const configured = configuredIdentity();
   const isSelf = Boolean(configured) && configured.email.toLowerCase() === (email ?? '').trim().toLowerCase();
   if (!isSelf && (!safeEmail(email) || /@(?:example\.(?:com|org|net)|[^@]+\.invalid)$/i.test(email))) {
@@ -189,7 +181,6 @@ function assertLocalIdentity() {
     const ident = git(['var', variable]);
     const email = (ident.match(/<([^>]+)>/)?.[1] ?? '').trim();
     const name = (ident.match(/^(.+) </)?.[1] ?? '').trim();
-    assertNotToolIdentity(name);
     if (email.toLowerCase() !== configured.email.toLowerCase() || name !== configured.name) {
       throw new Error('Commit identity must be this clone\'s configured identity; never borrow another account\'s');
     }

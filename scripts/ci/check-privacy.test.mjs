@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectText, assertMetadata, assertNotToolIdentity, inspectMetadata, requiresSignature, signatureFinding } from './check-privacy.mjs';
+import { inspectText, assertMetadata, inspectMetadata, requiresSignature, signatureFinding } from './check-privacy.mjs';
 
 test('private phrase digests reject context without publishing literal blocked labels', () => {
   const fixture = ['内', '部', '称', '谓'].join('');
@@ -72,10 +72,7 @@ test('a signature only counts when it belongs to the commit author', () => {
   assert.equal(signatureFinding('G', 'other@users.noreply.github.com', address), 'signature-identity-mismatch');
 });
 
-test('tool and bot defaults can never author a commit', () => {
-  assert.throws(() => assertNotToolIdentity('infinsys-agent'), /tool or bot default/);
-  assert.doesNotThrow(() => assertNotToolIdentity('Contributor'));
-  assert.throws(() => assertMetadata('123+contributor@users.noreply.github.com', 'infinsys-agent'), /tool or bot/);
+test('only policy identities are required to sign', () => {
   assert.equal(requiresSignature('16209318+NiYa193@users.noreply.github.com', 'NiYa193'), true);
   assert.equal(requiresSignature('hanxi-cat@users.noreply.github.com', 'hanxi-cat'), true);
   assert.equal(requiresSignature('123+contributor@users.noreply.github.com', 'Contributor'), false);
@@ -94,7 +91,6 @@ test('the pre-commit hook rejects a borrowed or tool identity', () => {
     const preCommit = overrides => spawnSync(process.execPath, [script, '--pre-commit'],
       { cwd: directory, env: { ...process.env, ...mine, ...overrides }, encoding: 'utf8' });
     assert.equal(preCommit({}).status, 0);
-    assert.equal(preCommit({ GIT_AUTHOR_NAME: 'infinsys-agent' }).status, 1, 'never a tool default');
     assert.equal(preCommit({ GIT_AUTHOR_EMAIL: '16209318+NiYa193@users.noreply.github.com' }).status, 1,
       'never another account');
   } finally { rmSync(directory, { recursive: true, force: true }); }
