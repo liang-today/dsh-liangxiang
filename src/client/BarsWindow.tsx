@@ -3,9 +3,8 @@
  *
  * The picture itself is rendered by the Host (`/liangxiang/api/bars.svg`) so the
  * same bytes can be embedded elsewhere; this file adds only what an embed
- * cannot: wheel zoom, drag pan, a hover readout, range presets, and the four
- * display states — attached under 今日梁案, floating, full screen, or closed
- * until the 梁相案牍 row opens it again.
+ * cannot: wheel zoom, drag pan, a hover readout and range presets. The chart
+ * opens in its own dialog, with an optional full-screen presentation.
  *
  * The chart is read-only. A hatched band means this machine was not sampling —
  * it never means nobody voted.
@@ -17,9 +16,10 @@ import { businessDateStartsAt, createBusinessDateProvider } from '../shared/busi
 // SVG renderer, which must never ride along into the client bundle.
 import { layoutBars } from '../domain/bars.ts'
 import { color, font } from './theme.ts'
+import { BarsGlyphIcon } from './UtilityIcons.tsx'
 
-/** Attached under 今日梁案, floating, full screen, or closed and remembered. */
-export type BarsSlot = 'attach' | 'float' | 'full' | 'closed'
+/** Independent dialog, full screen, or closed and remembered. */
+export type BarsSlot = 'float' | 'full' | 'closed'
 /** 15 分钟 / 1 小时 / 今日 / 全部. */
 export type BarsRange = '15m' | '1h' | 'today' | 'all'
 
@@ -41,7 +41,7 @@ export interface BarsPrefs {
 }
 
 const DEFAULT_PREFS: BarsPrefs = { slot: 'closed', range: '1h', x: null, y: null }
-const SLOTS: BarsSlot[] = ['attach', 'float', 'full', 'closed']
+const SLOTS: BarsSlot[] = ['float', 'full', 'closed']
 
 /** Cosmetic preference only: which surface was last chosen by this browser. */
 export function readBarsPrefs(): BarsPrefs {
@@ -49,7 +49,8 @@ export function readBarsPrefs(): BarsPrefs {
     const raw = globalThis.localStorage?.getItem(PREF_KEY)
     if (typeof raw !== 'string') return DEFAULT_PREFS
     const parsed = JSON.parse(raw) as Partial<BarsPrefs>
-    const slot = parsed.slot ?? DEFAULT_PREFS.slot
+    // Previous embedded charts reopen as dialogs rather than expanding the panel.
+    const slot = String(parsed.slot) === 'attach' ? 'float' : parsed.slot ?? DEFAULT_PREFS.slot
     const range = parsed.range ?? DEFAULT_PREFS.range
     return {
       slot: SLOTS.includes(slot) ? slot : DEFAULT_PREFS.slot,
@@ -77,14 +78,16 @@ const BUTTON = {
   background: color.bgSubtle,
   color: color.textSecondary,
   borderRadius: '6px',
-  padding: '2px 8px',
-  fontSize: '10px',
+  padding: '5px 10px',
+  minHeight: '30px',
+  whiteSpace: 'nowrap',
+  fontSize: '11px',
   fontFamily: font.family,
   cursor: 'pointer',
   lineHeight: 1.4,
 } as const
 
-const NOTE = { margin: '3px 0 0', fontSize: '9px', lineHeight: 1.5, color: color.textTertiary } as const
+const NOTE = { margin: '10px 0 0', fontSize: '10px', lineHeight: 1.5, color: color.textSecondary } as const
 
 /** Truncated, never rounded: a label must not claim a crossing 梁位 has not made. */
 function percent(value: number): string {
@@ -146,11 +149,19 @@ function useDark(): boolean {
   const [dark, setDark] = useState(false)
   useEffect(() => {
     const query = globalThis.matchMedia?.('(prefers-color-scheme: dark)')
-    if (query === undefined) return
-    const sync = (): void => setDark(query.matches)
+    const root = document.documentElement
+    const sync = (): void => {
+      const scheme = getComputedStyle(root).colorScheme
+      setDark(scheme === 'dark' || (scheme !== 'light' && (query?.matches ?? false)))
+    }
     sync()
-    query.addEventListener('change', sync)
-    return () => query.removeEventListener('change', sync)
+    const observer = new MutationObserver(sync)
+    observer.observe(root, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] })
+    query?.addEventListener('change', sync)
+    return () => {
+      observer.disconnect()
+      query?.removeEventListener('change', sync)
+    }
   }, [])
   return dark
 }
@@ -172,16 +183,15 @@ function useWidth(fallback: number, height: number): [RefObject<HTMLDivElement>,
 }
 
 export interface BarsChartProps {
-  variant: BarsSlot
+  variant: 'float' | 'full'
+  height?: number
   range: BarsRange
   onRange: (range: BarsRange) => void
 }
 
 /** The interactive chart: server picture plus local zoom, pan and readout. */
-export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactElement {
-  const floating = variant === 'float' || variant === 'full'
-  const height = variant === 'attach' ? 168 : variant === 'full' ? 460 : 300
-  const [wrapRef, width] = useWidth(floating ? 780 : 330, height)
+export function BarsChart({ variant, range, onRange, height = variant === 'full' ? 460 : 320 }: BarsChartProps): ReactElement {
+  const [wrapRef, width] = useWidth(780, height)
   const [view, setView] = useState<{ from: number, to: number } | null>(null)
   const [payload, setPayload] = useState<BarsPayload | null>(null)
   const [meta, setMeta] = useState<BarsMeta | null>(null)
@@ -352,7 +362,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
           else return
           event.preventDefault()
         }}
-        style={{ position: 'relative', height: `${height}px`, outline: 'none', cursor: 'crosshair', touchAction: 'none' }}
+        style={{ position: 'relative', height: `${height}px`, outline: 'none', cursor: 'crosshair', touchAction: 'none', background: `color-mix(in srgb, ${color.bgLayer} 80%, ${color.bgSubtle})`, border: `1px solid ${color.border}`, borderRadius: '10px', overflow: 'hidden' }}
       >
         <img
           data-liangxiang-bars-image=""
@@ -362,7 +372,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
           height={height}
           draggable={false}
           onError={() => setFailed('走势图暂时画不出来，稍后自会重试。')}
-          style={{ width: '100%', height: '100%', display: 'block', borderRadius: '10px', border: `1px solid ${color.border}` }}
+          style={{ width: '100%', height: '100%', display: 'block' }}
         />
         {current === undefined ? null : (
           <>
@@ -371,8 +381,8 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
               role="tooltip"
               style={{
                 position: 'absolute',
-                left: `${Math.min(70, Math.max(1, ((current.x + current.width / 2) / width) * 100))}%`,
-                top: '3px',
+                left: '10px',
+                top: '10px',
                 padding: '3px 7px',
                 borderRadius: '6px',
                 background: color.bgLayer,
@@ -381,7 +391,9 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
                 fontSize: '10px',
                 lineHeight: 1.45,
                 color: color.textPrimary,
-                whiteSpace: 'nowrap',
+                maxWidth: 'calc(100% - 20px)',
+                boxSizing: 'border-box',
+                whiteSpace: 'normal',
                 pointerEvents: 'none',
                 fontVariantNumeric: 'tabular-nums',
               }}
@@ -391,7 +403,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
           </>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '5px', minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginTop: '12px', minWidth: 0 }}>
         {RANGES.map(item => (
           <button
             key={item.key}
@@ -406,6 +418,7 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
             }}
             style={{
               ...BUTTON,
+              background: item.key === range ? `color-mix(in srgb, ${color.ritualEmber} 10%, ${color.bgLayer})` : color.bgLayer,
               border: `1px solid ${item.key === range ? color.ritualEmber : color.border}`,
               color: item.key === range ? color.textPrimary : color.textSecondary,
             }}
@@ -416,46 +429,25 @@ export function BarsChart({ variant, range, onRange }: BarsChartProps): ReactEle
         {view === null ? null : (
           <button type="button" data-liangxiang-bars-action="latest" onClick={() => setView(null)} style={BUTTON}>最新</button>
         )}
-        <span style={{ flex: 1 }} />
-        <span
-          data-liangxiang-bars-readout=""
-          aria-live="polite"
-          style={{ fontSize: '9px', color: failed === null ? color.textSecondary : color.danger, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
-        >
-          {readout}
-        </span>
       </div>
+      <p
+        data-liangxiang-bars-readout=""
+        aria-live="polite"
+        style={{ margin: '9px 0 0', minHeight: '18px', fontSize: '11px', lineHeight: 1.6, color: failed === null ? color.textSecondary : color.danger, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {readout}
+      </p>
     </>
   )
 }
 
-export interface BarsAttachedProps {
-  range: BarsRange
-  onRange: (range: BarsRange) => void
-  onSlot: (slot: BarsSlot) => void
+const DIALOG_CSS = `
+[data-liangxiang-bars-window] button:focus-visible,
+[data-liangxiang-bars-chart]:focus-visible {
+  outline: 2px solid ${color.ritualEmber}; outline-offset: 2px;
 }
-
-/** The compact surface that rides directly under 今日梁案 inside the panel. */
-export function BarsAttached({ range, onRange, onSlot }: BarsAttachedProps): ReactElement {
-  return (
-    <section
-      data-liangxiang-bars-attached=""
-      aria-label="梁位走势"
-      style={{ marginTop: '9px', paddingTop: '8px', borderTop: `1px solid ${color.border}` }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-        <strong style={{ fontSize: '10px', letterSpacing: '1px' }}>梁位走势</strong>
-        <span style={{ fontSize: '9px', color: color.textTertiary }}>本机观察 · 只读</span>
-        <span style={{ flex: 1 }} />
-        <button type="button" data-liangxiang-bars-action="float" onClick={() => onSlot('float')} style={BUTTON}>浮窗</button>
-        <button type="button" data-liangxiang-bars-action="full" onClick={() => onSlot('full')} style={BUTTON}>全屏</button>
-        <button type="button" data-liangxiang-bars-action="close" onClick={() => onSlot('closed')} aria-label="收起走势" style={BUTTON}>×</button>
-      </div>
-      <BarsChart variant="attach" range={range} onRange={onRange} />
-      <p style={NOTE}>斜线区间表示未采到样本，不代表无人投票；期间投票仍计入累计。</p>
-    </section>
-  )
-}
+[data-liangxiang-bars-window] button:hover { filter: brightness(0.96); }
+`
 
 export interface BarsWindowProps {
   display: 'float' | 'full'
@@ -467,88 +459,123 @@ export interface BarsWindowProps {
   onClose: () => void
 }
 
-/** Floating (draggable) and full-screen presentation. */
+/** Independent, draggable dialog with the same chrome as 今日梁案. */
 export function BarsWindow({ display, range, onRange, onSlot, position, onMove, onClose }: BarsWindowProps): ReactElement {
   const [origin, setOrigin] = useState<{ x: number, y: number } | null>(null)
+  const [viewport, setViewport] = useState(() => ({ width: globalThis.innerWidth ?? 1200, height: globalThis.innerHeight ?? 800 }))
   const drag = useRef<{ x: number, y: number, left: number, top: number } | null>(null)
   const box = useRef<HTMLDivElement>(null)
+  const close = useRef(onClose)
+  close.current = onClose
 
   useEffect(() => {
+    const resize = (): void => setViewport({ width: globalThis.innerWidth, height: globalThis.innerHeight })
+    globalThis.addEventListener('resize', resize)
+    return () => globalThis.removeEventListener('resize', resize)
+  }, [])
+
+  useEffect(() => {
+    const dialog = box.current
+    const previous = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
+    dialog?.focus()
+    // On reload the DSH shell and the main panel also restore focus. Let the
+    // visible modal take it after those mount effects, as it does on opening.
+    const focusFrame = requestAnimationFrame(() => dialog?.focus())
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        close.current()
+        return
+      }
+      if (event.key !== 'Tab' || dialog === null) return
+      const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex="0"]')]
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (first === undefined || last === undefined) return
+      const active = document.activeElement
+      if (event.shiftKey && (active === first || active === dialog || !dialog.contains(active))) {
+        event.preventDefault(); last.focus()
+      } else if (!event.shiftKey && (active === last || active === dialog || !dialog.contains(active))) {
+        event.preventDefault(); first.focus()
+      }
     }
-    globalThis.addEventListener('keydown', onKey)
-    return () => globalThis.removeEventListener('keydown', onKey)
-  }, [onClose])
+    document.addEventListener('keydown', onKey, true)
+    return () => {
+      cancelAnimationFrame(focusFrame)
+      document.removeEventListener('keydown', onKey, true)
+      document.body.style.overflow = originalOverflow
+      if (previous?.isConnected) previous.focus()
+      else (document.querySelector<HTMLElement>('[data-liangxiang-utility-trigger]')
+        ?? document.querySelector<HTMLElement>('[data-liangxiang-badge]'))?.focus()
+    }
+  }, [])
 
-  const left = origin?.x ?? position.x ?? Math.max(16, Math.round((globalThis.innerWidth ?? 1200) / 2 - 410))
-  const top = origin?.y ?? position.y ?? 88
-
+  const dialogWidth = Math.min(860, Math.max(240, viewport.width - 32))
+  const chartHeight = Math.min(900, Math.max(160, display === 'full' ? viewport.height - 220 : Math.min(340, viewport.height - 250)))
+  const estimatedHeight = chartHeight + 190
+  const maxLeft = Math.max(16, viewport.width - dialogWidth - 16)
+  const maxTop = Math.max(16, viewport.height - estimatedHeight - 16)
+  const left = Math.min(maxLeft, Math.max(16, origin?.x ?? position.x ?? Math.round((viewport.width - dialogWidth) / 2)))
+  const top = Math.min(maxTop, Math.max(16, origin?.y ?? position.y ?? Math.round((viewport.height - estimatedHeight) / 2)))
   const frame = display === 'full'
-    ? { position: 'fixed' as const, inset: '16px', zIndex: 2_147_483_000 }
-    : { position: 'fixed' as const, left: `${left}px`, top: `${top}px`, width: 'min(820px, calc(100vw - 32px))', zIndex: 2_147_483_000 }
+    ? { position: 'fixed' as const, inset: '16px' }
+    : { position: 'fixed' as const, left: `${left}px`, top: `${top}px`, width: `${dialogWidth}px` }
 
   return (
     <>
-      {display === 'full' ? (
-        <div
-          data-liangxiang-bars-backdrop=""
-          onMouseDown={event => {
-            if (event.target === event.currentTarget) onClose()
-          }}
-          style={{ position: 'fixed', inset: 0, zIndex: 2_147_482_999, background: 'rgba(0,0,0,0.34)' }}
-        />
-      ) : null}
-      <div role="dialog" aria-modal="true" aria-label="梁位走势" data-liangxiang-bars-window={display} ref={box} style={{
-        ...frame,
-        borderRadius: '14px',
-        border: `1px solid ${color.border}`,
-        background: color.bgLayer,
-        boxShadow: '0 22px 54px rgba(0,0,0,0.3)',
-        padding: '8px 11px 7px',
-        fontFamily: font.family,
-        color: color.textPrimary,
-      }}>
+      <style>{DIALOG_CSS}</style>
+      <div
+        data-liangxiang-bars-backdrop=""
+        onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}
+        style={{ position: 'fixed', inset: 0, zIndex: 2_147_482_999, background: 'rgba(0,0,0,0.24)' }}
+      />
+      <div
+        role="dialog" aria-modal="true" aria-label="梁位走势" tabIndex={-1}
+        data-liangxiang-bars-window={display} ref={box}
+        style={{
+          ...frame, zIndex: 2_147_483_000, boxSizing: 'border-box', maxHeight: 'calc(100dvh - 32px)',
+          overflowY: 'auto', borderRadius: '16px', border: `1px solid ${color.border}`,
+          background: `radial-gradient(circle at 50% 34%, color-mix(in srgb, ${color.ritualGold} 10%, transparent), transparent 38%), linear-gradient(180deg, color-mix(in srgb, ${color.ritualEmber} 5%, ${color.bgLayer}) 0%, ${color.bgLayer} 40%)`,
+          boxShadow: '0 18px 48px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.08)',
+          padding: '14px 16px 12px', fontFamily: font.family, color: color.textPrimary, outline: 'none',
+        }}
+      >
         <div
           data-liangxiang-bars-handle=""
           onPointerDown={event => {
-            // Pointer capture on the handle would steal the button's pointerup
-            // and the click would never fire.
-            if (display === 'full') return
-            if ((event.target as HTMLElement).closest('button') !== null) return
+            if (display === 'full' || (event.target as HTMLElement).closest('button') !== null) return
             drag.current = { x: event.clientX, y: event.clientY, left, top }
             event.currentTarget.setPointerCapture(event.pointerId)
           }}
           onPointerMove={event => {
             const active = drag.current
             if (active === null) return
-            const x = Math.min(Math.max(0, active.left + event.clientX - active.x), Math.max(0, (globalThis.innerWidth ?? 1200) - 240))
-            const y = Math.min(Math.max(0, active.top + event.clientY - active.y), Math.max(0, (globalThis.innerHeight ?? 800) - 160))
-            setOrigin({ x, y })
+            setOrigin({
+              x: Math.min(maxLeft, Math.max(16, active.left + event.clientX - active.x)),
+              y: Math.min(maxTop, Math.max(16, active.top + event.clientY - active.y)),
+            })
           }}
           onPointerUp={event => {
             const active = drag.current
             drag.current = null
-            try {
-              event.currentTarget.releasePointerCapture(event.pointerId)
-            } catch {
-              // The capture may already be gone; nothing to do.
-            }
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
             if (active !== null) onMove({ x: left, y: top })
           }}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: display === 'float' ? 'grab' : 'default', touchAction: 'none', paddingBottom: '5px' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: display === 'float' ? 'grab' : 'default', touchAction: 'none', paddingBottom: '12px', whiteSpace: 'nowrap' }}
         >
-          <strong style={{ fontSize: '12px', letterSpacing: '1px' }}>梁位走势</strong>
-          <span style={{ fontSize: '9px', color: color.textTertiary }}>本机观察 · 只读</span>
+          <span style={{ display: 'flex', color: color.ritualEmber }}><BarsGlyphIcon size={18} /></span>
+          <strong style={{ fontSize: '14px', letterSpacing: '0.5px' }}>梁位走势</strong>
           <span style={{ flex: 1 }} />
-          <button type="button" data-liangxiang-bars-action="attach" onClick={() => onSlot('attach')} style={BUTTON}>挂回梁案</button>
           <button type="button" data-liangxiang-bars-action={display === 'full' ? 'float' : 'full'} onClick={() => onSlot(display === 'full' ? 'float' : 'full')} style={BUTTON}>
-            {display === 'full' ? '缩小' : '全屏'}
+            {display === 'full' ? '还原' : '全屏'}
           </button>
-          <button type="button" data-liangxiang-bars-action="close" onClick={onClose} aria-label="关闭走势" style={BUTTON}>×</button>
+          <button type="button" data-liangxiang-bars-action="close" onClick={onClose} aria-label="关闭走势" style={{ ...BUTTON, padding: '3px 9px', fontSize: '16px' }}>×</button>
         </div>
-        <BarsChart variant={display} range={range} onRange={onRange} />
-        <p style={NOTE}>斜线区间表示未采到样本，不代表无人投票；期间投票仍计入累计。</p>
+        <BarsChart variant={display} range={range} onRange={onRange} height={chartHeight} />
+        <p style={NOTE}>本机观察 · 未统计区间不补线，期间投票仍计入累计。</p>
       </div>
     </>
   )
