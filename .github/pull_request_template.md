@@ -1,4 +1,4 @@
-<!-- base 选择 liang-today/dsh-liangxiang:main；head 使用个人 fork 的功能分支。
+<!-- base 选择 liang-today/dsh-liangxiang:main；head 使用你本人个人 fork 的非默认功能分支。
 提交前同步最新 main；合入须通过三平台、隐私和完整安装冒烟检查。 -->
 
 ## 改动与效果

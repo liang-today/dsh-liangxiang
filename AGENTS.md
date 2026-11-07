@@ -1214,8 +1214,9 @@ a personal fork. Local `origin` and the default push remote must be the fork;
 `upstream` fetches the community repository and has a disabled push URL.
 Concurrent work uses separate worktrees/directories, never another checkout.
 
-Create feature branches from current upstream main, push to the personal fork,
-and submit PRs to upstream main. Sync main before merging. Required gates are
+Create non-default feature branches from current upstream main, push to a
+personal fork owned by the PR author (User, not an organization), and submit
+PRs to upstream main. Sync main before merging. Required gates are
 privacy, all three locked-dependency platforms, and full packed installation,
 browser and isolated online smoke checks. All PR test jobs are read-only.
 An administrator reviews and merges after checks; authors cannot approve their
@@ -1224,9 +1225,15 @@ See `CONTRIBUTING.md` and `docs/CI.md`.
 
 Personal pushes and post-merge pushes do not duplicate cloud PR checks. The
 former dev-to-main controller is retired. Preserve existing published history;
-keep dev frozen until its entire history is verified in main and the maintainer
-separately authorizes deleting it. Never force-push, bypass branch protection,
+dev has been retired after verifying that main contains its complete history.
+Do not recreate community development branches: an active creation ruleset
+requires feature branches to live in personal forks. Never force-push, bypass branch protection,
 copy personal CLI tokens into CI or put write credentials in PR test jobs.
+Repository fork-run approval uses `first_time_contributors_new_to_github`:
+ordinary contributors run automatically, including first-time repository
+contributors. GitHub still requires approval for new GitHub accounts making
+their first contribution. Never claim that platform restriction is disabled,
+or add privileged PR-code execution to avoid it.
 Source integration does not authorize npm, Release/Tag, Pages or deployment.
 
 After every completed change in this repository, **before considering the
