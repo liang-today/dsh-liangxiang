@@ -6,6 +6,9 @@
  *  - every fetch is timeout-bounded and abortable;
  *  - one vote retry reuses the SAME requestId (never a fresh id to escape an
  *    uncertain outcome);
+ *  - request ids come from `randomRequestId()` (request-id.ts), which never
+ *    depends on `crypto.randomUUID` being available, so a DSH Web UI served
+ *    over plain HTTP on a LAN address can still vote (issue #26);
  *  - SSE errors are counted; after a bounded number the stream closes and
  *    the store goes `offline` (the UI keeps rendering the last known state),
  *    then reconnects automatically with bounded exponential backoff;
@@ -19,6 +22,7 @@ import { mergeHistoryArchive, parseV1HistoryResponse } from '../shared/history-v
 import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE } from '../shared/index.ts'
 import { DAY_END_ACTION_HEADER, DAY_END_ACTION_VALUE, type DayEndPreferences } from '../shared/day-end.ts'
 import { snapshotRefreshMs } from '../shared/snapshot-cadence.ts'
+import { randomRequestId } from './request-id.ts'
 import {
   createOfflineViewState,
   wireToViewState,
@@ -58,7 +62,8 @@ export class LiveTransportError extends Error {
   }
 }
 
-function createBrowserTransport(): LiveStoreTransport {
+/** Real browser transport; exported so the non-secure-context path stays testable. */
+export function createBrowserTransport(): LiveStoreTransport {
   const controllers = new Set<AbortController>()
   let disposed = false
   return {
@@ -90,7 +95,7 @@ function createBrowserTransport(): LiveStoreTransport {
       source.onerror = () => handlers.onError()
       return { close: () => source.close() }
     },
-    randomRequestId: () => crypto.randomUUID(),
+    randomRequestId: () => randomRequestId(),
     dispose() {
       disposed = true
       for (const controller of controllers) controller.abort()

@@ -13,6 +13,7 @@
 ## 幂等模型
 
 - 幂等键：客户端生成的 `requestId`（UUID;格式 `[A-Za-z0-9._-]{8,128}` 双端校验）。
+- 生成位置：`src/client/request-id.ts`;优先 `crypto.randomUUID`，非安全上下文（局域网 HTTP）退回 `crypto.getRandomValues`，再退普通随机，始终是 UUID v4 形状（issue #26）。
 - 记录仅在 **accepted** 时写入（`votes` 表）;重放同 payload → 返回原结果、零副作用;异 payload → `idempotency_conflict`。
 - 网络不确定结果：客户端**必须**复用同一 requestId 重试（live-store 内建一次有界重试;禁止换新 id 逃逸幂等，AGENTS.md §15）。
 - 有界性：`votes` 只保留当日活跃案的记录，rollover 清理（内存 + 介质）。
