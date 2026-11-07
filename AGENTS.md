@@ -37,8 +37,10 @@
   retain presence for a 420ms downward fade, with a full unclipped exit runway.
   Live text stays readable in both themes; reduced motion removes displacement.
   Center the ordinary hint when it fits and clamp only at actual viewport edges.
-  Hide it during presses/comments, then restore. No toy text may imply a balance
-  change or introduce a tier. Keyboard activation never emits decorative speech.
+  Hide it during presses/comments, then restore. Preserve the contributor's
+  original decorative lines when requested; their jokes are never balance
+  receipts or new tiers and cannot change accounting. Keyboard activation
+  never emits decorative speech.
 - The docked entry's icon IS the current central 梁子 state (one of the six, or
   the 待开梁 placeholder) — never a letter or an abstract logo.
 - The entry is freely placeable: it can be dragged anywhere in the frame and the
@@ -124,6 +126,11 @@ Rules:
   Flash Token). Hover/focus on 下一炷 shows the model-weight table
   from the same static rule data used by accounting (Pro ×1,
   Flash / other / unknown ×0.5); never maintain a second static table.
+- Live requests may add restrained smoke/glow and `凝香中` inside the existing
+  core. Activity is not progress: never extrapolate numeric Token captions,
+  fill a fake percentage or mint spendable incense. Only confirmed ring
+  geometry may interpolate; preserve figure bob cadence. Reduced motion uses
+  static activity. Do not persist activity or transmit stream content.
 - visible 下一炷 当量 uses integer compact (`33K`, never `≈ 33.4K`) so the
   flank does not overlap 梁子. Hover title and the screen-reader summary keep
   the exact integer. 今日凝香 / 环上 overflow 仍可用一位小数。
@@ -157,9 +164,14 @@ incense.
 - vote type remains strictly `up` / `down` — the extra 升梁/降梁 copy is not a
   third option
 - vote availability depends only on authoritative `remaining_incense > 0`
-- click spends one stick; a long press dumps every stick the incense token bucket will allow (50/min, burst 500) in **one** `count` request — never a loop of HTTP votes
+- click spends one stick; a long press dumps every stick the incense token bucket will allow (500/min refill, bucket cap 500, single-request cap 500) in **one** `count` request — never a loop of HTTP votes
 - the reserved feedback row stays 22px / 12px type: idle shows the local-only 梁号 (`梁小号：勤香 • 死夯梁`); a dump shows `已上香 · 夯 ×N（剩余 M 炷）`; an empty furnace shows `香炉空了，先去攒香` for 3s then returns to 梁小号. A short, operator-controlled important/emergency broadcast may temporarily replace the idle 梁小号 in this same row; transport/outage and vote feedback keep priority, the message is length/time bounded, and expiry automatically restores 梁小号. Long copy scrolls as a single-line loop while a subtle, fixed × at the front dismisses only that broadcast ID for this browser; a new broadcast ID appears normally. Reduced-motion keeps the full message accessible without continuous scrolling. Never put broadcasts in 今日梁案 or add a toast/fifth region. The 梁号 resets on the business date with 今日凝香. Vote buttons may sit at 38px to fund that row. Do not add a fifth region or a personal-growth section
 - do not add a third placeholder or neutral action
+- Read/roll local daily participation and 梁小号 only after a real Host frame
+  confirms the business date. Startup's browser-date placeholder must never
+  reset or persist these records, including on reload or in another tab.
+- 梁小号 is passive text, not a button or focus stop. Do not restore its
+  removed explanatory tooltip; broadcasts keep their separate dismiss control.
 - do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside the 香火环
 
 ### Region 4 — Social stats
@@ -201,7 +213,7 @@ incense.
   must be explicitly enabled again before expanding to daytime voting.
 - The Host must run; the browser may close. Use the backend business clock and
   timezone online, the explicit local clock offline. After the balance reaches
-  VOTE_COUNT_MAX, wait one bucket refill period (currently 10 minutes), then
+  VOTE_COUNT_MAX, wait 10 minutes (independent of vote-rate tuning), then
   attempt one ordinary dump. Recheck the threshold after refreshing authority.
 - At 23:59 make one additional closing dump even when less than a full request
   remains. Respect remaining incense, the existing authority budget and the
@@ -232,8 +244,8 @@ incense.
   first-run choice, the 梁相案牍 mode action, or the explicit boot default
   `LIANGXIANG_BACKEND_URL=local`. The first-run welcome waits for an explicit
   click; it must not auto-select a mode on a timer.
-- One installation may submit at most 50 incense votes per minute on the
-  community backend (`LIANGXIANG_VOTE_RATE_LIMIT`, default 50).
+- The community vote bucket refills 500 incense per minute by default
+  (`LIANGXIANG_VOTE_RATE_LIMIT`), capped at 500; one request also caps at 500.
 - The Host persists the preference. A network outage keeps online selected,
   continues observing Token, locks 夯/拉, and reconnects automatically.
 - Community identity, online claim projection and the shared session high-water
@@ -1134,7 +1146,9 @@ Before preparing npm or GitHub release copy, read and follow
 `.agents/skills/liangxiang-release-notes/SKILL.md`. The client update dialog
 summarizes all user-visible benefits since the previous formal release in at
 most four short promotional lines; backend/security/migration/test details stay
-out of that dialog. Show the final copy to the user before requesting the
+out of that dialog. Show only the current release, never queue unseen historical
+notes; first-run guidance and manual reopening reuse the same current content.
+Show the final copy to the user before requesting the
 separately required publication permission.
 
 Before preparing or approving any formal public release, read and follow

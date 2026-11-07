@@ -40,14 +40,14 @@ describe('one opt-in day-end dump', () => {
     const s = setup(true, 800)
     await vi.advanceTimersByTimeAsync(1_000)
     expect(s.service.getWireState().timedIncense).toEqual({
-      businessDate: '2026-10-19', lifetimeUp: 50, lifetimeDown: 0, todayUp: 50, todayDown: 0,
+      businessDate: '2026-10-19', lifetimeUp: 500, lifetimeDown: 0, todayUp: 500, todayDown: 0,
     })
     s.service.dispose()
     const restarted = s.wrap()
-    expect(restarted.getWireState().timedIncense?.todayUp).toBe(50)
+    expect(restarted.getWireState().timedIncense?.todayUp).toBe(500)
     await vi.advanceTimersByTimeAsync(61_000)
     expect(restarted.getWireState().timedIncense).toMatchObject({
-      businessDate: '2026-10-20', lifetimeUp: 50, todayUp: 0, todayDown: 0,
+      businessDate: '2026-10-20', lifetimeUp: 500, todayUp: 0, todayDown: 0,
     })
   })
 
@@ -63,10 +63,10 @@ describe('one opt-in day-end dump', () => {
     s.service.dispose()
     const restarted = s.wrap()
     await vi.advanceTimersByTimeAsync(1)
-    expect(restarted.getWireState().timedIncense?.todayUp).toBe(50)
-    expect(s.inner.getWireState().personal.usedIncenseToday).toBe(50)
+    expect(restarted.getWireState().timedIncense?.todayUp).toBe(500)
+    expect(s.inner.getWireState().personal.usedIncenseToday).toBe(500)
     await vi.advanceTimersByTimeAsync(10_000)
-    expect(restarted.getWireState().timedIncense?.todayUp).toBe(50)
+    expect(restarted.getWireState().timedIncense?.todayUp).toBe(500)
   })
 
   it('commits the completed receipt and automatic statistics together after a storage retry', async () => {
@@ -127,7 +127,7 @@ describe('one opt-in day-end dump', () => {
     await vi.advanceTimersByTimeAsync(1_000)
     expect(vote).toHaveBeenCalledTimes(1)
     expect(vote.mock.calls[0]?.[0].count).toBe(500)
-    expect(s.inner.getWireState().personal.remainingIncense).toBe(750)
+    expect(s.inner.getWireState().personal.remainingIncense).toBe(300)
   })
 
   it('lets an in-flight manual vote finish and rereads its remaining balance', async () => {

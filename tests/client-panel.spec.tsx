@@ -278,6 +278,22 @@ describe('four visual regions', () => {
 })
 
 describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
+  it('shows live activity without changing confirmed incense, progress or Liangzi', () => {
+    const state = demoState()
+    const idle = renderPanel(state)
+    const active = renderPanel({ ...state, streamingActive: true })
+    expect(textContent(findByAttr(active, 'data-liangxiang-stream-status'))).toBe('凝香中')
+    expect(findByAttr(active, 'data-liangxiang-stream-activity')).toHaveLength(1)
+    for (const attribute of ['data-liangxiang-compact', 'data-liangxiang-liang-position-value']) {
+      expect(textContent(findByAttr(active, attribute))).toBe(textContent(findByAttr(idle, attribute)))
+    }
+    expect(findByAttr(active, 'data-liangxiang-ring')[0]?.props['data-fill']).toBe(findByAttr(idle, 'data-liangxiang-ring')[0]?.props['data-fill'])
+    expect(findByAttr(active, 'data-liangxiang-condensed')).toHaveLength(0)
+    const reduced = renderPanel({ ...state, streamingActive: true }, '', { reducedMotion: true })
+    for (const wisp of findByAttr(reduced, 'data-liangxiang-stream-wisp')) expect(styleOf(wisp).animation).toBeUndefined()
+    const disconnected = renderPanel({ ...state, streamingActive: true, connection: 'offline' })
+    expect(findByAttr(disconnected, 'data-liangxiang-stream-activity')).toHaveLength(0)
+  })
   it('shows the actual incense gain when one update crosses multiple sticks', () => {
     const tree = renderPanel(demoState(), '', { condensedIncense: 6 })
     const feedback = findByAttr(tree, 'data-liangxiang-condensed')[0]
@@ -795,7 +811,12 @@ describe('region 3: exactly two vote buttons', () => {
     const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
     expect(row && textContent([row])).toBe('梁小号：勤香死夯梁')
     expect(row?.props['data-liangxiang-epithet']).toBe('')
-    expect(row?.props.title).toBe('仅本机可见，天庭不记账；随今日香火日清')
+    expect(row?.props.role).toBe('status')
+    expect(row?.props.title).toBeUndefined()
+    expect(row?.props.tabIndex).toBeUndefined()
+    expect(row?.props.onClick).toBeUndefined()
+    expect(row?.props.onKeyDown).toBeUndefined()
+    expect(findByAttr(tree, 'data-liangxiang-epithet-hint')).toHaveLength(0)
     expect(styleOf(row).height).toBe('22px')
     expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-line')[0]).alignItems).toBe('center')
     expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-mark')[0])).toMatchObject({

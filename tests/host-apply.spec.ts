@@ -51,8 +51,8 @@ describe('host half wiring', () => {
 
     expect(readFileSync(logPath, 'utf8')).toContain('[dsh-liangxiang] host half active')
     expect(log).not.toHaveBeenCalled()
-    // lifecycle marker + service lifecycle + readiness fallback + snapshot cadence + day-end lifecycle.
-    expect(disposers.length).toBe(5)
+    // lifecycle + service + readiness + cadence + timed incense + stream activity.
+    expect(disposers.length).toBe(6)
     expect(injectedDeps).toEqual([
       ['webServer'],
       ['storageDomain'],

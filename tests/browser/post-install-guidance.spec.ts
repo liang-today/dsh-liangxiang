@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { RELEASE_NOTES_TITLE } from '../../src/client/release-notes.ts'
+import { RELEASE_NOTES_ITEMS, RELEASE_NOTES_TITLE } from '../../src/client/release-notes.ts'
 import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE } from '../../src/shared/index.ts'
 import { DAY_END_ACTION_HEADER, DAY_END_ACTION_VALUE } from '../../src/shared/day-end.ts'
 import { bootInstalledLiangxiang, openPanel } from './helpers.ts'
@@ -79,7 +79,7 @@ for (const mode of ['online', 'local'] as const) {
 
     const notes = page.getByRole('dialog', { name: RELEASE_NOTES_TITLE })
     await expect(notes).toBeVisible()
-    await expect(notes.locator('[data-liangxiang-release-notes-items]')).toContainText(/满 500 炷.*10 分钟.*23:59/)
+    await expect(notes.locator('[data-liangxiang-release-notes-items] > li')).toHaveText([...RELEASE_NOTES_ITEMS])
     await expect(notes.locator('[data-liangxiang-release-notes-qq-qrcode]')).toBeVisible()
     for (const handle of ['@XChen446', '@Ritanlisa', '@xunxiaoQ']) {
       await expect(notes.locator('[data-liangxiang-release-notes-thanks]')).toContainText(handle)

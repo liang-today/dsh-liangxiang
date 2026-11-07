@@ -254,12 +254,13 @@ describe('intraday automatic dump', () => {
   })
 
   it('overlays the day-end shot: the loop drains the day, the window takes the tail', async () => {
-    const s = setup(true, 1_500, lateEvening)
+    const s = setup(true, 1_950, lateEvening)
     const vote = vi.spyOn(s.inner as LiangHostService, 'vote')
     await vi.advanceTimersByTimeAsync(AUTO_DUMP_PERIOD_MS * 3)
     expect(vote).toHaveBeenCalledTimes(3)
     expect(s.inner.getWireState().personal.remainingIncense).toBeLessThan(VOTE_COUNT_MAX)
     expect(s.state().jobs.local).toMatchObject({ kind: 'periodic', done: true })
+    expect(s.inner.getWireState().personal.remainingIncense).toBe(450)
     // 59 minutes later the day-end window opens and sends what the loop left.
     await vi.advanceTimersByTimeAsync(59 * 60_000 - AUTO_DUMP_PERIOD_MS * 3)
     expect(vote).toHaveBeenCalledTimes(4)

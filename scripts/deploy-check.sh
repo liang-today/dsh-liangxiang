@@ -10,13 +10,13 @@ PREFIX="${LIANGXIANG_PREFIX:-/opt/liangxiang}"
 
 cd "$ROOT"
 LOCAL="$(git rev-parse --short HEAD)"
-REMOTE_VERSION="$(ssh "$REMOTE" "sudo -n cat '$PREFIX/VERSION' 2>/dev/null" || true)"
+REMOTE_VERSION="$("${DEPLOY_SSH[@]}" "$REMOTE" "sudo -n cat '$PREFIX/VERSION' 2>/dev/null" || true)"
 
 echo "local : ${LOCAL}"
 echo "server: ${REMOTE_VERSION:-<missing>}"
 
 if [[ "$REMOTE_VERSION" == *"$LOCAL"* ]]; then
-  ssh "$REMOTE" "sudo -n systemctl is-active --quiet liangxiang-backend"
+  "${DEPLOY_SSH[@]}" "$REMOTE" "sudo -n systemctl is-active --quiet liangxiang-backend"
   echo "OK: server matches local checkout and liangxiang-backend is active."
   exit 0
 fi

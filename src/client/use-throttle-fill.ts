@@ -5,12 +5,8 @@
  * request's usage can land at once and then go quiet. This hook turns those
  * bursts into a needle that keeps approaching the next incense stick:
  *
- *   1. it tweens the displayed effective tokens toward the newest real sample,
- *      so a burst ramps instead of snapping;
- *   2. while the last real sample is recent it extrapolates the measured rate
- *      forward, so 下一炷 keeps ticking between bursts;
- *   3. it stops a short window after the last real event and settles exactly
- *      on the authoritative value — it never invents incense at rest.
+ * Only ring geometry tweens toward the newest confirmed sample. Numeric
+ * captions stay exact; request activity is a separate non-numeric effect.
  *
  * Presentation only. It never feeds vote authority: the vote button still
  * reads the authoritative `remainingIncense`, and the left flank / 凝香 /
@@ -20,57 +16,16 @@
 import { useEffect, useReducer, useRef } from 'react'
 import type { PersonalLiangQiState } from '../domain/index.ts'
 
-/** Keep extrapolating for this long after the last real usage event. */
-export const EXTRAPOLATE_WINDOW_MS = 2_500
-/** Exponential tween time constant toward the projected target. */
+/** Exponential tween time constant toward the confirmed target. */
 const TWEEN_TAU_MS = 320
-/** Bounded history for the rate estimate. */
-const MAX_SAMPLES = 12
-
-export interface UsageSample {
-  tokens: number
-  atMs: number
-}
 
 export interface ThrottledProgress {
   /** Smoothed ring fill (0..1), the same number driving the bob cadence. */
   fill: number
-  /** Smoothed tokens-to-next for the visible 下一炷 flank. */
+  /** Exact confirmed tokens-to-next for the visible 下一炷 flank. */
   tokensToNext: number
-  /** True while the displayed number is a projection, not the exact count. */
-  isEstimated: boolean
-}
-
-/**
- * Tokens/second over the newest samples inside the extrapolation window.
- * Returns 0 when there are fewer than two recent samples (no credible rate).
- */
-export function estimateTokensPerSec(samples: readonly UsageSample[], nowMs: number): number {
-  const recent = samples.filter((sample) => nowMs - sample.atMs <= EXTRAPOLATE_WINDOW_MS)
-  if (recent.length < 2) return 0
-  const oldest = recent[0]!
-  const newest = recent[recent.length - 1]!
-  const dtSec = (newest.atMs - oldest.atMs) / 1000
-  if (dtSec <= 0) return 0
-  return (newest.tokens - oldest.tokens) / dtSec
-}
-
-/**
- * Extrapolate the newest sample forward by the measured rate. Returns the
- * settled sample unchanged once it has aged past the window (no invention at
- * rest) or when the rate is zero.
- */
-export function extrapolateTokens(
-  samples: readonly UsageSample[],
-  nowMs: number,
-): { tokens: number, extrapolating: boolean } {
-  const newest = samples[samples.length - 1]
-  if (newest === undefined) return { tokens: 0, extrapolating: false }
-  const ageMs = nowMs - newest.atMs
-  if (ageMs > EXTRAPOLATE_WINDOW_MS) return { tokens: newest.tokens, extrapolating: false }
-  const rate = estimateTokensPerSec(samples, nowMs)
-  if (rate <= 0) return { tokens: newest.tokens, extrapolating: false }
-  return { tokens: newest.tokens + rate * (ageMs / 1000), extrapolating: true }
+  /** Numeric projections are intentionally disabled. */
+  isEstimated: false
 }
 
 /**
@@ -113,28 +68,20 @@ export function useThrottleFill(
   reducedMotion: boolean,
 ): ThrottledProgress {
   const { effectiveTokensToday, tokenPerIncense } = personal
-  const samplesRef = useRef<UsageSample[]>([])
+  const previousRef = useRef<number | undefined>(undefined)
   const displayedRef = useRef(effectiveTokensToday)
   const [, force] = useReducer((value: number) => value + 1, 0)
 
-  // Record the newest real sample (dedupe same-value updates).
+  // Reconciliation/large jumps snap; small confirmed increases still glide.
   useEffect(() => {
-    const samples = samplesRef.current
-    const last = samples[samples.length - 1]
-    if (last === undefined || last.tokens !== effectiveTokensToday) {
-      const sample = { tokens: effectiveTokensToday, atMs: performance.now() }
-      if (shouldSnapThrottle(displayedRef.current, last?.tokens, effectiveTokensToday, tokenPerIncense)) {
-        samples.splice(0, samples.length, sample)
-        displayedRef.current = effectiveTokensToday
-        force()
-        return
-      }
-      samples.push(sample)
-      while (samples.length > MAX_SAMPLES) samples.shift()
+    if (shouldSnapThrottle(displayedRef.current, previousRef.current, effectiveTokensToday, tokenPerIncense)) {
+      displayedRef.current = effectiveTokensToday
+      force()
     }
+    previousRef.current = effectiveTokensToday
   }, [effectiveTokensToday, tokenPerIncense])
 
-  // rAF loop: tween the displayed value toward the extrapolated target.
+  // rAF loop: interpolate geometry only, never beyond confirmed usage.
   useEffect(() => {
     if (reducedMotion) {
       displayedRef.current = effectiveTokensToday
@@ -146,19 +93,14 @@ export function useThrottleFill(
     const loop = (nowMs: number): void => {
       const dt = Math.min(64, nowMs - lastFrame)
       lastFrame = nowMs
-      const projected = extrapolateTokens(samplesRef.current, nowMs)
-      // Extrapolation may approach the next boundary, but it may not paint a
-      // newly earned incense before an authoritative usage sample confirms it.
-      const nextBoundary = (Math.floor(effectiveTokensToday / tokenPerIncense) + 1) * tokenPerIncense
-      const target = Math.min(projected.tokens, nextBoundary - 1)
+      const target = effectiveTokensToday
       const current = displayedRef.current
       const k = 1 - Math.exp(-dt / TWEEN_TAU_MS)
       let next = current + (target - current) * k
       if (Math.abs(next - target) < 0.5) next = target
       displayedRef.current = next
       force()
-      // Stop once settled: not extrapolating and the tween has converged.
-      if (!projected.extrapolating && Math.abs(next - target) < 0.5) return
+      if (Math.abs(next - target) < 0.5) return
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
@@ -169,7 +111,7 @@ export function useThrottleFill(
   const progress = deriveDisplayedProgress(displayed, tokenPerIncense)
   return {
     fill: progress.fill,
-    tokensToNext: progress.tokensToNext,
-    isEstimated: !reducedMotion && Math.abs(displayed - effectiveTokensToday) >= 1,
+    tokensToNext: personal.tokensToNextIncense,
+    isEstimated: false,
   }
 }

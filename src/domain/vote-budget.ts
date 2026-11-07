@@ -1,19 +1,19 @@
 /**
- * Community vote budget: 50 incense per minute, accumulating while idle,
- * hard-capped at 10 minutes (500). One dump request spends as many sticks
+ * Community vote budget: 500 incense per minute, accumulating while idle,
+ * hard-capped at 500. One dump request spends as many sticks
  * as `min(requested, remaining, available)` inside a single transaction.
  */
 import { DomainError, assertCount } from './errors.ts'
 import { VOTE_COUNT_MAX, VOTE_COUNT_MIN } from './vote.ts'
 
-export const VOTE_REFILL_PER_MINUTE = 50
+export const VOTE_REFILL_PER_MINUTE = 500
 export const VOTE_BUDGET_WINDOW_MS = 60_000
 export const VOTE_BURST_MINUTES = 10
-export const VOTE_BURST_CAP = VOTE_REFILL_PER_MINUTE * VOTE_BURST_MINUTES
+export const VOTE_BURST_CAP = Math.min(VOTE_COUNT_MAX, VOTE_REFILL_PER_MINUTE * VOTE_BURST_MINUTES)
 
 export function voteBurstCap(refillPerMinute: number): number {
   if (refillPerMinute <= 0) return 0
-  return refillPerMinute * VOTE_BURST_MINUTES
+  return Math.min(VOTE_COUNT_MAX, refillPerMinute * VOTE_BURST_MINUTES)
 }
 
 /** How many incense sticks a bucket can spend right now. */

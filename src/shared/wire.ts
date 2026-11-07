@@ -97,6 +97,8 @@ export interface WireBroadcast {
 
 /** One full state frame (GET /state and every SSE frame). */
 export interface LiangxiangWireState {
+  /** Transient Host activity, not Token usage or a spend authority. */
+  streamingActive?: boolean
   /** The static earning-rate metadata; additive for rolling upgrades. */
   incenseWeightPolicy?: IncenseWeightPolicy
   schemaVersion: typeof WIRE_SCHEMA_VERSION
@@ -270,6 +272,7 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
   }
   return {
     schemaVersion: WIRE_SCHEMA_VERSION,
+    ...(record.streamingActive === undefined ? {} : { streamingActive: requireBoolean(record.streamingActive, 'state.streamingActive') }),
     incenseWeightPolicy: record.incenseWeightPolicy === undefined
       ? LEGACY_INCENSE_WEIGHT_POLICY
       : parseIncenseWeightPolicy(record.incenseWeightPolicy),
