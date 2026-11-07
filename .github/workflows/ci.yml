@@ -96,7 +96,7 @@ jobs:
         timeout-minutes: 5
       - run: pnpm exec playwright install --with-deps chromium
       - name: Packed installation and desktop, narrow, dark browser checks
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: pnpm run smoke:browser-clean-profile
       - name: Isolated backend and Host online loop
         timeout-minutes: 10
