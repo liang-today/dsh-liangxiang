@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactElement, RefObject } from 'react'
-import { deriveLocalEpithet, VOTE_COUNT_MAX, type LiangziState, type VoteType } from '../domain/index.ts'
+import { deriveLocalEpithet, deriveLocalIncenseStats, EMPTY_LOCAL_INCENSE, VOTE_COUNT_MAX, type LiangziState, type VoteType } from '../domain/index.ts'
 import { EMPTY_INCENSE_FEEDBACK_MS, VOTE_FEEDBACK_MS, formatAcceptedVoteFeedback, HOMEPAGE_URL, HOVER_TEXT, LIANGZI_STATE_LABELS, NO_INCENSE_GAG, NO_INCENSE_REASON, RECONCILE_DONE, VOTE_DOWN_NAME, VOTE_RATE_LIMITED, VOTE_UP_NAME, isEmptyIncenseFeedback } from '../shared/index.ts'
 import type { HostAuthorityPreference } from '../shared/wire.ts'
 import { initialDshDockClearance } from '../compat/dsh/default-dock.ts'
@@ -24,6 +24,7 @@ import { DUMP_AUTO_RELEASE_MS, chargeProgress, holdReleaseAction } from './vote-
 import { hasSeenWelcome, markWelcomeSeen, WELCOME_STORAGE_KEY } from './welcome.ts'
 import { pickSquishLabel, SQUISH_ANIM_MS, SQUISH_DOUBLE_MS, SQUISH_COMMENT_GAP_MS, SQUISH_LABEL_LINGER_MS, SQUISH_MAX_ROWS } from './badge-squish.ts'
 import { BadgeFeedback } from './BadgeFeedback.tsx'
+import { BarsWindow, readBarsPrefs, writeBarsPrefs, type BarsPrefs } from './BarsWindow.tsx'
 import type { BadgeComment } from './badge-feedback.ts'
 import {
   BADGE_ICON_SIZE,
@@ -49,7 +50,7 @@ import { Panel } from './Panel.tsx'
 import { color } from './theme.ts'
 import { useThrottleFill } from './use-throttle-fill.ts'
 import { useTweenedCount } from './use-tweened-count.ts'
-import { hasSeenReleaseNotes, markReleaseNotesSeen, releaseNotesStorageKey } from './release-notes.ts'
+import { hasSeenReleaseNotes, markReleaseNotesSeen, releaseNotesStorageKey, RELEASE_NOTES_LATEST_SEEN_KEY } from './release-notes.ts'
 import { loadDismissedBroadcastId, markBroadcastDismissed } from './broadcast-dismissal.ts'
 
 /** Preserve the exact earned-incense jump carried by one authoritative frame. */
@@ -267,9 +268,10 @@ export function LiangxiangBadge(): ReactElement {
     // Another tab completing guidance must not leave this one blocked or ask
     // for a second authority choice. Clearing storage never chooses a mode.
     const onStorage = (event: StorageEvent): void => {
-      if (event.storageArea !== localStorage || event.newValue !== 'seen') return
-      if (event.key === WELCOME_STORAGE_KEY) setWelcomeVisible(false)
-      if (event.key === releaseNotesStorageKey()) setReleaseNotesVisible(false)
+      if (event.storageArea !== localStorage) return
+      if (event.key === WELCOME_STORAGE_KEY && event.newValue === 'seen') setWelcomeVisible(false)
+      if ((event.key === releaseNotesStorageKey() || event.key === RELEASE_NOTES_LATEST_SEEN_KEY)
+        && hasSeenReleaseNotes()) setReleaseNotesVisible(false)
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
@@ -295,6 +297,12 @@ export function LiangxiangBadge(): ReactElement {
     playVolumePreview()
   }, [])
   const [liangciOpen, setLiangciOpen] = useState(false)
+  // 走势 display state: remembered per browser, never authority. A reload keeps
+  // the last choice so a half-screen chart does not pop back on its own.
+  const [barsPrefs, setBarsPrefs] = useState<BarsPrefs>(() => readBarsPrefs())
+  const patchBarsPrefs = useCallback((patch: Partial<BarsPrefs>) => {
+    setBarsPrefs(writeBarsPrefs(patch))
+  }, [])
   const closeLiangci = useCallback(() => setLiangciOpen(false), [])
   const selectWelcomeMode = useCallback((preference: HostAuthorityPreference) => {
     void store.selectAuthorityMode(preference).then(
@@ -373,7 +381,6 @@ export function LiangxiangBadge(): ReactElement {
   useEffect(() => {
     preloadLiangziArt(LIANGZI_ART)
   }, [])
-  const [pinnedHint, setPinnedHint] = useState<'epithet' | null>(null)
   const prevArchiveVersion = useRef(0)
   useEffect(() => {
     const version = historyState.archive?.archiveVersion ?? 0
@@ -607,10 +614,14 @@ export function LiangxiangBadge(): ReactElement {
     wasOpen.current = open
   }, [open])
 
-  const [localIncense, setLocalIncense] = useState(() => readLocalIncenseStats(state.businessDate))
+  // The connecting placeholder uses browser UTC, not the Host business date.
+  // Reading this cosmetic ledger can roll/persist it: never do that until a
+  // real Host frame arrives, or a fresh tab can erase today's local counts.
+  const [localIncense, setLocalIncense] = useState(() => deriveLocalIncenseStats(EMPTY_LOCAL_INCENSE))
   useEffect(() => {
+    if (state.connection !== 'live') return
     setLocalIncense(readLocalIncenseStats(state.businessDate))
-  }, [state.businessDate])
+  }, [state.businessDate, state.connection])
   const visibleIncense = combineLocalIncenseStats(localIncense, state.timedIncense)
   const localEpithet = deriveLocalEpithet({ up: visibleIncense.today.up, down: visibleIncense.today.down })
   const [chargeVoteType, setChargeVoteType] = useState<VoteType | null>(null)
@@ -951,8 +962,6 @@ export function LiangxiangBadge(): ReactElement {
           voteFeedback={voteFeedback}
           positionPulse={positionPulse}
           placement={panelPlacementFor(position, viewport)}
-          pinnedHint={pinnedHint}
-          onToggleHint={(kind) => setPinnedHint((current) => current === kind ? null : kind)}
           displayTotalIncense={displayTotalIncense}
           displayUniqueVoters={displayUniqueVoters}
           onVote={onVote}
@@ -1005,9 +1014,25 @@ export function LiangxiangBadge(): ReactElement {
             setLiangciOpen(true)
             void store.loadHistory()
           }}
+          onOpenBars={() => {
+            setUtilityOpen(false)
+            patchBarsPrefs({ slot: 'float' })
+          }}
+          barsOpen={barsPrefs.slot !== 'closed'}
           {...(state.authorityMode === 'LOCAL_FAKE_DEV'
             ? { onCycleLocalCase: () => store.cycleLocalCase() }
             : {})}
+        />
+      )}
+      {(barsPrefs.slot === 'float' || barsPrefs.slot === 'full') && (
+        <BarsWindow
+          display={barsPrefs.slot}
+          range={barsPrefs.range}
+          onRange={range => patchBarsPrefs({ range })}
+          onSlot={slot => patchBarsPrefs({ slot })}
+          position={{ x: barsPrefs.x, y: barsPrefs.y }}
+          onMove={({ x, y }) => patchBarsPrefs({ x, y })}
+          onClose={() => patchBarsPrefs({ slot: 'closed' })}
         />
       )}
       {liangciOpen && (

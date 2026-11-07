@@ -30,6 +30,8 @@ export type ConnectionState = 'connecting' | 'live' | 'offline'
 
 /** Everything the panel renders, in one immutable snapshot. */
 export interface LiangxiangViewState {
+  /** Current assistant request activity only; never changes incense numbers. */
+  streamingActive?: boolean
   incenseWeightPolicy?: IncenseWeightPolicy
   connection: ConnectionState
   /** Online authority reachability; independent from browser -> Host SSE. */
@@ -77,6 +79,7 @@ export interface LiangxiangStore {
 export function wireToViewState(wire: LiangxiangWireState, connection: ConnectionState): LiangxiangViewState {
   return {
     incenseWeightPolicy: wire.incenseWeightPolicy ?? LEGACY_INCENSE_WEIGHT_POLICY,
+    streamingActive: wire.streamingActive ?? false,
     connection,
     authorityAvailable: wire.authorityAvailable,
     authorityReason: wire.authorityReason,

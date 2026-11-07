@@ -45,7 +45,6 @@ import {
   VOTE_DOWN_NAME,
   VOTE_UP_LABEL,
   VOTE_UP_NAME,
-  LOCAL_EPITHET_HINT,
   LOCAL_EPITHET_TITLE,
   formatLocalEpithetLine,
   isEmptyIncenseFeedback,
@@ -56,6 +55,8 @@ import {
   MODE_CONFIRM_LOCAL,
   MODE_CONFIRM_OK,
   MODE_CONFIRM_ONLINE,
+  UTILITY_BARS_HINT,
+  UTILITY_BARS_LABEL,
   UTILITY_HINT,
   UTILITY_HOME_HINT,
   UTILITY_HOME_LABEL,
@@ -80,7 +81,7 @@ import { DUMP_ARMED_CHARGE } from './vote-charge.ts'
 import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { duration, radius } from './tokens.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
-import { ArchiveDeskIcon, HomepageIcon, ModeSwitchIcon, VersionSealIcon } from './UtilityIcons.tsx'
+import { ArchiveDeskIcon, BarsGlyphIcon, HomepageIcon, ModeSwitchIcon, VersionSealIcon } from './UtilityIcons.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangciIcon } from './LiangciIcon.tsx'
@@ -121,8 +122,6 @@ export interface PanelProps {
   positionPulse?: boolean
   /** Where to draw relative to the (freely placeable) badge. */
   placement?: PanelPlacement
-  pinnedHint?: 'epithet' | null
-  onToggleHint?: (kind: 'epithet') => void
   /** Presentation-only tweened counts from the container. */ 
   displayTotalIncense?: number
   displayUniqueVoters?: number
@@ -170,6 +169,13 @@ export interface PanelProps {
   onShowVersion: () => void
   /** Open the read-only 梁祠 calendar; remains inside Region 4. */
   onOpenLiangci: () => void
+  /**
+   * 走势: open the read-only 梁位 chart. It sits on its own full-width row under
+   * the 2x2 tiles and never becomes a fifth panel region.
+   */
+  onOpenBars?: () => void
+  /** Whether the chart dialog is on screen. */
+  barsOpen?: boolean
   /** LOCAL_FAKE_DEV only: cycle the prepared 今日梁案 list. */
   onCycleLocalCase?: () => void
 }
@@ -734,30 +740,6 @@ const PANEL_CSS = `
   opacity: 1;
   transform: translateY(0);
 }
-[data-liangxiang-epithet-hint] {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 6px);
-  z-index: 3;
-  transform: translateX(-50%) translateY(4px);
-  min-width: 168px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  border: 1px solid ${color.border};
-  background: ${color.bgLayer};
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
-  color: ${color.textSecondary};
-  font-size: 11px;
-  line-height: 1.35;
-  white-space: normal;
-  opacity: 0;
-  pointer-events: none;
-}
-[data-liangxiang-epithet][data-open] [data-liangxiang-epithet-hint],
-[data-liangxiang-epithet]:focus-visible [data-liangxiang-epithet-hint] {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
 @keyframes liangxiang-state-cross {
   0% { filter: none; transform: scale(1); }
   35% { filter: drop-shadow(0 0 16px color-mix(in srgb, ${color.ritualGold} 88%, transparent)) drop-shadow(0 0 28px color-mix(in srgb, ${color.ritualEmber} 55%, transparent)); transform: scale(1.08); }
@@ -915,18 +897,19 @@ export function Panel(props: PanelProps): ReactElement {
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
     modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
     onShowVersion,     onOpenLiangci, onCycleLocalCase,
+    onOpenBars = () => undefined,
+    barsOpen = false,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
-  const pinnedHint = props.pinnedHint ?? null
-  const onToggleHint = props.onToggleHint ?? (() => undefined)
   const positionPulse = props.positionPulse ?? false
   const { snapshot, personal, activeCase, lifetimeIncense, lifetimeVoters } = state
   const shownIncense = props.displayTotalIncense ?? snapshot.totalIncense
   const shownVoters = props.displayUniqueVoters ?? snapshot.uniqueVoters
-  // Throttled (smoothed/extrapolated) display values — presentation only. The
+  // Smoothed confirmed ring geometry, exact numeric captions. The
   // authoritative remaining incense / vote availability stay on `personal`.
   const displayFill = throttle?.fill ?? personal.liangQiFill
   const displayTokensToNext = throttle?.tokensToNext ?? personal.tokensToNextIncense
+  const streamingActive = state.connection === 'live' && state.streamingActive === true
   const offline = state.connection !== 'live'
   const communityUnavailable = state.authorityMode === 'DEV_STAGING_ONLY' && !state.authorityAvailable
   const targetMode = state.authorityMode === 'LOCAL_FAKE_DEV' ? 'online' : 'local'
@@ -1247,6 +1230,7 @@ export function Panel(props: PanelProps): ReactElement {
             personal={personal}
             reducedMotion={reducedMotion}
             condensedIncense={condensedIncense}
+            streamingActive={streamingActive}
             fillOverride={displayFill}
             footer={(
               <span
@@ -1331,8 +1315,11 @@ export function Panel(props: PanelProps): ReactElement {
             </span>
             <span style={flankUnitStyle}> {NEXT_INCENSE_UNIT}</span>
           </span>
-          <span style={flankUnitStyle}>
-            {NEXT_INCENSE_PROGRESS_LABEL} {Math.trunc(Math.min(1, Math.max(0, displayFill)) * 100)}%
+          <span style={{ ...flankUnitStyle, ...(streamingActive ? { color: color.ritualEmberText } : {}) }}
+            data-liangxiang-stream-status={streamingActive ? '' : undefined}
+            role={streamingActive ? 'status' : undefined}
+            title={streamingActive ? '回复进行中，香火按最终用量结算' : undefined}>
+            {streamingActive ? '凝香中' : `${NEXT_INCENSE_PROGRESS_LABEL} ${Math.trunc(Math.min(1, Math.max(0, personal.liangQiFill)) * 100)}%`}
           </span>
           <div data-liangxiang-weight-hint="" role="tooltip">
             <table aria-label={NEXT_INCENSE_WEIGHT_TITLE}>
@@ -1453,26 +1440,18 @@ export function Panel(props: PanelProps): ReactElement {
         </button>
       </div>
       <div
-        role={showingEpithet ? 'button' : 'status'}
+        role="status"
         data-liangxiang-vote-feedback=""
         data-liangxiang-epithet={showingEpithet ? '' : undefined}
         data-liangxiang-broadcast={showingBroadcast ? visibleBroadcast?.level : undefined}
-        data-open={showingEpithet && pinnedHint === 'epithet' ? '' : undefined}
-        title={showingEpithet ? LOCAL_EPITHET_HINT : showingBroadcast ? broadcastLine : undefined}
-        tabIndex={showingEpithet ? 0 : undefined}
-        onClick={showingEpithet ? () => onToggleHint('epithet') : undefined}
-        onKeyDown={showingEpithet ? (event) => {
-          if (event.key !== 'Enter' && event.key !== ' ') return
-          event.preventDefault()
-          onToggleHint('epithet')
-        } : undefined}
+        title={showingBroadcast ? broadcastLine : undefined}
         style={{
           position: 'relative',
           margin: '6px 0 0',
           minHeight: '22px',
           height: '22px',
           lineHeight: '22px',
-          overflow: pinnedHint === 'epithet' ? 'visible' : 'hidden',
+          overflow: 'hidden',
           whiteSpace: 'nowrap',
           textOverflow: 'ellipsis',
           fontSize: '12px',
@@ -1598,9 +1577,6 @@ export function Panel(props: PanelProps): ReactElement {
             {localEpithet.stance}
           </span>
         ) : statusLine}
-        {showingEpithet && pinnedHint === 'epithet'
-          ? <span data-liangxiang-epithet-hint="" role="tooltip">{LOCAL_EPITHET_HINT}</span>
-          : null}
       </div>
 
       {/* Region 4 — two metric columns + the two ritual chips. Subgrid so
@@ -1783,6 +1759,20 @@ export function Panel(props: PanelProps): ReactElement {
                     </span>
                   </button>
                 </div>
+                <button
+                  type="button"
+                  data-liangxiang-utility-action="bars"
+                  aria-pressed={barsOpen}
+                  aria-label={`${UTILITY_BARS_LABEL}：${UTILITY_BARS_HINT}`}
+                  onClick={onOpenBars}
+                  style={{ width: '100%', boxSizing: 'border-box', marginTop: '7px' }}
+                >
+                  <BarsGlyphIcon size={16} />
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: '6px', minWidth: 0 }}>
+                    <strong style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{UTILITY_BARS_LABEL}</strong>
+                    <span style={{ fontSize: '9px', color: color.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{UTILITY_BARS_HINT}</span>
+                  </span>
+                </button>
                 <details style={{ marginTop: '7px', fontSize: '9px', color: color.textSecondary }}>
                   <summary style={{ cursor: 'pointer' }}>显示异常？</summary>
                   <button type="button" data-liangxiang-utility-action="reconcile" disabled={offline} onClick={onReconcileAsk}
@@ -1840,6 +1830,7 @@ export function Panel(props: PanelProps): ReactElement {
           </button>
         </div>
       </footer>
+
 
       {/* Screen-reader summary of the full state. */}
       <p aria-live="polite" style={visuallyHidden}>{summary}</p>

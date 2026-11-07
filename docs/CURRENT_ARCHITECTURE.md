@@ -1,11 +1,15 @@
 # 梁相：当前架构与事实索引
 
-核对：2026-10-20。先读 [`AGENTS.md`](../AGENTS.md)，再按本文进入专题；历史文档不能覆盖现行契约。
+核对：2026-11-07。先读 [`AGENTS.md`](../AGENTS.md)，再按本文进入专题；历史文档不能覆盖现行契约。
 
 ## 版本与边界
 
-当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.1-beta.2`，`SERVER_BUILD=1.2.1-beta.2-u1`。
-当前源码为 **1.2.1-beta.2 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
+当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.2-beta.4`，`SERVER_BUILD=1.2.2-beta.4-u1`。
+当前源码为 **1.2.2-beta.4 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
+
+2026-11-03 后台维护：公开客户端/npm/官网仍为 1.2.0；服务为 **1.2.0-u2 / 2f2d6e3**，
+源自正式 1.2.0，只调整社区额度并修复部署权限，不带入候选 schema 11。
+部署一致性检查须对照该后台维护分支；不能因未发布候选 HEAD 不同就擅自部署候选。
 
 | 仓库 | 职责 |
 |---|---|
@@ -34,6 +38,7 @@ DSH 最终请求用量
 - 梁位、梁子与统计来自同版权威快照。网络失败保留在线偏好、锁票并自动重连，不静默切换模式。
 - 不保存或传输提示词、回复、源码、会话正文或原始文件路径；Backend 不接收模型名。
 - 自动上香的本机夯/拉统计由 Host 按模式持久化，页面与手动记录合并展示；Backend v11 的原始成交回执用于丢回执后的准确重放，不改变投票额度。
+- 实时请求活动是独立的 Host → Client 布尔信号，只在开始/结束翻转推送；不读取块正文、不估算数字、不写账本或发送至社区。香火环显示轻量光效与“凝香中”，减少动态时静态呈现；结束、取消、失败及宿主连接断开后停止。
 
 ## 当前产品行为
 
@@ -44,7 +49,12 @@ DSH 最终请求用量
 | 拍梁子 | 单击 200ms 判定开合；双击/连拍保持面板状态。主面板固定，独立三行短句下落渐隐，见 [`PR6_FEEDBACK_REDESIGN.md`](PR6_FEEDBACK_REDESIGN.md) |
 | 定时上香 | 默认关闭，满 500 炷后每 10 分钟按限额上香，23:59 再收尾一次；复用原开关/方向，旧开关需重新开启，手动优先、意图持久化且不跨日补投，见 [`DAY_END_INCENSE.md`](DAY_END_INCENSE.md) |
 | 连接 | Host 跟随后端 cadence；只过滤业务内容相同的 SSE 整帧，真实变化即时发送，见 [`CONNECTION_EFFICIENCY.md`](CONNECTION_EFFICIENCY.md) |
-| 更新说明 | 升级按版本显示一次，可从案牍重看；已打开标签页同步引导完成状态，保留 QQ 二维码及社区贡献者鸣谢 |
+| 更新说明 | 仅展示当前版相对上次正式版的一份说明，不补播历史；最高已读版本防止旧版自动弹出，可从案牍主动重看。保留首次指导、QQ 二维码及鸣谢 |
+| 走势 | 只读的本机观察烛线：Host 每秒采样、1 分钟成桶、按日落一个文件；掉线画虚线并写「未统计」，换案断开、不插值；案牍直接打开主题一致的独立弹窗或全屏，见 [`LIANGXIANG_BARS.md`](LIANGXIANG_BARS.md) |
+
+投票额度默认每分钟恢复 500 炷，桶容量与单次请求仍各最多 500 炷；定时上香保持 10 分钟。
+凝香速度核对结论与未核验边界见 [`INCENSE_AUDIT.md`](INCENSE_AUDIT.md)。
+梁小号保留称号展示，不再响应点击、悬停或键盘聚焦弹出解释。
 
 Desktop 通过原生“插件 → 添加插件”输入完整包名 `dsh-liangxiang` 安装；命令行 WebUI 独立管理 Profile。安装图解、升级和卸载见 [`INSTALL.md`](INSTALL.md)。
 在线一直连不上时先排查 DSH Host 到社区的网络；部分地区可尝试代理，见 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)。
@@ -59,6 +69,7 @@ Desktop 通过原生“插件 → 添加插件”输入完整包名 `dsh-liangxi
 - `src/backend/`：HTTP、SQLite 事务、身份、票据、快照与梁祠。
 
 存储使用既有 DSH storage domain。在线为 `liangxiang.json`，离线为 `liangxiang_local.json`；
+走势是唯一例外，按业务日落 `storages/liangxiang-bars/days/<date>.json`（可重建的派生数据，坏文件只跳过）；
 正常更新/卸载不删除账本。Backend 数据位于运维配置的 SQLite 文件，迁移和备份规则见 [`121-vps-deploy.md`](121-vps-deploy.md)。
 
 ## 验证与协作
@@ -67,9 +78,9 @@ Desktop 通过原生“插件 → 添加插件”输入完整包名 `dsh-liangxi
 `smoke:browser-clean-profile`，权威/API 变化运行 `smoke:online`，提交和推送必须通过隐私门禁。
 完整候选验证、集成 CI 与提交证据集中记录在 [`RELEASE_READINESS_1_2.md`](RELEASE_READINESS_1_2.md)。
 
-个人 fork 开发并提交到上游 `dev`；受保护的 `main` 只快进到经完整检查的固定 dev 提交。
-main 始终是 dev 的祖先，不新增晋级或反向同步提交；没有文件变化就跳过。
-三平台锁定依赖检查、隐私、安装与浏览器门禁及英国当地午夜流程以 [`CI.md`](CI.md) 为准。
-自动合并不构成 npm、Release、Tag 或生产部署授权，不绕过分支保护。
+个人 fork 从最新社区 main 开发并向 main 提 PR；三平台锁定依赖、隐私与完整安装、
+浏览器及隔离在线检查均通过后由维护者审核合入。CI 使用只读权限，不重复运行 push 检查。
+旧 dev 冻结保留，确认全部历史进入 main 并取得单独批准后才删除；不再自动晋级。
+协作与 DSH alpha 预警以 [`CI.md`](CI.md) 为准，代码合入不授权发布或部署。
 
 每次上线均需独立执行 `scripts/deploy-check.sh` 核实真实运行版本；不能从源码或 CI 成功推断生产已更新。

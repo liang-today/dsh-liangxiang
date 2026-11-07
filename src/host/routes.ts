@@ -15,6 +15,7 @@
  * size, and owns SSE connection cleanup (`closeAllConnections` runs on
  * plugin dispose so unload leaves no open responses or timers).
  */
+import { createHash } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE, VOTE_RATE_LIMITED } from '../shared/index.ts'
 import { parseWireVoteRequest, type HostAuthorityPreference } from '../shared/wire.ts'
@@ -22,6 +23,9 @@ import { BackendClientError } from './backend-client.ts'
 import { parseDevCreditBody, resolveDevCreditTokens } from './dev-credit.ts'
 import { DAY_END_ACTION_HEADER, DAY_END_ACTION_VALUE, parseDayEndPreferences, type DayEndPreferences } from '../shared/day-end.ts'
 import type { LiangHostService } from './service.ts'
+import { parseBarsQuery } from '../shared/bars-v1.ts'
+import type { BarsQuery } from '../shared/bars-v1.ts'
+import type { BarsRecorder } from './bars.ts'
 
 const MAX_VOTE_BODY_BYTES = 4096
 const SSE_HEARTBEAT_MS = 25_000
@@ -46,6 +50,43 @@ function writeJson(res: ServerResponse, status: number, payload: unknown): void 
     'cache-control': 'no-store',
   })
   res.end(body)
+}
+
+
+/** Viewport bounds for server-rendered charts; keeps a hostile `w` bounded. */
+const BARS_SVG_WIDTH = { min: 320, max: 1_600, fallback: 720 } as const
+const BARS_SVG_HEIGHT = { min: 160, max: 900, fallback: 320 } as const
+
+function clampSvgSize(raw: string | null, bounds: { min: number; max: number; fallback: number }, label: string): number {
+  if (raw === null || raw === '') return bounds.fallback
+  if (!/^\d+$/.test(raw)) throw new Error(`${label} must be a positive integer`)
+  return Math.min(bounds.max, Math.max(bounds.min, Number(raw)))
+}
+
+/**
+ * Validate the SVG query: the shared window/interval fields plus presentation
+ * knobs that only this route accepts.
+ */
+function parseBarsSvgQuery(search: URLSearchParams): { query: BarsQuery; width: number; height: number; theme: 'light' | 'dark' } {
+  const allowed = new Set(['from', 'to', 'interval', 'theme', 'w', 'h'])
+  for (const key of search.keys()) {
+    if (!allowed.has(key)) throw new Error(`unknown query parameter ${key}`)
+    if (search.getAll(key).length > 1) throw new Error(`${key} must appear at most once`)
+  }
+  const window = new URLSearchParams()
+  for (const key of ['from', 'to', 'interval'] as const) {
+    const value = search.get(key)
+    if (value !== null) window.set(key, value)
+  }
+  const query = parseBarsQuery(window)
+  const rawTheme = search.get('theme')
+  if (rawTheme !== null && rawTheme !== 'light' && rawTheme !== 'dark') throw new Error('theme must be light or dark')
+  return {
+    query,
+    width: clampSvgSize(search.get('w'), BARS_SVG_WIDTH, 'w'),
+    height: clampSvgSize(search.get('h'), BARS_SVG_HEIGHT, 'h'),
+    theme: rawTheme === 'dark' ? 'dark' : 'light',
+  }
 }
 
 /** Distinguishes "caller sent too much" from a validation failure. */
@@ -86,6 +127,8 @@ export interface LiangxiangApiOptions {
   isAuthorityModeChanging?: () => boolean
   setDayEndPreferences?: (preferences: DayEndPreferences) => Promise<void>
   noteManualGesture?: () => void
+  /** 走势 recorder; absent when the chart is disabled or unavailable. */
+  bars?: BarsRecorder
 }
 
 export function createLiangxiangApi(
@@ -226,6 +269,9 @@ export function createLiangxiangApi(
       '/liangxiang/api/vote-activity': 'POST',
       '/liangxiang/api/local/cycle-case': 'POST',
       '/liangxiang/api/dev/credit': 'POST',
+      '/liangxiang/api/bars': 'GET',
+      '/liangxiang/api/bars.svg': 'GET',
+      '/liangxiang/api/bars/meta': 'GET',
     }
     const expected = methods[pathname]
     if (expected === undefined) {
@@ -239,7 +285,13 @@ export function createLiangxiangApi(
     // The mode route is the one startup action that may intentionally arrive
     // before the active service is ready. Its selector waits for persistent
     // storage and installs the chosen authority before returning a state.
-    if (!service.isReady && pathname !== '/liangxiang/api/mode') {
+    // The chart is read-only history derived from what this Host already
+    // observed; it stays answerable while the authority handoff is still
+    // settling, so the panel never shows an empty graph during a cold start.
+    const isBarsRoute = pathname === '/liangxiang/api/bars'
+      || pathname === '/liangxiang/api/bars.svg'
+      || pathname === '/liangxiang/api/bars/meta'
+    if (!service.isReady && pathname !== '/liangxiang/api/mode' && !isBarsRoute) {
       writeJson(res, 503, { error: 'liangxiang host is still starting' })
       return
     }
@@ -357,6 +409,69 @@ export function createLiangxiangApi(
     if (pathname === '/liangxiang/api/dev/credit') {
       await handleDevCredit(req, res)
       return
+    }
+    if (pathname === '/liangxiang/api/bars/meta') {
+      const bars = options.bars
+      if (bars === undefined) {
+        writeJson(res, 503, { error: '走势 is unavailable on this host' })
+        return
+      }
+      writeJson(res, 200, bars.meta())
+      return
+    }
+    if (pathname === '/liangxiang/api/bars') {
+      const bars = options.bars
+      if (bars === undefined) {
+        writeJson(res, 503, { error: '走势 is unavailable on this host' })
+        return
+      }
+      let query: BarsQuery
+      try {
+        query = parseBarsQuery(url.searchParams)
+      } catch (error) {
+        writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
+        return
+      }
+      try {
+        writeJson(res, 200, bars.read(query))
+      } catch {
+        // A bad day file is derived data: report it, never break the loop.
+        writeJson(res, 503, { error: '走势 is temporarily unavailable' })
+      }
+      return
+    }
+    if (pathname === '/liangxiang/api/bars.svg') {
+      const bars = options.bars
+      if (bars === undefined) {
+        writeJson(res, 503, { error: '走势 is unavailable on this host' })
+        return
+      }
+      try {
+        const { query, width, height, theme } = parseBarsSvgQuery(url.searchParams)
+        let body: string
+        try {
+          body = bars.svg(query, { width, height, theme })
+        } catch {
+          writeJson(res, 503, { error: '走势 is temporarily unavailable' })
+          return
+        }
+        const etag = `"${createHash('sha256').update(body).digest('base64url').slice(0, 27)}"`
+        // A window that still contains live data must never be cached: the file
+        // behind it is rewritten as new samples arrive.
+        const live = query.to === null || query.to > Date.now() - 5 * 60_000
+        res.writeHead(200, {
+          'content-type': 'image/svg+xml; charset=utf-8',
+          'cache-control': live ? 'no-store' : 'public, max-age=300',
+          'etag': etag,
+          'x-content-type-options': 'nosniff',
+          'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'",
+        })
+        res.end(body)
+        return
+      } catch (error) {
+        writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
+        return
+      }
     }
     await handleVote(req, res)
   }

@@ -23,6 +23,8 @@ export interface LiangQiRingProps {
   reducedMotion: boolean
   /** Actual incense gained in the latest update; 0 hides the transient feedback. */
   condensedIncense: number
+  /** Live request activity only, never progress or spendable incense. */
+  streamingActive?: boolean
   /** Overrides `personal.liangQiFill` for the throttle (油门) animation only. */
   fillOverride?: number
   /** Pinned to the ring's bottom edge; the panel passes the 梁位 value. */
@@ -44,6 +46,16 @@ const TENS_ORBIT = RING_RADIUS + 13
 const HUNDREDS_ORBIT = RING_RADIUS + 21
 /** Warm flame tone for the candle tip. */
 const FLAME = '#f3c152'
+
+const ACTIVITY_CSS = `
+@keyframes liangxiang-stream-wisp {
+  0% { transform: translateY(5px); opacity: 0.15; }
+  50% { opacity: 0.65; }
+  100% { transform: translateY(-7px); opacity: 0.15; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-liangxiang-stream-wisp] { animation: none !important; }
+}`
 
 function orbitAngle(index: number, count: number): number {
   const span = 2 * Math.PI - BOTTOM_GAP
@@ -124,6 +136,7 @@ export function LiangQiRing({
   personal,
   reducedMotion,
   condensedIncense,
+  streamingActive = false,
   fillOverride,
   footer,
   children,
@@ -163,6 +176,19 @@ export function LiangQiRing({
 
   return (
     <div style={wrapStyle} data-liangxiang-ring="" data-remaining={personal.remainingIncense} data-fill={fill.toFixed(4)}>
+      {streamingActive && (
+        <svg data-liangxiang-stream-activity="" aria-hidden="true" width={RING_SIZE} height={RING_SIZE}
+          viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+          style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
+          <style>{ACTIVITY_CSS}</style>
+          {[22, 104].map((x, index) => (
+            <path key={x} data-liangxiang-stream-wisp=""
+              d={`M ${x} 57 C ${x - 6} 48 ${x + 6} 44 ${x} 35`}
+              fill="none" stroke={color.ritualGold} strokeWidth="2" strokeLinecap="round"
+              style={{ opacity: 0.55, animation: reducedMotion ? undefined : `liangxiang-stream-wisp 2.4s ${index * -1.2}s ease-in-out infinite` }} />
+          ))}
+        </svg>
+      )}
       <svg
         width={RING_SIZE}
         height={RING_SIZE}

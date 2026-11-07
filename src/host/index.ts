@@ -33,6 +33,7 @@ import {
   type LiangxiangPersistenceHandle,
 } from '../compat/dsh/storage.ts'
 import { attachUsageObservation, type UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
+import { attachStreamingActivity } from '../compat/dsh/streaming-activity.ts'
 import { systemClock } from '../shared/business-date.ts'
 import { HOST_PLUGIN_NAME, PLUGIN_PACKAGE_NAME } from '../shared/index.ts'
 import type { HostAuthorityPreference } from '../shared/wire.ts'
@@ -44,9 +45,9 @@ import { FakeAuthoritativeLiangService } from './fake-service.ts'
 import { DayEndService } from './day-end-service.ts'
 import { startSnapshotCadence } from './snapshot-cadence.ts'
 import { createLiangxiangApi } from './routes.ts'
+import { createBarsRecorder } from './bars.ts'
 import { createHostFileLog } from './file-log.ts'
 import { ensureProfileTracksLatest } from './profile-npm-float.ts'
-import type { LiangHostService } from './service.ts'
 
 export const name = HOST_PLUGIN_NAME
 
@@ -102,7 +103,7 @@ export function apply(ctx: DshHostContext): void {
       identityRef,
     })
   const slot = new DayEndService(local, systemClock, () => modeTransitioning, warn)
-  const service: LiangHostService = slot
+  const service = slot
   let online: BackendLiangService | null = defaultAuthorityPreference === 'online'
     ? createOnlineService()
     : null
@@ -273,23 +274,34 @@ export function apply(ctx: DshHostContext): void {
   }, 'liangxiang: snapshot cadence')
 
   ctx.effect(() => slot.startDayEnd(), 'liangxiang: day-end incense')
+  ctx.effect(() => attachStreamingActivity(ctx, active => service.setStreamingActive(active)), 'liangxiang: streaming activity')
 
   ctx.inject(['webServer'], (scoped: DshHostContext) => {
     const { webServer } = resolveDshHostServices(scoped)
     if (webServer === undefined) return
     scoped.effect(() => {
+      // 走势 samples this Host's own state; it never asks the backend for a
+      // series, because the backend does not have one. One writer, one timer.
+      const bars = createBarsRecorder({
+        getWireState: () => service.getWireState(),
+        timezone: serviceConfig.timezone,
+        warn,
+      })
       const api = createLiangxiangApi(service, warn, {
         selectAuthorityMode,
         setDayEndPreferences: preferences => slot.setDayEndPreferences(preferences),
         noteManualGesture: () => slot.noteManualGesture(),
         isAuthorityModeChanging: () => modeTransitioning,
+        ...(bars === null ? {} : { bars }),
       })
       const disposeRoute = webServer.register({
         kind: 'prefix',
         path: '/liangxiang/api',
         handler: api.handler,
       })
+      bars?.start()
       return () => {
+        bars?.dispose()
         disposeRoute()
         api.closeAllConnections()
       }

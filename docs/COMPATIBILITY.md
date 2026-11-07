@@ -1,13 +1,13 @@
 # COMPATIBILITY — DSH 兼容性权威证据
 
-源码兼容基线最后核对：2026-10-19。DSH 仍是预稳定 API；所有不稳定触点只在
+源码兼容基线最后核对：2026-11-04。DSH 仍是预稳定 API；所有不稳定触点只在
 `src/compat/dsh/` 内适配，不修改上游源码，不凭版本号宣称永久前向兼容。
 
 ## 当前候选
 
 | 项 | 当前事实 |
 |---|---|
-| 梁相版本 | 1.2.1-beta.2 |
+| 梁相版本 | 1.2.2-beta.4 |
 | 状态 | 未发布候选；沿用 1.2.0 的 DSH 基线，公开发布与实际服务状态单独核对 |
 | DSH CLI / Web App / UI renderer/layout/slots | 0.2.1-rc.2（同一版本） |
 | DSH tag / commit | dsh-v0.2.1-rc.2 / 687f282e86 |
@@ -32,6 +32,7 @@ Web App、renderer、layout、slots 的 `next` 同为 0.2.1-rc.2，`latest` 仍�
 | Session 生命周期 | core/session/src/index.ts 的 Session.snapshotEvents、firstLiveSeq、header、session/event、SessionStore.list | 公开接口；先读一次历史，随后逐事件 fold，不保存消息正文 |
 | 请求用量 | core/session/src/types.ts 的 assistant/message、assistant/attempt；llm/llm/src/assistant-stream.ts；llm/token-meter/src/usage-projection.ts 的 usageOf | 当前持久化流内嵌；message.usage 优先，否则读 stream 最后一个 usage chunk |
 | 重试边界 | llm/llm-retry/src/types.ts，core/agent-loop/src/agent.ts | assistant/attempt 结算无消息的失败/取消尝试；retry-started 开启下一尝试 |
+| 实时活动 | 同版 `@deepseek-ai/dsh-agent/lib/types/runtime-types.d.ts` 的 agent/assistant-stream、agent/status、agent/disposed；`agentEvents` 和 AgentLoop 的 AssistantStreamAttempt | 公开事件但预稳定；隔离在 streaming-activity 适配器。仅取 agent 对象及帧 type/attemptId/revision，不读 chunk；状态翻转才推送本机布尔标志，不接入用量结算 |
 | 同源路由 | host/webserver/src/index.ts 的 WebServer.register / WebRoute | exact/prefix + handler 的最小结构面不变 |
 | 存储 | storage/storage-domain/src/index.ts、spec.ts、domain.ts | open、table、get/entries/put/delete/close 的结构面不变；可选字段向后兼容 |
 | 初始停靠 | 0.2.0-rc.2 / `639ed01539` 与 0.2.1-rc.2 / `687f282e86` 的 packages/client/ui-settings-account/src/client/AccountMenu.tsx | 内部 DOM seam，仅读取可见底部账户按钮一次，在首帧前给新位置保留 8px；无观察器/追随，不覆盖已保存位置 |

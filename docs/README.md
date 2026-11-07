@@ -25,7 +25,7 @@
 
 - 数据流与用户操作：`DATA_FLOW.md`、`TROUBLESHOOTING.md`。
 - 官方安装仍显示旧版、发布等待期与版本核对：`INSTALL_VERSION_DIAGNOSIS.md`。
-- fork/dev/main 协作、三平台门禁、英国午夜批次与 DSH alpha 预警：`CI.md`。
+- fork → main 协作、三平台与完整安装门禁、DSH alpha 预警：`CI.md`。
 - 运维与恢复：`121-vps-deploy.md`、`122-identity-recovery.md`、
   `143-case-bank-and-operations.md`、`144-client-recovery-and-update.md`。
 - 梁祠视觉/交互实现参考：`130-liangci-design.md`；契约仍只在 `AGENTS.md`。

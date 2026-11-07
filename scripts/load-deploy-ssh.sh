@@ -31,3 +31,16 @@ if [[ -z "${LIANGXIANG_DEPLOY_SSH:-}" ]]; then
 fi
 
 REMOTE="$LIANGXIANG_DEPLOY_SSH"
+
+# Optional connection-only port override; never execute configuration as code.
+DEPLOY_SSH=(ssh)
+DEPLOY_RSYNC_SSH=ssh
+if [[ -n "${LIANGXIANG_DEPLOY_SSH_PORT:-}" ]]; then
+  if [[ ! "$LIANGXIANG_DEPLOY_SSH_PORT" =~ ^[0-9]{1,5}$ ]] \
+    || (( 10#$LIANGXIANG_DEPLOY_SSH_PORT < 1 || 10#$LIANGXIANG_DEPLOY_SSH_PORT > 65535 )); then
+    echo "refusing deploy: LIANGXIANG_DEPLOY_SSH_PORT must be 1-65535" >&2
+    exit 1
+  fi
+  DEPLOY_SSH+=(-p "$LIANGXIANG_DEPLOY_SSH_PORT")
+  DEPLOY_RSYNC_SSH="ssh -p $LIANGXIANG_DEPLOY_SSH_PORT"
+fi

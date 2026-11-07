@@ -59,6 +59,20 @@ test('keyboard opens and closes the panel and returns focus to 今日梁相', as
   await expect(panel).toBeFocused()
 })
 
+test('梁小号 stays visible without a clickable explanation or keyboard stop', async ({ page }) => {
+  const panel = await openPanel(page)
+  const epithet = panel.locator('[data-liangxiang-epithet]')
+  await expect(epithet).toContainText('梁小号：')
+  await expect(epithet).toHaveAttribute('role', 'status')
+  expect(await epithet.getAttribute('title')).toBeNull()
+  expect(await epithet.getAttribute('tabindex')).toBeNull()
+  await epithet.hover()
+  await epithet.click()
+  await expect(epithet).toContainText('梁小号：')
+  await expect(panel.locator('[data-liangxiang-epithet-hint]')).toHaveCount(0)
+  expect(await epithet.getAttribute('data-open')).toBeNull()
+})
+
 test('next-incense tooltip uses the installed Host rules and stays within the viewport', async ({ page }) => {
   const panel = await openPanel(page)
   const response = await page.request.get('/liangxiang/api/state')

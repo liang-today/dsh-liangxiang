@@ -35,6 +35,8 @@ import {
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
   MODE_CONFIRM_LOCAL,
+  UTILITY_BARS_HINT,
+  UTILITY_BARS_LABEL,
   UTILITY_MODE_LOCAL_LABEL,
   UTILITY_MODE_ONLINE_LABEL,
   UTILITY_HINT,
@@ -276,6 +278,22 @@ describe('four visual regions', () => {
 })
 
 describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
+  it('shows live activity without changing confirmed incense, progress or Liangzi', () => {
+    const state = demoState()
+    const idle = renderPanel(state)
+    const active = renderPanel({ ...state, streamingActive: true })
+    expect(textContent(findByAttr(active, 'data-liangxiang-stream-status'))).toBe('凝香中')
+    expect(findByAttr(active, 'data-liangxiang-stream-activity')).toHaveLength(1)
+    for (const attribute of ['data-liangxiang-compact', 'data-liangxiang-liang-position-value']) {
+      expect(textContent(findByAttr(active, attribute))).toBe(textContent(findByAttr(idle, attribute)))
+    }
+    expect(findByAttr(active, 'data-liangxiang-ring')[0]?.props['data-fill']).toBe(findByAttr(idle, 'data-liangxiang-ring')[0]?.props['data-fill'])
+    expect(findByAttr(active, 'data-liangxiang-condensed')).toHaveLength(0)
+    const reduced = renderPanel({ ...state, streamingActive: true }, '', { reducedMotion: true })
+    for (const wisp of findByAttr(reduced, 'data-liangxiang-stream-wisp')) expect(styleOf(wisp).animation).toBeUndefined()
+    const disconnected = renderPanel({ ...state, streamingActive: true, connection: 'offline' })
+    expect(findByAttr(disconnected, 'data-liangxiang-stream-activity')).toHaveLength(0)
+  })
   it('shows the actual incense gain when one update crosses multiple sticks', () => {
     const tree = renderPanel(demoState(), '', { condensedIncense: 6 })
     const feedback = findByAttr(tree, 'data-liangxiang-condensed')[0]
@@ -793,7 +811,12 @@ describe('region 3: exactly two vote buttons', () => {
     const row = findByAttr(tree, 'data-liangxiang-vote-feedback')[0]
     expect(row && textContent([row])).toBe('梁小号：勤香死夯梁')
     expect(row?.props['data-liangxiang-epithet']).toBe('')
-    expect(row?.props.title).toBe('仅本机可见，天庭不记账；随今日香火日清')
+    expect(row?.props.role).toBe('status')
+    expect(row?.props.title).toBeUndefined()
+    expect(row?.props.tabIndex).toBeUndefined()
+    expect(row?.props.onClick).toBeUndefined()
+    expect(row?.props.onKeyDown).toBeUndefined()
+    expect(findByAttr(tree, 'data-liangxiang-epithet-hint')).toHaveLength(0)
     expect(styleOf(row).height).toBe('22px')
     expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-line')[0]).alignItems).toBe('center')
     expect(styleOf(findByAttr(tree, 'data-liangxiang-epithet-mark')[0])).toMatchObject({
@@ -1049,19 +1072,28 @@ describe('梁相案牍', () => {
     expect(repair && textContent([repair])).toContain(UTILITY_RECONCILE_HINT)
   })
 
-  it('keeps four main utility actions and a collapsed repair entry', () => {
+  it('keeps the 2x2 utility grid, one 走势 row and a collapsed repair entry', () => {
     const tree = renderPanel(onlineState(), '', { utilityOpen: true })
     expect(findByAttr(tree, 'data-liangxiang-utility-drawer')).toHaveLength(1)
     const bridge = findByAttr(tree, 'data-liangxiang-utility-bridge')[0]
     expect(styleOf(bridge).bottom).toBe('100%')
     expect(styleOf(bridge).height).toBe('7px')
     expect(styleOf(bridge).width).toBe('220px')
-    expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(5)
+    // Four grid tiles + the full-width 走势 row + the collapsed repair action.
+    expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(6)
+    const bars = findByAttr(tree, 'data-liangxiang-utility-action', 'bars')[0]
+    expect(bars).toBeDefined()
+    expect(bars && textContent([bars])).toContain(UTILITY_BARS_LABEL)
+    expect(bars && textContent([bars])).toContain(UTILITY_BARS_HINT)
+    expect(styleOf(bars).gridColumn).toBeUndefined()
+    expect(styleOf(bars).width).toBe('100%')
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'day-end')).toHaveLength(1)
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'home')).toHaveLength(1)
     const mode = findByAttr(tree, 'data-liangxiang-utility-action', 'mode')[0]
     expect(mode && textContent([mode])).toContain(UTILITY_MODE_LOCAL_LABEL)
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'reset-position')).toHaveLength(0)
+    // 走势 must not become a fifth panel region.
+    expect(findByAttr(tree, 'data-liangxiang-bars-dock')).toHaveLength(0)
     const version = findByAttr(tree, 'data-liangxiang-utility-action', 'version')[0]
     expect(version).toBeDefined()
     expect(version?.props['aria-label']).toContain(`v${PLUGIN_VERSION}`)

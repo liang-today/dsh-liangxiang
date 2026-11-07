@@ -11,6 +11,9 @@ test.afterEach(async ({ page }) => {
 })
 
 test('automatic participation updates 此身香火 and 梁小号 without being appended again on reload or another tab', async ({ page }) => {
+  // Deliberately disagree with the Host date. Browser startup dates must not
+  // roll the persistent local ledger before an authoritative frame arrives.
+  await page.clock.setFixedTime(new Date('2000-01-01T12:00:00Z'))
   await bootInstalledLiangxiang(page)
   const wire = await page.request.get('/liangxiang/api/state').then(r => r.json())
   const timedIncense = { businessDate: wire.businessDate, lifetimeUp: 550, lifetimeDown: 1_000, todayUp: 550, todayDown: 1_000 }
@@ -40,7 +43,11 @@ test('automatic participation updates 此身香火 and 梁小号 without being a
   await bootInstalledLiangxiang(page, { seedPreferences: false })
   await check(page)
   const other = await page.context().newPage()
-  try { await bootInstalledLiangxiang(other); await check(other) }
+  try {
+    await other.clock.setFixedTime(new Date('2000-01-01T12:00:00Z'))
+    await bootInstalledLiangxiang(other)
+    await check(other)
+  }
   finally { await other.close() }
   const manual = await page.evaluate(() => JSON.parse(localStorage.getItem('liangxiang:local-incense:v1')!))
   expect(manual.todayDown).toBe(10)

@@ -37,8 +37,10 @@
   retain presence for a 420ms downward fade, with a full unclipped exit runway.
   Live text stays readable in both themes; reduced motion removes displacement.
   Center the ordinary hint when it fits and clamp only at actual viewport edges.
-  Hide it during presses/comments, then restore. No toy text may imply a balance
-  change or introduce a tier. Keyboard activation never emits decorative speech.
+  Hide it during presses/comments, then restore. Preserve the contributor's
+  original decorative lines when requested; their jokes are never balance
+  receipts or new tiers and cannot change accounting. Keyboard activation
+  never emits decorative speech.
 - The docked entry's icon IS the current central 梁子 state (one of the six, or
   the 待开梁 placeholder) — never a letter or an abstract logo.
 - The entry is freely placeable: it can be dragged anywhere in the frame and the
@@ -124,6 +126,11 @@ Rules:
   Flash Token). Hover/focus on 下一炷 shows the model-weight table
   from the same static rule data used by accounting (Pro ×1,
   Flash / other / unknown ×0.5); never maintain a second static table.
+- Live requests may add restrained smoke/glow and `凝香中` inside the existing
+  core. Activity is not progress: never extrapolate numeric Token captions,
+  fill a fake percentage or mint spendable incense. Only confirmed ring
+  geometry may interpolate; preserve figure bob cadence. Reduced motion uses
+  static activity. Do not persist activity or transmit stream content.
 - visible 下一炷 当量 uses integer compact (`33K`, never `≈ 33.4K`) so the
   flank does not overlap 梁子. Hover title and the screen-reader summary keep
   the exact integer. 今日凝香 / 环上 overflow 仍可用一位小数。
@@ -157,9 +164,14 @@ incense.
 - vote type remains strictly `up` / `down` — the extra 升梁/降梁 copy is not a
   third option
 - vote availability depends only on authoritative `remaining_incense > 0`
-- click spends one stick; a long press dumps every stick the incense token bucket will allow (50/min, burst 500) in **one** `count` request — never a loop of HTTP votes
+- click spends one stick; a long press dumps every stick the incense token bucket will allow (500/min refill, bucket cap 500, single-request cap 500) in **one** `count` request — never a loop of HTTP votes
 - the reserved feedback row stays 22px / 12px type: idle shows the local-only 梁号 (`梁小号：勤香 • 死夯梁`); a dump shows `已上香 · 夯 ×N（剩余 M 炷）`; an empty furnace shows `香炉空了，先去攒香` for 3s then returns to 梁小号. A short, operator-controlled important/emergency broadcast may temporarily replace the idle 梁小号 in this same row; transport/outage and vote feedback keep priority, the message is length/time bounded, and expiry automatically restores 梁小号. Long copy scrolls as a single-line loop while a subtle, fixed × at the front dismisses only that broadcast ID for this browser; a new broadcast ID appears normally. Reduced-motion keeps the full message accessible without continuous scrolling. Never put broadcasts in 今日梁案 or add a toast/fifth region. The 梁号 resets on the business date with 今日凝香. Vote buttons may sit at 38px to fund that row. Do not add a fifth region or a personal-growth section
 - do not add a third placeholder or neutral action
+- Read/roll local daily participation and 梁小号 only after a real Host frame
+  confirms the business date. Startup's browser-date placeholder must never
+  reset or persist these records, including on reload or in another tab.
+- 梁小号 is passive text, not a button or focus stop. Do not restore its
+  removed explanatory tooltip; broadcasts keep their separate dismiss control.
 - do not add a separate full-width “可用香火 N 炷” row; remaining incense belongs inside the 香火环
 
 ### Region 4 — Social stats
@@ -179,7 +191,8 @@ incense.
 - routine Token claims, snapshots, reconnects and archive refresh are automatic;
   never present a routine manual-sync action
 - 梁相案牍 opens a themed 2×2 utility drawer: 梁相主页、定时上香、在线模式/离线模式、
-  当前版本. The mode action always means switching to the other mode and requires
+  当前版本, plus one full-width `梁位走势` row directly beneath the four tiles
+  (see 「走势」 below). The mode action always means switching to the other mode and requires
   explicit confirmation; network failure, reconnect, refresh and backend restart
   must never invoke it. 当前版本 opens a compact version-information dialog; the sound
   control has no long-press version gesture. `核对香火` remains under the collapsed
@@ -200,7 +213,7 @@ incense.
   must be explicitly enabled again before expanding to daytime voting.
 - The Host must run; the browser may close. Use the backend business clock and
   timezone online, the explicit local clock offline. After the balance reaches
-  VOTE_COUNT_MAX, wait one bucket refill period (currently 10 minutes), then
+  VOTE_COUNT_MAX, wait 10 minutes (independent of vote-rate tuning), then
   attempt one ordinary dump. Recheck the threshold after refreshing authority.
 - At 23:59 make one additional closing dump even when less than a full request
   remains. Respect remaining incense, the existing authority budget and the
@@ -231,8 +244,8 @@ incense.
   first-run choice, the 梁相案牍 mode action, or the explicit boot default
   `LIANGXIANG_BACKEND_URL=local`. The first-run welcome waits for an explicit
   click; it must not auto-select a mode on a timer.
-- One installation may submit at most 50 incense votes per minute on the
-  community backend (`LIANGXIANG_VOTE_RATE_LIMIT`, default 50).
+- The community vote bucket refills 500 incense per minute by default
+  (`LIANGXIANG_VOTE_RATE_LIMIT`), capped at 500; one request also caps at 500.
 - The Host persists the preference. A network outage keeps online selected,
   continues observing Token, locks 夯/拉, and reconnects automatically.
 - Community identity, online claim projection and the shared session high-water
@@ -277,6 +290,50 @@ incense, voting availability, or any ledger.
   never squeeze or clip the authoritative Liangzi labels. It supports keyboard focus trapping/Escape/focus return, narrow
   viewport horizontal calendar scrolling, dark mode, reduced motion, and zoom
 - GitHub Pages is explicitly outside the current implementation scope
+
+### 走势 — host-observed 梁位 candles (read-only, derived)
+
+`走势` draws how 梁位 moved during one business date. It is a picture of what
+this installation observed, not a community ledger and not a trading product.
+
+- The only source is the running Host sampling its own authoritative wire state
+  every second. There is no community series endpoint, so an unobserved minute
+  has no data and must never be interpolated, back-filled or smoothed.
+- `虚线区间` means the Host was not running long enough to sample. It says
+  「未统计」 (not seen), never 「无人投票」; votes cast inside such a gap still
+  count toward every total. Both the SVG footer and the client footer keep that
+  sentence, and the client readout says `未统计` for such a bar.
+- A case change is a hard break: counts reset, the candle series restarts, and
+  two cases are never bridged into one line. Same-day archives do not paint
+  history that was never observed.
+- One candle is one minute (`BARS_BUCKET_MS = 60_000`, at most 1440 per business
+  date). Coarser views (`5m`/`15m`/`1h`/`1d`) are aggregated from raw counts by
+  the Host, never from averaged percentages. The browser picks the interval from
+  the visible span, offers `15分 / 1时 / 今日 / 全部`, and may zoom and pan by
+  asking for another `from`/`to`; the picture always comes from the server so an
+  embed and the panel cannot disagree.
+- Derived data only. Nothing here may spend incense, vote, open, archive or
+  close a case, alter an archive, or influence 梁位. Failure to sample or to
+  serve a bar must never make today's case or voting unavailable.
+- Storage is one small JSON file per business date under
+  `$DSH_HOME/storages/liangxiang-bars/days/<business-date>.json`, written
+  whole-file and atomically by the single Host writer. This is the one
+  deliberate exception to `storages/*.json` single-layout domains: it is
+  rebuildable derived data, so a bad day file is skipped, never fatal.
+- Three read-only routes: `/liangxiang/api/bars` (JSON), `/liangxiang/api/bars.svg`
+  (server-rendered picture for embeds and sharing), `/liangxiang/api/bars/meta`.
+  The wire contract lives in `src/shared/bars-v1.ts` and is versioned separately
+  from the main wire state; changing its shape requires a new version.
+- The server picture is self-contained and inert: no scripts, no external
+  references, no user-authored text, every label escaped, deterministic bytes so
+  a content hash can cache it. A window that includes now is never cached.
+- The drawer keeps its four tiles and gains one full-width `梁位走势` row. The
+  chart has four display states — closed-and-remembered, compact corner card,
+  floating window, full screen — and the choice is a browser-local cosmetic
+  preference, never an authority.
+- Retired by decision (2026-11-06): in-chart order tickets, conditional rules
+  and any third-party extension surface inside the chart. Do not add them, do
+  not design around them, and do not mention them in product copy.
 
 ---
 
@@ -1089,7 +1146,9 @@ Before preparing npm or GitHub release copy, read and follow
 `.agents/skills/liangxiang-release-notes/SKILL.md`. The client update dialog
 summarizes all user-visible benefits since the previous formal release in at
 most four short promotional lines; backend/security/migration/test details stay
-out of that dialog. Show the final copy to the user before requesting the
+out of that dialog. Show only the current release, never queue unseen historical
+notes; first-run guidance and manual reopening reuse the same current content.
+Show the final copy to the user before requesting the
 separately required publication permission.
 
 Before preparing or approving any formal public release, read and follow
@@ -1111,7 +1170,22 @@ the current client release.
 Privacy is a publication gate. Never publish private workflow/conversation
 labels, internal task identifiers, personal home paths, private contact data,
 or credentials in files, commit metadata/messages, PR descriptions or comments.
-Use the public GitHub handle and GitHub noreply email for maintained commits.
+Commit only as yourself. The author and committer of every commit you create
+must be the identity configured for this clone (`user.name` / `user.email`),
+which must be your own account and the address your signing key carries.
+Never borrow another account's handle or email to satisfy a document, a
+template, an example or a gate: a maintainer handle quoted in docs, a
+teammate's noreply address and a PR author's identity are all the wrong author
+for your work. If a hook, script or document
+demands a different identity, fix that demand instead of changing who you claim
+to be.
+Every commit you create must carry a GPG signature attributable to that author:
+`git config commit.gpgsign true` plus your own `user.signingkey`, with the key's
+UID email equal to the commit author email. Confirm `%G?` is `G` or `U` and
+`%GS` names the author before pushing; amend an unsigned or misattributed commit
+rather than pushing it. Your key over someone else's author field is not a
+signed commit, it is a forged one. Upload the matching public key to the hosting
+account so the signature also displays as verified there.
 Community contributors may voluntarily publish their commit email: PR CI treats
 that metadata as advisory, without requiring signed history to be rewritten.
 This exception never covers secrets, sensitive files, source text or PR prose.
@@ -1119,7 +1193,7 @@ Maintained identities and local publication hooks retain their strict policy.
 Configure this identity in repository-local Git settings, not account-wide
 settings. Personal GitHub Profile names belong to the account owner; never
 change them to satisfy a project's commit or CI policy. Maintainer commits use
-the public handle; GitHub App operations use the App's bot identity. PR-list
+the maintainer's own account; GitHub App operations use the App's bot identity. PR-list
 usernames alone do not verify commit author/committer metadata. If an operation
 cannot preserve the required public commit identity, explain the specific
 manual action to the user before proceeding; do not rename their Profile.
@@ -1134,33 +1208,26 @@ Historical cleanup must preserve code and third-party attribution. Changes
 to protected published history require a prepared mapping/backup and explicit
 approval for the force update; never silently rewrite another active checkout.
 
-Community collaboration (approved 2026-10-19): upstream
-`liang-today/dsh-liangxiang` has two long-lived branches, `dev` and `main`.
-Every developer, including the maintainer, works in a personal fork. The local
-`origin` and default push remote must be the fork; `upstream` fetches the
-community repository and has a disabled push URL. Independent concurrent
-agents use separate worktrees/directories, never change each other's checkout.
-Submit feature PRs to upstream `dev`; after required CI and maintainer review,
-an administrator merges them. Authors cannot approve their own GitHub PRs;
-the single-maintainer setup uses manual administrator merge, not a claim of
-independent approval. See `CONTRIBUTING.md` and `docs/CI.md`.
+Community collaboration: `liang-today/dsh-liangxiang` uses `main` as its only
+active integration branch. Every developer, including the maintainer, works in
+a personal fork. Local `origin` and the default push remote must be the fork;
+`upstream` fetches the community repository and has a disabled push URL.
+Concurrent work uses separate worktrees/directories, never another checkout.
 
-Personal fork pushes use local Codex verification only. Cloud CI runs on PRs
-to upstream dev/main, never on personal pushes or duplicate post-merge pushes.
+Create feature branches from current upstream main, push to the personal fork,
+and submit PRs to upstream main. Sync main before merging. Required gates are
+privacy, all three locked-dependency platforms, and full packed installation,
+browser and isolated online smoke checks. All PR test jobs are read-only.
+An administrator reviews and merges after checks; authors cannot approve their
+own GitHub PRs, and a single-maintainer merge is not independent approval.
+See `CONTRIBUTING.md` and `docs/CI.md`.
 
-Only the trusted nightly controller promotes a frozen dev batch to main after
-full PR checks. Main must remain an ancestor of dev. Promotion atomically
-fast-forwards main to the existing verified dev SHA (`beforeOid`, `force: false`);
-never create promotion merge/squash/rebase or reverse-sync commits. Features
-and CI repairs enter dev first. Its temporary `automation/promote-*` branch is
-deleted after the attempt. Never force-push, bypass branch protection, copy a personal CLI
-token into CI, or put repository-write credentials in PR test jobs. Scheduled
-source merges do not authorize npm publication, Release/Tag, or deployment.
-The initial workflow migration is an explicit maintainer operation with the
-same full checks; preserve all existing published history.
-
-The accepted PR #6 follow-up is submitted as new commits on a personal fork
-work branch; do not create or reopen a PR for that batch.
+Personal pushes and post-merge pushes do not duplicate cloud PR checks. The
+former dev-to-main controller is retired. Preserve existing published history;
+keep dev frozen until its entire history is verified in main and the maintainer
+separately authorizes deleting it. Never force-push, bypass branch protection,
+copy personal CLI tokens into CI or put write credentials in PR test jobs.
+Source integration does not authorize npm, Release/Tag, Pages or deployment.
 
 After every completed change in this repository, **before considering the
 task done**:
