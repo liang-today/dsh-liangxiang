@@ -7,7 +7,10 @@ import { createRequire } from 'node:module'
 
 const client = await readFile(new URL('../lib/client.js', import.meta.url))
 const rawLimit = 700_000
-const gzipLimit = 400_000
+// Raised from 400_000 on 2026-11-06 for the 走势 chart surface. The old ceiling
+// had about 1.6 kB gzip of headroom left, so any real client feature tripped it;
+// the picture itself is server-rendered and this client part is one component.
+const gzipLimit = 410_000
 const gzipBytes = gzipSync(client, { level: 9 }).byteLength
 
 console.log(`client.js: ${client.byteLength} bytes raw, ${gzipBytes} bytes gzip`)

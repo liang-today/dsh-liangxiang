@@ -5,13 +5,13 @@
  * test deliberately fails when a version bump forgets to refresh this copy.
  * This is cosmetic localStorage only and never participates in authority.
  */
-export const RELEASE_NOTES_VERSION = '1.2.1-beta.2'
+export const RELEASE_NOTES_VERSION = '1.2.2-beta.2'
 export const RELEASE_NOTES_TITLE = `梁相 v${RELEASE_NOTES_VERSION} 更新`
 export const RELEASE_NOTES_ITEMS = [
-  '定时上香：余额满 500 炷后每 10 分钟按限额上香，23:59 再收尾一次，尽量少留余香。',
-  '设置依旧简单：一个开关，右键夯或拉设方向；旧版日终开关需重新开启一次。',
-  '手动操作优先：定时上香会等你操作完再继续，DSH 运行时生效。',
-  '凝香说明更清楚：直接显示各模型每炷所需 Token。',
+  '定时上香：满 500 炷后每 10 分钟按限额上香，23:59 再收尾一次，尽量少留余香。',
+  '新增梁位走势：可查看今日与历史的本机观察记录，支持缩放与全屏。',
+  '走势按业务日呈现，零票显示待开梁；未统计区间不补线，期间投票仍计入累计。',
+  '自动上香同步计入此身香火，刷新与多标签页也能接续。',
 ] as const
 export const RELEASE_NOTES_QQ = '梁相 QQ 群：453683905'
 export const RELEASE_NOTES_QQ_INVITE = '来群里一起出梁案、晒梁位、催更新，第一批梁友等你入席。'

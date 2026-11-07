@@ -35,6 +35,8 @@ import {
   RECONCILE_CONFIRM_OK,
   RECONCILE_CONFIRM_PROMPT,
   MODE_CONFIRM_LOCAL,
+  UTILITY_BARS_HINT,
+  UTILITY_BARS_LABEL,
   UTILITY_MODE_LOCAL_LABEL,
   UTILITY_MODE_ONLINE_LABEL,
   UTILITY_HINT,
@@ -1049,19 +1051,28 @@ describe('梁相案牍', () => {
     expect(repair && textContent([repair])).toContain(UTILITY_RECONCILE_HINT)
   })
 
-  it('keeps four main utility actions and a collapsed repair entry', () => {
+  it('keeps the 2x2 utility grid, one 走势 row and a collapsed repair entry', () => {
     const tree = renderPanel(onlineState(), '', { utilityOpen: true })
     expect(findByAttr(tree, 'data-liangxiang-utility-drawer')).toHaveLength(1)
     const bridge = findByAttr(tree, 'data-liangxiang-utility-bridge')[0]
     expect(styleOf(bridge).bottom).toBe('100%')
     expect(styleOf(bridge).height).toBe('7px')
     expect(styleOf(bridge).width).toBe('220px')
-    expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(5)
+    // Four grid tiles + the full-width 走势 row + the collapsed repair action.
+    expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(6)
+    const bars = findByAttr(tree, 'data-liangxiang-utility-action', 'bars')[0]
+    expect(bars).toBeDefined()
+    expect(bars && textContent([bars])).toContain(UTILITY_BARS_LABEL)
+    expect(bars && textContent([bars])).toContain(UTILITY_BARS_HINT)
+    expect(styleOf(bars).gridColumn).toBeUndefined()
+    expect(styleOf(bars).width).toBe('100%')
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'day-end')).toHaveLength(1)
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'home')).toHaveLength(1)
     const mode = findByAttr(tree, 'data-liangxiang-utility-action', 'mode')[0]
     expect(mode && textContent([mode])).toContain(UTILITY_MODE_LOCAL_LABEL)
     expect(findByAttr(tree, 'data-liangxiang-utility-action', 'reset-position')).toHaveLength(0)
+    // 走势 must not become a fifth panel region.
+    expect(findByAttr(tree, 'data-liangxiang-bars-dock')).toHaveLength(0)
     const version = findByAttr(tree, 'data-liangxiang-utility-action', 'version')[0]
     expect(version).toBeDefined()
     expect(version?.props['aria-label']).toContain(`v${PLUGIN_VERSION}`)

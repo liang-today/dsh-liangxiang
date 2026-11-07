@@ -30,13 +30,13 @@ export {
 export const PLUGIN_PACKAGE_NAME = 'dsh-liangxiang'
 
 /** Installed package version, surfaced by 梁相案牍. Keep in sync with package.json. */
-export const PLUGIN_VERSION = '1.2.1-beta.2'
+export const PLUGIN_VERSION = '1.2.2-beta.2'
 
 /**
  * Server-only release label for the community backend. Do not bump the npm /
  * client `PLUGIN_VERSION` for a backend-only change; stamp `1.1.6-uN` instead.
  */
-export const SERVER_BUILD = '1.2.1-beta.2-u1'
+export const SERVER_BUILD = '1.2.2-beta.2-u1'
 
 /** Welcome gift: sticks credited once per device fingerprint per business date. */
 export const STARTER_INCENSE_COUNT = 10
@@ -182,7 +182,7 @@ export const WELCOME_DISMISS = '知道了'
 
 /** Region 4 utility drawer. Routine data flow is automatic; this is not sync. */
 export const UTILITY_LABEL = '梁相案牍'
-export const UTILITY_HINT = '主页、核香、模式与版本'
+export const UTILITY_HINT = '主页、核香、模式、版本与走势'
 export const HOMEPAGE_URL = 'https://liang.today/'
 export const UTILITY_HOME_LABEL = '梁相主页'
 export const UTILITY_HOME_HINT = '打开 liang.today'
@@ -193,6 +193,9 @@ export const UTILITY_MODE_ONLINE_HINT = '切回社区梁案与全网梁位'
 export const UTILITY_MODE_LOCAL_LABEL = '离线模式'
 export const UTILITY_MODE_LOCAL_HINT = '切换为本机独立玩法'
 export const UTILITY_VERSION_LABEL = '当前版本'
+/** Read-only 梁位 chart. Not a fifth panel region: it gets its own drawer row. */
+export const UTILITY_BARS_LABEL = '梁位走势'
+export const UTILITY_BARS_HINT = '本机观察 · 只读烛线'
 
 export const MODE_CONFIRM_ONLINE = '切回在线模式？离线香火、打梁和梁祠仍保留在本机，不会带入社区。'
 export const MODE_CONFIRM_LOCAL = '切换到离线模式？此后香火、打梁和梁祠只记在本机；断网不会自动触发此操作。'

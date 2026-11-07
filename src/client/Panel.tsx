@@ -10,7 +10,7 @@ import { liangziPolicyForVersion, LIANGZI_POLICY_VERSION } from '../domain/index
  * No personal-growth section, no ranking, no third option.
  * Presentational only (no hooks); the container wires state and callbacks.
  */
-import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement } from 'react'
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactElement, ReactNode } from 'react'
 import { LIANG_POSITION_DECIMALS, VOTE_COUNT_MAX, formatCompactCount, formatIncenseShare, formatRatioPercents, incenseWeightRows, LEGACY_INCENSE_WEIGHT_POLICY, type LocalEpithet, type LocalIncenseStats, type VoteType } from '../domain/index.ts'
 import {
   ABSURD_CLAIM_NOTICE,
@@ -56,6 +56,8 @@ import {
   MODE_CONFIRM_LOCAL,
   MODE_CONFIRM_OK,
   MODE_CONFIRM_ONLINE,
+  UTILITY_BARS_HINT,
+  UTILITY_BARS_LABEL,
   UTILITY_HINT,
   UTILITY_HOME_HINT,
   UTILITY_HOME_LABEL,
@@ -80,7 +82,7 @@ import { DUMP_ARMED_CHARGE } from './vote-charge.ts'
 import { BADGE_SIZE, PANEL_GAP, PANEL_WIDTH, type PanelPlacement } from './badge-position.ts'
 import { duration, radius } from './tokens.ts'
 import { HeavenHearIcon } from './HeavenHearIcon.tsx'
-import { ArchiveDeskIcon, HomepageIcon, ModeSwitchIcon, VersionSealIcon } from './UtilityIcons.tsx'
+import { ArchiveDeskIcon, BarsGlyphIcon, HomepageIcon, ModeSwitchIcon, VersionSealIcon } from './UtilityIcons.tsx'
 import { ThreeRealmsIncenseIcon, FivePhasePilgrimIcon } from './SocialStatIcons.tsx'
 import { LiangAvatar } from './LiangAvatar.tsx'
 import { LiangciIcon } from './LiangciIcon.tsx'
@@ -170,6 +172,18 @@ export interface PanelProps {
   onShowVersion: () => void
   /** Open the read-only 梁祠 calendar; remains inside Region 4. */
   onOpenLiangci: () => void
+  /**
+   * 走势: open the read-only 梁位 chart. It sits on its own full-width row under
+   * the 2x2 tiles and never becomes a fifth panel region.
+   */
+  onOpenBars?: () => void
+  /** Whether any chart surface (attached / float / full) is on screen. */
+  barsOpen?: boolean
+  /**
+   * 走势 surface attached directly under the panel body. Rendered here so it
+   * shares the panel's own column and never becomes a floating window.
+   */
+  barsSlot?: ReactNode
   /** LOCAL_FAKE_DEV only: cycle the prepared 今日梁案 list. */
   onCycleLocalCase?: () => void
 }
@@ -915,6 +929,9 @@ export function Panel(props: PanelProps): ReactElement {
     reconcilePending, utilityOpen, onUtilityToggle, onUtilityClose, onOpenHomepage,
     modeConfirmOpen, modeChanging, onModeAsk, onModeConfirm, onModeCancel,
     onShowVersion,     onOpenLiangci, onCycleLocalCase,
+    onOpenBars = () => undefined,
+    barsOpen = false,
+    barsSlot = null,
   } = props
   const placement = props.placement ?? { stack: 'above', align: 'start' }
   const pinnedHint = props.pinnedHint ?? null
@@ -1783,6 +1800,20 @@ export function Panel(props: PanelProps): ReactElement {
                     </span>
                   </button>
                 </div>
+                <button
+                  type="button"
+                  data-liangxiang-utility-action="bars"
+                  aria-pressed={barsOpen}
+                  aria-label={`${UTILITY_BARS_LABEL}：${UTILITY_BARS_HINT}`}
+                  onClick={onOpenBars}
+                  style={{ width: '100%', boxSizing: 'border-box', marginTop: '7px' }}
+                >
+                  <BarsGlyphIcon size={16} />
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: '6px', minWidth: 0 }}>
+                    <strong style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{UTILITY_BARS_LABEL}</strong>
+                    <span style={{ fontSize: '9px', color: color.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{UTILITY_BARS_HINT}</span>
+                  </span>
+                </button>
                 <details style={{ marginTop: '7px', fontSize: '9px', color: color.textSecondary }}>
                   <summary style={{ cursor: 'pointer' }}>显示异常？</summary>
                   <button type="button" data-liangxiang-utility-action="reconcile" disabled={offline} onClick={onReconcileAsk}
@@ -1840,6 +1871,8 @@ export function Panel(props: PanelProps): ReactElement {
           </button>
         </div>
       </footer>
+
+      {barsSlot}
 
       {/* Screen-reader summary of the full state. */}
       <p aria-live="polite" style={visuallyHidden}>{summary}</p>

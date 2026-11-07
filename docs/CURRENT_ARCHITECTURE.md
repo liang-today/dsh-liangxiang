@@ -4,8 +4,8 @@
 
 ## 版本与边界
 
-当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.1-beta.2`，`SERVER_BUILD=1.2.1-beta.2-u1`。
-当前源码为 **1.2.1-beta.2 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
+当前源码 `package.json` / `PLUGIN_VERSION` = `1.2.2-beta.2`，`SERVER_BUILD=1.2.2-beta.2-u1`。
+当前源码为 **1.2.2-beta.2 本地候选**；公开版本与部署状态须结合[发布验收记录](RELEASE_READINESS_1_2.md)、GitHub Release、npm 与实际服务核对，不能由源码版本推断。候选提交、CI 合并与正式发布/生产部署是独立步骤。
 
 | 仓库 | 职责 |
 |---|---|
@@ -45,6 +45,7 @@ DSH 最终请求用量
 | 定时上香 | 默认关闭，满 500 炷后每 10 分钟按限额上香，23:59 再收尾一次；复用原开关/方向，旧开关需重新开启，手动优先、意图持久化且不跨日补投，见 [`DAY_END_INCENSE.md`](DAY_END_INCENSE.md) |
 | 连接 | Host 跟随后端 cadence；只过滤业务内容相同的 SSE 整帧，真实变化即时发送，见 [`CONNECTION_EFFICIENCY.md`](CONNECTION_EFFICIENCY.md) |
 | 更新说明 | 升级按版本显示一次，可从案牍重看；已打开标签页同步引导完成状态，保留 QQ 二维码及社区贡献者鸣谢 |
+| 走势 | 只读的本机观察烛线：Host 每秒采样、1 分钟成桶、按日落一个文件；掉线画虚线并写「未统计」，换案断开、不插值，见 [`LIANGXIANG_BARS.md`](LIANGXIANG_BARS.md) |
 
 Desktop 通过原生“插件 → 添加插件”输入完整包名 `dsh-liangxiang` 安装；命令行 WebUI 独立管理 Profile。安装图解、升级和卸载见 [`INSTALL.md`](INSTALL.md)。
 在线一直连不上时先排查 DSH Host 到社区的网络；部分地区可尝试代理，见 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)。
@@ -59,6 +60,7 @@ Desktop 通过原生“插件 → 添加插件”输入完整包名 `dsh-liangxi
 - `src/backend/`：HTTP、SQLite 事务、身份、票据、快照与梁祠。
 
 存储使用既有 DSH storage domain。在线为 `liangxiang.json`，离线为 `liangxiang_local.json`；
+走势是唯一例外，按业务日落 `storages/liangxiang-bars/days/<date>.json`（可重建的派生数据，坏文件只跳过）；
 正常更新/卸载不删除账本。Backend 数据位于运维配置的 SQLite 文件，迁移和备份规则见 [`121-vps-deploy.md`](121-vps-deploy.md)。
 
 ## 验证与协作
