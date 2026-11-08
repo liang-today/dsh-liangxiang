@@ -2,7 +2,7 @@
 
 推荐使用 [DSH 官方 Desktop](https://www.deepseek.com/zh/harness/) 的内置插件安装入口。
 安装后页面边缘出现“今日梁相”；单击打开今日梁案，可拖动入口调整位置。
-当前源码为 **dsh-liangxiang@1.2.2-beta.1 未发布候选**；发布状态以 npm `latest` 和 GitHub Latest Release 为准。
+本文对应 **dsh-liangxiang@2.0.0**。安装后在梁相案牍核对版本。
 
 ## Desktop：应用内安装
 
@@ -28,18 +28,35 @@
 
 以上流程无需命令行、额外市场插件或索引配置。已有“发现”或社区市场入口时，同样搜索完整包名 `dsh-liangxiang`。
 
-**升级**：在 **插件 → 已安装 → 梁相** 卸载插件，再按上面的步骤安装新版。当前官方入口对社区插件采用卸载后重装的更新方式，见 [DSH 官方说明](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/docs/upgrade-guide/v0.2.1-alpha.2/plugin-install-over-installed/guide.md)。
-卸载不删除本机香火账本；不要额外清理 DSH 的数据目录。升级后在 **梁相案牍 → 当前版本** 核对版本与更新说明。
+### 更新已安装的梁相
+
+- **支持原生更新的DSH版本（如0.2.2-rc.1）**：打开已安装的梁相详情，优先在 **版本** 区按应用提示更新。该入口适用于从npm注册表安装、且被宿主标为可更新的第三方插件；从本地路径、Git或压缩包安装的插件不提供此版本区。完成后如应用要求则重启，再到 **梁相案牍 → 当前版本** 核对版本与更新说明。见[当前DSH更新说明](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/client/ui-plugin-manager/README.zh.md#更新注册表组合包)。
+- **0.2.1-rc.2等旧入口，或没有更新入口时**：在 **插件 → 已安装 → 梁相** 卸载插件，再按上面的步骤安装新版。旧流程见[对应版本说明](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/docs/upgrade-guide/v0.2.1-alpha.2/plugin-install-over-installed/guide.md)。
+
+更新失败时，先查看应用报告的原版本保留／恢复结果及后续提示；不能假定失败后一定已恢复。恢复也失败、显示未安装时，再重新安装梁相。恢复规则见[DSH宿主说明](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/boot/plugin-manager/README.zh.md#use-this-package)。
+更新或卸载梁相都不要求清除DSH数据目录；保留原身份、香火账本与梁祠记录。
+
+### 从1.2升级到2.0
+
+保留原DSH数据目录，按上面适合当前DSH版本的方式更新梁相；不要清个人Profile，也不要重置身份。
+2.0首次启用在线钱包，仅承接启用当天的实际余香和不足一炷进度，不补发历史已过期香火。
+启用后，香火余额与已到账收益跨日保留，可用与冻结分开记账。
+
+**同一身份启用2.0钱包后，请继续使用2.0及以上版本。** 旧客户端无法操作已启用的钱包；
+未修改的1.2界面可能只显示HTTP412，不能依靠后台更新让它自动显示新的升级说明。
+暂不升级、从未启用钱包的1.2用户仍可使用原日账玩法；离线账本不进入在线钱包或梁股。
+完整边界见[旧版兼容说明](LEGACY_WALLET_COMPAT.md)。
 
 ### 装完仍显示旧版本
 
-先区分“已经安装”与“已经升级”：官方 0.2.1-rc.2 的社区插件不会因为重新搜索、点击
-安装或重启应用而自动替换旧包。应先在已安装列表卸载**梁相插件**，再添加目标版本并启用。
+先区分“已经安装”与“已经升级”：支持原生更新的DSH，可在梁相详情的版本区重新检查并按提示更新，
+查看是否需要重启。官方0.2.1-rc.2旧入口不会因为重新搜索、点击安装或重启应用而自动替换旧包；
+应先在已安装列表卸载**梁相插件**，再添加目标版本并启用。
 无需卸载 DeepSeek 客户端，也不要删除其数据目录。
 
 新版本发布后未满 24 小时，pnpm 11 的默认等待期还可能让不带版本号的包名或 `@latest`
 安装到较旧版本。需要立即安装已确认发布的版本时，在“添加插件”输入精确版本；例如
-当前公开正式版可填写 **`dsh-liangxiang@1.2.0`**。这里指公开版，不是本文开头的未发布候选。
+安装2.0时可填写 **`dsh-liangxiang@2.0.0`**，完成后核对实际版本。
 精确版本在 pnpm 默认策略下可被明确选择；若安装器提示等待期或策略确认，按应用提示处理，
 不修改全局安全配置。安装后核对已安装列表和梁相案牍中的版本；它们都应变成目标版本。
 
@@ -51,6 +68,8 @@ Desktop 的 `desktop` Profile 由桌面应用独占管理。普通 npm CLI 的 `
 不再使用手动改 Desktop 家目录或混用桌面 pnpm 的旧安装方法。
 
 ## Cmd：命令行 WebUI
+
+当前默认DSH0.2.2要求Node24.9及以上；Desktop使用内置运行环境，无需另装Node。源码开发的固定0.2.1-rc.2基线仍见[兼容证据](COMPATIBILITY.md)。
 
 按 [DSH 官方说明](https://github.com/deepseek-ai/deepseek-harness#run) 准备运行环境。
 退出对应 WebUI 后，安装并启动：
@@ -83,10 +102,11 @@ npx --yes @deepseek-ai/dsh plugin --profile web remove dsh-liangxiang
 ### 本地发行包
 
 从 [GitHub Releases](https://github.com/liang-today/dsh-liangxiang/releases) 下载正式包后，
-在文件所在目录执行；本地相对路径必须带 `./`，避免被当成 npm 包名：
+在文件所在目录执行；以下以2.0.0包为例，版本号应与实际下载文件一致。
+本地相对路径必须带 `./`，避免被当成 npm 包名：
 
 ```bash
-npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-1.2.2-beta.1.tgz
+npx --yes @deepseek-ai/dsh plugin --profile web add ./dsh-liangxiang-2.0.0.tgz
 ```
 
 ## 在线连接与代理

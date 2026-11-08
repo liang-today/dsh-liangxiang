@@ -3,9 +3,8 @@
  *
  * What it IS authoritative for:
  *  - the business date and the single active DailyLiangCase;
- *  - the spend ledger: how many incense sticks an installation has already
- *    spent today, enforced atomically (no overspend, no double-spend, no
- *    per-tab balances);
+ *  - one cumulative wallet with atomic available/frozen funds, daily spend
+ *    statistics, no overspend, no double-spend and no per-tab balances;
  *  - request idempotency;
  *  - the global aggregate and the published snapshot sequence.
  *
@@ -28,7 +27,6 @@ import {
   addBusinessDays,
   clampVoteSpend,
   deriveArchiveResult,
-  derivePersonalLiangQiState,
   deriveLiangziState,
   isBusinessDate,
   isoWeekFor,
@@ -65,6 +63,7 @@ import { createBusinessDateProvider, systemClock, type BusinessDateProvider, typ
 import { SNAPSHOT_HISTORY_LIMIT, type BackendConfig } from './config.ts'
 import { CASE_BANK, nextCycledCaseTitle } from './case-bank.ts'
 import { CommunityAuthError } from './community-auth.ts'
+import { LegacyWalletUpgradeRequiredError, legacyDailyPersonal } from './legacy-wallet.ts'
 import {
   isUniqueConstraintError,
   type BackendStore,
@@ -81,6 +80,8 @@ import {
 } from './store.ts'
 import { WireError } from '../shared/wire.ts'
 import { historyArchiveToV1, type V1HistoryResponse } from '../shared/history-v1.ts'
+import { MarketLedger } from './market-ledger.ts'
+import { MARKET_CANDLE_INTERVAL_MS, parseMarketCandleInterval, type MarketCandleIntervalMs, type MarketCandlesResponse, type MarketHistoryResponse, type MarketPositionRequest, type MarketPositionResponse, type MarketState } from '../shared/market-v1.ts'
 
 /** Thrown when a concurrent duplicate wins the idempotency race. */
 class DuplicateRequestSignal extends Error {}
@@ -99,6 +100,13 @@ export class LiangxiangBackendService {
   private readonly dates: BusinessDateProvider
   private readonly warn: (message: string) => void
   private archiveCheckedBusinessDate: string | null = null
+  private readonly marketLedger: MarketLedger
+  // Public decoration follows the published cadence. Never cache wallets,
+  // eligibility, identity checks or transaction results here.
+  private lifetimeFrame: {
+    caseId: string, at: number, rollbackVersion: number,
+    totals: { incense: number, voters: number },
+  } | undefined
 
   constructor(deps: BackendServiceDeps) {
     this.store = deps.store
@@ -106,6 +114,10 @@ export class LiangxiangBackendService {
     this.clock = deps.clock ?? systemClock
     this.dates = createBusinessDateProvider(deps.config.timezone)
     this.warn = deps.warn ?? ((message) => console.warn(message))
+    this.marketLedger = new MarketLedger(this.store, this.dates.timezone)
+    this.marketLedger.assertSupportedOpenMarkets()
+    this.marketLedger.assertTokenThreshold(this.config.tokenPerIncense, this.businessDate())
+    this.marketLedger.initializeWallets(this.businessDate(), this.clock.now())
   }
 
   get authorityMode(): BackendConfig['authorityMode'] {
@@ -184,13 +196,18 @@ export class LiangxiangBackendService {
    */
   ensureActiveCase(now = this.clock.now()): CaseRow {
     const businessDate = this.businessDate(now)
-    const existing = this.store.activeCaseFor(businessDate)
-    if (existing !== undefined && this.archiveCheckedBusinessDate === businessDate) return existing
     const active = this.store.transaction(() => {
+      // Seal old references/close counts BEFORE any rollover or new accepted vote.
+      this.marketLedger.advance(now)
+      if (this.archiveCheckedBusinessDate !== businessDate) this.marketLedger.expireDailyWallets(businessDate, now)
       this.store.closeCasesBefore(businessDate, now)
-      this.finalizeArchivesInTransaction(businessDate, now)
+      if (this.archiveCheckedBusinessDate !== businessDate) this.finalizeArchivesInTransaction(businessDate, now)
       const raced = this.store.activeCaseFor(businessDate)
-      if (raced !== undefined) return raced
+      if (raced !== undefined) {
+        this.marketLedger.ensureMarket(raced, now)
+        this.marketLedger.advance(now)
+        return raced
+      }
       const queued = this.store.takeQueuedTitle(businessDate, now)
       const previous = this.store.latestCaseBefore(businessDate)
       const title = queued ?? nextCycledCaseTitle(previous?.title, CASE_BANK, this.config.caseTitle)
@@ -218,6 +235,7 @@ export class LiangxiangBackendService {
       const created = this.store.activeCaseFor(businessDate)
       if (created === undefined) throw new Error('failed to open the daily case')
       this.replenishAdmissionInventoryInTransaction(now)
+      this.marketLedger.ensureMarket(created, now)
       return created
     })
     // Mark the date checked only after COMMIT succeeds. If COMMIT throws, the
@@ -513,9 +531,9 @@ export class LiangxiangBackendService {
 
   /**
    * Operator publish: archive today's active case (if any), open a new one,
-   * publish a zero-vote snapshot, and clear spent incense for the business
-   * date. Claimed tokens stay, so remaining incense can be spent on the new
-   * case. Old votes/stats/snapshots remain on the archived `case_id`.
+   * publish a zero-vote snapshot, and cancel the day's market. Wallet funds and
+   * daily spend statistics stay; accepted incense is never resurrected.
+   * Old votes/stats/snapshots remain on the archived `case_id`.
    *
    * Temporarily allows more than one case per day; the DB still enforces at
    * most one *active* case at a time.
@@ -523,13 +541,14 @@ export class LiangxiangBackendService {
   publishCase(title: string, now = this.clock.now()): V1PublishCaseResponse {
     const { title: normalized } = parseV1PublishCaseRequest({ title })
     return this.store.transaction(() => {
+      this.marketLedger.advance(now)
       const businessDate = this.businessDate(now)
       this.store.closeCasesBefore(businessDate, now)
       const previous = this.store.activeCaseFor(businessDate)
       if (previous !== undefined) {
+        this.marketLedger.cancel(previous.id, now)
         this.store.closeActiveCaseFor(businessDate, now)
       }
-      this.store.resetUsedIncenseForDate(businessDate, now)
       const id = `case-${businessDate}-${randomBytes(4).toString('hex')}`
       this.store.insertCase({
         id,
@@ -551,6 +570,7 @@ export class LiangxiangBackendService {
       })
       const created = this.store.activeCaseFor(businessDate)
       if (created === undefined) throw new Error('failed to open the published case')
+      this.marketLedger.ensureMarket(created, now)
       const archived = previous === undefined ? null : this.store.caseById(previous.id) ?? previous
       return {
         schema_version: BACKEND_SCHEMA_VERSION,
@@ -563,9 +583,9 @@ export class LiangxiangBackendService {
     })
   }
 
-  bootstrap(installationId: string, now = this.clock.now()): V1Bootstrap {
+  bootstrap(installationId: string, now = this.clock.now(), cumulative = true): V1Bootstrap {
     const caseRow = this.ensureActiveCase(now)
-    this.store.transaction(() => this.ensureRow(installationId, caseRow, now))
+    this.store.transaction(() => this.ensureRow(installationId, caseRow, now, cumulative))
     return {
       schema_version: BACKEND_SCHEMA_VERSION,
       authority_mode: this.config.authorityMode,
@@ -599,13 +619,15 @@ export class LiangxiangBackendService {
     installationId: string,
     claim: V1TokenClaimRequest,
     now = this.clock.now(),
+    cumulative = true,
   ): V1PersonalStateResponse {
     const caseRow = this.ensureActiveCase(now)
+    this.store.transaction(() => this.ensureRow(installationId, caseRow, now, cumulative))
     let applied = false
     let claimNotice: V1PersonalStateResponse['claim_notice']
     if (claim.claim_business_date === caseRow.business_date) {
       const outcome = this.store.transaction(() => {
-        this.ensureRow(installationId, caseRow, now)
+        this.ensureRow(installationId, caseRow, now, cumulative)
         const row = this.requireRow(installationId, caseRow.business_date)
         const requested = claim.claimed_effective_tokens
         // Monotonic ratchet only: the claim is a host observation (A3 soft
@@ -631,6 +653,7 @@ export class LiangxiangBackendService {
           )
         }
         this.store.raiseClaim(installationId, caseRow.business_date, target, now)
+        this.marketLedger.syncClaim(this.requireRow(installationId, caseRow.business_date), now)
         return { applied: true, notice }
       })
       applied = outcome.applied
@@ -652,9 +675,9 @@ export class LiangxiangBackendService {
     }
   }
 
-  dailyState(installationId: string, now = this.clock.now()): V1PersonalStateResponse {
+  dailyState(installationId: string, now = this.clock.now(), cumulative = true): V1PersonalStateResponse {
     const caseRow = this.ensureActiveCase(now)
-    this.store.transaction(() => this.ensureRow(installationId, caseRow, now))
+    this.store.transaction(() => this.ensureRow(installationId, caseRow, now, cumulative))
     return {
       schema_version: BACKEND_SCHEMA_VERSION,
       business_date: caseRow.business_date,
@@ -677,6 +700,74 @@ export class LiangxiangBackendService {
     }
   }
 
+  marketState(installationId: string, now = this.clock.now()): MarketState {
+    const caseRow = this.ensureActiveCase(now)
+    this.store.transaction(() => this.ensureRow(installationId, caseRow, now))
+    return this.marketLedger.state(installationId, caseRow, now)
+  }
+
+  /** The cloud fanout has already advanced public authority once this tick. */
+  marketStateForStream(installationId: string, now = this.clock.now()): MarketState {
+    const caseRow = this.store.activeCaseFor(this.businessDate(now))
+    if (caseRow === undefined) return this.marketState(installationId, now)
+    // A continuously connected account still receives its one next-day gift.
+    // All steady-state stream reads below stay outside a write transaction.
+    if (this.store.incenseFor(installationId, caseRow.business_date) === undefined) {
+      this.store.transaction(() => this.ensureRow(installationId, caseRow, now))
+    }
+    return this.marketLedger.state(installationId, caseRow, now)
+  }
+
+  /** One public read set per fanout, without per-subscriber steady-state writes. */
+  prepareMarketStreamFrame(now = this.clock.now()): (installationId: string, previous?: MarketState) => MarketState {
+    const caseRow = this.ensureActiveCase(now)
+    const state = this.marketLedger.streamStateFactory(caseRow, now)
+    return (installationId, previous) => {
+      if (previous?.market?.business_date !== caseRow.business_date
+        && this.store.incenseFor(installationId, caseRow.business_date) === undefined) {
+        this.store.transaction(() => this.ensureRow(installationId, caseRow, now))
+      }
+      return state(installationId, previous)
+    }
+  }
+
+  setMarketPosition(installationId: string, request: MarketPositionRequest, now = this.clock.now()): MarketPositionResponse {
+    const caseRow = this.ensureActiveCase(now)
+    return this.store.transaction(() => {
+      this.marketLedger.advance(now)
+      this.ensureRow(installationId, caseRow, now)
+      return this.marketLedger.setPosition(installationId, request, caseRow, now)
+    })
+  }
+
+  marketHistory(installationId: string, cursor?: string, limit?: number): MarketHistoryResponse {
+    this.ensureActiveCase()
+    return this.marketLedger.history(installationId, cursor, limit)
+  }
+
+  marketCandles(input: { caseId?: string, businessDate?: string, cursor?: string, limit?: number, interval_ms?: MarketCandleIntervalMs } = {}): MarketCandlesResponse {
+    if (input.businessDate !== undefined && !isBusinessDate(input.businessDate)) throw new WireError('business_date', 'expected a valid business date')
+    const active = this.ensureActiveCase()
+    const caseRow = input.caseId !== undefined ? this.store.caseById(input.caseId)
+      : input.businessDate !== undefined ? this.store.activeCaseFor(input.businessDate) ?? this.store.latestCaseBefore(addBusinessDays(input.businessDate, 1)) : active
+    if (caseRow === undefined || (input.businessDate !== undefined && caseRow.business_date !== input.businessDate)) {
+      throw new WireError('case_id', 'market candle case not found')
+    }
+    return this.marketLedger.candles(caseRow, input.cursor, input.limit, parseMarketCandleInterval(input.interval_ms ?? MARKET_CANDLE_INTERVAL_MS))
+  }
+
+  marketStreamVersion(installationId: string): string {
+    return `${this.marketLedger.streamRevision()}:${this.marketLedger.walletVersion(installationId)}`
+  }
+
+  marketGlobalStreamVersion(): string { return this.marketLedger.streamRevision() }
+  marketWalletVersion(installationId: string): number { return this.marketLedger.walletVersion(installationId) }
+
+  marketCurrentCandle(): MarketCandlesResponse['candles'][number] | undefined {
+    const active = this.ensureActiveCase()
+    return this.marketLedger.currentCandle(active.id)
+  }
+
   /**
    * Operator wipe of today's votes so the live case returns to 待开梁.
    * Claimed tokens, identities, tickets, and 梁祠 archives stay.
@@ -696,7 +787,9 @@ export class LiangxiangBackendService {
       if (active === undefined) {
         throw new WireError('case', `no active case on ${businessDate}`)
       }
+      this.marketLedger.cancel(active.id, now)
       const cleared = this.store.resetBusinessDate(businessDate, now)
+      this.lifetimeFrame = undefined
       const after = this.store.activeCaseFor(businessDate) ?? active
       return {
         business_date: businessDate,
@@ -790,6 +883,7 @@ export class LiangxiangBackendService {
     const businessDate = this.businessDate(now)
     return this.store.transaction(() => {
       const cleared = this.store.clearHistoryArchives(businessDate)
+      this.lifetimeFrame = undefined
       return {
         business_date: businessDate,
         days: cleared.days,
@@ -869,20 +963,25 @@ export class LiangxiangBackendService {
    * Operator path is CLI-only (no HTTP).
    */
   unbindIdentity(installationId: string, now = this.clock.now()): V1UnbindResponse {
-    return {
-      schema_version: BACKEND_SCHEMA_VERSION,
-      installation_id: installationId,
-      unbound: this.store.deleteIdentity(installationId),
-      server_time: now,
-    }
+    return this.store.transaction(() => {
+      if (this.marketLedger.walletVersion(installationId) >= 0
+        && this.marketLedger.wallet(installationId).total_incense > 0) {
+        throw new CommunityAuthError(409, 'wallet_has_assets', 'wallet has assets; keep or restore the original identity key')
+      }
+      return {
+        schema_version: BACKEND_SCHEMA_VERSION,
+        installation_id: installationId,
+        unbound: this.store.deleteIdentity(installationId),
+        server_time: now,
+      }
+    })
   }
 
   /**
    * Self-serve re-key — the "cost" of recovery. A device whose MAC fingerprint
    * is already bound to a previous installation may take over that binding, but
-   * only after `rekeyCooldownMs` has elapsed since the previous identity was
-   * last seen, and only by forfeiting it: its incense/votes are never
-   * transferred to the new key (the new id starts at zero).
+   * only after `rekeyCooldownMs` has elapsed and the old wallet is empty.
+   * Ownership lookup, affordability check and rebinding share one transaction.
    */
   rekeyIdentity(
     installationId: string,
@@ -893,44 +992,48 @@ export class LiangxiangBackendService {
     if (deviceFingerprint === '') {
       throw new CommunityAuthError(400, 'invalid_request', 'a device fingerprint is required to re-key')
     }
-    const previous = this.store.identityByFingerprint(deviceFingerprint)
-    if (previous === undefined) {
-      this.store.upsertIdentity({
-        installation_id: installationId,
-        public_key: publicKey,
-        device_fingerprint: deviceFingerprint,
-        created_at: now,
-        last_seen_at: now,
-      })
-      return {
-        schema_version: BACKEND_SCHEMA_VERSION,
-        rekeyed: false,
-        installation_id: installationId,
-        previous_installation_id: null,
-        server_time: now,
+    const response: V1RekeyResponse = this.store.transaction(() => {
+      const previous = this.store.identityByFingerprint(deviceFingerprint)
+      if (previous === undefined) {
+        this.store.upsertIdentity({
+          installation_id: installationId,
+          public_key: publicKey,
+          device_fingerprint: deviceFingerprint,
+          created_at: now,
+          last_seen_at: now,
+        })
+        return {
+          schema_version: BACKEND_SCHEMA_VERSION,
+          rekeyed: false,
+          installation_id: installationId,
+          previous_installation_id: null,
+          server_time: now,
+        }
       }
-    }
-    if (previous.installation_id === installationId) {
-      return {
-        schema_version: BACKEND_SCHEMA_VERSION,
-        rekeyed: false,
-        installation_id: installationId,
-        previous_installation_id: null,
-        server_time: now,
+      if (previous.installation_id === installationId) {
+        return {
+          schema_version: BACKEND_SCHEMA_VERSION,
+          rekeyed: false,
+          installation_id: installationId,
+          previous_installation_id: null,
+          server_time: now,
+        }
       }
-    }
-    const cooldown = this.config.rekeyCooldownMs
-    if (cooldown > 0) {
-      const elapsed = now - previous.last_seen_at
-      if (elapsed < cooldown) {
-        throw new CommunityAuthError(
-          409,
-          'rekey_cooldown',
-          `device fingerprint was active ${elapsed} ms ago; wait ${cooldown - elapsed} ms before re-keying`,
-        )
+      if (this.marketLedger.walletVersion(previous.installation_id) >= 0
+        && this.marketLedger.wallet(previous.installation_id).total_incense > 0) {
+        throw new CommunityAuthError(409, 'wallet_has_assets', 'wallet has assets; restore the original identity key instead of re-keying')
       }
-    }
-    this.store.transaction(() => {
+      const cooldown = this.config.rekeyCooldownMs
+      if (cooldown > 0) {
+        const elapsed = now - previous.last_seen_at
+        if (elapsed < cooldown) {
+          throw new CommunityAuthError(
+            409,
+            'rekey_cooldown',
+            `device fingerprint was active ${elapsed} ms ago; wait ${cooldown - elapsed} ms before re-keying`,
+          )
+        }
+      }
       this.store.deleteIdentity(previous.installation_id)
       this.store.upsertIdentity({
         installation_id: installationId,
@@ -939,18 +1042,19 @@ export class LiangxiangBackendService {
         created_at: now,
         last_seen_at: now,
       })
+      return {
+        schema_version: BACKEND_SCHEMA_VERSION,
+        rekeyed: true,
+        installation_id: installationId,
+        previous_installation_id: previous.installation_id,
+        server_time: now,
+      }
     })
-    this.warn(
-      `[liangxiang-backend] rekey: device ${deviceFingerprint.slice(0, 8)}… `
-      + `${previous.installation_id.slice(0, 8)}… -> ${installationId.slice(0, 8)}…`,
-    )
-    return {
-      schema_version: BACKEND_SCHEMA_VERSION,
-      rekeyed: true,
-      installation_id: installationId,
-      previous_installation_id: previous.installation_id,
-      server_time: now,
+    if (response.rekeyed) {
+      this.warn(`[liangxiang-backend] rekey: device ${deviceFingerprint.slice(0, 8)}… `
+        + `${response.previous_installation_id?.slice(0, 8)}… -> ${installationId.slice(0, 8)}…`)
     }
+    return response
   }
 
   /**
@@ -969,14 +1073,18 @@ export class LiangxiangBackendService {
     intent: V1VoteRequest,
     now = this.clock.now(),
     maxSpend = Number.POSITIVE_INFINITY,
+    legacyDaily = false,
   ): V1VoteResponse {
     const activeCase = this.ensureActiveCase(now)
+    this.store.transaction(() => this.ensureRow(installationId, activeCase, now, !legacyDaily))
     let result: V1VoteResult
     try {
       result = this.store.transaction(() => {
-        const outcome = this.voteInTransaction(installationId, intent, activeCase, now, maxSpend)
+        const before = this.store.statsFor(activeCase.id)
+        const outcome = this.voteInTransaction(installationId, intent, activeCase, now, maxSpend, legacyDaily)
         if (outcome.status === 'accepted' && !outcome.replayed) {
           this.publishInTransaction(activeCase, now)
+          this.marketLedger.recordCandle(activeCase, now, before, outcome.spent_incense ?? 1)
         }
         return outcome
       })
@@ -1003,6 +1111,12 @@ export class LiangxiangBackendService {
   tick(now = this.clock.now()): void {
     const caseRow = this.ensureActiveCase(now)
     this.publishedSnapshot(caseRow, now)
+    // One shared insert per minute, including before market opening and after
+    // position cutoffs. Quiet subscriber reads never cause a per-client write.
+    const at = Math.floor(now / MARKET_CANDLE_INTERVAL_MS) * MARKET_CANDLE_INTERVAL_MS
+    if (this.store.database.prepare('SELECT 1 FROM liang_market_minute_candle WHERE case_id=? AND at=?').get(caseRow.id, at) === undefined) {
+      this.marketLedger.recordCandle(caseRow, now)
+    }
   }
 
   private voteInTransaction(
@@ -1011,6 +1125,7 @@ export class LiangxiangBackendService {
     activeCase: CaseRow,
     now: number,
     maxSpend: number,
+    legacyDaily: boolean,
   ): V1VoteResult {
     const requestedCount = intent.count ?? 1
     const existingRequest = this.store.voteRequestByRequestId(installationId, intent.request_id)
@@ -1023,6 +1138,10 @@ export class LiangxiangBackendService {
         )
       }
       return this.replayStoredRequest(installationId, intent, existingRequest, activeCase)
+    }
+    // Administrative archive resets must not make a historical financial ID spendable again.
+    if (this.marketLedger.hasVoteReceipt(installationId, intent.request_id)) {
+      return rejected(intent, 'idempotency_conflict', 'request id already exists in the persistent wallet ledger')
     }
 
     const target = this.store.caseById(intent.case_id)
@@ -1060,10 +1179,12 @@ export class LiangxiangBackendService {
       )
     }
 
-    this.ensureRow(installationId, target, now)
+    this.ensureRow(installationId, target, now, !legacyDaily)
     // Read before the insert: after it, this installation always has a vote.
     const firstVoteForCase = !this.store.hasVotedForCase(installationId, target.id)
-    const remaining = this.remainingFor(installationId, target)
+    const remaining = legacyDaily
+      ? legacyDailyPersonal(this.personalState(installationId, target, now)).remaining_incense
+      : this.remainingFor(installationId, target)
     const spent = clampVoteSpend(requestedCount, remaining, maxSpend)
     if (spent < 1) {
       return this.recordRejectedRequest(
@@ -1076,7 +1197,7 @@ export class LiangxiangBackendService {
         'no remaining incense today',
       )
     }
-    if (!this.store.spendIncense(installationId, target.business_date, spent, now)) {
+    if (!this.marketLedger.spend(installationId, target.business_date, spent, intent.request_id, now)) {
       return this.recordRejectedRequest(
         installationId,
         intent,
@@ -1088,7 +1209,7 @@ export class LiangxiangBackendService {
       )
     }
     const row = this.requireRow(installationId, target.business_date)
-    const earned = Math.floor(row.claimed_effective_tokens / row.token_per_incense)
+    const available = this.marketLedger.wallet(installationId).available_incense
     try {
       this.store.insertVote({
         request_id: intent.request_id,
@@ -1099,7 +1220,7 @@ export class LiangxiangBackendService {
         requested_count: requestedCount,
         accepted_incense: spent,
         used_incense_after: row.used_incense,
-        remaining_incense_after: earned - row.used_incense,
+        remaining_incense_after: available,
         created_at: now,
       })
       this.store.insertVoteRequest({
@@ -1127,7 +1248,7 @@ export class LiangxiangBackendService {
       request_id: intent.request_id,
       vote_type: intent.vote_type,
       used_incense: row.used_incense,
-      remaining_incense: earned - row.used_incense,
+      remaining_incense: available,
       spent_incense: spent,
       accepted_incense: spent,
       replayed: false,
@@ -1182,9 +1303,7 @@ export class LiangxiangBackendService {
     // operator case reset) there may be no current row yet; that means 0/0,
     // never yesterday's stored counters.
     const used = row?.used_incense ?? 0
-    const remaining = row === undefined
-      ? 0
-      : Math.floor(row.claimed_effective_tokens / row.token_per_incense) - row.used_incense
+    const remaining = row === undefined ? 0 : this.marketLedger.wallet(installationId).available_incense
     return {
       status: 'accepted',
       request_id: intent.request_id,
@@ -1246,7 +1365,11 @@ export class LiangxiangBackendService {
     return result
   }
 
-  private ensureRow(installationId: string, caseRow: CaseRow, now: number): void {
+  private ensureRow(installationId: string, caseRow: CaseRow, now: number, cumulative = true): void {
+    const wallet = this.marketLedger.ensureWallet(installationId, caseRow.business_date, caseRow.token_per_incense, now)
+    // Opt-in is durable. An old binary may neither reset this wallet at
+    // midnight nor spend funds it cannot represent, even after unfreezing.
+    if (!cumulative && wallet.cumulative_since !== null) throw new LegacyWalletUpgradeRequiredError()
     this.store.ensureIncenseRow(
       installationId,
       caseRow.business_date,
@@ -1255,6 +1378,8 @@ export class LiangxiangBackendService {
       now,
     )
     this.tryGrantStarter(installationId, caseRow, now)
+    this.marketLedger.syncClaim(this.requireRow(installationId, caseRow.business_date), now)
+    if (cumulative && wallet.cumulative_since === null) this.marketLedger.enableCumulative(installationId, now)
   }
 
   /**
@@ -1275,6 +1400,7 @@ export class LiangxiangBackendService {
       now,
     )) return
     this.store.addStarterTokens(installationId, caseRow.business_date, tokens, now)
+    this.marketLedger.syncClaim(this.requireRow(installationId, caseRow.business_date), now, 'gift')
   }
 
   private requireRow(installationId: string, businessDate: string): IncenseRow {
@@ -1286,7 +1412,7 @@ export class LiangxiangBackendService {
   private remainingFor(installationId: string, caseRow: CaseRow): number {
     const row = this.store.incenseFor(installationId, caseRow.business_date)
     if (row === undefined) return 0
-    return Math.floor(row.claimed_effective_tokens / row.token_per_incense) - row.used_incense
+    return this.marketLedger.wallet(installationId).available_incense
   }
 
   private personalState(installationId: string, caseRow: CaseRow, now: number): V1PersonalState {
@@ -1294,26 +1420,22 @@ export class LiangxiangBackendService {
     const claimed = row?.claimed_effective_tokens ?? 0
     const used = row?.used_incense ?? 0
     const tokenPerIncense = row?.token_per_incense ?? caseRow.token_per_incense
-    // The domain fold is the single source of the accounting identities.
-    const personal = derivePersonalLiangQiState({
-      effectiveTokensToday: claimed,
-      usedIncenseToday: used,
-      tokenPerIncense,
-    })
+    const wallet = this.marketLedger.wallet(installationId)
     return {
       business_date: caseRow.business_date,
-      claimed_effective_tokens: personal.effectiveTokensToday,
+      claimed_effective_tokens: claimed,
       starter_tokens: row?.starter_tokens ?? 0,
       claim_source: CLAIM_SOURCE_HOST_OBSERVED,
       claim_verified: false,
-      earned_incense: personal.earnedIncenseToday,
-      used_incense: personal.usedIncenseToday,
-      remaining_incense: personal.remainingIncense,
-      token_remainder: personal.tokenRemainder,
-      tokens_to_next_incense: personal.tokensToNextIncense,
-      token_per_incense: personal.tokenPerIncense,
-      version: row?.version ?? 0,
+      earned_incense: this.marketLedger.mintedToday(installationId, caseRow.business_date),
+      used_incense: used,
+      remaining_incense: wallet.available_incense,
+      token_remainder: wallet.token_remainder,
+      tokens_to_next_incense: wallet.token_per_incense - wallet.token_remainder,
+      token_per_incense: tokenPerIncense,
+      version: wallet.version,
       updated_at: row?.updated_at ?? now,
+      wallet,
     }
   }
 
@@ -1343,7 +1465,16 @@ export class LiangxiangBackendService {
       policy_version: caseRow.liangzi_policy_version,
       captured_at: now,
     }
-    return toV1Snapshot(row, liangziPolicyForVersion(row.policy_version), this.store.lifetimeTotals())
+    const cached = this.lifetimeFrame
+    if (cached === undefined || cached.caseId !== row.case_id
+      || cached.rollbackVersion !== this.store.rollbackVersion
+      || now < cached.at || now - cached.at >= 1_000) {
+      this.lifetimeFrame = {
+        caseId: row.case_id, at: now, rollbackVersion: this.store.rollbackVersion,
+        totals: this.store.lifetimeTotals(),
+      }
+    }
+    return toV1Snapshot(row, liangziPolicyForVersion(row.policy_version), this.lifetimeFrame!.totals)
   }
 
   private isPublishDue(latest: SnapshotRow | undefined, stats: StatsRow, now: number): boolean {

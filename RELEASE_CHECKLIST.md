@@ -7,8 +7,8 @@
 ## 1. 契约
 
 - [ ] `AGENTS.md` §17 的语义自检逐条为「是」
-- [ ] 语义扫描无废弃概念（稳/第三态、candidate/ranking/leaderboard/winner、大夯…大拉、LiangScore、梁签、小难梁/老梁、个人 Avatar Tier、cacheRead×0.1）；“牢梁”仅允许存在于待开梁肖像装饰牌匾
-- [ ] 五态恰为 梁工/梁总/梁神/梁圣/梁祖 + `待开梁` 零票占位
+- [ ] 语义扫描无废弃概念（稳/第三态、candidate/ranking/leaderboard/winner、大夯…大拉、LiangScore、梁签、老梁、个人 Avatar Tier、cacheRead×0.1）；“牢梁”仅允许存在于待开梁肖像装饰牌匾
+- [ ] 当前规则六态为 小难梁/梁工/梁总/梁神/梁圣/梁祖 + `待开梁` 零票占位；历史梁案按其原规则展示
 - [ ] 投票恰为 夯/拉，共用一个香火池，一票一炷
 
 ## 2. 质量门
@@ -18,8 +18,9 @@
 - [ ] `pnpm run smoke:online`（拒绝 VERIFIED_PRODUCTION、claim 折算、幂等、50 并发只 1 票、快照发布）
 - [ ] `node scripts/assert-profile-modules.mjs <profile>`（每个 in-box 包单实例）
 - [ ] `pnpm audit --prod` 无已知漏洞
-- [ ] 打包内容审计：仅 `lib/index.js`、`lib/client.js(.map)`、`cordis.patch.yml`、`README.md`、`LICENSE`、`package.json`
+- [ ] 打包内容与 `package.json.files` 一致：Host／Client入口、必要画像资源、许可证、patch、README及manifest；不得夹带Backend、数据库、测试或运维文件
 - [ ] 分发包不含入梁券 secret、API key、`.env` 或其他凭据
+- [ ] 最终包默认后台为 `https://api.liang.today`，Client使用DSH同源API；不含测试公网IP／临时测试入口或开发环境覆盖。localhost校验与显式自建配置单独核对，不机械删除
 - [ ] 12k 一次性安装标识洪泛后 limiter 活跃 key 不超过硬上限，拒票/重放日志按原因采样
 
 ## 3. 信任表述
@@ -32,7 +33,7 @@
 ## 4. 文档
 
 - [ ] `CHANGELOG.md` 有本次条目
-- [ ] `docs/100-release-readiness.md` 记录本次 RC 的环境与结论
+- [ ] 当前发布回执记录最终候选环境与结论；历史 `docs/100-release-readiness.md` 不作为2.0验收
 - [ ] `docs/102-known-limitations.md` 覆盖所有未修项
 - [ ] `docs/COMPATIBILITY.md` 的实测环境表已更新（含 tested DSH commit）
 
@@ -48,3 +49,11 @@
 - [ ] `scripts/deploy.sh` 部署并由 `scripts/deploy-check.sh` 确认 VERSION、服务名与当前提交一致
 - [ ] 本机 MacBook 与至少一台独立客户端先卸载旧 `dsh-liangxiang`，再安装新包；核对更新路径保留身份，真正清空存储的重装走正式入梁券/rekey
 - [ ] 输出 Final Go/No-Go 与遗留限制
+
+## 7. 插件市场展示（发布前准备，获批发布后复核）
+
+- [ ] 按 [`PLUGIN_MARKET_DISTRIBUTION.md`](docs/PLUGIN_MARKET_DISTRIBUTION.md) 复核既有及新增重要市场；优先DSH原生发现索引、dsh-market / awesome，其次1024及其他目录
+- [ ] 分别记录搜索卡片／详情的标题、介绍、图标、图片、版本来源与刷新方式；不把只支持图标的卡片当三图画廊
+- [ ] 同一正式版的主UI、梁股、梁祠三张真实图已准备，GitHub与包内README／详情、官网、人工目录文案对应；HTTPS图片可访问、清晰、无隐私或测试残留
+- [ ] 检查最终tarball而非仅源码README；预发布候选与当前正式公开展示分开，不提前宣称2.0已上线
+- [ ] 需要的第三方目录更新、公开素材部署和投稿已列入待批准动作；获批发布后复搜并打开详情，记录实际展示版本、核验时间和待刷新项

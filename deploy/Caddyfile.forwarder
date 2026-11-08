@@ -1,0 +1,59 @@
+{
+	servers {
+		# Host-owned setting: only the old ingress is trusted during migration.
+		trusted_proxies static {$LIANGXIANG_TRUSTED_PROXY:127.0.0.1/32}
+		trusted_proxies_strict
+	}
+	# Runtime reverse-proxy errors can otherwise echo request headers into the
+	# journal. Keep pseudonymous identity/signature material out of operations
+	# logs while retaining the method, path, status and client address.
+	log default {
+		format filter {
+			request>headers>X-Liangxiang-Public-Key delete
+			request>headers>X-Liangxiang-Signature delete
+			request>headers>X-Liangxiang-Installation delete
+			request>headers>X-Liangxiang-Device delete
+			request>headers>X-Liangxiang-Timestamp delete
+		}
+	}
+}
+
+# Root-owned, optional sites retained only during an internal-to-production
+# handoff. No host addresses or private certificates belong in this repository.
+import /etc/caddy/liangxiang-sites/*.caddy
+
+# The retired ingress forwards to one active ledger. The host-owned upstream
+# must be a fixed HTTPS address; never point it back at this domain through DNS.
+api.liang.today, hk-api.liang.today {
+	encode zstd gzip
+
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+	}
+
+	request_body {
+		max_size 1MB
+	}
+
+	reverse_proxy {$LIANGXIANG_UPSTREAM} {
+		# Caddy's reverse_proxy supplies the immediate client in
+		# X-Forwarded-For. The backend trusts one sanitized client only across
+		# this loopback hop, never the public caller's raw forwarding chain.
+		header_up X-Forwarded-For {client_ip}
+		header_up Host api.liang.today
+		flush_interval -1
+		transport http {
+			tls_server_name api.liang.today
+			# Shorter than the backend's 65s idle timeout; reuse sockets safely.
+			keepalive 60s
+			dial_timeout 3s
+			response_header_timeout 10s
+		}
+	}
+}

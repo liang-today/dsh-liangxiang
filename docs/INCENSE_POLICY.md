@@ -33,11 +33,12 @@ reasoning 已在输出中，不重复计入。图像只计服务商实际报告�
 API 计费倍率**，不按供应商临时重定向或日期自动改价。
 见 [官方兼容说明](https://api-docs.deepseek.com/news/news260910/)。
 
-## 结算与提示同源
+## 结算与规则说明同源
 
 Host 在线、离线均使用同一静态规则，不接受远程倍率覆盖、不查询模型目录，也不
-需要额外 DeepSeek Key。下一炷提示由同一 `incenseWeightRows` 生成，阈值读取实际
-`tokenPerIncense`，不另维护说明表。`node lib/backend-cli.js rules show` 可只读查看
+需要额外 DeepSeek Key。模型说明仍由同一 `incenseWeightRows` 和实际阈值
+`tokenPerIncense` 推导，不另维护说明表；主面板已移除“下一炷”模型悬浮表，
+精确下一炷数值保留在辅助阅读文案中。`node lib/backend-cli.js rules show` 可只读查看
 静态规则，无需打开数据库。
 
 每次请求按最终服务商用量结算，不按会话当前所选模型给历史请求统一定价：

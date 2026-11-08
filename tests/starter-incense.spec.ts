@@ -36,7 +36,7 @@ afterEach(() => {
 })
 
 describe('starter incense grant', () => {
-  it('migrates the backend schema to v10 with durable vote receipts and broadcasts', () => {
+  it('migrates the backend schema with durable vote receipts, broadcasts and cumulative wallets', () => {
     const db = new DatabaseSync(':memory:')
     migrate(db)
     const version = db.prepare('PRAGMA user_version').get() as { user_version: number }
@@ -113,6 +113,8 @@ describe('starter incense grant', () => {
     expect(version.user_version).toBe(BACKEND_SCHEMA_USER_VERSION)
     expect(legacy.requested_count).toBeNull()
     expect(receipt).toEqual({ requested_count: null, result_status: 'accepted' })
+    expect((db.prepare('PRAGMA table_info(daily_incense_state)').all() as Array<{ name: string }>)
+      .some(column => column.name === 'starter_tokens')).toBe(true)
     db.close()
   })
 
@@ -220,6 +222,10 @@ describe('starter incense grant', () => {
     expect(f.service.dailyState(INSTALLATION).authoritative_personal_state.remaining_incense)
       .toBe(STARTER_INCENSE_COUNT)
 
+    // Only an empty wallet may relinquish its identity. Spending the gift must
+    // not make its device/date grant claimable again under a fresh key.
+    f.service.vote(INSTALLATION, { case_id: f.service.ensureActiveCase().id,
+      vote_type: 'up', count: STARTER_INCENSE_COUNT, request_id: 'starter-before-empty-rekey' })
     f.service.rekeyIdentity(NEXT, `pk-${NEXT}`, FINGERPRINT)
     const rebound = f.service.dailyState(NEXT).authoritative_personal_state
     expect(rebound.remaining_incense).toBe(0)
@@ -235,7 +241,8 @@ describe('starter incense grant', () => {
     f.clock.advance(DAY_MS)
     const nextDay = f.service.dailyState(INSTALLATION).authoritative_personal_state
     expect(nextDay.business_date).toBe('2026-08-17')
-    expect(nextDay.remaining_incense).toBe(STARTER_INCENSE_COUNT)
+    expect(nextDay.remaining_incense).toBe(STARTER_INCENSE_COUNT * 2)
+    expect(nextDay.earned_incense).toBe(STARTER_INCENSE_COUNT)
   })
 
   it('can be disabled with LIANGXIANG_STARTER_INCENSE=0', () => {

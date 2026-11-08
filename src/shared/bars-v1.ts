@@ -6,7 +6,7 @@
  *
  * Two consequences shape the whole contract:
  *
- * - There is no "online chart". The community backend owns the vote ledger and
+ * - This local-observation contract does not read official market candles. The community backend owns the vote ledger and
  *   exposes no per-second series, so the only thing this Host can draw is its
  *   own sampling of `state`. A missing stretch means "we did not look", never
  *   "nothing happened" — hence `BarsGap` is a first-class field, not an error.

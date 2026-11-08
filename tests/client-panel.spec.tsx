@@ -6,12 +6,14 @@
 import { describe, expect, it } from 'vitest'
 import { LiangAvatar } from '../src/client/LiangAvatar.tsx'
 import { AVATAR_SLOT, RING_SIZE } from '../src/client/LiangQiRing.tsx'
-import { Panel } from '../src/client/Panel.tsx'
+import { Panel, type PanelProps } from '../src/client/Panel.tsx'
 import { createMockLiangxiangStore } from '../src/client/store.ts'
 import type { LiangxiangViewState } from '../src/client/store.ts'
 import { color } from '../src/client/theme.ts'
+import { mainColor } from '../src/client/main-panel-theme.ts'
+import { PERSONAL_INCENSE_CAPTION_CSS } from '../src/client/PersonalIncenseCaption.tsx'
 import { RELEASE_NOTES_QQ, RELEASE_NOTES_THANKS, RELEASE_NOTES_TITLE } from '../src/client/release-notes.ts'
-import { LEGACY_LIANGZI_POLICY_VERSION, LIANGZI_STATES, VOTE_COUNT_MAX, deriveLocalIncenseStats, liangQiFloatPeriodMs, DEFAULT_INCENSE_WEIGHT_POLICY } from '../src/domain/index.ts'
+import { LEGACY_LIANGZI_POLICY_VERSION, LIANGZI_STATES, VOTE_COUNT_MAX, deriveLocalIncenseStats, liangQiFloatPeriodMs } from '../src/domain/index.ts'
 import {
   COMMUNITY_UNAVAILABLE_REASON,
   INCENSE_STAT_LABEL,
@@ -41,7 +43,6 @@ import {
   UTILITY_MODE_ONLINE_LABEL,
   UTILITY_HINT,
   UTILITY_LABEL,
-  UTILITY_RECONCILE_HINT,
   UTILITY_RECONCILE_LABEL,
   VOTE_DOWN_LABEL,
   VOTE_UP_LABEL,
@@ -52,12 +53,9 @@ import {
 } from '../src/shared/index.ts'
 import { findAll, findByAttr, renderDeep, styleOf, textContent, type RenderedElement, type RenderedNode } from './helpers/render.ts'
 
-/** Visible 下一炷 caption/value, excluding the hover weight table. */
+/** Passive 下一炷 caption/value. */
 function visibleNextIncenseText(node: RenderedElement | undefined): string {
-  if (node === undefined) return ''
-  const visible = node.children.filter((child) =>
-    child.kind !== 'element' || !('data-liangxiang-weight-hint' in child.props))
-  return textContent(visible)
+  return node === undefined ? '' : textContent([node])
 }
 
 function renderPanel(
@@ -69,11 +67,13 @@ function renderPanel(
     onReconcileConfirm?: () => void
     onReconcileCancel?: () => void
     onShowVersion?: () => void
+    onOpenMarket?: PanelProps['onOpenMarket']
     onInsufficientVote?: (voteType: 'up' | 'down') => void
     onVoteClick?: (voteType: 'up' | 'down') => void
     welcomeVisible?: boolean
     releaseNotesVisible?: boolean
     condensedIncense?: number
+    incenseCaption?: PanelProps['incenseCaption']
     utilityOpen?: boolean
     modeConfirmOpen?: boolean
     modeChanging?: boolean
@@ -99,6 +99,7 @@ function renderPanel(
       onReleaseNotesClose={() => undefined}
       avatarPulse={false}
       condensedIncense={extra.condensedIncense ?? 0}
+      {...(extra.incenseCaption === undefined ? {} : { incenseCaption: extra.incenseCaption })}
       voteFeedback={voteFeedback}
       onVote={() => undefined}
       {...(extra.onVoteClick === undefined ? {} : { onVoteClick: extra.onVoteClick })}
@@ -121,6 +122,7 @@ function renderPanel(
       onModeConfirm={() => undefined}
       onModeCancel={() => undefined}
       onShowVersion={extra.onShowVersion ?? (() => undefined)}
+      {...(extra.onOpenMarket === undefined ? {} : { onOpenMarket: extra.onOpenMarket })}
       onReconcileAsk={extra.onReconcileAsk ?? (() => undefined)}
       onReconcileConfirm={extra.onReconcileConfirm ?? (() => undefined)}
       onReconcileCancel={extra.onReconcileCancel ?? (() => undefined)}
@@ -186,7 +188,7 @@ describe('four visual regions', () => {
     const qqCard = findByAttr(tree, 'data-liangxiang-welcome-qq')[0]
     const qrCode = findByAttr(tree, 'data-liangxiang-welcome-qq-qrcode')[0]
     expect(qqCard && textContent([qqCard])).toContain(RELEASE_NOTES_QQ)
-    expect(qrCode?.props.alt).toBe('梁相 QQ 群 453683905 二维码')
+    expect(qrCode?.props.alt).toBe('梁相上香QQ群453683905二维码')
     expect(qrCode?.props.src).toMatch(/^data:image\/jpeg;base64,/)
     expect(qrCode?.props.width).toBe(72)
     expect(qrCode?.props.height).toBe(72)
@@ -238,7 +240,7 @@ describe('four visual regions', () => {
     const notes = findByAttr(updated, 'data-liangxiang-release-notes')[0]
     expect(notes?.props['aria-label']).toBe(RELEASE_NOTES_TITLE)
     expect(notes?.props.autoFocus).toBe(true)
-    expect(textContent(notes === undefined ? [] : [notes])).toContain(RELEASE_NOTES_QQ)
+    expect(textContent(notes === undefined ? [] : [notes])).toContain('梁相上香QQ群453683905')
     expect(textContent(notes === undefined ? [] : [notes])).toContain(RELEASE_NOTES_THANKS)
     expect(textContent(notes === undefined ? [] : [notes])).not.toContain('上次正式版以来')
     const updateQqCard = findByAttr(updated, 'data-liangxiang-qq-card')[0]
@@ -247,8 +249,11 @@ describe('four visual regions', () => {
     expect(findByAttr(updated, 'data-liangxiang-release-notes-qq-qrcode')).toHaveLength(1)
     expect(updateQrCode?.props.src).toBe(welcomeQrCode?.props.src)
     expect(updateQrCode?.props.alt).toBe(welcomeQrCode?.props.alt)
-    expect(styleOf(updateQqCard).border).toBe(styleOf(welcomeQqCard).border)
-    expect(styleOf(updateQqCard).background).toBe(styleOf(welcomeQqCard).background)
+    expect(updateQqCard?.props['aria-label']).toBe(RELEASE_NOTES_QQ)
+    expect(updateQqCard?.props.className).toBe('u-community-row')
+    expect(welcomeQqCard?.props['data-liangxiang-qq-card']).toBe('')
+    expect(updateQrCode?.props.width).toBe(78)
+    expect(updateQrCode?.props.height).toBe(78)
     const close = findByAttr(updated, 'data-liangxiang-release-notes-close')[0]
     expect(close?.props.autoFocus).toBeUndefined()
     const onClick = close?.props.onClick as (() => void) | undefined
@@ -272,7 +277,7 @@ describe('four visual regions', () => {
     expect(styleOf(caseTitle).WebkitLineClamp).toBe(2)
     const dialog = findAll(tree, (node) => node.props.role === 'dialog')[0]
     expect(dialog?.props['data-liangxiang-authority']).toBe('LOCAL_FAKE_DEV')
-    const summary = findAll(tree, (node) => node.props['aria-live'] === 'polite')[0]
+    const summary = findAll(tree, (node) => node.type === 'p' && node.props['aria-live'] === 'polite')[0]
     expect(summary && textContent([summary])).toContain(LOCAL_MODE_NOTE)
   })
 })
@@ -282,7 +287,10 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const state = demoState()
     const idle = renderPanel(state)
     const active = renderPanel({ ...state, streamingActive: true })
-    expect(textContent(findByAttr(active, 'data-liangxiang-stream-status'))).toBe('凝香中')
+    // Activity retains smoke, but cannot permanently replace today's settled number.
+    expect(findByAttr(active, 'data-liangxiang-stream-status')).toHaveLength(0)
+    expect(textContent(findByAttr(active, 'data-caption-copy'))).toBe('今日凝香7炷')
+    expect(textContent(findByAttr(active, 'data-caption-copy'))).toBe(textContent(findByAttr(idle, 'data-caption-copy')))
     expect(findByAttr(active, 'data-liangxiang-stream-activity')).toHaveLength(1)
     for (const attribute of ['data-liangxiang-compact', 'data-liangxiang-liang-position-value']) {
       expect(textContent(findByAttr(active, attribute))).toBe(textContent(findByAttr(idle, attribute)))
@@ -295,10 +303,15 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(findByAttr(disconnected, 'data-liangxiang-stream-activity')).toHaveLength(0)
   })
   it('shows the actual incense gain when one update crosses multiple sticks', () => {
-    const tree = renderPanel(demoState(), '', { condensedIncense: 6 })
-    const feedback = findByAttr(tree, 'data-liangxiang-condensed')[0]
-    expect(feedback?.props['data-liangxiang-condensed']).toBe(6)
-    expect(feedback && textContent([feedback])).toBe('凝香 +6 炷')
+    const state = demoState()
+    const tree = renderPanel(state, '', { condensedIncense: 6, incenseCaption: { view: 'gain', gain: 6, sequence: 1 } })
+    const feedback = findByAttr(tree, 'data-liangxiang-personal-caption')[0]
+    expect(feedback?.props['data-view']).toBe('gain')
+    expect(textContent(findByAttr([feedback!], 'data-caption-copy'))).toBe('凝香到账+6炷')
+    expect(feedback?.props['aria-label']).toBe('凝香到账6炷')
+    expect(findByAttr(tree, 'data-liangxiang-condensed')).toHaveLength(0)
+    expect(findByAttr(tree, 'data-liangxiang-ring')[0]?.props['data-fill']).toBe(state.personal.liangQiFill.toFixed(4))
+    expect(state.personal.remainingIncense).toBe(demoState().personal.remainingIncense)
   })
 
   it('flanks the 梁子 with the personal numbers and leads with one 梁位 value', () => {
@@ -306,15 +319,15 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const incense = findByAttr(tree, 'data-liangxiang-personal', 'incense')[0]
     const next = findByAttr(tree, 'data-liangxiang-personal', 'next-incense')[0]
     const position = findByAttr(tree, 'data-liangxiang-liang-position')[0]
-    expect(incense && textContent([incense])).toContain('7 炷')
+    expect(textContent(findByAttr(incense ? [incense] : [], 'data-caption-copy'))).toBe('今日凝香7炷')
     const nextVisible = visibleNextIncenseText(next)
     expect(nextVisible).toContain('3K')
-    expect(nextVisible).toContain('当量')
-    expect(nextVisible).toContain('已攒')
+    expect(nextVisible).toBe('下一炷3K量')
+    expect(nextVisible).not.toContain('已攒')
     expect(nextVisible).not.toContain('3,000')
-    expect(nextVisible).toContain('当量')
+    expect(next?.props['aria-label']).toBe('下一炷 3,000 当量')
     expect(nextVisible).not.toContain('Token')
-    expect(next?.props.tabIndex).toBe(0)
+    expect(next?.props.tabIndex).toBeUndefined()
     // 10,665/12,846 = 83.0219…%, truncated to six decimals.
     expect(position && textContent([position])).toContain('梁位')
     expect(position && textContent([position])).toContain('83.021952%')
@@ -353,22 +366,27 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       findByAttr(tree, 'data-liangxiang-liangzi-title')[0],
     ]
     for (const part of parts) {
-      expect(styleOf(part).fontSize).toBe('13px')
+      expect(styleOf(part).fontSize).toBe('11px')
       expect(styleOf(part).fontWeight).toBe(600)
       expect(styleOf(part).lineHeight).toBe('18px')
     }
     expect(styleOf(findByAttr(tree, 'data-liangxiang-liang-position')[0]).alignItems).toBe('center')
   })
 
-  it('pins the 梁位 value to the ring footer (one value, not a ratio pair)', () => {
+  it('pins one full-width 梁位 pill under the ring without adding a ratio pair', () => {
     const tree = renderPanel(demoState())
     const ring = findByAttr(tree, 'data-liangxiang-ring')[0]
     expect(ring).toBeDefined()
     const footer = ring === undefined ? [] : findByAttr([ring], 'data-liangxiang-ring-footer')
-    expect(footer).toHaveLength(1)
-    expect(footer[0] && textContent([footer[0]])).toContain('83.021952%')
-    expect(footer[0] && textContent([footer[0]])).toContain('→')
-    expect(footer[0] && textContent([footer[0]])).toContain('梁神')
+    expect(footer).toHaveLength(0)
+    const core = findByAttr(tree, 'data-liangxiang-region', 'core')[0]!
+    const position = findByAttr([core], 'data-liangxiang-liang-position')
+    expect(position).toHaveLength(1)
+    expect(textContent(position)).toContain('83.021952%')
+    expect(textContent(position)).toContain('→')
+    expect(textContent(position)).toContain('梁神')
+    expect(findByAttr([ring!], 'data-liangxiang-liang-position')).toHaveLength(0)
+    expect(styleOf(position[0])).toMatchObject({ position: 'absolute', left: 0, bottom: 0, width: '100%' })
     // The old up/down pair must not come back.
     expect(findByAttr(tree, 'data-liangxiang-ratio')).toHaveLength(0)
   })
@@ -413,17 +431,25 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
       expect(anchor.justifyContent).toBe('center')
       expect(incense.position).toBe('absolute')
       expect(next.position).toBe('absolute')
-      expect(incense.left).toBe('0px')
-      expect(next.right).toBe('0px')
+      expect(incense.left).toBe('-5px')
+      expect(next.right).toBe('-5px')
       expect(incense.width).toBe(next.width)
       expect(incense.height).toBe(`${RING_SIZE}px`)
       expect(next.height).toBe(`${RING_SIZE}px`)
-      expect(pill.width).toBeUndefined()
+      expect(pill.width).toBe('100%')
       expect(pill.whiteSpace).toBe('nowrap')
-      expect(styleOf(findByAttr(tree, 'data-liangxiang-ring-footer')[0]).top).toBe('100%')
-      expect(styleOf(findByAttr(tree, 'data-liangxiang-ring-footer')[0]).marginTop).toBe('6px')
-      expect(styleOf(findByAttr(tree, 'data-liangxiang-avatar')[0]).width).toBe(AVATAR_SLOT)
-      expect(styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0]).width).toBe('256px')
+      expect(pill.left).toBe(0)
+      expect(pill.bottom).toBe(0)
+      expect(findByAttr(tree, 'data-liangxiang-ring-footer')).toHaveLength(0)
+      const avatarSize = state.snapshot.liangziState === 'liang_zu' ? 102 : state.snapshot.liangziState === 'liang_sheng' ? 100 : AVATAR_SLOT
+      expect(styleOf(findByAttr(tree, 'data-liangxiang-avatar')[0]).width).toBe(avatarSize)
+      const pond = findByAttr(tree, 'data-liangxiang-main-pond')[0]!
+      expect(pond.props['aria-hidden']).toBe('true')
+      expect(findByAttr(tree, 'data-liangxiang-ring')[0]?.props['data-remaining']).toBe(state.personal.remainingIncense)
+      const chrome = styleOf(findAll(tree, (node) => node.props.role === 'dialog')[0])
+      expect(chrome.width).toBe('256px')
+      expect(chrome.maxWidth).toBe('100vw')
+      expect(chrome.left).toBe('0px')
       expect(social).toHaveLength(2)
       expect(social.map((node) => styleOf(node).gridRow)).toEqual(['1 / 3', '1 / 3'])
       expect(social.map((node) => styleOf(node).gridColumn)).toEqual([1, 2])
@@ -432,22 +458,23 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(value.fontVariantNumeric).toBe('tabular-nums')
   })
 
-  it('paints 今日凝香 and 下一炷 with the same orange value and row rhythm', () => {
+  it('uses quiet two-line personal flanks with blue values beside the centered portrait', () => {
     const tree = renderPanel(demoState())
     const incenseWrap = findByAttr(tree, 'data-liangxiang-personal', 'incense')[0]
     const nextWrap = findByAttr(tree, 'data-liangxiang-personal', 'next-incense')[0]
     expect(styleOf(incenseWrap).gap).toBe(styleOf(nextWrap).gap)
-    const valueRow = (wrap: RenderedElement | undefined): RenderedElement | undefined =>
-      wrap?.children.find((child): child is RenderedElement =>
-        child.kind === 'element' && styleOf(child).fontSize === '13px')
-    const incenseValueRow = valueRow(incenseWrap)
-    const nextValueRow = valueRow(nextWrap)
-    expect(styleOf(incenseValueRow).color).toBe(color.ritualEmber)
-    expect(styleOf(nextValueRow).color).toBe(color.ritualEmber)
-    expect(styleOf(incenseValueRow).lineHeight).toBe('18px')
-    expect(styleOf(nextValueRow).lineHeight).toBe('18px')
-    expect(styleOf(incenseValueRow).fontWeight).toBe(700)
+    const incenseValue = findByAttr(incenseWrap ? [incenseWrap] : [], 'data-caption-amount')[0]
+    const nextValueRow = nextWrap?.children.find((child): child is RenderedElement => child.kind === 'element' && styleOf(child).fontSize === '17px')
+    expect(styleOf(incenseValue).fontSize).toBe('17px')
+    expect(styleOf(nextValueRow).color).toBe(mainColor.deep)
+    expect(PERSONAL_INCENSE_CAPTION_CSS).toContain(`color:var(--liangxiang-main-deep, ${color.textPrimary})`)
+    expect(styleOf(nextValueRow).lineHeight).toBe('20px')
+    const units = findByAttr(tree, 'data-liangxiang-personal-unit')
+    expect(units).toHaveLength(2)
+    expect(styleOf(units[0])).toEqual(styleOf(units[1]))
+    expect(PERSONAL_INCENSE_CAPTION_CSS).toContain('[data-caption-amount] { font-weight:700;')
     expect(styleOf(nextValueRow).fontWeight).toBe(700)
+    expect(textContent(findByAttr(tree, 'data-caption-label'))).toBe('今日凝香')
   })
 
   it('names the personal ring 香火环 in accessible copy', () => {
@@ -460,9 +487,14 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(ringImage?.props['aria-label']).not.toContain('梁气：')
   })
 
-  it('shows 余 N 炷 (not 可打梁) so the left flank stays narrow', () => {
-    const tree = renderPanel(demoState())
-    expect(textContent(tree)).toContain('余 ')
+  it('keeps available incense exact and inspectable without a permanent extra balance row', () => {
+    const state = demoState()
+    const tree = renderPanel(state)
+    expect(textContent(findByAttr(tree, 'data-caption-copy'))).toBe('今日凝香7炷')
+    const inspecting = renderPanel(state, '', { incenseCaption: { view: 'balance', gain: 0, sequence: 2 } })
+    expect(textContent(findByAttr(inspecting, 'data-caption-copy'))).toBe(`个人余香${state.personal.remainingIncense}炷`)
+    expect(findByAttr(inspecting, 'data-liangxiang-personal-caption')[0]?.props['aria-label']).toBe(`个人余香${state.personal.remainingIncense}炷`)
+    expect(findByAttr(inspecting, 'data-liangxiang-personal', 'incense')).toHaveLength(1)
     expect(textContent(tree)).not.toContain('可打梁')
   })
 
@@ -479,14 +511,14 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(findByAttr(tree, 'data-liangxiang-version-dialog')).toHaveLength(0)
   })
 
-  it('compacts flank counts so thousands stay short (and keeps exact values in the tooltip / SR)', () => {
+  it('compacts flank counts so thousands stay short and keeps exact next-incense values in accessible copy', () => {
     const demo = renderPanel(demoState())
     expect(textContent(findByAttr(demo, 'data-liangxiang-compact', 'incense'))).toBe('7')
     expect(textContent(findByAttr(demo, 'data-liangxiang-compact', 'next-incense'))).toBe('3K')
-    expect(findByAttr(demo, 'data-liangxiang-compact', 'next-incense')[0]?.props.title).toBe('3,000 当量')
+    expect(findByAttr(demo, 'data-liangxiang-compact', 'next-incense')[0]?.props.title).toBeUndefined()
     expect(textContent(demo)).toContain('距下一炷还差 3,000 当量')
-    expect(findByAttr(demo, 'aria-label', '凝香规则')).toHaveLength(1)
-    expect(textContent(demo)).toContain('V4-Flash')
+    expect(findByAttr(demo, 'aria-label', '凝香规则')).toHaveLength(0)
+    expect(textContent(demo)).not.toContain('V4-Flash')
 
     // 1,234 炷 / 50,000 当量 — the previous tests never reached this width.
     const huge = createMockLiangxiangStore({
@@ -496,12 +528,12 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const tree = renderPanel(huge.getSnapshot())
     expect(huge.getSnapshot().personal.remainingIncense).toBe(1_234)
     expect(huge.getSnapshot().personal.tokensToNextIncense).toBe(50_000)
-    expect(textContent(findByAttr(tree, 'data-liangxiang-compact', 'incense'))).toBe('1.2K')
+    expect(textContent(findByAttr(tree, 'data-liangxiang-compact', 'incense'))).toBe('1.23K')
     expect(textContent(findByAttr(tree, 'data-liangxiang-compact', 'next-incense'))).toBe('50K')
     expect(findByAttr(tree, 'data-liangxiang-personal', 'incense')[0]
       && findByAttr(tree, 'data-liangxiang-compact', 'incense')[0]).toBeDefined()
     const incenseValue = findByAttr(tree, 'data-liangxiang-personal', 'incense')[0]
-    expect(incenseValue && textContent([incenseValue])).toContain('1.2K')
+    expect(textContent(findByAttr(incenseValue ? [incenseValue] : [], 'data-caption-copy'))).toBe('今日凝香1.23K炷')
     expect(incenseValue && textContent([incenseValue])).not.toContain('1,234')
 
     const tinyNext = createMockLiangxiangStore({ effectiveTokensToday: 49_991, usedIncenseToday: 0 })
@@ -529,21 +561,23 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const afterSmall = nextFlank(small.getSnapshot())
     expect(afterSmall.compact).toBe('600')
     expect(afterSmall.label).not.toBe(beforeSmall.label)
-    expect(afterSmall.title).toBe('600 当量')
+    expect(afterSmall.label).toContain('600 当量')
+    expect(afterSmall.title).toBe('')
 
     // Typical 30K band: integer K so 当量 stays short (no overlap with 梁子).
-    // Title / aria still carry the exact count so a 300-当量 delta is not lost.
+    // Accessible copy retains the exact count so a 300-当量 delta is not lost.
     const mid = createMockLiangxiangStore({ effectiveTokensToday: 16_600, usedIncenseToday: 0 })
     expect(mid.getSnapshot().personal.tokensToNextIncense).toBe(33_400)
     const beforeMid = nextFlank(mid.getSnapshot())
     expect(beforeMid.compact).toBe('33K')
     expect(beforeMid.compact).not.toMatch(/≈|\./)
-    expect(beforeMid.title).toBe('33,400 当量')
+    expect(beforeMid.label).toContain('33,400 当量')
+    expect(beforeMid.title).toBe('')
     mid.addEffectiveTokens(300)
     expect(mid.getSnapshot().personal.tokensToNextIncense).toBe(33_100)
     const afterMid = nextFlank(mid.getSnapshot())
     expect(afterMid.compact).toBe('33K')
-    expect(afterMid.title).toBe('33,100 当量')
+    expect(afterMid.title).toBe('')
     expect(afterMid.label).toContain('33,100')
     expect(afterMid.label).not.toBe(beforeMid.label)
   })
@@ -643,24 +677,28 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(styleOf(ring).overflow).toBe('visible')
   })
 
-  it('puts moons on a separate orbit so a moon never steals a stick slot', () => {
+  it('shows the highest magnitude only: 23 incense paints two moons and preserves its exact balance', () => {
     const store = createMockLiangxiangStore({ effectiveTokensToday: 23 * 50_000, usedIncenseToday: 0 })
     expect(store.getSnapshot().personal.remainingIncense).toBe(23)
     const tree = renderPanel(store.getSnapshot())
-    expect(findByAttr(tree, 'data-liangxiang-incense-glyph', 'stick')).toHaveLength(3)
+    expect(findByAttr(tree, 'data-liangxiang-incense-glyph', 'stick')).toHaveLength(0)
     expect(findByAttr(tree, 'data-liangxiang-incense-glyph', 'moon')).toHaveLength(2)
+    const ring = findByAttr(tree, 'data-liangxiang-ring')[0]!
+    expect(ring.props['data-remaining']).toBe(23)
+    expect(findByAttr([ring], 'role', 'img')[0]?.props['aria-label']).toContain('剩余香火 23 炷')
   })
 
-  it('puts suns on an inner orbit so 105 is 5 炷 + 1 日', () => {
+  it('shows one sun for 105 incense without mixing in sticks or changing available funds', () => {
     const store = createMockLiangxiangStore({ effectiveTokensToday: 105 * 50_000, usedIncenseToday: 0 })
     expect(store.getSnapshot().personal.remainingIncense).toBe(105)
     const tree = renderPanel(store.getSnapshot())
-    expect(findByAttr(tree, 'data-liangxiang-incense-glyph', 'stick')).toHaveLength(5)
+    expect(findByAttr(tree, 'data-liangxiang-incense-glyph', 'stick')).toHaveLength(0)
     expect(findByAttr(tree, 'data-liangxiang-incense-glyph', 'moon')).toHaveLength(0)
     expect(findByAttr(tree, 'data-liangxiang-incense-glyph', 'sun')).toHaveLength(1)
+    expect(findByAttr(tree, 'data-liangxiang-ring')[0]?.props['data-remaining']).toBe(105)
   })
 
-  it('drops glyphs at 1000+ and shows a compact chip instead of ten moons', () => {
+  it('drops glyphs at 1000+ and keeps its compact amount in the single caption instead of a top chip', () => {
     const store = createMockLiangxiangStore({ effectiveTokensToday: 1_000 * 50_000, usedIncenseToday: 0 })
     expect(store.getSnapshot().personal.remainingIncense).toBe(1_000)
     const tree = renderPanel(store.getSnapshot())
@@ -668,35 +706,29 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(findByAttr(tree, 'data-liangxiang-incense-mark', 'ten')).toHaveLength(0)
     expect(findByAttr(tree, 'data-liangxiang-incense-mark', 'hundred')).toHaveLength(0)
     const overflow = findByAttr(tree, 'data-liangxiang-incense-overflow')
-    expect(overflow).toHaveLength(1)
-    expect(overflow[0] && textContent([overflow[0]])).toContain('1K')
-    expect(findByAttr(tree, 'data-liangxiang-overflow-aura')).toHaveLength(1)
+    expect(overflow).toHaveLength(0)
+    expect(findByAttr(tree, 'data-liangxiang-overflow-aura')).toHaveLength(0)
+    expect(textContent(findByAttr(tree, 'data-caption-copy'))).toBe('今日凝香1K炷')
+    expect(findByAttr(tree, 'data-liangxiang-ring')[0]?.props['data-remaining']).toBe(1_000)
   })
 
-  it('keeps compact Token-per-stick rules on the next-incense flank', () => {
+  it('keeps 下一炷 passive and exactly readable without a model-rate tooltip', () => {
     const tree = renderPanel(demoState())
-    const hint = findByAttr(tree, 'data-liangxiang-weight-hint')[0]
-    expect(hint).toBeDefined()
-    const copy = hint === undefined ? '' : textContent([hint])
-    expect(findByAttr(tree, 'aria-label', '凝香规则')).toHaveLength(1)
-    expect(copy).toContain('Pro')
-    expect(copy).toContain('5W Token/炷')
-    expect(copy).toContain('Flash')
-    expect(copy).toContain('10W Token/炷')
+    const next = findByAttr(tree, 'data-liangxiang-personal', 'next-incense')[0]
+    const value = findByAttr(tree, 'data-liangxiang-compact', 'next-incense')[0]
+    expect(next?.props.tabIndex).toBeUndefined()
+    expect(next?.props['aria-label']).toBe('下一炷 3,000 当量')
+    expect(value?.props.title).toBeUndefined()
+    expect(findByAttr(tree, 'data-liangxiang-weight-hint')).toHaveLength(0)
+    expect(findByAttr(tree, 'aria-label', '凝香规则')).toHaveLength(0)
   })
 
-  it('renders the static family table with the actual configurable incense threshold', () => {
-    const base = createMockLiangxiangStore({ tokenPerIncense: 60_000 }).getSnapshot()
-    const tree = renderPanel({ ...base, incenseWeightPolicy: DEFAULT_INCENSE_WEIGHT_POLICY })
-    const hint = findByAttr(tree, 'data-liangxiang-weight-hint')[0]
-    const copy = hint === undefined ? '' : textContent([hint])
-    expect(copy).toContain('Pro')
-    expect(copy).toContain('Flash')
-    expect(copy).toContain('其它')
-    expect(copy).toContain('6W Token/炷')
-    expect(copy).toContain('12W Token/炷')
-    expect(copy).not.toContain('V4-Pro')
-    expect(copy).not.toContain('5W Token/炷')
+  it('preserves exact next-incense information for a configurable threshold without repeating model rules', () => {
+    const base = createMockLiangxiangStore({ tokenPerIncense: 60_000, effectiveTokensToday: 0, usedIncenseToday: 0 }).getSnapshot()
+    const tree = renderPanel(base)
+    expect(findByAttr(tree, 'data-liangxiang-personal', 'next-incense')[0]?.props['aria-label']).toBe('下一炷 60,000 当量')
+    expect(textContent(tree)).toContain('距下一炷还差 60,000 当量')
+    expect(findByAttr(tree, 'data-liangxiang-weight-hint')).toHaveLength(0)
   })
 
   it('does not render a leftover 演示 +1 炷 probe', () => {
@@ -743,7 +775,7 @@ describe('region 3: exactly two vote buttons', () => {
     const social = findByAttr(idle, 'data-liangxiang-region', 'social')[0]
     expect(styleOf(dialog).padding).toBe('10px 12px 8px')
     expect(styleOf(findByAttr(idle, 'data-liangxiang-region', 'case')[0]).marginBottom).toBe('2px')
-    expect(styleOf(findByAttr(idle, 'data-liangxiang-region', 'core')[0]).padding).toBe('20px 0 36px')
+    expect(styleOf(findByAttr(idle, 'data-liangxiang-region', 'core')[0]).padding).toBe('10px 0 32px')
     expect(styleOf(findByAttr(idle, 'data-liangxiang-region', 'vote')[0]).marginTop).toBe('6px')
     expect(styleOf(idleFeedback).margin).toBe(styleOf(acceptedFeedback).margin)
     expect(styleOf(idleFeedback).minHeight).toBe('22px')
@@ -1019,21 +1051,92 @@ describe('region 4: social stats', () => {
     expect(styleOf(voterIcon).gridRow).toBe('1 / 3')
     expect(styleOf(incenseIcon).alignSelf).toBe('center')
     expect(styleOf(voterIcon).alignSelf).toBe('center')
-    expect(findByAttr(tree, 'data-liangxiang-incense-icon')[0]?.props.height).toBe(26)
-    expect(findByAttr(tree, 'data-liangxiang-voter-icon')[0]?.props.height).toBe(26)
+    expect(findByAttr(tree, 'data-liangxiang-incense-icon')[0]?.props.height).toBe(16)
+    expect(findByAttr(tree, 'data-liangxiang-voter-icon')[0]?.props.height).toBe(16)
     expect(styleOf(slot).display).toBe('contents')
     expect(styleOf(desk).gridRow).toBe(1)
     expect(styleOf(entry).gridRow).toBe(2)
     expect(styleOf(incenseValue).textAlign).toBe('center')
     expect(styleOf(voterValue).textAlign).toBe('center')
-    expect(styleOf(findByAttr(tree, 'data-liangxiang-stat-label', 'incense')[0]).fontSize).toBe('12px')
-    expect(styleOf(findByAttr(tree, 'data-liangxiang-stat-label', 'voters')[0]).fontSize).toBe('12px')
+    expect(styleOf(findByAttr(tree, 'data-liangxiang-stat-label', 'incense')[0]).fontSize).toBe('11px')
+    expect(styleOf(findByAttr(tree, 'data-liangxiang-stat-label', 'voters')[0]).fontSize).toBe('11px')
     expect(findByAttr(tree, 'data-liangxiang-utility-desk')).toHaveLength(1)
     expect(findByAttr(tree, 'data-liangxiang-liangci-entry')).toHaveLength(1)
   })
 })
 
 describe('梁相案牍', () => {
+  it('bounds social counts while preserving the full labels and exact accessible detail', () => {
+    for (const [value, expected] of [[0, '0'], [999, '999'], [1000, '1K'], [9999, '9.99K'], [99999, '9.99万'], [9999999, '999.9万'], [Number.MAX_SAFE_INTEGER, '9007万亿']] as const) {
+      const initial = demoState()
+      const state = { ...initial, snapshot: { ...initial.snapshot, totalIncense: value, upVotes: value, downVotes: 0, uniqueVoters: value } }
+      const tree = renderPanel(state, '', { onOpenMarket: () => undefined })
+      for (const kind of ['incense', 'voters'] as const) {
+        const stat = findByAttr(tree, 'data-liangxiang-stat', kind)[0]!
+        const count = findByAttr(tree, 'data-liangxiang-stat-value', kind)[0]!
+        expect(textContent([count])).toBe(expected)
+        expect(stat.props['aria-label']).toContain(value.toLocaleString('zh-CN'))
+        expect(stat.props.title).toBeUndefined()
+        const hint = findByAttr(tree, 'data-liangxiang-stat-hint', kind)[0]!
+        expect(textContent([hint])).toContain(value.toLocaleString('zh-CN'))
+      }
+      expect(textContent([findByAttr(tree, 'data-liangxiang-stat-label', 'incense')[0]!])).toBe('三界香火')
+      expect(textContent([findByAttr(tree, 'data-liangxiang-stat-label', 'voters')[0]!])).toBe('五行香客')
+    }
+  })
+  it('opens one clearly named market action while keeping its miniature decorative', () => {
+    let opened = 0
+    const tree = renderPanel(onlineState(), '', { utilityOpen: true, reducedMotion: true, onOpenMarket: () => { opened++ } })
+    const market = findByAttr(tree, 'data-liangxiang-market-entry')[0]
+    expect(market?.props['aria-label']).toBe('梁股 · 香火市场：走势与三次入场')
+    expect(market?.props['data-motion']).toBe(false)
+    expect(market && textContent([market])).toContain('梁股')
+    expect(findByAttr(tree, 'data-liangxiang-utility-market')).toHaveLength(0)
+    expect(findByAttr(tree, 'data-liangxiang-utility-action', 'bars')).toHaveLength(0)
+    const icon = findByAttr(tree, 'data-liangxiang-utility-icon', 'market')[0]
+    expect(icon?.props['aria-hidden']).toBe('true')
+    expect(icon?.props.focusable).toBe('false')
+    expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(5)
+    const onClick = market?.props.onClick as ((event: { detail: number, currentTarget: HTMLButtonElement }) => void) | undefined
+    onClick?.({ detail: 0, currentTarget: { matches: () => false } as unknown as HTMLButtonElement })
+    expect(opened).toBe(1)
+  })
+
+  it('keeps one direct market entry above two compact ritual actions with pointer and keyboard activation', () => {
+    const calls: { origin: string, trigger: HTMLButtonElement, keyboard: boolean }[] = []
+    const tree = renderPanel(onlineState(), '', { utilityOpen: true, onOpenMarket: (origin, trigger, keyboard) => calls.push({ origin, trigger, keyboard }) })
+    const main = findByAttr(tree, 'data-liangxiang-market-entry')[0]!
+    expect(findByAttr(tree, 'data-liangxiang-utility-market')).toHaveLength(0)
+    const social = findByAttr(tree, 'data-liangxiang-region', 'social')[0]
+    const desk = findByAttr(tree, 'data-liangxiang-utility-desk')[0]
+    const utility = findByAttr(tree, 'data-liangxiang-utility-trigger')[0]!
+    const calendar = findByAttr(tree, 'data-liangxiang-liangci-entry')[0]!
+    expect(styleOf(social).gridTemplateColumns).toBe('minmax(0, 1fr) minmax(0, 1fr) 78px')
+    expect(styleOf(main).gridRow).toBe(1)
+    expect(styleOf(desk).gridRow).toBe(2)
+    expect(styleOf(calendar).gridRow).toBe(2)
+    expect(styleOf(desk).width).toBe('78px')
+    expect(main.props['aria-label']).toBe('梁股 · 香火市场：走势与三次入场')
+    expect(utility.props['aria-label']).toBe(`${UTILITY_LABEL}：${UTILITY_HINT}`)
+    expect(calendar.props['aria-label']).toContain('进入梁祠')
+    for (const node of [main, utility, calendar]) expect(node.props.title).toBeUndefined()
+    expect(textContent([utility])).toContain('牍')
+    expect(textContent([calendar])).toContain('祠')
+    expect(findByAttr([main], 'data-liangxiang-utility-icon', 'market')).toHaveLength(1)
+    // A pointer can click an already keyboard-focused trigger. Its lingering
+    // :focus-visible state must not turn that native pointer click into a key.
+    const trigger = { matches: () => true } as unknown as HTMLButtonElement
+    const activate = (node: RenderedElement, detail: number): void => {
+      const click = node.props.onClick as (event: { detail: number, currentTarget: HTMLButtonElement }) => void
+      click({ detail, currentTarget: trigger })
+    }
+    activate(main, 1)
+    activate(main, 0)
+    expect(calls).toEqual([{ origin: 'panel', trigger, keyboard: false }, { origin: 'panel', trigger, keyboard: true }])
+    expect(findByAttr(tree, 'data-liangxiang-region')).toHaveLength(4)
+    expect(findByAttr(tree, 'data-liangxiang-vote')).toHaveLength(2)
+  })
+
   it('sits on the social row, not a fifth region or third vote', () => {
     const tree = renderPanel(demoState())
     const regions = findByAttr(tree, 'data-liangxiang-region')
@@ -1061,7 +1164,10 @@ describe('梁相案牍', () => {
   })
 
   it('asks for confirmation before the expensive sync', () => {
-    const tree = renderPanel(demoState(), '', { reconcilePending: true, utilityOpen: true })
+    let asks = 0, reconciles = 0, cancels = 0
+    const callbacks = { utilityOpen: true, onOpenMarket: () => undefined, onReconcileAsk: () => { asks++ }, onReconcileConfirm: () => { reconciles++ }, onReconcileCancel: () => { cancels++ } }
+    const resting = renderPanel(onlineState(), '', callbacks)
+    const tree = renderPanel(onlineState(), '', { ...callbacks, reconcilePending: true })
     const confirm = findByAttr(tree, 'data-liangxiang-reconcile-confirm')[0]
     expect(confirm?.props.role).toBe('alertdialog')
     expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_PROMPT)
@@ -1069,16 +1175,32 @@ describe('梁相案牍', () => {
     expect(confirm && textContent([confirm])).toContain(RECONCILE_CONFIRM_CANCEL)
     const repair = findByAttr(tree, 'data-liangxiang-utility-action', 'reconcile')[0]
     expect(repair && textContent([repair])).toContain(UTILITY_RECONCILE_LABEL)
-    expect(repair && textContent([repair])).toContain(UTILITY_RECONCILE_HINT)
+    expect(repair && textContent([repair])).toContain('显示异常？')
+    expect(styleOf(confirm)).toMatchObject({ position: 'absolute', inset: 0, zIndex: 5 })
+    const restingDrawer = findByAttr(resting, 'data-liangxiang-utility-drawer')[0]
+    const confirmDrawer = findByAttr(tree, 'data-liangxiang-utility-drawer')[0]
+    expect(styleOf(restingDrawer).height).toBe('180px')
+    expect(styleOf(confirmDrawer).height).toBe(styleOf(restingDrawer).height)
+    const ask = repair?.props.onClick as () => void
+    ask()
+    expect(asks).toBe(1)
+    expect(reconciles).toBe(0)
+    const cancel = findByAttr(tree, 'data-liangxiang-reconcile-cancel')[0]?.props.onClick as () => void
+    cancel()
+    expect(cancels).toBe(1)
+    expect(reconciles).toBe(0)
+    const ok = findByAttr(tree, 'data-liangxiang-reconcile-ok')[0]?.props.onClick as () => void
+    ok()
+    expect(reconciles).toBe(1)
   })
 
-  it('keeps the 2x2 utility grid, one 走势 row and a collapsed repair entry', () => {
+  it('keeps the 2x2 utilities and repair, with the legacy read-only route only when market is absent', () => {
     const tree = renderPanel(onlineState(), '', { utilityOpen: true })
     expect(findByAttr(tree, 'data-liangxiang-utility-drawer')).toHaveLength(1)
     const bridge = findByAttr(tree, 'data-liangxiang-utility-bridge')[0]
     expect(styleOf(bridge).bottom).toBe('100%')
     expect(styleOf(bridge).height).toBe('7px')
-    expect(styleOf(bridge).width).toBe('220px')
+    expect(styleOf(bridge).width).toBe('242px')
     // Four grid tiles + the full-width 走势 row + the collapsed repair action.
     expect(findByAttr(tree, 'data-liangxiang-utility-action')).toHaveLength(6)
     const bars = findByAttr(tree, 'data-liangxiang-utility-action', 'bars')[0]
@@ -1136,5 +1258,20 @@ describe('avatar states are visually distinct', () => {
       const tree = renderDeep(<LiangAvatar state={state} pulse={false} reducedMotion={true} />)
       expect(textContent(tree)).toContain(labels[index] ?? '')
     })
+  })
+})
+
+
+describe('wallet compatibility feedback', () => {
+  it('shows the exact minimum-version instruction instead of a generic network failure', () => {
+    const hint = '请升级至梁相2.0.0及以上版本'
+    const state = { ...onlineState(), connection: 'live' as const, authorityAvailable: false, authorityReason: hint }
+    const tree = renderPanel(state)
+    const text = textContent(tree)
+    expect(text).toContain(hint)
+    expect(text).not.toContain('无法连接天庭：' + hint)
+    const votes = findByAttr(tree, 'data-liangxiang-region', 'vote').flatMap(region => findAll([region], node => node.type === 'button'))
+    expect(votes.length).toBe(2)
+    expect(votes.every(node => node.props.disabled === true)).toBe(true)
   })
 })

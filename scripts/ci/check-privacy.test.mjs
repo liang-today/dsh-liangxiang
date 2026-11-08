@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectText, assertMetadata, inspectMetadata, requiresSignature, signatureFinding } from './check-privacy.mjs';
+import { inspectText, assertMetadata, inspectMetadata } from './check-privacy.mjs';
 
 test('private phrase digests reject context without publishing literal blocked labels', () => {
   const fixture = ['内', '部', '称', '谓'].join('');
@@ -62,22 +62,6 @@ test('community mode retains maintained public names and configured emails', () 
   assert.throws(() => inspectMetadata('123+other@users.noreply.github.com', 'NiYa193', true), /configured public email/);
 });
 
-test('a signature only counts when it belongs to the commit author', () => {
-  const address = '123+contributor@users.noreply.github.com';
-  assert.equal(signatureFinding('G', address, address), null);
-  assert.equal(signatureFinding('U', '123+Contributor@users.noreply.github.com', address), null);
-  assert.equal(signatureFinding('N', '', address), 'unsigned-commit');
-  assert.equal(signatureFinding('B', address, address), 'unsigned-commit');
-  // A key over someone else's author field is a forged signature, not a signed commit.
-  assert.equal(signatureFinding('G', 'other@users.noreply.github.com', address), 'signature-identity-mismatch');
-});
-
-test('only policy identities are required to sign', () => {
-  assert.equal(requiresSignature('16209318+NiYa193@users.noreply.github.com', 'NiYa193'), true);
-  assert.equal(requiresSignature('hanxi-cat@users.noreply.github.com', 'hanxi-cat'), true);
-  assert.equal(requiresSignature('123+contributor@users.noreply.github.com', 'Contributor'), false);
-});
-
 test('the pre-commit hook rejects a borrowed or tool identity', () => {
   const directory = mkdtempSync(join(tmpdir(), 'liangxiang-privacy-identity-'));
   const script = fileURLToPath(new URL('./check-privacy.mjs', import.meta.url));
@@ -93,10 +77,12 @@ test('the pre-commit hook rejects a borrowed or tool identity', () => {
     assert.equal(preCommit({}).status, 0);
     assert.equal(preCommit({ GIT_AUTHOR_EMAIL: '16209318+NiYa193@users.noreply.github.com' }).status, 1,
       'never another account');
+    assert.equal(preCommit({ GIT_COMMITTER_EMAIL: '16209318+NiYa193@users.noreply.github.com' }).status, 1,
+      'the committer must also be this clone\'s configured identity');
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
-test('an unsigned maintained commit is blocked by the push hook', () => {
+test('unsigned maintained commits pass local identity and publication checks without a signing key', () => {
   const directory = mkdtempSync(join(tmpdir(), 'liangxiang-privacy-signature-'));
   const script = fileURLToPath(new URL('./check-privacy.mjs', import.meta.url));
   const env = { ...process.env, GIT_AUTHOR_NAME: 'NiYa193', GIT_AUTHOR_EMAIL: '16209318+NiYa193@users.noreply.github.com',
@@ -109,14 +95,20 @@ test('an unsigned maintained commit is blocked by the push hook', () => {
   };
   try {
     git(['init', '-q']);
+    git(['config', 'user.name', 'NiYa193']);
+    git(['config', 'user.email', '16209318+NiYa193@users.noreply.github.com']);
+    git(['config', 'commit.gpgsign', 'false']);
     const base = commit();
     const head = commit(base);
     git(['update-ref', 'HEAD', head]);
+    assert.equal(git(['show', '-s', '--format=%G?', head]), 'N');
+    const preCommit = spawnSync(process.execPath, [script, '--pre-commit'], { cwd: directory, env, encoding: 'utf8' });
+    assert.equal(preCommit.status, 0);
     const push = spawnSync(process.execPath, [script, '--pre-push'], {
       cwd: directory, env, input: `refs/heads/work ${head} refs/heads/work ${base}\n`, encoding: 'utf8',
     });
-    assert.equal(push.status, 1);
-    assert.match(push.stderr, /unsigned-commit/);
+    assert.equal(push.status, 0);
+    assert.match(push.stdout, /Privacy gate passed/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
@@ -150,7 +142,7 @@ test('the community CLI warns without exposing email and still blocks sensitive 
     assert.match(advisory.stderr, /::warning::/);
     assert.ok(!advisory.stderr.includes(email));
     assert.equal(scan(head, base, false).status, 1);
-    assert.equal(push(head).status, 0, 'imported signed identities need no rewriting');
+    assert.equal(push(head).status, 0, 'imported contributor identities need no rewriting');
     assert.equal(push(head, { GIT_COMMITTER_EMAIL: email }).status, 1, 'our current identity stays strict');
     assert.equal(push(head, { GIT_COMMITTER_NAME: 'Private Fixture' }).status, 1);
     for (const [name, content, category] of [

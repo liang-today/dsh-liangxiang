@@ -1,3 +1,4 @@
+import { LIANGZI_ART } from '../src/client/liangzi-art.ts'
 /**
  * Entry button (presentational BadgeButton): the current 梁子 state is the icon,
  * the hover/focus copy is frozen, it is keyboard reachable, it opts into pointer
@@ -107,7 +108,7 @@ describe('LiangxiangBadge entry', () => {
       const portrait = findAll(tree, (node) => node.type === 'img')[0]
       expect(portrait?.props.width).toBe(BADGE_ICON_SIZE)
       expect(portrait?.props.width).toBe(42)
-      expect(portrait?.props.src).toEqual(expect.stringMatching(/^data:image\/webp;base64,/))
+      expect(portrait?.props.src).toEqual(LIANGZI_ART[state])
     }
     const { button } = renderButton(false)
     expect(button.props['data-liangxiang-badge-state']).toBe('liang_sheng')
@@ -119,7 +120,7 @@ describe('LiangxiangBadge entry', () => {
     expect(String(style.background)).toContain('radial-gradient')
     expect(style.overflow).toBe('visible')
     expect(String(style.boxShadow)).toContain('rgba')
-    expect(style.borderRadius).toBe('50%')
+    expect(style.borderRadius).toBe('42% 43% 40% 42%')
     expect(style.width).toBe(`${BADGE_SIZE}px`)
     expect(style.height).toBe(`${BADGE_SIZE}px`)
     expect(style.animation).toBeUndefined()
@@ -224,8 +225,8 @@ describe('free placement', () => {
   })
 
   it('stacks vertically and flips horizontal alignment before leaving the viewport', () => {
-    expect(panelPlacementFor({ x: BADGE_MARGIN, y: viewport.height - 96 }, viewport)).toEqual({ stack: 'above', align: 'start' })
-    expect(panelPlacementFor({ x: BADGE_MARGIN, y: BADGE_MARGIN }, viewport)).toEqual({ stack: 'below', align: 'start' })
-    expect(panelPlacementFor({ x: viewport.width - BADGE_SIZE - BADGE_MARGIN, y: BADGE_MARGIN }, viewport)).toEqual({ stack: 'below', align: 'end' })
+    expect(panelPlacementFor({ x: BADGE_MARGIN, y: viewport.height - 96 }, viewport)).toEqual({ stack: 'above', align: 'start', offsetX: 0 })
+    expect(panelPlacementFor({ x: BADGE_MARGIN, y: BADGE_MARGIN }, viewport)).toEqual({ stack: 'below', align: 'start', offsetX: 0 })
+    expect(panelPlacementFor({ x: viewport.width - BADGE_SIZE - BADGE_MARGIN, y: BADGE_MARGIN }, viewport)).toEqual({ stack: 'below', align: 'end', offsetX: -208 })
   })
 })

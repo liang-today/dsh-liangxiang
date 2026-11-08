@@ -3,13 +3,15 @@
  * spend, idempotency, unique voters, business-date rollover, snapshot cadence
  * and versioning, and the personal/global separation.
  */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { CASE_BANK, nextCycledCaseTitle } from '../src/backend/case-bank.ts'
 import { deriveLiangziState } from '../src/domain/index.ts'
-import { parseV1Bootstrap, parseV1PublishCaseResponse, parseV1Snapshot, parseV1VoteResponse } from '../src/shared/backend-v1.ts'
+import { INSTALLATION_HEADER, parseV1Bootstrap, parseV1PublishCaseResponse, parseV1Snapshot, parseV1VoteResponse } from '../src/shared/backend-v1.ts'
+import { BackendLiangService } from '../src/host/backend-service.ts'
+import { createBackendClient, type BackendClient } from '../src/host/backend-client.ts'
 import { createBackendFixture, DAY_MS, FIXED_NOW, type BackendFixture } from './helpers/backend.ts'
 
 const INSTALLATION = 'install-aaaa-0001'
@@ -43,6 +45,132 @@ function vote(
     ...(count === undefined ? {} : { count }),
   }, f.clock.now(), maxSpend ?? Number.POSITIVE_INFINITY)
 }
+
+describe('Host private market snapshot ordering', () => {
+  it('orders private positions by their raw revision while a pending claim holds the displayed wallet', async () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 40)
+    const marketId = f.service.marketState(INSTALLATION).market!.id
+    f.service.setMarketPosition(INSTALLATION, { market_id: marketId, batch: 2, side: 'long', amount: 5, request_id: 'host-held-old-long' })
+    const old = f.service.marketState(INSTALLATION)
+    let finishOld!: (response: Response) => void
+    let finishClaim!: (response: Response) => void
+    let claimResponse!: ReturnType<typeof f.service.applyTokenClaim>
+    let claimStarted!: () => void
+    const started = new Promise<void>(resolve => { claimStarted = resolve })
+    let delayMarket = false
+    let stream: Parameters<NonNullable<BackendClient['subscribeEvents']>>[1] | undefined
+    const client = createBackendClient({ baseUrl: 'http://127.0.0.1:4180', fetchImpl: (async (input, init) => {
+      const path = new URL(String(input)).pathname
+      if (path.endsWith('/token-claims')) {
+        claimResponse = f.service.applyTokenClaim(INSTALLATION, JSON.parse(String(init?.body)))
+        claimStarted()
+        return new Promise<Response>(resolve => { finishClaim = resolve })
+      }
+      if (path.endsWith('/market') && delayMarket) {
+        delayMarket = false
+        return new Promise<Response>(resolve => { finishOld = resolve })
+      }
+      const payload = path.endsWith('/bootstrap') ? f.service.bootstrap(INSTALLATION)
+        : path.endsWith('/me/daily-state') ? f.service.dailyState(INSTALLATION)
+        : path.endsWith('/market') ? f.service.marketState(INSTALLATION) : f.service.snapshotResponse()
+      return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } })
+    }) as typeof fetch })
+    client.subscribeEvents = (_id, handlers) => { stream = handlers; return () => undefined }
+    const host = new BackendLiangService({ client, timezone: 'Asia/Shanghai', clock: f.clock, claimDebounceMs: 0, warn: () => undefined })
+    try {
+      host.attachIdentity(INSTALLATION)
+      await host.refreshBootstrap()
+      await host.market()
+      host.observeUsage('host-held-claim', { kind: 'settled-requests', throughOffset: 3,
+        requests: [{ startOffset: 1, endOffset: 3, endedAt: f.clock.now(), provider: 'deepseek-official', model: 'deepseek-v4-pro', inputTokens: 50_000, outputTokens: 0 }],
+      }, { kind: 'live', firstLiveSeq: 0 })
+      await started
+      delayMarket = true
+      const pendingRead = host.market()
+      f.clock.advance(1_000)
+      f.service.setMarketPosition(INSTALLATION, { market_id: marketId, batch: 2, side: 'short', amount: 9, request_id: 'host-held-new-short' })
+      const fresh = f.service.marketState(INSTALLATION)
+      stream!.onEvent({ schema_version: 1, epoch: 'held-claim-order', revision: 1, server_time: fresh.server_time, market_state: fresh })
+      expect(host.cachedMarketState()?.wallet.version).toBe(old.wallet.version)
+      expect(host.cachedMarketState()?.market!.batches[1]!.position).toMatchObject({ side: 'short', amount: 9 })
+      finishOld(new Response(JSON.stringify({ ...old, server_time: fresh.server_time + 60_000 }), { headers: { 'content-type': 'application/json' } }))
+      await pendingRead
+      expect(host.cachedMarketState()?.market!.batches[1]!.position).toMatchObject({ side: 'short', amount: 9 })
+      finishClaim(new Response(JSON.stringify(claimResponse), { headers: { 'content-type': 'application/json' } }))
+      await new Promise<void>(resolve => setImmediate(resolve))
+      await new Promise<void>(resolve => setImmediate(resolve))
+      expect(host.cachedMarketState()?.wallet).toEqual(fresh.wallet)
+      expect(host.cachedMarketState()?.market!.batches[1]!.position).toMatchObject({ side: 'short', amount: 9 })
+      // Personal refresh may advance the projected wallet before the matching
+      // position snapshot arrives. Its raw revision still advances positions.
+      f.service.setMarketPosition(INSTALLATION, { market_id: marketId, batch: 2, side: 'long', amount: 11, request_id: 'host-held-later-long' })
+      const laterPosition = f.service.marketState(INSTALLATION)
+      f.grantIncense(INSTALLATION, 1)
+      await host.refreshNow()
+      const latestWallet = f.service.marketState(INSTALLATION).wallet
+      expect(host.cachedMarketState()?.wallet.version).toBeGreaterThan(laterPosition.wallet.version)
+      stream!.onEvent({ schema_version: 1, epoch: 'held-claim-order', revision: 2, server_time: laterPosition.server_time, market_state: laterPosition })
+      expect(host.cachedMarketState()?.wallet).toEqual(latestWallet)
+      expect(host.cachedMarketState()?.market!.batches[1]!.position).toMatchObject({ side: 'long', amount: 11 })
+    } finally {
+      finishClaim?.(new Response(JSON.stringify(claimResponse), { headers: { 'content-type': 'application/json' } }))
+      host.dispose()
+    }
+  })
+
+  it('keeps the newer wallet and short position together when delayed HTTP returns an older long position with a newer clock', async () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 40)
+    let finishOld!: (response: Response) => void
+    let delayMarket = true
+    let stream: Parameters<NonNullable<BackendClient['subscribeEvents']>>[1] | undefined
+    const client = createBackendClient({ baseUrl: 'http://127.0.0.1:4180', fetchImpl: (async (input, init) => {
+      const path = new URL(String(input)).pathname
+      const actor = new Headers(init?.headers).get(INSTALLATION_HEADER) ?? INSTALLATION
+      if (path.endsWith('/market') && delayMarket) {
+        delayMarket = false
+        return new Promise<Response>(resolve => { finishOld = resolve })
+      }
+      const payload = path.endsWith('/bootstrap') ? f.service.bootstrap(actor)
+        : path.endsWith('/me/daily-state') ? f.service.dailyState(actor)
+        : path.endsWith('/market') ? f.service.marketState(actor) : f.service.snapshotResponse()
+      return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } })
+    }) as typeof fetch })
+    client.subscribeEvents = (_id, handlers) => { stream = handlers; return () => undefined }
+    const host = new BackendLiangService({ client, timezone: 'Asia/Shanghai', clock: f.clock, warn: () => undefined })
+    try {
+      host.attachIdentity(INSTALLATION)
+      await host.refreshBootstrap()
+      const marketId = f.service.marketState(INSTALLATION).market!.id
+      f.service.setMarketPosition(INSTALLATION, { market_id: marketId, batch: 2, side: 'long', amount: 5, request_id: 'host-private-old-long' })
+      const old = f.service.marketState(INSTALLATION)
+      const pending = host.market()
+      f.clock.advance(1_000)
+      f.service.setMarketPosition(INSTALLATION, { market_id: marketId, batch: 2, side: 'short', amount: 9, request_id: 'host-private-new-short' })
+      const fresh = f.service.marketState(INSTALLATION)
+      stream!.onEvent({ schema_version: 1, epoch: 'private-market-order', revision: 1, server_time: fresh.server_time, market_state: fresh })
+      await new Promise<void>(resolve => setImmediate(resolve))
+      const delayed = { ...old, server_time: fresh.server_time + 60_000 }
+      expect(delayed.wallet.version).toBeLessThan(fresh.wallet.version)
+      expect(delayed.server_time).toBeGreaterThan(fresh.server_time)
+      finishOld(new Response(JSON.stringify(delayed), { headers: { 'content-type': 'application/json' } }))
+      await pending
+      expect(host.cachedMarketState()?.wallet).toEqual(fresh.wallet)
+      expect(host.cachedMarketState()?.market!.batches[1]!.position).toMatchObject({ side: 'short', amount: 9 })
+      expect(host.getWireState().personal.remainingIncense).toBe(31)
+      expect(host.getWireState().personal.wallet?.version).toBe(fresh.wallet.version)
+      // A replacement installation is a new scope, even with a lower version.
+      host.attachIdentity(OTHER)
+      expect(host.cachedMarketState()).toBeNull()
+      await host.refreshBootstrap()
+      await host.market()
+      expect(host.cachedMarketState()?.wallet.version).toBeLessThan(fresh.wallet.version)
+      expect(host.cachedMarketState()?.wallet.available_incense).toBe(0)
+      expect(host.cachedMarketState()?.market!.batches[1]!.position).toBeNull()
+    } finally { host.dispose() }
+  })
+})
 
 describe('bootstrap and token claims', () => {
   it('retains the exact clamped receipt quantity when replay counters have moved', () => {
@@ -544,7 +672,7 @@ describe('global snapshot', () => {
 })
 
 describe('business date rollover', () => {
-  it('opens a new case, resets used incense, and leaks nothing from yesterday', () => {
+  it('opens a new case, resets daily statistics, and carries the unspent wallet', () => {
     const f = boot()
     f.grantIncense(INSTALLATION, 2)
     vote(f, INSTALLATION, 'up', 'req-day1-00001')
@@ -562,7 +690,7 @@ describe('business date rollover', () => {
     expect(state.business_date).toBe('2026-08-17')
     expect(state.claimed_effective_tokens).toBe(0)
     expect(state.used_incense).toBe(0)
-    expect(state.remaining_incense).toBe(0)
+    expect(state.remaining_incense).toBe(1)
 
     const snapshot = parseV1Snapshot(f.service.snapshotResponse().global_snapshot)
     expect(snapshot.case_id).toBe(today.id)
@@ -663,7 +791,41 @@ describe('business date rollover', () => {
 })
 
 describe('same-day publish', () => {
-  it('archives the active case, opens a zero-vote successor, and restores remaining incense', () => {
+  it('restores lifetime presentation immediately after a reset transaction rolls back', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 5)
+    vote(f, INSTALLATION, 'up', 'rollback-reset-vote')
+    f.clock.advance(1_000)
+    expect(f.service.snapshotResponse().global_snapshot.lifetime_incense).toBe(1)
+    const transaction = f.store.transaction.bind(f.store)
+    f.store.transaction = <T>(body: () => T): T => transaction(() => {
+      const result = body()
+      if (result !== null && typeof result === 'object' && 'incense_rows' in result) {
+        throw new Error('injected reset commit failure')
+      }
+      return result
+    })
+    expect(() => f.service.resetTodayCase()).toThrow('injected reset commit failure')
+    f.store.transaction = transaction
+    expect(f.service.snapshotResponse().global_snapshot.lifetime_incense).toBe(1)
+    expect(f.service.dailyState(INSTALLATION).authoritative_personal_state.remaining_incense).toBe(4)
+  })
+  it('shares public lifetime scans within one cadence while spends remain immediate', () => {
+    const f = boot()
+    f.grantIncense(INSTALLATION, 20)
+    f.clock.advance(1_000)
+    const scans = vi.spyOn(f.store, 'lifetimeTotals')
+    for (let i = 0; i < 10; i++) {
+      expect(vote(f, INSTALLATION, 'up', `lifetime-cache-${i}`).authoritative_personal_state.remaining_incense).toBe(19 - i)
+    }
+    expect(scans).toHaveBeenCalledTimes(1)
+    f.clock.advance(1_000)
+    expect(f.service.snapshotResponse().global_snapshot.lifetime_incense).toBe(10)
+    expect(scans).toHaveBeenCalledTimes(2)
+    expect(f.service.resetTodayCase().global_snapshot.lifetime_incense).toBe(0)
+    expect(scans).toHaveBeenCalledTimes(3)
+  })
+  it('archives the active case without resurrecting incense already spent', () => {
     const f = boot()
     f.grantIncense(INSTALLATION, 5, 47_000)
     const firstId = f.service.ensureActiveCase().id
@@ -697,8 +859,8 @@ describe('same-day publish', () => {
 
     const after = f.service.dailyState(INSTALLATION).authoritative_personal_state
     expect(after.claimed_effective_tokens).toBe(before.claimed_effective_tokens)
-    expect(after.used_incense).toBe(0)
-    expect(after.remaining_incense).toBe(5)
+    expect(after.used_incense).toBe(2)
+    expect(after.remaining_incense).toBe(3)
     expect(after.token_remainder).toBe(47_000)
 
     const stale = f.service.vote(INSTALLATION, {
@@ -712,7 +874,7 @@ describe('same-day publish', () => {
     expect(fresh.result.status).toBe('accepted')
     expect(fresh.global_snapshot.case_id).toBe(published.active_case.id)
     expect(fresh.global_snapshot.total_incense).toBe(1)
-    expect(fresh.authoritative_personal_state.remaining_incense).toBe(4)
+    expect(fresh.authoritative_personal_state.remaining_incense).toBe(2)
   })
 
   it('allows a second same-day publish and never leaves two actives', () => {

@@ -1,13 +1,13 @@
 # COMPATIBILITY — DSH 兼容性权威证据
 
-源码兼容基线最后核对：2026-11-04。DSH 仍是预稳定 API；所有不稳定触点只在
+源码兼容基线最后核对：2026-11-08。DSH 仍是预稳定 API；所有不稳定触点只在
 `src/compat/dsh/` 内适配，不修改上游源码，不凭版本号宣称永久前向兼容。
 
 ## 当前候选
 
 | 项 | 当前事实 |
 |---|---|
-| 梁相版本 | 1.2.2-beta.5 |
+| 梁相版本 | 2.0.0 |
 | 状态 | 未发布候选；沿用 1.2.0 的 DSH 基线，公开发布与实际服务状态单独核对 |
 | DSH CLI / Web App / UI renderer/layout/slots | 0.2.1-rc.2（同一版本） |
 | DSH tag / commit | dsh-v0.2.1-rc.2 / 687f282e86 |
@@ -15,6 +15,29 @@
 | Session 持久化格式 | 4，取自 SessionHeader.version |
 | 验证运行时 | Node 22.23.1 / pnpm 11.28.5 |
 | 上游源码工具链 | Node ^22.19.0 或 >=24；pnpm 11.28.5 |
+
+### 当前默认宿主的独立短冒烟
+
+2026-11-08核对，DSH npm `latest`／`next`已为 **0.2.2-rc.1**，源码
+[`66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.1)，
+要求Node **>=24.9.0**、Cordis4.1。上表仍是本仓锁定的完整回归基线，不为赶发布替换整套开发依赖。
+
+2.0.0候选已在独立Node24.9.0／DSH0.2.2-rc.1真实安装，9份运行资源与给定tarball一致；
+主面板和梁祠打开、梁股隔离展示及会话适配可用性共6项通过，浏览器错误0。
+`accounting.available=true`、无适配告警，真实Session格式仍为4。未配置API Key或发起
+provider请求，**不把短冒烟记作最新版真实Token到账验证**；固定基线的凝香／重放门禁与
+当前适配单测另行保留。音效等后续变更须再核对最终客户端产物，不能用早先包替代冻结包。
+
+源码比对确认本插件使用的`Session.snapshotEvents`、`firstLiveSeq`、`session/event`、
+`requestHeader/requestContext`及`shell.overlay`触点仍存在；观察器未注册会话投影，
+不因异步投影注册变化直接失效。`usageOf`四桶及最终message／attempt语义保持，默认路由仍为
+`deepseek-flash`（显示V4.1-Flash）与`deepseek-v4-pro`，静态×0.5／×1无需修改。
+证据：[Session](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/core/session/src/index.ts#L728)、
+[用量](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/llm/token-meter/src/usage-projection.ts#L79)、
+[模型](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/llm/llm-deepseek/src/models.ts)。
+
+0.2.2提供第三方npm注册表插件的详情版本更新与失败恢复；不是所有tgz、Git或别名来源都具备
+更新按钮。当前安装说明按版本与来源区分，不再把0.2.1旧入口限制泛化至最新版，见[安装指南](INSTALL.md)。
 
 2026-10-19 发布前复核，DSH CLI 的 npm `latest` / `next` 均为 0.2.1-rc.2；
 Web App、renderer、layout、slots 的 `next` 同为 0.2.1-rc.2，`latest` 仍是各自旧号。
@@ -71,7 +94,12 @@ window.__ModuleLoader__.load({ id, factory }) 和 CJS factory 包装。
 还执行构建产物的工厂并核对插件导出，避免格式漂移。真实 Profile 将服务的 combo 与构建产物
 比较；只按 client/modules/src/index.ts 的 prepareSource 去掉 sourceURL/sourceMappingURL
 尾注（已核对同一 commit），不依赖引号或缩进形式。
-图像继续内联 lossless WebP，单 client.js 预算为 raw ≤700 KB、gzip ≤400 KB。
+原梁子图像继续内联 lossless WebP，鲸鱼素材单独按需加载；单 client.js 预算为 raw ≤725 KB、gzip ≤430 KB。
+
+上香与香火交易共用 `src/client/request-id.ts`，依次使用 `crypto.randomUUID`、
+`crypto.getRandomValues` 和普通随机兜底生成幂等请求号；请求号不是秘密，
+普通随机不得用于安装密钥或签名。局域网HTTP不保证提供 `randomUUID`，
+localhost的成功不能代替非安全上下文回归；同一未确认意图仍复用原请求号和请求体。
 
 ## 验证边界
 

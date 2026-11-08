@@ -26,9 +26,9 @@ export const BADGE_MARGIN = 12
  */
 export const SETTINGS_CLEARANCE = 50
 /**
- * DSH's default sidebar is 280px with 12px inline padding on each side. A
- * 256px panel therefore follows the sidebar's usable content width exactly
- * and does not cover the conversation column at the default dock.
+ * Match the usable content width of DSH's default 280px sidebar, which has
+ * 12px inline padding. The panel keeps this width when the sidebar collapses;
+ * only a viewport narrower than the panel reduces its rendered width.
  */
 export const PANEL_WIDTH = 256
 export const PANEL_GAP = 10
@@ -53,6 +53,8 @@ export interface Viewport {
 export interface PanelPlacement {
   stack: 'above' | 'below'
   align: 'start' | 'end'
+  /** Viewport-clamped panel left, relative to the unchanged badge point. */
+  offsetX?: number
 }
 
 /** Default dock: bottom-left, sitting just above the DSH settings control. */
@@ -159,8 +161,12 @@ export function panelPlacementFor(point: BadgePoint, viewport: Viewport): PanelP
   // Prefer above (the default dock is in the bottom-left) and only drop
   // below when the badge has been dragged too close to the top.
   const stack: PanelPlacement['stack'] = roomAbove >= needed || roomAbove >= roomBelow ? 'above' : 'below'
-  const align: PanelPlacement['align'] = point.x + PANEL_WIDTH <= viewport.width - BADGE_MARGIN ? 'start' : 'end'
-  return { stack, align }
+  const width = Math.min(PANEL_WIDTH, Math.max(0, viewport.width))
+  const start = point.x
+  const align: PanelPlacement['align'] = start + width <= viewport.width - BADGE_MARGIN ? 'start' : 'end'
+  const preferredLeft = align === 'start' ? start : point.x + BADGE_SIZE - width
+  const left = Math.max(0, Math.min(viewport.width - width, preferredLeft))
+  return { stack, align, offsetX: left - point.x }
 }
 
 /** Default the expanded panel to open; persist × / badge toggles per browser. */

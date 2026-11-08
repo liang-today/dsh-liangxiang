@@ -2,6 +2,9 @@ import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
 import type { LiangxiangWireState, WireVoteRequest } from '../shared/wire.ts'
 import type { LiangHostService, VoteOutcome } from './service.ts'
 import type { V1HistoryResponse } from '../shared/history-v1.ts'
+import type { MarketCandlesResponse, MarketHistoryResponse, MarketPositionRequest, MarketPositionResponse, MarketState } from '../shared/market-v1.ts'
+import type { MarketCandlesQuery, MarketHistoryQuery } from './market-query.ts'
+import { BackendClientError } from './backend-client.ts'
 
 /**
  * Swappable host authority. Online is the default. Only an explicit saved
@@ -56,6 +59,29 @@ export class AuthoritySlot implements LiangHostService {
   history(afterVersion?: number): V1HistoryResponse | Promise<V1HistoryResponse> {
     return this.inner.history(afterVersion)
   }
+
+  market(): Promise<MarketState> {
+    if (this.inner.market === undefined) return Promise.reject(new BackendClientError('community market is unavailable in this mode', 404, 'market_unavailable'))
+    return this.inner.market()
+  }
+
+  marketPosition(intent: MarketPositionRequest): Promise<MarketPositionResponse> {
+    if (this.inner.marketPosition === undefined) return Promise.reject(new BackendClientError('community market is unavailable in this mode', 404, 'market_unavailable'))
+    return this.inner.marketPosition(intent)
+  }
+
+  marketCandles(query?: MarketCandlesQuery): Promise<MarketCandlesResponse> {
+    if (this.inner.marketCandles === undefined) return Promise.reject(new BackendClientError('community market is unavailable in this mode', 404, 'market_unavailable'))
+    return this.inner.marketCandles(query)
+  }
+
+  marketHistory(query?: MarketHistoryQuery): Promise<MarketHistoryResponse> {
+    if (this.inner.marketHistory === undefined) return Promise.reject(new BackendClientError('community market is unavailable in this mode', 404, 'market_unavailable'))
+    return this.inner.marketHistory(query)
+  }
+
+  cachedMarketState(): MarketState | null { return this.inner.cachedMarketState?.() ?? null }
+  marketCacheScope(): string | null { return this.inner.marketCacheScope?.() ?? null }
 
   vote(intent: WireVoteRequest): VoteOutcome | Promise<VoteOutcome> {
     return this.inner.vote(intent)

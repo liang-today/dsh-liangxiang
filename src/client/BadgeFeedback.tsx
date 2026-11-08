@@ -3,14 +3,16 @@ import { HOVER_TEXT } from '../shared/index.ts'
 import { type BadgePoint, type Viewport } from './badge-position.ts'
 import { placeBadgeFeedback, placeBadgeSpeech, reconcileBadgeComments, SPEECH_ROW_HEIGHT, type BadgeComment, type FeedbackRect, type PresentedComment } from './badge-feedback.ts'
 import { SQUISH_EXIT_MS } from './badge-squish.ts'
-import { color, font } from './theme.ts'
+import { font } from './theme.ts'
+import { MAIN_PANEL_THEME_CSS, mainColor } from './main-panel-theme.ts'
 
 interface Props { position: BadgePoint, viewport: Viewport, open: boolean, comments: BadgeComment[], suppressed: boolean, reducedMotion: boolean }
 const css = `
+${MAIN_PANEL_THEME_CSS}
 [data-liangxiang-feedback] { font: 500 11px/18px ${font.family}; }
 [data-liangxiang-badge-tooltip] {
-  position: fixed; width: max-content; padding: 4px 8px; border: 1px solid ${color.border}; border-radius: 8px;
-  background: ${color.bgLayer}; color: ${color.textPrimary}; font-size: 11px; line-height: 18px;
+  position: fixed; width: max-content; padding: 4px 8px; border: 1px solid ${mainColor.line}; border-radius: 8px;
+  background: ${mainColor.paper}; color: ${mainColor.deep}; font-size: 11px; line-height: 18px;
   opacity: 0; transition: opacity 100ms ease;
 }
 [data-liangxiang-root]:has([data-liangxiang-badge]:hover, [data-liangxiang-badge]:focus-visible) [data-liangxiang-badge-tooltip][data-suppressed="false"] { opacity: 1; transition-delay: 180ms; }
@@ -31,9 +33,9 @@ const css = `
 }
 [data-liangxiang-danmu-line] {
   display: block; width: max-content; max-width: 100%; box-sizing: border-box; padding: 1px 7px;
-  white-space: nowrap; border-radius: 6px; color: ${color.textPrimary};
-  background: light-dark(color-mix(in srgb, ${color.bgLayer} 20%, #fffaf2), color-mix(in srgb, ${color.bgLayer} 85%, ${color.textPrimary}));
-  box-shadow: 0 2px 6px rgba(0,0,0,.08), inset 0 0 0 .5px light-dark(color-mix(in srgb, ${color.ritualGold} 18%, transparent), color-mix(in srgb, ${color.textPrimary} 20%, transparent));
+  white-space: nowrap; border-radius: 6px; color: ${mainColor.deep};
+  background: ${mainColor.soft};
+  box-shadow: 0 2px 6px rgba(0,0,0,.08), inset 0 0 0 .5px color-mix(in srgb, ${mainColor.blue} 28%, ${mainColor.line});
   animation: liangxiang-speech-line 160ms cubic-bezier(.16,1,.3,1) both;
 }
 @keyframes liangxiang-speech-line { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }

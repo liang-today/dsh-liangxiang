@@ -34,7 +34,9 @@
 - 定时上香与 23:59 收尾（Issues #3/#5、PR #21）与权威刷新节奏（#4）：`DAY_END_INCENSE.md`。
 - PR #7、DSH 重试漏算及会话迁移回归：`PR7_REVIEW.md`。
 - 连接消息去重与保留的实时性边界：`CONNECTION_EFFICIENCY.md`。
-- 本轮功能、资料、安装与集成验证结果：`RELEASE_READINESS_1_2.md`。
+- 累计钱包与交易候选：`MARKET_WALLET.md`、`MARKET_UI_COMPARISON.md`；当前验收证据为 `MARKET_VALIDATION.md`。
+- 新旧客户端过渡、真实日账和混用／降级限制：`LEGACY_WALLET_COMPAT.md`。
+- 香港专用隔离演练：`MARKET_REHEARSAL.md`；当前UI／回滚缓存／12客户端为 `MARKET_REHEARSAL_ALPHA8.md`，alpha7旧协议为 `MARKET_REHEARSAL_ALPHA7.md`，alpha5手工收盘历史为 `MARKET_REHEARSAL_REPORT.md`。
 - `npm-readme.md` 是发布 README 输入；必须由现行权威校验，不能反向定义产品。
 
 参考文件若仍出现旧名称、旧 Phase、旧端点或“future/占位”描述，以当前源码、测试、
@@ -52,6 +54,7 @@
   `110-prohibition-refresh.md`、`120-community-product.md`。
 - 实施/迁移/审查报告：`141-system-test-report-v0.4.0.md`、
   `142-hk-migration-report.md`、`145-static-review-remediation.md`、`BUGFIX.md`。
+- `RELEASE_READINESS_1_2.md`：正式1.2发布验收快照，不能代替当前候选门禁。
 
 其中仍有效的结论已经固化进 `AGENTS.md`、当前架构或现行专题文档；历史文件本身不
 因局部正确而恢复权威身份。

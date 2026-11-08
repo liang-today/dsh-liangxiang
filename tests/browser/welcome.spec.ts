@@ -16,7 +16,7 @@ test('first-run welcome embeds the compact QQ group QR card without leaving the 
   await expect(welcome).toBeVisible()
   await expect(card).toContainText(RELEASE_NOTES_QQ)
   await expect(qrCode).toBeVisible()
-  await expect(qrCode).toHaveAttribute('alt', '梁相 QQ 群 453683905 二维码')
+  await expect(qrCode).toHaveAttribute('alt', '梁相上香QQ群453683905二维码')
   expect(await qrCode.evaluate((image: HTMLImageElement) => ({
     complete: image.complete,
     naturalWidth: image.naturalWidth,

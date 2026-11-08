@@ -6,6 +6,7 @@ lossless WebP with the same visible RGBA pixels, and inline that WebP into
 liangzi-art.ts:
 
   python3 scripts/punch-liangzi-art.py
+  node scripts/optimize-liangzi-art.mjs
 
 In-art jokes only (UI copy is unchanged): the waiting plaque deliberately
 reads 牢梁, while each active portrait may carry its matching state name as a
@@ -17,3 +18,12 @@ RGBA pixel of this production PNG. Regeneration requires no image service.
 
 牢梁 remains only a waiting-art plaque. 小难梁 is the new lowest voted tier
 (<25% with votes); 老梁 remains forbidden.
+
+The optional final optimizer uses lossless WebP quality 100 / effort 6 / exact
+encoding. It compares every decoded RGBA byte before accepting a smaller
+encoding; portrait dimensions, color and pixels must not change.
+
+The approved pale-blue nan.png mirrors assets/main-nan.webp exactly. This one
+portrait is served through the bounded Host panel-art route to avoid embedding
+the larger new bitmap into client.js; the other six inline portraits retain
+their original pixels. The ring and figures do not determine wallet authority.

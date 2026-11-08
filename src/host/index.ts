@@ -281,7 +281,8 @@ export function apply(ctx: DshHostContext): void {
     if (webServer === undefined) return
     scoped.effect(() => {
       // 走势 samples this Host's own state; it never asks the backend for a
-      // series, because the backend does not have one. One writer, one timer.
+      // series: this is the local-observation channel. The separate market uses
+      // official backend candles. One local writer, one sampling timer.
       const bars = createBarsRecorder({
         getWireState: () => service.getWireState(),
         timezone: serviceConfig.timezone,

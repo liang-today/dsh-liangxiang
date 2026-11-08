@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { IdentityRateLimiter, IDENTITY_HIT_WINDOW_MS, IDENTITY_MISS_WINDOW_MS } from '../src/backend/identity-rate-limit.ts'
 import { resolveHostRuntimeConfig } from '../src/host/config.ts'
 import { STAGING_BACKEND_URL } from '../src/host/community-endpoint.ts'
 import { LOCAL_CASE_TITLES, nextLocalCaseIndex } from '../src/host/local-cases.ts'
 import { runOperatorCli } from '../src/backend/cli.ts'
+import { openBackendStore } from '../src/backend/store.ts'
 import { DEFAULT_INCENSE_WEIGHT_POLICY } from '../src/domain/index.ts'
 import { PLUGIN_VERSION, SERVER_BUILD } from '../src/shared/index.ts'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
@@ -102,22 +103,31 @@ describe('operator CLI', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 
-  it('sets, inspects, and clears the client broadcast without an operator HTTP route', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'liangxiang-cli-broadcast-'))
-    const db = join(dir, 'liangxiang.sqlite')
-    const env = { LIANGXIANG_BACKEND_DB: db }
-    const logs: string[] = []
-    const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
-    expect(runOperatorCli([
-      'broadcast', 'set', '--level', 'important', '--hours', '72',
-      'QQ群 453683905 已开，来群里一起出梁案',
-    ], env, io)).toBe(0)
-    expect(runOperatorCli(['broadcast', 'status'], env, io)).toBe(0)
-    expect(logs.join('\n')).toContain('453683905')
-    expect(logs.join('\n')).toContain('"active": true')
-    expect(runOperatorCli(['broadcast', 'clear'], env, io)).toBe(0)
-    expect(logs.join('\n')).toContain('broadcast cleared=true')
-    rmSync(dir, { recursive: true, force: true })
+  describe('broadcast commands', () => {
+    let directory = ''
+    beforeEach(() => {
+      directory = mkdtempSync(join(tmpdir(), 'liangxiang-cli-broadcast-'))
+      // Bound the initial file-backed schema migration separately from the
+      // broadcast operations; those retain Vitest's ordinary test timeout.
+      const store = openBackendStore(join(directory, 'liangxiang.sqlite'))
+      store.close()
+    }, 15_000)
+    afterEach(() => { if (directory) rmSync(directory, { recursive: true, force: true }) })
+
+    it('sets, inspects, and clears the client broadcast without an operator HTTP route', () => {
+      const env = { LIANGXIANG_BACKEND_DB: join(directory, 'liangxiang.sqlite') }
+      const logs: string[] = []
+      const io = { log: (line: string) => logs.push(line), error: (line: string) => logs.push(line) }
+      expect(runOperatorCli([
+        'broadcast', 'set', '--level', 'important', '--hours', '72',
+        'QQ群 453683905 已开，来群里一起出梁案',
+      ], env, io)).toBe(0)
+      expect(runOperatorCli(['broadcast', 'status'], env, io)).toBe(0)
+      expect(logs.join('\n')).toContain('453683905')
+      expect(logs.join('\n')).toContain('"active": true')
+      expect(runOperatorCli(['broadcast', 'clear'], env, io)).toBe(0)
+      expect(logs.join('\n')).toContain('broadcast cleared=true')
+    })
   })
 
   it('accepts Rocky Linux node-22 argv prefixes', () => {

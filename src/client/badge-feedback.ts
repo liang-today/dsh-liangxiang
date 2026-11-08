@@ -37,8 +37,8 @@ export interface SpeechPlacement extends BadgePoint { width: number, capacity: n
 /** A voice beside the badge, within the panel's column. Never beside the panel. */
 export function placeBadgeSpeech(badge: BadgePoint, viewport: Viewport, desiredWidth: number, panel: FeedbackRect | null): SpeechPlacement | null {
   const placement = panelPlacementFor(badge, viewport)
-  const left = panel?.x ?? (placement.align === 'end' ? badge.x + BADGE_SIZE - PANEL_WIDTH : badge.x)
-  const right = left + (panel?.width ?? PANEL_WIDTH)
+  const left = panel?.x ?? badge.x + (placement.offsetX ?? 0)
+  const right = left + (panel?.width ?? Math.min(PANEL_WIDTH, viewport.width))
   const roomLeft = badge.x - GAP - left
   const roomRight = right - badge.x - BADGE_SIZE - GAP
   const onRight = roomRight >= roomLeft

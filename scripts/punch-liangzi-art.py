@@ -154,11 +154,12 @@ def main() -> None:
         ' * Semantics (WAITING / 小难梁…梁祖) are frozen — only the pixels change.',
         ' */',
         "import type { LiangziState } from '../domain/index.ts'",
+        "import { MAIN_PANEL_ART } from './main-panel-art.ts'",
         '',
         'export const LIANGZI_ART: Record<LiangziState, string> = {',
     ]
     for state in order:
-        lines.append(f"  {state}: '{uris[state]}',")
+        lines.append("  xiao_nan_liang: MAIN_PANEL_ART.nan," if state == 'xiao_nan_liang' else f"  {state}: '{uris[state]}',")
     lines.append('}')
     lines.append('')
     OUT.write_text('\n'.join(lines), encoding='utf-8')

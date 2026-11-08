@@ -1,4 +1,5 @@
 import { createServer } from 'node:http'
+import { readFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it } from 'vitest'
 import { FakeAuthoritativeLiangService, type LiangServiceConfig } from '../src/host/fake-service.ts'
 import { BackendClientError } from '../src/host/backend-client.ts'
@@ -7,6 +8,7 @@ import type { LiangHostService } from '../src/host/service.ts'
 import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE } from '../src/shared/index.ts'
 import { DAY_END_ACTION_HEADER, DAY_END_ACTION_VALUE, type DayEndPreferences } from '../src/shared/day-end.ts'
 import type { HostAuthorityPreference } from '../src/shared/wire.ts'
+import { MAIN_PANEL_ART } from '../src/client/main-panel-art.ts'
 
 const CONFIG: LiangServiceConfig = {
   timezone: 'Asia/Shanghai',
@@ -129,5 +131,47 @@ describe('day-end preferences boundary', () => {
     expect(saved).toEqual([])
     expect((await post('{"enabled":true,"voteType":"down"}')).status).toBe(200)
     expect(saved).toEqual([{ enabled: true, voteType: 'down' }])
+  })
+})
+
+describe('read-only panel illustrations', () => {
+  it('serves each approved asset before Host authority is ready, with cache and image headers', async () => {
+    const harness = await start({ ready: false })
+    for (const asset of ['nan', 'grass', 'fish'] as const) {
+      const response = await fetch(harness.baseUrl + MAIN_PANEL_ART[asset])
+      const expected = await readFile(new URL(`../src/client/assets/main-${asset}.webp`, import.meta.url))
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toBe('image/webp')
+      expect(response.headers.get('content-length')).toBe(String(expected.byteLength))
+      expect(response.headers.get('cache-control')).toBe('public, max-age=3600')
+      expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+      expect(Buffer.from(await response.arrayBuffer())).toEqual(expected)
+    }
+  })
+
+  it('rejects missing, duplicate, unknown and path-like query values', async () => {
+    const harness = await start({ ready: false })
+    for (const query of [
+      '', '?asset=other', '?asset=../main-nan', '?asset=%2Fetc%2Fpasswd',
+      '?asset=nan&asset=fish', '?asset=grass&path=main-nan.webp',
+      '?asset=fish&v=1&v=2', '?asset=nan&v=', '?asset=nan&v=' + 'x'.repeat(65),
+    ]) {
+      const response = await fetch(harness.baseUrl + '/liangxiang/api/panel/art.webp' + query)
+      expect(response.status, query).toBe(400)
+      expect(await response.json()).toEqual({ error: 'invalid panel illustration request' })
+    }
+  })
+
+  it('is GET-only and repeated concurrent reads never mutate the personal or global state', async () => {
+    const harness = await start()
+    const stateUrl = harness.baseUrl + '/liangxiang/api/state'
+    const before = await fetch(stateUrl).then(response => response.json())
+    const denied = await fetch(harness.baseUrl + MAIN_PANEL_ART.nan, { method: 'POST' })
+    expect(denied.status).toBe(405)
+    const images = await Promise.all(Array.from({ length: 8 }, () => fetch(harness.baseUrl + MAIN_PANEL_ART.fish)
+      .then(response => response.arrayBuffer()).then(bytes => Buffer.from(bytes))))
+    expect(images.every(image => image.equals(images[0]!))).toBe(true)
+    expect(await fetch(stateUrl).then(response => response.json())).toEqual(before)
+    expect(harness.selected()).toEqual([])
   })
 })

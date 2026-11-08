@@ -2,7 +2,7 @@
  * Client-generated idempotency keys for vote intents.
  *
  * `crypto.randomUUID()` exists only in a secure context. A DSH Web UI opened
- * from another machine over plain HTTP (`http://192.168.3.129:3080`, issue #26)
+ * from another machine over plain HTTP (a LAN address, issue #26)
  * is an ordinary page without it, so every 夯 / 拉 press threw
  * `TypeError: crypto.randomUUID is not a function` before any request left the
  * browser, and the vote lock stayed stuck for the rest of the session.

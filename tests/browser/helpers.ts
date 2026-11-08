@@ -8,7 +8,7 @@ const browserAuthUrl = process.env.LIANGXIANG_BROWSER_AUTH_URL
 
 export async function bootInstalledLiangxiang(
   page: Page,
-  options: { welcomeSeen?: boolean, releaseNotesSeen?: boolean, seedPreferences?: boolean } = {},
+  options: { welcomeSeen?: boolean, releaseNotesSeen?: boolean, seedPreferences?: boolean, entryUrl?: string } = {},
 ): Promise<void> {
   // The suite controls cosmetic browser preferences only. Authority is set by
   // the isolated Profile smoke before Playwright starts.
@@ -33,7 +33,7 @@ export async function bootInstalledLiangxiang(
   })
   // Current DSH prints a process-token URL which exchanges for an HttpOnly
   // browser cookie. Older/no-auth hosts can still use the plain base URL.
-  await page.goto(browserAuthUrl ?? '/')
+  await page.goto(options.entryUrl ?? browserAuthUrl ?? '/')
   await expect(page.locator('[data-liangxiang-root]')).toBeVisible()
   await expect(page.locator(badgeSelector)).toBeVisible()
 

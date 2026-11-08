@@ -25,6 +25,7 @@ import {
 } from '../domain/index.ts'
 
 import { parseTimedIncenseLedger, type TimedIncenseLedger } from './day-end.ts'
+import { parseMarketWallet, type MarketWallet } from './market-v1.ts'
 
 export const WIRE_SCHEMA_VERSION = 1
 
@@ -67,6 +68,11 @@ export interface WireGlobalCounts {
 
 /** Raw personal accounting (LiangQi progress derived via the domain fold). */
 export interface WirePersonalCounts {
+  /** Explicit cumulative authority; absence retains the legacy daily contract. */
+  wallet?: MarketWallet
+  earnedIncenseToday?: number
+  /** Server-acknowledged claim watermark; not a proof of provider usage. */
+  confirmedEffectiveTokensToday?: number
   effectiveTokensToday: number
   usedIncenseToday: number
   /** Authoritative spendable incense (server ledger), for the vote button. */
@@ -259,6 +265,13 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
     throw new WireError('state.global.uniqueVoters', 'uniqueVoters exceeds total votes')
   }
   const personal: WirePersonalCounts = {
+    ...(personalRecord.wallet === undefined ? {} : { wallet: parseMarketWallet(personalRecord.wallet) }),
+    ...(personalRecord.earnedIncenseToday === undefined ? {} : {
+      earnedIncenseToday: requireCount(personalRecord.earnedIncenseToday, 'state.personal.earnedIncenseToday'),
+    }),
+    ...(personalRecord.confirmedEffectiveTokensToday === undefined ? {} : {
+      confirmedEffectiveTokensToday: requireCount(personalRecord.confirmedEffectiveTokensToday, 'state.personal.confirmedEffectiveTokensToday'),
+    }),
     effectiveTokensToday: requireCount(personalRecord.effectiveTokensToday, 'state.personal.effectiveTokensToday'),
     usedIncenseToday: requireCount(personalRecord.usedIncenseToday, 'state.personal.usedIncenseToday'),
     remainingIncense: requireCount(personalRecord.remainingIncense, 'state.personal.remainingIncense'),
@@ -267,8 +280,15 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
   if (personal.tokenPerIncense <= 0) {
     throw new WireError('state.personal.tokenPerIncense', 'must be positive')
   }
-  if (personal.usedIncenseToday > Math.floor(personal.effectiveTokensToday / personal.tokenPerIncense)) {
+  if (personal.wallet === undefined && personal.usedIncenseToday > Math.floor(personal.effectiveTokensToday / personal.tokenPerIncense)) {
     throw new WireError('state.personal.usedIncenseToday', 'used exceeds earned')
+  }
+  if (personal.wallet !== undefined && (personal.remainingIncense !== personal.wallet.available_incense
+    || personal.tokenPerIncense !== personal.wallet.token_per_incense)) {
+    throw new WireError('state.personal.wallet', 'does not match available balance or token threshold')
+  }
+  if (personal.confirmedEffectiveTokensToday !== undefined && personal.confirmedEffectiveTokensToday > personal.effectiveTokensToday) {
+    throw new WireError('state.personal.confirmedEffectiveTokensToday', 'acknowledged claim exceeds observed total')
   }
   return {
     schemaVersion: WIRE_SCHEMA_VERSION,

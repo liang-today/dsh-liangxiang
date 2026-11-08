@@ -39,9 +39,19 @@ export function createBusinessDateProvider(timezone: string): BusinessDateProvid
     month: '2-digit',
     day: '2-digit',
   })
+  // Fanout shares an exact frame timestamp. Reusing that exact conversion
+  // avoids repeated Intl work without approximating midnight or DST edges.
+  let lastEpoch: number | undefined
+  let lastDate = ''
   return {
     timezone,
-    businessDateOf: (epochMs: number): string => format.format(new Date(epochMs)),
+    businessDateOf: (epochMs: number): string => {
+      if (epochMs !== lastEpoch) {
+        lastDate = format.format(new Date(epochMs))
+        lastEpoch = epochMs
+      }
+      return lastDate
+    },
   }
 }
 

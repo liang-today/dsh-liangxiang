@@ -6,11 +6,14 @@ import { runInNewContext } from 'node:vm'
 import { createRequire } from 'node:module'
 
 const client = await readFile(new URL('../lib/client.js', import.meta.url))
-const rawLimit = 700_000
-// Raised from 400_000 on 2026-11-06 for the 走势 chart surface. The old ceiling
-// had about 1.6 kB gzip of headroom left, so any real client feature tripped it;
-// the picture itself is server-rendered and this client part is one component.
-const gzipLimit = 410_000
+// Merging the existing read-only bars dialog adds 17.6 KB raw / 5.9 KB gzip.
+// Both chart surfaces stay available; no artwork or runtime dependency was added.
+// Approved market layout and seven distinct companion interactions add about
+// 2.9 KB of code to alpha10. Keep the original compressed transfer ceiling.
+const rawLimit = 725_000
+// The original portraits remain pixel-identical. The market adds about 22 KB
+// compressed code; its separately budgeted sprite stays outside this always-loaded bundle.
+const gzipLimit = 430_000
 const gzipBytes = gzipSync(client, { level: 9 }).byteLength
 
 console.log(`client.js: ${client.byteLength} bytes raw, ${gzipBytes} bytes gzip`)

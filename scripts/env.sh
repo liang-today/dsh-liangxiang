@@ -8,7 +8,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-if [ -f .env ]; then
+# Isolated mock previews must not inherit a real backend or personal DSH home
+# from this checkout's .env. Normal developer commands retain their defaults.
+if [ "${LIANGXIANG_SKIP_DOTENV:-0}" != "1" ] && [ -f .env ]; then
   # shellcheck disable=SC1091
   set -a; . ./.env; set +a
 fi

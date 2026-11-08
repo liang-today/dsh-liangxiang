@@ -1,5 +1,7 @@
-[
-  "assets/main-frame.jpg",
-  "assets/plugin-panel.jpg",
-  "assets/liangci.jpg"
-]
+{
+  "screenshots": [
+    "assets/product/2.0.0/main.webp",
+    "assets/product/2.0.0/market.webp",
+    "assets/product/2.0.0/liangci.webp"
+  ]
+}

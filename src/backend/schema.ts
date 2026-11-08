@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v10) for the Liangxiang backend.
+ * SQLite schema (v15) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -8,10 +8,9 @@
  *    archive today's case and open another (same-day republish); the index
  *    still refuses two actives. The first lazy-open id is `case-YYYY-MM-DD`;
  *    later publishes use `case-YYYY-MM-DD-<hex>`.
- *  - `daily_incense_state`: the installation-level daily spend ledger. The
- *    CHECK constraint `used_incense * token_per_incense <= claimed_effective_tokens`
- *    means the database itself refuses an overspend, so a bug in the service
- *    cannot produce a row that violates `used <= earned`.
+ *  - `daily_incense_state`: daily usage/spend statistics. Since v12 the
+ *    nonnegative cumulative `incense_wallet` owns spend authority; a user can
+ *    legitimately spend yesterday's incense or an earlier market payout.
  *  - `liang_vote_request`: the durable idempotency receipt for every valid
  *    vote intent, accepted or rejected. The complete normalized payload and
  *    rejected business result are persisted so later balance/case changes
@@ -31,7 +30,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { VOTE_COUNT_MAX } from '../domain/index.ts'
 
-export const BACKEND_SCHEMA_USER_VERSION = 11
+export const BACKEND_SCHEMA_USER_VERSION = 15
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -262,6 +261,105 @@ CREATE TABLE IF NOT EXISTS client_broadcast (
 );
 `
 
+const DDL_V12_WALLET_MARKET = `
+-- Daily rows remain statistics. Affordability now belongs to one durable wallet.
+CREATE TABLE daily_incense_state_v12 (
+  installation_id TEXT NOT NULL, business_date TEXT NOT NULL,
+  claimed_effective_tokens INTEGER NOT NULL DEFAULT 0 CHECK (claimed_effective_tokens >= 0),
+  used_incense INTEGER NOT NULL DEFAULT 0 CHECK (used_incense >= 0),
+  token_per_incense INTEGER NOT NULL CHECK (token_per_incense > 0),
+  claim_source TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  starter_tokens INTEGER NOT NULL DEFAULT 0 CHECK (starter_tokens >= 0),
+  PRIMARY KEY (installation_id, business_date)
+);
+INSERT INTO daily_incense_state_v12 SELECT installation_id, business_date,
+  claimed_effective_tokens, used_incense, token_per_incense, claim_source,
+  version, created_at, updated_at, starter_tokens FROM daily_incense_state;
+DROP TABLE daily_incense_state;
+ALTER TABLE daily_incense_state_v12 RENAME TO daily_incense_state;
+
+CREATE TABLE IF NOT EXISTS incense_wallet (
+  installation_id TEXT PRIMARY KEY,
+  available INTEGER NOT NULL CHECK (available >= 0),
+  frozen INTEGER NOT NULL CHECK (frozen >= 0),
+  token_remainder INTEGER NOT NULL CHECK (token_remainder >= 0),
+  token_per_incense INTEGER NOT NULL CHECK (token_per_incense > 0),
+  version INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  CHECK (token_remainder < token_per_incense),
+  CHECK (available + frozen <= 9007199254740991)
+);
+CREATE TABLE IF NOT EXISTS incense_wallet_cursor (
+  installation_id TEXT NOT NULL, business_date TEXT NOT NULL,
+  claimed_tokens INTEGER NOT NULL CHECK (claimed_tokens >= 0),
+  minted_incense INTEGER NOT NULL CHECK (minted_incense >= 0),
+  PRIMARY KEY (installation_id, business_date)
+);
+CREATE TABLE IF NOT EXISTS incense_wallet_entry (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  installation_id TEXT NOT NULL, reference TEXT NOT NULL, kind TEXT NOT NULL,
+  available_delta INTEGER NOT NULL, frozen_delta INTEGER NOT NULL,
+  business_date TEXT NOT NULL, created_at INTEGER NOT NULL,
+  UNIQUE (installation_id, reference)
+);
+CREATE INDEX IF NOT EXISTS ix_wallet_entry_identity ON incense_wallet_entry(installation_id, id);
+
+CREATE TABLE IF NOT EXISTS liang_market (
+  id TEXT PRIMARY KEY, case_id TEXT NOT NULL UNIQUE, business_date TEXT NOT NULL UNIQUE,
+  timezone TEXT NOT NULL, opens_at INTEGER NOT NULL, closes_at INTEGER NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('open','closed','cancelled')),
+  close_point TEXT, created_at INTEGER NOT NULL, settled_at INTEGER, version INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS liang_market_batch (
+  market_id TEXT NOT NULL REFERENCES liang_market(id), batch INTEGER NOT NULL CHECK (batch BETWEEN 1 AND 3),
+  opens_at INTEGER NOT NULL, locks_at INTEGER NOT NULL, reference_at INTEGER NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending','open','locked','live','settled','void')),
+  reference_point TEXT, result TEXT CHECK (result IN ('long','short','draw','void')),
+  PRIMARY KEY(market_id,batch)
+);
+CREATE TABLE IF NOT EXISTS liang_market_position (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, market_id TEXT NOT NULL, batch INTEGER NOT NULL,
+  installation_id TEXT NOT NULL, side TEXT NOT NULL CHECK (side IN ('long','short')),
+  amount INTEGER NOT NULL CHECK (amount >= 0), payout INTEGER CHECK (payout >= 0),
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  UNIQUE(market_id,batch,installation_id),
+  FOREIGN KEY(market_id,batch) REFERENCES liang_market_batch(market_id,batch)
+);
+CREATE INDEX IF NOT EXISTS ix_market_position_owner ON liang_market_position(installation_id,market_id);
+CREATE TABLE IF NOT EXISTS liang_market_request (
+  installation_id TEXT NOT NULL, request_id TEXT NOT NULL, payload TEXT NOT NULL,
+  accepted INTEGER NOT NULL CHECK (accepted IN (0,1)), reason TEXT,
+  created_at INTEGER NOT NULL, PRIMARY KEY(installation_id,request_id)
+);
+CREATE TABLE IF NOT EXISTS liang_market_receipt (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, installation_id TEXT NOT NULL,
+  market_id TEXT NOT NULL, receipt_json TEXT NOT NULL, settled_at INTEGER NOT NULL,
+  UNIQUE(installation_id,market_id)
+);
+CREATE INDEX IF NOT EXISTS ix_market_receipt_owner ON liang_market_receipt(installation_id,id DESC);
+CREATE TABLE IF NOT EXISTS liang_market_candle (
+  case_id TEXT NOT NULL, business_date TEXT NOT NULL, at INTEGER NOT NULL,
+  open REAL, high REAL, low REAL, close REAL,
+  up_votes INTEGER NOT NULL, down_votes INTEGER NOT NULL,
+  volume INTEGER NOT NULL CHECK (volume >= 0),
+  PRIMARY KEY(case_id,at)
+);
+CREATE INDEX IF NOT EXISTS ix_market_candle_date ON liang_market_candle(business_date,at);
+`
+
+/** Keep historical five-minute candles intact; a finer series starts on upgrade. */
+const DDL_V14_MINUTE_CANDLES = `
+CREATE TABLE IF NOT EXISTS liang_market_minute_candle (
+  case_id TEXT NOT NULL, business_date TEXT NOT NULL, at INTEGER NOT NULL,
+  open REAL, high REAL, low REAL, close REAL,
+  up_votes INTEGER NOT NULL, down_votes INTEGER NOT NULL,
+  volume INTEGER NOT NULL CHECK (volume >= 0),
+  PRIMARY KEY(case_id,at)
+);
+CREATE INDEX IF NOT EXISTS ix_market_minute_candle_date ON liang_market_minute_candle(business_date,at);
+`
+
 function tableColumns(db: DatabaseSync, table: string): string[] {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>)
     .map((row) => row.name)
@@ -330,6 +428,36 @@ export function migrate(db: DatabaseSync): void {
     if (current < 11 && !tableColumns(db, 'liang_vote').includes('accepted_incense')) {
       db.exec(`ALTER TABLE liang_vote ADD COLUMN accepted_incense INTEGER
         CHECK (accepted_incense IS NULL OR accepted_incense BETWEEN 1 AND ${VOTE_COUNT_MAX})`)
+    }
+    if (current < 12) {
+      // Some early development snapshots stamped v7/v8 with only the vote
+      // table present. DDL above can create their base daily table today; it
+      // still needs the optional v6 column before the v12 copy is compiled.
+      db.exec(DDL_V6_GRANT)
+      if (!tableColumns(db, 'daily_incense_state').includes('starter_tokens')) {
+        db.exec('ALTER TABLE daily_incense_state ADD COLUMN starter_tokens INTEGER NOT NULL DEFAULT 0')
+      }
+      db.exec(DDL_V12_WALLET_MARKET)
+    }
+    if (current < 13 && !tableColumns(db, 'liang_market').includes('rule_version')) {
+      // Every schema-12 candidate ran v1. Freeze that historical fact here;
+      // never replace this migration default with a future current policy.
+      db.exec("ALTER TABLE liang_market ADD COLUMN rule_version TEXT NOT NULL DEFAULT 'liangxiang-market-v1'")
+    }
+    if (current < 14) db.exec(DDL_V14_MINUTE_CANDLES)
+    if (current < 15) {
+      if (!tableColumns(db, 'incense_wallet').includes('cumulative_since')) {
+        db.exec(`ALTER TABLE incense_wallet ADD COLUMN cumulative_since INTEGER;
+          UPDATE incense_wallet SET cumulative_since=created_at;`)
+      }
+      if (!tableColumns(db, 'incense_wallet').includes('daily_business_date')) {
+        db.exec("ALTER TABLE incense_wallet ADD COLUMN daily_business_date TEXT NOT NULL DEFAULT ''")
+      }
+      db.exec(`CREATE INDEX IF NOT EXISTS ix_wallet_daily_expiry ON incense_wallet(daily_business_date)
+        WHERE cumulative_since IS NULL;`)
+      // Existing candidate wallets already owned cumulative assets, including
+      // frozen positions. Preserve them exactly. A daily-only production
+      // database has no wallet rows here; its users opt in individually later.
     }
     if (current !== BACKEND_SCHEMA_USER_VERSION) {
       db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)

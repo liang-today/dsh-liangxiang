@@ -189,12 +189,12 @@ describe('梁祠 backend archive', () => {
       })
       expect(f.service.ensureActiveCase().id).toBe(today.id)
       expect(f.store.voteRequestByRequestId(installation, 'history-reset-0001')).toBeUndefined()
-      // Explicit reset releases the old request id together with the ledger.
+      // A visual/operator reset cannot make an already-spent financial intent reusable.
       expect(f.service.vote(installation, {
         case_id: today.id,
         vote_type: 'up',
         request_id: 'history-reset-0001',
-      }).result).toMatchObject({ status: 'accepted', replayed: false })
+      }).result).toMatchObject({ status: 'rejected', reason: 'idempotency_conflict' })
     } finally {
       f.close()
     }
