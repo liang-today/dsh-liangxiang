@@ -16,7 +16,7 @@
 | 领域核心 | `domain-token`、`domain-incense`、`domain-incense-weight`、`domain-vote`、`vote-budget`、`local-epithet`、`local-incense`、`domain-global`、`domain-liangzi`、`domain-independence`、`domain-compact-count` | Token/香火/投票/令牌桶/本机梁号/此身香火/梁位/五态/个人与全局隔离 |
 | 后端与安全 | `backend-service`、`backend-client`、`backend-http`、`community-auth`、`identity-recovery`、`operator-identity`、`starter-incense` | 事务、幂等、并发、签名、身份恢复、运营边界、错误契约、见面礼 |
 | Host | `host-service`、`host-backend`、`host-usage`、`host-dev-credit`、`host-apply` | 两种权威模式、用量水位、后端集成、生命周期 |
-| Client | `client-store`、`client-panel`、`badge`、`live-store`、`throttle-fill`、`client-apply` | 状态派生、四区、拖拽、动效、请求重试、注册与清理 |
+| Client | `client-store`、`client-panel`、`badge`、`live-store`、`client-request-id`、`client-vote-intent`、`throttle-fill`、`client-apply` | 状态派生、四区、拖拽、动效、请求号生成、请求重试、注册与清理 |
 | 契约/打包 | `wire`、`shared`、`manifest` | Host↔Browser fail-closed、冻结文案、双清单与版本一致性 |
 
 ## PROMPT 4 逐条对照

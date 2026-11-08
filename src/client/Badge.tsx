@@ -21,6 +21,7 @@ import { rememberLocalEpithetVote } from './local-epithet-store.ts'
 import { combineLocalIncenseStats, readLocalIncenseStats, rememberLocalIncenseVote } from './local-incense-store.ts'
 import { cycleSoundLevel, playArchiveSeal, playIncenseEarn, playLiangziShift, playNoIncense, playSquish, playVolumePreview, playVoteDown, playVoteDump, playVoteUp, soundLevel as readSoundLevel } from './sound.ts'
 import { DUMP_AUTO_RELEASE_MS, chargeProgress, holdReleaseAction } from './vote-charge.ts'
+import { startVoteIntent } from './vote-intent.ts'
 import { hasSeenWelcome, markWelcomeSeen, WELCOME_STORAGE_KEY } from './welcome.ts'
 import { pickSquishLabel, SQUISH_ANIM_MS, SQUISH_DOUBLE_MS, SQUISH_COMMENT_GAP_MS, SQUISH_LABEL_LINGER_MS, SQUISH_MAX_ROWS } from './badge-squish.ts'
 import { BadgeFeedback } from './BadgeFeedback.tsx'
@@ -672,7 +673,10 @@ export function LiangxiangBadge(): ReactElement {
     }
     const requested = Math.min(Math.max(1, count), remainingBefore, VOTE_COUNT_MAX)
     voteInFlight.current = true
-    store.vote(voteType, { count: requested }).then(
+    // A synchronous store failure (issue #26 was one) becomes a rejection, so
+    // the handlers below and the `.finally` lock release always run.
+    const pending = startVoteIntent(() => store.vote(voteType, { count: requested }))
+    pending.then(
       (result) => {
         if (result.status === 'accepted') {
           const spent = result.spentIncense ?? 1
