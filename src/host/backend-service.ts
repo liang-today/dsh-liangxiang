@@ -604,7 +604,11 @@ export class BackendLiangService implements LiangHostService {
         void this.refreshBootstrap()
         throw new BackendClientError('market case changed during read', 409, 'authority_changed')
       }
+      const recovering = this.marketReadFailure !== null
+      const retained = this.marketState
+      this.marketReadFailure = null
       this.adoptMarketState(state)
+      if (recovering && this.marketState === retained) this.bump()
       return state
     }).catch(error => {
       if (current() && !this.hasHealthyCloudStream()) {

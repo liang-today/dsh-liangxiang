@@ -201,10 +201,10 @@ export function MarketDialog({ reducedMotion, online, onClose, restoreFocus = tr
       </header>
       <span className={marketClass('a11y')} aria-live="polite">{fishReaction && ['confirmed', 'pool', 'position'].includes(fishReaction.action) ? fishReaction.text : ''}</span>
       <div className={marketClass('status')} role="status" aria-live="polite">
-        {!online ? '社区交易仅在线模式可用，离线香火与社区钱包分别保存。' : view.error ?? view.chartError ?? ''}
+        {!online ? '社区交易仅在线模式可用，离线香火与社区钱包分别保存。' : view.error ?? view.chartError ?? view.historyError ?? ''}
         {online && view.error && (view.pending ? <button type="button" data-fish-action="retry" disabled={view.sending} onClick={() => { void session.retryPending() }}>{view.sending ? '核对中…' : '核对上一笔'}</button> : view.status === 'offline' && !view.state && <button type="button" data-fish-action="retry" onClick={() => { void session.start() }}>重新连接</button>)}
       </div>
-      {fetching && <p className={marketClass('loading')} role="status" aria-live="polite"><span className={marketClass('a11y')}>{initialLoading ? '大肥鱼捕捞中' : '正在读取行情'}</span></p>}
+      {fetching && <p className={marketClass('loading')} role="status" aria-live="polite">正在读取行情</p>}
       {state && online && <>
         <MarketChart state={state} candles={view.candles} candlesIntervalMs={view.candleIntervalMs ?? 300_000} animated={animatedNow} selectedBatch={selected} onInteraction={(action, gesture, range) => reactFish(action ?? 'inspect', range ? `镜头${action === 'pan' ? '平移' : action === 'zoom-in' ? '拉近' : '拉远'}啦，${range}。` : undefined, !gesture)} {...(casePresentation === undefined ? {} : { liangziPolicyId: casePresentation.policyId })} />
         {!market && <p className={marketClass('empty')}>今日交易尚未开场，正常上香不受影响。</p>}

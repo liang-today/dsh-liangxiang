@@ -28,6 +28,7 @@ export interface MarketView {
   historyLoading: boolean
   error: string | null
   chartError: string | null
+  historyError?: string | null
   scope: string
 }
 export interface MarketSession {
@@ -71,7 +72,7 @@ export function browserMarketTransport(): MarketTransport {
 }
 
 export function createMarketSession(transport: MarketTransport = browserMarketTransport(), storage: MarketStorage | null = browserMarketStorage()): MarketSession {
-  let view: MarketView = { state: null, status: 'loading', candles: [], candleIntervalMs: MARKET_LEGACY_CANDLE_INTERVAL_MS, receipts: [], historyPage: 1, nextCursor: null, pending: null, sending: false, historyLoading: false, error: null, chartError: null, scope: '' }
+  let view: MarketView = { state: null, status: 'loading', candles: [], candleIntervalMs: MARKET_LEGACY_CANDLE_INTERVAL_MS, receipts: [], historyPage: 1, nextCursor: null, pending: null, sending: false, historyLoading: false, error: null, chartError: null, historyError: null, scope: '' }
   let cache: MarketCache = emptyMarketCache('')
   let disposed = false, source: { close(): void } | null = null, chartKey = '', chartLoading = false, chartQueued = false, lastCacheSave = 0
   let historyCursors: Array<string | undefined> = [undefined], historyIndex = 0, historyGeneration = 0
@@ -79,6 +80,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
   let connecting: Promise<void> | null = null, generation = 0, retryDelay = 1_000
   let retryTimer: ReturnType<typeof setTimeout> | null = null
   let chartRetry: ReturnType<typeof setTimeout> | null = null
+  let historyRetry: ReturnType<typeof setTimeout> | undefined
   const listeners = new Set<() => void>()
   const update = (patch: Partial<MarketView>): void => {
     if (disposed) return
@@ -87,10 +89,15 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
   }
   const stopRetry = (): void => { clearTimeout(retryTimer ?? undefined); retryTimer = null }
   const stopChartRetry = (): void => { clearTimeout(chartRetry ?? undefined); chartRetry = null }
+  const resetHistory = (): void => {
+    clearTimeout(historyRetry); historyGeneration++
+    update({ historyLoading: false })
+  }
   const disconnect = (error: unknown, expected: number): void => {
     if (expected !== generation) return
     stopRetry()
     generation++
+    resetHistory()
     source?.close(); source = null
     const unsupported = error instanceof MarketHttpError && [404, 405, 501].includes(error.status)
     update({ status: unsupported ? 'unsupported' : 'offline', error: error instanceof MarketHttpError ? error.message : '网络暂时不稳，正在自动重连；香火与仓位已保留。' })
@@ -114,8 +121,8 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     stopChartRetry()
     acceptedFeedback = null
     cache = readMarketCache(storage, scope)
-    historyCursors = [undefined]; historyIndex = 0; historyGeneration++
-    update({ scope, receipts: cache.receipts, pending: cache.pending, candles: [], candleIntervalMs: MARKET_LEGACY_CANDLE_INTERVAL_MS, nextCursor: null, historyPage: 1, historyLoading: false })
+    historyCursors = [undefined]; historyIndex = 0; resetHistory()
+    update({ scope, receipts: cache.receipts, pending: cache.pending, candles: [], candleIntervalMs: MARKET_LEGACY_CANDLE_INTERVAL_MS, nextCursor: null, historyPage: 1, historyError: null })
     chartKey = ''
   }
   const loadCandles = async (): Promise<void> => {
@@ -214,7 +221,9 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
         chartKey = key
         void loadCandles()
       }
-      if (identityChanged || (old?.market && (old.market.id !== market.id || (old.market.status === 'open' && market.status !== 'open')))) void session.loadHistory()
+      if (identityChanged || (old?.market && (old.market.id !== market.id || (old.market.status === 'open' && market.status !== 'open')))) {
+        resetHistory(); void session.loadHistory()
+      }
     }
   }
   const send = async (intent: MarketPositionRequest): Promise<void> => {
@@ -255,6 +264,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     start() {
       if (disposed || connecting) return connecting ?? Promise.resolve()
       stopRetry()
+      resetHistory()
       source?.close(); source = null
       const expected = ++generation, current = (): boolean => expected === generation
       const failed = (): void => disconnect(null, expected)
@@ -281,6 +291,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     async retryPending() { if (view.pending) await send(view.pending) },
     async loadHistory(more = false) {
       if (disposed || view.historyLoading || (more === true && !view.nextCursor) || (more === 'newer' && historyIndex === 0)) return
+      clearTimeout(historyRetry)
       const scope = view.scope, generation = historyGeneration
       const current = (): boolean => !disposed && view.scope === scope && historyGeneration === generation
       const index = more === true ? historyIndex + 1 : more === 'newer' ? historyIndex - 1 : 0
@@ -297,11 +308,16 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
         // Retain only this page; the cursor trail lets older history stay on the server.
         historyCursors[index] = cursor; historyCursors.length = index + 1; historyIndex = index
         cache.receipts = [...page.receipts, ...cache.receipts]; save()
-        update({ receipts: page.receipts, nextCursor: page.next_cursor, historyPage: index + 1 })
-      } catch { if (current()) update({ error: '历史回执暂未更新，已确认的钱包不受影响。' }) }
+        update({ receipts: page.receipts, nextCursor: page.next_cursor, historyPage: index + 1, historyError: null })
+      } catch {
+        if (current()) {
+          update({ historyError: '历史回执暂未更新，已确认的钱包不受影响。' })
+          historyRetry = setTimeout(() => { if (current()) void session.loadHistory(more) }, 5_000)
+        }
+      }
       finally { if (current()) update({ historyLoading: false }) }
     },
-    dispose() { save(); disposed = true; generation++; stopRetry(); stopChartRetry(); acceptedFeedback = null; source?.close(); transport.dispose(); listeners.clear() },
+    dispose() { save(); disposed = true; generation++; stopRetry(); stopChartRetry(); clearTimeout(historyRetry); acceptedFeedback = null; source?.close(); transport.dispose(); listeners.clear() },
   }
   return session
 }

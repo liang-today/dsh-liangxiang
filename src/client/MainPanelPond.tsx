@@ -29,66 +29,70 @@ export interface MainPanelPondProps {
   reducedMotion: boolean
   /** Panel visibility and overlays only; request activity is deliberately unrelated. */
   active?: boolean
+  /** Cosmetic only; never restarts the fish lifecycle or changes water depth. */
+  streamingActive?: boolean
   pondRef?: Ref<HTMLDivElement>
 }
 
 export const MAIN_PANEL_POND_CSS = `
-[data-liangxiang-main-pond]{position:absolute;inset:0;pointer-events:none;overflow:visible;
+[data-@P]{position:absolute;inset:0;pointer-events:none;overflow:visible;
  --liangxiang-pond-blue:var(--liangxiang-main-blue,light-dark(#5879bf,#a5c1ff));
  --liangxiang-pond-water:var(--liangxiang-main-water,light-dark(#88b9ed,#689ed2));
  --liangxiang-pond-paper:var(--liangxiang-main-paper,light-dark(#fbfdff,#202b3a));
  --liangxiang-pond-stone:light-dark(#8da4be,#8aa1bd);
  --liangxiang-pond-stone-edge:light-dark(#6f8aa8,#a7bbd3);
  --liangxiang-pond-stone-light:light-dark(#d9e6f3,#b8cce0)}
-[data-liangxiang-main-pond] [hidden]{display:none!important}
-[data-liangxiang-main-pond-water],[data-liangxiang-main-pond-actors]{position:absolute;left:-11px;top:8px;width:calc(100% + 22px);height:128px;overflow:hidden;pointer-events:none}
-[data-liangxiang-main-pond-water]{z-index:0;opacity:var(--liangxiang-pond-presence,1)}
-.liangxiang-main-pond-tide{position:absolute;inset:0;transform:translateY(var(--liangxiang-pond-drop,128px));transition:transform 1.05s cubic-bezier(.2,.7,.25,1)}
-.liangxiang-main-pond-water{position:absolute;top:-8px;left:-20px;width:calc(100% + 40px);height:150px;overflow:visible}
-.liangxiang-main-pond-wave-back,.liangxiang-main-pond-wave-front{fill:var(--liangxiang-pond-water)}
-.liangxiang-main-pond-wave-back{opacity:.19;animation:liangxiang-main-pond-back 11s ease-in-out infinite alternate}
-.liangxiang-main-pond-wave-front{opacity:.2;animation:liangxiang-main-pond-front 7s ease-in-out infinite alternate}
-.liangxiang-main-pond-gleam{fill:none;stroke:color-mix(in srgb,var(--liangxiang-pond-paper) 75%,var(--liangxiang-pond-water));stroke-width:1;opacity:.55;animation:liangxiang-main-pond-front 7s ease-in-out infinite alternate}
-[data-liangxiang-main-pond-plants]{position:absolute;inset:0;clip-path:inset(clamp(0px,calc(var(--liangxiang-pond-drop,128px) + 5px),128px) 0 0 0);transition:clip-path 1.05s cubic-bezier(.2,.7,.25,1);z-index:1;pointer-events:none}
-.liangxiang-main-pond-grass{position:absolute;bottom:-2px;left:7px;width:calc(22px * (.62 + .38 * var(--liangxiang-pond-growth,0)));height:calc(27px * var(--liangxiang-pond-growth,0));opacity:.52;transform-origin:50% 100%;animation:liangxiang-main-pond-grass 9s ease-in-out infinite alternate;transition:width 1.05s ease,height 1.05s cubic-bezier(.2,.7,.25,1)}
-.liangxiang-main-pond-grass[data-side=right]{left:auto;right:6px;width:calc(20px * (.62 + .38 * var(--liangxiang-pond-growth,0)));height:calc(25px * var(--liangxiang-pond-growth,0));animation-duration:11s;animation-delay:-4s}
-.liangxiang-main-pond-grass img{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none;user-select:none}
-.liangxiang-main-pond-grass[data-side=right] img{transform:scaleX(-1)}
-.liangxiang-main-pond-stones{position:absolute;bottom:0;left:8px;width:19px;height:5px;opacity:.43;z-index:2}
-.liangxiang-main-pond-stones[data-side=right]{left:auto;right:7px}
-.liangxiang-main-pond-stones i{position:absolute;bottom:0;display:block;background:radial-gradient(ellipse at 35% 23%,color-mix(in srgb,var(--liangxiang-pond-stone-light) 70%,transparent) 0 9%,transparent 18%),var(--liangxiang-pond-stone);border:.55px solid var(--liangxiang-pond-stone-edge);border-radius:48% 55% 43% 51%;box-sizing:border-box}
-.liangxiang-main-pond-stones i:first-child{left:0;width:8px;height:3.3px;transform:rotate(8deg)}
-.liangxiang-main-pond-stones i:last-child{left:7px;width:10px;height:4.2px;transform:rotate(-7deg)}
-[data-liangxiang-main-pond-actors]{z-index:2}
-.liangxiang-main-pond-fish{position:absolute;left:0;top:var(--liangxiang-pond-fish-top,102px);width:36px;height:25px;opacity:0;transition:top 1.05s cubic-bezier(.2,.7,.25,1)}
-.liangxiang-main-pond-fish-body{position:relative;display:block;width:36px;height:25px;transform-origin:70% 65%}
-.liangxiang-main-pond-fish img{display:block;width:36px;height:25px;object-fit:contain;pointer-events:none;user-select:none}
-[data-liangxiang-main-pond-head]{position:absolute;left:26px;top:6px;width:0;height:0}
-[data-liangxiang-main-pond][data-fish=true] .liangxiang-main-pond-fish{animation:liangxiang-main-pond-fish 6.4s linear both}
-.liangxiang-main-pond-fish-body[data-puff=true]{animation:liangxiang-main-pond-puff .48s ease-in-out both}
+[data-@P] [hidden]{display:none!important}
+[data-@P-water],[data-@P-actors]{position:absolute;left:-11px;top:8px;width:calc(100% + 22px);height:128px;overflow:hidden;pointer-events:none}
+[data-@P-water]{z-index:0;opacity:var(--liangxiang-pond-presence,1)}
+.@P-tide{position:absolute;inset:0;transform:translateY(var(--liangxiang-pond-drop,128px));transition:transform 1.05s cubic-bezier(.2,.7,.25,1)}
+.@P-water{position:absolute;top:-8px;left:-20px;width:calc(100% + 40px);height:150px;overflow:visible}
+.@P-wave-back,.@P-wave-front{fill:var(--liangxiang-pond-water)}
+.@P-wave-back{opacity:.19;animation:@P-back 11s ease-in-out infinite alternate}
+.@P-wave-front{opacity:.2;animation:@P-front 7s ease-in-out infinite alternate}
+.@P-gleam{fill:none;stroke:color-mix(in srgb,var(--liangxiang-pond-paper) 75%,var(--liangxiang-pond-water));stroke-width:1;opacity:.55;animation:@P-front 7s ease-in-out infinite alternate}
+[data-@P-plants]{position:absolute;inset:0;clip-path:inset(clamp(0px,calc(var(--liangxiang-pond-drop,128px) + 5px),128px) 0 0 0);transition:clip-path 1.05s cubic-bezier(.2,.7,.25,1);z-index:1;pointer-events:none}
+.@P-grass{position:absolute;bottom:-2px;left:7px;width:calc(22px * (.62 + .38 * var(--liangxiang-pond-growth,0)));height:calc(27px * var(--liangxiang-pond-growth,0));opacity:.52;transform-origin:50% 100%;animation:@P-grass 9s ease-in-out infinite alternate;transition:width 1.05s ease,height 1.05s cubic-bezier(.2,.7,.25,1)}
+.@P-grass[data-side=right]{left:auto;right:6px;width:calc(20px * (.62 + .38 * var(--liangxiang-pond-growth,0)));height:calc(25px * var(--liangxiang-pond-growth,0));animation-duration:11s;animation-delay:-4s}
+.@P-grass img{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none;user-select:none}
+.@P-grass[data-side=right] img{transform:scaleX(-1)}
+.@P-stones{position:absolute;bottom:0;left:8px;width:19px;height:5px;opacity:.43;z-index:2}
+.@P-stones[data-side=right]{left:auto;right:7px}
+.@P-stones i{position:absolute;bottom:0;display:block;background:radial-gradient(ellipse at 35% 23%,color-mix(in srgb,var(--liangxiang-pond-stone-light) 70%,transparent) 0 9%,transparent 18%),var(--liangxiang-pond-stone);border:.55px solid var(--liangxiang-pond-stone-edge);border-radius:48% 55% 43% 51%;box-sizing:border-box}
+.@P-stones i:first-child{left:0;width:8px;height:3.3px;transform:rotate(8deg)}
+.@P-stones i:last-child{left:7px;width:10px;height:4.2px;transform:rotate(-7deg)}
+[data-@P-actors]{z-index:2}
+.@P-fish{position:absolute;left:0;top:var(--liangxiang-pond-fish-top,102px);width:36px;height:25px;opacity:0;transition:top 1.05s cubic-bezier(.2,.7,.25,1)}
+.@P-fish-body{position:relative;display:block;width:36px;height:25px;transform-origin:70% 65%}
+.@P-fish img{display:block;width:36px;height:25px;object-fit:contain;pointer-events:none;user-select:none}
+[data-@P-head]{position:absolute;left:26px;top:6px;width:0;height:0}
+[data-@P][data-fish=true] .@P-fish{animation:@P-fish 6.4s linear both}
+.@P-fish-body[data-puff=true]{animation:@P-puff .48s ease-in-out both}
 /* This is a sibling foreground, never a high-z child trapped behind Liangzi. */
-[data-liangxiang-main-pond-bubbles]{position:absolute;inset:0;z-index:4;overflow:visible;pointer-events:none}
-.liangxiang-main-pond-bubble{position:absolute;width:10px;height:10px}
-.liangxiang-main-pond-bubble-orb{position:absolute;inset:0;display:block;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--liangxiang-pond-blue) 65%,var(--liangxiang-pond-paper));border-radius:50%;background:radial-gradient(circle at 30% 26%,color-mix(in srgb,var(--liangxiang-pond-paper) 72%,transparent) 0 12%,transparent 24%),color-mix(in srgb,var(--liangxiang-pond-water) 12%,transparent)}
-.liangxiang-main-pond-pop{position:absolute;left:-6px;top:3px;display:block;box-sizing:border-box;width:22px;height:4px;opacity:0;border:1px solid var(--liangxiang-pond-blue);border-radius:50%}
-.liangxiang-main-pond-bubble[data-stage=rise] .liangxiang-main-pond-pop{display:none}
-.liangxiang-main-pond-bubble[data-stage=pop] .liangxiang-main-pond-bubble-orb{display:none}
-.liangxiang-main-pond-bubble[data-stage=pop] .liangxiang-main-pond-pop{animation:liangxiang-main-pond-ring 1.5s ease-out both}
-.liangxiang-main-pond-bubble[data-stage=pop] .liangxiang-main-pond-pop:last-child{animation-delay:.25s}
-[data-liangxiang-main-pond][data-available=false] *{animation-play-state:paused!important}
-[data-liangxiang-main-pond][data-motion=false] *,[data-liangxiang-main-pond][data-active=false] *{animation:none!important;transition:none!important}
-[data-liangxiang-main-pond][data-motion=false] :is([data-liangxiang-main-pond-actors],[data-liangxiang-main-pond-bubbles]){display:none}
-@keyframes liangxiang-main-pond-back{from{transform:translateX(-7px)}to{transform:translateX(8px)}}
-@keyframes liangxiang-main-pond-front{from{transform:translateX(8px)}to{transform:translateX(-8px)}}
-@keyframes liangxiang-main-pond-grass{from{transform:skewX(-2.5deg)}to{transform:skewX(2.5deg)}}
-@keyframes liangxiang-main-pond-fish{0%{opacity:0;transform:translateX(-36px)}8%{opacity:.24}30%,75%{opacity:.28}92%{opacity:.24}100%{opacity:0;transform:translateX(272px)}}
-@keyframes liangxiang-main-pond-puff{0%{transform:translateY(0) rotate(0deg) scale(1)}24%{transform:translateY(0) rotate(2deg) scale(1.06,.94)}42%{transform:translateY(-4px) rotate(-8deg) scale(.98,1.04)}72%{transform:translateY(-2px) rotate(-3deg) scale(1.01,.99)}100%{transform:translateY(0) rotate(0deg) scale(1)}}
-@keyframes liangxiang-main-pond-ring{0%{opacity:0;transform:scale(.2)}15%{opacity:.2}100%{opacity:0;transform:scale(1.6)}}
-@media(prefers-reduced-motion:reduce){[data-liangxiang-main-pond] *{animation:none!important;transition:none!important}[data-liangxiang-main-pond] :is([data-liangxiang-main-pond-actors],[data-liangxiang-main-pond-bubbles]){display:none}}
-`
+[data-@P-bubbles]{position:absolute;inset:0;z-index:4;overflow:visible;pointer-events:none}
+.@P-bubble{position:absolute;width:10px;height:10px}
+.@P-bubble-orb{position:absolute;inset:0;display:block;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--liangxiang-pond-blue) 65%,var(--liangxiang-pond-paper));border-radius:50%;background:radial-gradient(circle at 30% 26%,color-mix(in srgb,var(--liangxiang-pond-paper) 72%,transparent) 0 12%,transparent 24%),color-mix(in srgb,var(--liangxiang-pond-water) 12%,transparent)}
+.@P-pop{position:absolute;left:-6px;top:3px;display:block;box-sizing:border-box;width:22px;height:4px;opacity:0;border:1px solid var(--liangxiang-pond-blue);border-radius:50%}
+[data-liangxiang-stream-ripple]{opacity:.14;animation:@P-ring 3s ease-out infinite}
+.@P-bubble[data-stage=rise] .@P-pop{display:none}
+.@P-bubble[data-stage=pop] .@P-bubble-orb{display:none}
+.@P-bubble[data-stage=pop] .@P-pop{animation:@P-ring 1.5s ease-out both}
+.@P-bubble[data-stage=pop] .@P-pop:last-child{animation-delay:.25s}
+[data-@P][data-available=false] *{animation-play-state:paused!important}
+[data-@P][data-available=false]~* [data-liangxiang-stream-activity]{animation-play-state:paused!important}
+[data-@P][data-motion=false] *,[data-@P][data-active=false] *{animation:none!important;transition:none!important}
+[data-@P][data-motion=false] :is([data-@P-actors],[data-@P-bubbles]){display:none}
+@keyframes @P-back{from{transform:translateX(-7px)}to{transform:translateX(8px)}}
+@keyframes @P-front{from{transform:translateX(8px)}to{transform:translateX(-8px)}}
+@keyframes @P-grass{from{transform:skewX(-2.5deg)}to{transform:skewX(2.5deg)}}
+@keyframes @P-fish{0%{opacity:0;transform:translateX(-36px)}8%{opacity:.24}30%,75%{opacity:.28}92%{opacity:.24}100%{opacity:0;transform:translateX(272px)}}
+@keyframes @P-puff{0%{transform:translateY(0) rotate(0deg) scale(1)}24%{transform:translateY(0) rotate(2deg) scale(1.06,.94)}42%{transform:translateY(-4px) rotate(-8deg) scale(.98,1.04)}72%{transform:translateY(-2px) rotate(-3deg) scale(1.01,.99)}100%{transform:translateY(0) rotate(0deg) scale(1)}}
+@keyframes @P-ring{0%{opacity:0;transform:scale(.2)}15%{opacity:.2}100%{opacity:0;transform:scale(1.6)}}
+@media(prefers-reduced-motion:reduce){[data-@P] *{animation:none!important;transition:none!important}[data-@P] :is([data-@P-actors],[data-@P-bubbles]){display:none}}
+`.replaceAll('@P', 'liangxiang-main-pond')
 
 /** No hooks or state: authority is supplied by the existing Host projection. */
-export function MainPanelPond({ remainingIncense, reducedMotion, active = true, pondRef }: MainPanelPondProps): ReactElement {
+export function MainPanelPond({ remainingIncense, reducedMotion, active = true, streamingActive = false, pondRef }: MainPanelPondProps): ReactElement {
   const geometry = mainPondGeometry(remainingIncense)
   const style = {
     '--liangxiang-pond-drop': `${geometry.waterDrop}px`,
@@ -105,7 +109,8 @@ export function MainPanelPond({ remainingIncense, reducedMotion, active = true, 
         <path className="liangxiang-main-pond-wave-back" d="M-30 10 C0 4 26 16 61 10 S112 4 147 10 S201 16 244 10 S286 4 300 10 V170H-30Z" />
         <path className="liangxiang-main-pond-wave-front" d="M-30 13 C4 7 34 19 75 13 S129 7 172 13 S229 19 283 13 V170H-30Z" />
         <path className="liangxiang-main-pond-gleam" d="M-30 13 C4 7 34 19 75 13 S129 7 172 13 S229 19 283 13" />
-      </svg></div>
+      </svg>{streamingActive && active && geometry.waterDepth > 0 && ['18%', '82%'].map((left, index) =>
+        <i key={left} className="liangxiang-main-pond-pop" data-liangxiang-stream-ripple="" style={{ left, animationDelay: `${index * -1.5}s` }} />)}</div>
       <div data-liangxiang-main-pond-plants="">{(['left', 'right'] as const).map(side => <span key={side}>
         <span className="liangxiang-main-pond-grass" data-side={side}><img src={MAIN_POND_GRASS} alt="" draggable={false} /></span>
         <span className="liangxiang-main-pond-stones" data-side={side}><i /><i /></span>

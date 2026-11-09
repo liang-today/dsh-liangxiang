@@ -53,9 +53,10 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
   await page.evaluate(state => window.__liangxiangActivityFrame?.(state), active)
   await expect(panel.locator('[data-liangxiang-stream-status]')).toHaveCount(0)
   await expect(panel.locator('[data-caption-label]')).toHaveText('今日凝香')
-  const wisps = panel.locator('[data-liangxiang-stream-wisp]')
-  await expect(wisps).toHaveCount(2)
-  expect(await wisps.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 0))).toBe(true)
+  const activity = panel.locator('[data-liangxiang-stream-activity], [data-liangxiang-stream-ripple]')
+  await expect(activity).toHaveCount(Number(remaining) > 0 ? 3 : 1)
+  await expect(panel.locator('[data-liangxiang-stream-wisp]')).toHaveCount(0)
+  expect(await activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 0))).toBe(true)
   await page.waitForTimeout(1200) // prove a running request does not predict numbers
   expect(await figures.allTextContents()).toEqual(before)
   await expect(panel.locator('[data-liangxiang-ring]')).toHaveAttribute('data-remaining', remaining!)
@@ -66,10 +67,10 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
   expect(axe.violations).toEqual([])
 
   await page.emulateMedia({ reducedMotion: 'no-preference' })
-  await expect.poll(() => wisps.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 1))).toBe(true)
-  const wisp = wisps.first()
-  const transform = await wisp.evaluate(node => getComputedStyle(node).transform)
-  await expect.poll(() => wisp.evaluate(node => getComputedStyle(node).transform)).not.toBe(transform)
+  await expect.poll(() => activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 1))).toBe(true)
+  const glow = panel.locator('[data-liangxiang-stream-activity]')
+  const opacity = await glow.evaluate(node => getComputedStyle(node).opacity)
+  await expect.poll(() => glow.evaluate(node => getComputedStyle(node).opacity)).not.toBe(opacity)
   expect(await figures.allTextContents()).toEqual(before)
   await panel.screenshot({ path: testInfo.outputPath('streaming-active.png') })
 
@@ -81,8 +82,65 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
       remainingIncense: wire.personal.remainingIncense + 2 },
   })
   await expect(panel.locator('[data-liangxiang-stream-activity]')).toHaveCount(0)
+  await expect(panel.locator('[data-liangxiang-stream-ripple]')).toHaveCount(0)
   await expect(panel.locator('[data-liangxiang-stream-status]')).toHaveCount(0)
   await expect(panel.locator('[data-liangxiang-ring]')).toHaveAttribute('data-remaining', String(wire.personal.remainingIncense + 2))
   await expect(panel.locator('[data-caption-label]')).toHaveText('凝香到账')
   await expect(panel.locator('[data-caption-amount]')).toHaveText('+2')
+})
+
+test('activity follows shallow and full water, pauses offscreen, and never restarts a fish visit', async ({ page }) => {
+  const wire = await (await page.request.get('/liangxiang/api/state')).json() as LiangxiangWireState
+  const panel = await openPanel(page), pond = panel.locator('[data-liangxiang-main-pond]')
+  let revision = wire.revision + 10_000
+  const emit = async (stock: number, streamingActive = true) => {
+    await page.evaluate(state => window.__liangxiangActivityFrame?.(state), {
+      ...wire, revision: ++revision, streamingActive,
+      personal: { ...wire.personal, remainingIncense: stock,
+        wallet: { available_incense: stock, frozen_incense: 0, total_incense: stock,
+          token_remainder: wire.personal.effectiveTokensToday % wire.personal.tokenPerIncense,
+          token_per_incense: wire.personal.tokenPerIncense, version: revision } },
+    })
+  }
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  const ripples = panel.locator('[data-liangxiang-stream-ripple]')
+  for (const stock of [25, 1_000]) {
+    await emit(stock)
+    await expect(ripples).toHaveCount(2)
+    const drop = 128 * (1 - Math.sqrt(stock / 1_000))
+    // Both decorations live inside the same tide transform as the genuine
+    // water line, rather than floating at an independent fixed ring height.
+    await expect.poll(() => ripples.first().evaluate(node => {
+      const tide = node.closest('.liangxiang-main-pond-tide')!
+      const gleam = tide.querySelector('.liangxiang-main-pond-gleam')!
+      return gleam.closest('.liangxiang-main-pond-tide') === tide
+        ? new DOMMatrixReadOnly(getComputedStyle(tide).transform).f : -1
+    })).toBeCloseTo(drop, 1)
+  }
+  await page.clock.install()
+  await page.clock.fastForward(10_001)
+  await expect(pond).toHaveAttribute('data-fish', 'true')
+  const fish = pond.locator('.liangxiang-main-pond-fish')
+  const start = await fish.evaluate(node => node.getAnimations()[0]!.startTime)
+  await emit(1_000, false)
+  await expect(ripples).toHaveCount(0)
+  await emit(1_000)
+  await expect(ripples).toHaveCount(2)
+  await expect(pond).toHaveAttribute('data-fish', 'true')
+  expect(await fish.evaluate(node => node.getAnimations()[0]!.startTime)).toEqual(start)
+
+  await pond.evaluate(node => { node.style.transform = 'translateX(200vw)' })
+  await expect(pond).toHaveAttribute('data-available', 'false')
+  const activity = panel.locator('[data-liangxiang-stream-activity], [data-liangxiang-stream-ripple]')
+  expect(await activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().every(animation => animation.playState === 'paused')))).toBe(true)
+  await pond.evaluate(node => { node.style.transform = '' })
+  await expect(pond).toHaveAttribute('data-available', 'true')
+  await expect.poll(() => activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().every(animation => animation.playState === 'running')))).toBe(true)
+  await emit(0)
+  await expect(ripples).toHaveCount(0)
+  await expect(panel.locator('[data-liangxiang-stream-activity]')).toHaveCount(1)
+  const detached = await panel.locator('[data-liangxiang-stream-activity]').elementHandle()
+  await panel.getByRole('button', { name: '关闭面板', exact: true }).click()
+  expect(await detached!.evaluate(node => ({ connected: node.isConnected, animations: node.getAnimations().length })))
+    .toEqual({ connected: false, animations: 0 })
 })

@@ -7,7 +7,7 @@
 
 | 项 | 当前事实 |
 |---|---|
-| 梁相版本 | 2.0.1-alpha.4 |
+| 梁相版本 | 2.0.1-alpha.5 |
 | 状态 | 未发布修复候选；沿用2.0.0的DSH基线，公开版仍为2.0.0，本轮不部署正式后端 |
 | DSH CLI / Web App / UI renderer/layout/slots | 0.2.1-rc.2（同一版本） |
 | DSH tag / commit | dsh-v0.2.1-rc.2 / 687f282e86 |

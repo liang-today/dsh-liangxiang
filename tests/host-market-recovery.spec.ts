@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BackendLiangService } from '../src/host/backend-service.ts'
 import { createBackendClient, type BackendClient } from '../src/host/backend-client.ts'
 import { BackendClientError } from '../src/host/backend-client.ts'
-import type { MarketState } from '../src/shared/market-v1.ts'
+import { parseMarketState, type MarketState } from '../src/shared/market-v1.ts'
 import { createBackendFixture, DAY_MS } from './helpers/backend.ts'
 
 const READER = 'inst-market-recovery-reader'
@@ -119,6 +119,59 @@ describe('market recovery without a healthy cloud stream', () => {
     await vi.waitFor(() => expect(h.service.cachedMarketState()).not.toBeNull())
     expect(read).toHaveBeenCalledTimes(2)
     expect(h.service.cachedMarketState()?.wallet).toEqual(h.initial.wallet)
+  })
+
+  it.each(['older-clock', 'older-wallet'] as const)('clears a recovered read failure while retaining confirmed data from an %s payload', async kind => {
+    const h = await recoveryHarness()
+    h.fixture.clock.advance(1_000)
+    expect(h.fixture.service.setMarketPosition(READER, { market_id: h.initial.market!.id,
+      batch: 2, side: 'long', amount: 5, request_id: `confirmed-${kind}` }).accepted).toBe(true)
+    const confirmed = await h.service.market()
+    h.client.market = async () => { throw new BackendClientError('market read failed', 503, 'unavailable') }
+    await expect(h.service.market()).rejects.toThrow('market read failed')
+    expect(h.service.cachedMarketState()).toBeNull()
+    h.fixture.clock.advance(5_000)
+    const old = kind === 'older-wallet' ? h.initial : { ...confirmed, server_time: confirmed.server_time - 1 }
+    h.client.market = async () => parseMarketState(old)
+    let restoredFrames = 0
+    h.service.subscribe(() => { if (h.service.cachedMarketState() !== null) restoredFrames++ })
+    await h.service.market()
+    const recovered = h.service.cachedMarketState()
+    expect(recovered).not.toBeNull()
+    expect(recovered?.wallet).toEqual(confirmed.wallet)
+    expect(recovered?.market).toEqual(confirmed.market)
+    expect(recovered?.current_point).toEqual(confirmed.current_point)
+    expect(recovered?.current_candle).toEqual(confirmed.current_candle)
+    expect(restoredFrames).toBe(1)
+    expect(h.requests.every(path => !path.endsWith('/token-claims') && !path.endsWith('/market/position'))).toBe(true)
+  })
+
+  it.each(['invalid', 'wrong-case'] as const)('does not clear an outage from an %s recovery payload', async kind => {
+    const h = await recoveryHarness()
+    h.client.market = async () => { throw new BackendClientError('market read failed', 503, 'unavailable') }
+    await expect(h.service.market()).rejects.toThrow()
+    h.fixture.clock.advance(5_000)
+    h.client.market = async () => parseMarketState(kind === 'invalid' ? { invalid: true } : {
+      ...h.initial, market: { ...h.initial.market!, business_date: '2099-01-01' },
+    })
+    await expect(h.service.market()).rejects.toThrow()
+    expect(h.service.cachedMarketState()).toBeNull()
+  })
+
+  it('does not let a late prior-generation read clear the replacement case outage', async () => {
+    const h = await recoveryHarness()
+    let finish!: (state: MarketState) => void
+    h.client.market = async () => new Promise<MarketState>(resolve => { finish = resolve })
+    const late = h.service.market()
+    h.fixture.service.publishCase('replacement market')
+    await h.service.refreshBootstrap()
+    h.client.market = async () => { throw new BackendClientError('replacement outage', 503, 'unavailable') }
+    await expect(h.service.market()).rejects.toThrow('replacement outage')
+    const rejected = expect(late).rejects.toMatchObject({ code: 'authority_changed' })
+    finish(h.initial)
+    await rejected
+    expect(h.service.cachedMarketState()).toBeNull()
+    await expect(h.service.market()).rejects.toThrow('replacement outage')
   })
 
   it('does not apply a late read across business-date rollover or share it with the next case', async () => {

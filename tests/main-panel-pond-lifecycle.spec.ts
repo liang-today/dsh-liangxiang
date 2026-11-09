@@ -54,6 +54,7 @@ describe('main panel pond disposal', () => {
   it('uses both identical puff/rise actions and cancels timers, animations and listeners on unmount', () => {
     vi.useFakeTimers()
     const s = scene(), stop = attachMainPanelPond(s.root, { remainingIncense: 1_000, reducedMotion: false })
+    expect(s.root.dataset.available).toBe('true')
     expect(vi.getTimerCount()).toBe(1)
     vi.advanceTimersByTime(6_000 + 1_220)
     expect(s.root.dataset.fish).toBe('true')
@@ -93,6 +94,7 @@ describe('main panel pond disposal', () => {
     if (reason === 'hidden') s.setHidden(true)
     if (reason === 'reduced') s.setReduced(true)
     if (reason === 'offscreen') s.setInView(false)
+    expect(s.root.dataset.available).toBe('false')
     expect(s.root.dataset.fish).toBe('false')
     expect(s.bubbles.every(bubble => bubble.hidden)).toBe(true)
     expect(vi.getTimerCount()).toBe(0)
@@ -100,6 +102,7 @@ describe('main panel pond disposal', () => {
     if (reason === 'hidden') s.setHidden(false)
     if (reason === 'reduced') s.setReduced(false)
     if (reason === 'offscreen') s.setInView(true)
+    expect(s.root.dataset.available).toBe('true')
     expect(vi.getTimerCount()).toBe(1)
     vi.advanceTimersByTime(23_999)
     expect(s.root.dataset.fish).toBe('false')

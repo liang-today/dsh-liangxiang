@@ -2,12 +2,12 @@ import { createServer, type Server } from 'node:http'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createBackendHttpApi } from '../src/backend/http.ts'
 import { BackendLiangService } from '../src/host/backend-service.ts'
-import { createBackendClient, type BackendClient } from '../src/host/backend-client.ts'
+import { BackendClientError, createBackendClient, type BackendClient } from '../src/host/backend-client.ts'
 import { startBackendEventStream, type BackendStreamStatus } from '../src/host/backend-event-stream.ts'
 import { createLiangxiangApi } from '../src/host/routes.ts'
 import { createMarketSession, type MarketTransport } from '../src/client/market/market-client.ts'
 import { marketLatestChartPoint } from '../src/client/market/candle-view.ts'
-import type { MarketState } from '../src/shared/market-v1.ts'
+import { parseMarketState, type MarketState } from '../src/shared/market-v1.ts'
 import { createBackendFixture } from './helpers/backend.ts'
 
 const OBSERVER = 'market-recovery-observer', OTHER = 'market-recovery-voter'
@@ -93,10 +93,38 @@ async function setup() {
     expect(session.getSnapshot().candles.at(-1)?.volume).toBe(20)
   })
   if (cloud === undefined) throw new Error('Host cloud subscription was not initialized')
-  return { fixture, host, session, requests, cloud, caseId }
+  return { fixture, host, session, requests, cloud, caseId, client, hostUrl }
 }
 
 describe('market recovery through the Host route and existing client session', () => {
+  it('keeps the local SSE open after a valid older-clock recovery GET without rolling back its cached state', async () => {
+    const { fixture, host, requests, client, hostUrl } = await setup()
+    const confirmed = host.cachedMarketState()!
+    client.market = async () => { throw new BackendClientError('isolated outage', 503, 'unavailable') }
+    await expect(host.market()).rejects.toThrow('isolated outage')
+    expect(host.cachedMarketState()).toBeNull()
+    fixture.clock.advance(5_000)
+    client.market = async () => parseMarketState({ ...confirmed, server_time: confirmed.server_time - 1 })
+    const response = await fetch(hostUrl)
+    expect(response.status).toBe(200)
+    await response.json()
+    const controller = new AbortController()
+    const stream = await fetch(`${hostUrl}/events`, { signal: controller.signal })
+    const reader = stream.body!.getReader()
+    try {
+      const first = await reader.read()
+      expect(first.done).toBe(false)
+      const text = new TextDecoder().decode(first.value)
+      expect(text).toContain('data: ')
+      const event = parseMarketState(JSON.parse(text.split('data: ')[1]!.split('\n')[0]!))
+      expect(event.wallet).toEqual(confirmed.wallet)
+      expect(event.market).toEqual(confirmed.market)
+      expect(event.current_point).toEqual(confirmed.current_point)
+      expect(host.cachedMarketState()).not.toBeNull()
+      expect(requests.every(request => request.method === 'GET')).toBe(true)
+    } finally { controller.abort(); await reader.cancel().catch(() => undefined); reader.releaseLock() }
+  })
+
   it.each(['disconnected', 'unsupported'] as const)('refreshes another voter\'s candle through a %s cloud stream without observer activity', async status => {
     const { fixture, host, session, requests, cloud, caseId } = await setup()
     cloud.onStatus(status satisfies BackendStreamStatus)

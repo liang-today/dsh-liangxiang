@@ -1282,6 +1282,7 @@ export function Panel(props: PanelProps): ReactElement {
       */}
       <div data-liangxiang-region="core" style={coreStyle}>
         <MainPanelPond remainingIncense={personal.remainingIncense} reducedMotion={reducedMotion}
+          streamingActive={streamingActive}
           active={!utilityOpen && !welcomeVisible && !releaseNotesVisible}
           {...(pondRef === undefined ? {} : { pondRef })} />
         <div data-liangxiang-core-anchor="" style={coreAnchorStyle}>
@@ -1289,7 +1290,7 @@ export function Panel(props: PanelProps): ReactElement {
             personal={personal}
             reducedMotion={reducedMotion}
             condensedIncense={0}
-            streamingActive={streamingActive}
+            streamingActive={streamingActive && !utilityOpen && !welcomeVisible && !releaseNotesVisible}
             fillOverride={displayFill}
 
           >

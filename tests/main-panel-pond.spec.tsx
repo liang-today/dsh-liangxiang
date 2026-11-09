@@ -4,6 +4,24 @@ import { MAIN_POND_GRASS, MAIN_POND_WHALE } from '../src/client/main-pond-art.ts
 import { findAll, findByAttr, renderDeep, styleOf } from './helpers/render.ts'
 
 describe('main panel decorative pond', () => {
+  it('places bounded activity ripples in the real tide without changing any water or actor geometry', () => {
+    for (const stock of [1, 25, 100, 437, 1_000]) {
+      const idle = renderDeep(<MainPanelPond remainingIncense={stock} reducedMotion={false} />)
+      const active = renderDeep(<MainPanelPond remainingIncense={stock} reducedMotion={false} streamingActive />)
+      expect(styleOf(findByAttr(active, 'data-liangxiang-main-pond')[0])).toEqual(styleOf(findByAttr(idle, 'data-liangxiang-main-pond')[0]))
+      const tide = findAll(active, node => node.props.className === 'liangxiang-main-pond-tide')[0]
+      expect(findByAttr(tide?.children ?? [], 'data-liangxiang-stream-ripple')).toHaveLength(2)
+    }
+    for (const props of [{ remainingIncense: 0 }, { remainingIncense: 100, active: false }]) {
+      const nodes = renderDeep(<MainPanelPond {...props} reducedMotion={false} streamingActive />)
+      expect(findByAttr(nodes, 'data-liangxiang-stream-ripple')).toHaveLength(0)
+    }
+    const reduced = renderDeep(<MainPanelPond remainingIncense={25} reducedMotion streamingActive />)
+    expect(findByAttr(reduced, 'data-liangxiang-stream-ripple')).toHaveLength(2)
+    expect(findByAttr(reduced, 'data-liangxiang-main-pond')[0]?.props['data-motion']).toBe(false)
+    expect(MAIN_PANEL_POND_CSS).toContain('[data-liangxiang-main-pond][data-available=false]~* [data-liangxiang-stream-activity]')
+  })
+
   it('keeps water bounded, monotonic and independent from Token progress or global Liangzi', () => {
     expect(mainPondGeometry(0)).toEqual({ waterDrop: 128, waterDepth: 0, plantGrowth: 0, fishTop: 102, fishEligible: false })
     expect(mainPondGeometry(1_000)).toEqual({ waterDrop: 0, waterDepth: 128, plantGrowth: 1, fishTop: 80, fishEligible: true })
