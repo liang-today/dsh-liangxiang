@@ -1,7 +1,7 @@
 /**
  * 走势 recorder: samples the Host's own view of the world, persists it, serves it.
  *
- * There is no community time series to replay — the chart is what this
+ * This channel does not replay the separate official market series — it is what this
  * installation *saw*, sampled once a second. That single fact drives everything
  * here: an outage leaves a hole, the hole is recorded as a hole, and the chart
  * says "not observed" instead of pretending the market stood still.

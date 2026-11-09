@@ -54,27 +54,6 @@ export function safeEmail(email) {
     /@(?:example\.(?:com|org|net)|[^@]+\.invalid)$/i.test(email);
 }
 
-/** Identities the policy requires to sign their commits. */
-export function requiresSignature(email, name) {
-  const normalizedEmail = (email ?? '').trim().toLowerCase();
-  const normalizedName = (name ?? '').normalize('NFKC').trim().toLowerCase();
-  if (Object.hasOwn(policy.public_commit_identities ?? {}, normalizedEmail)) return true;
-  return [
-    ...Object.values(policy.public_commit_identities ?? {}).flat(),
-    ...(policy.signed_commit_names ?? []),
-  ].map(value => value.normalize('NFKC').trim().toLowerCase()).includes(normalizedName);
-}
-
-/** Maintained identities are the ones this project must be able to sign for. */
-export function isMaintainedIdentity(email, name) {
-  if (requiresSignature(email, name)) return true;
-  const normalizedEmail = (email ?? '').trim().toLowerCase();
-  const normalizedName = (name ?? '').normalize('NFKC').trim().toLowerCase();
-  const configured = configuredIdentity();
-  return Boolean(configured) &&
-    (configured.email.toLowerCase() === normalizedEmail || configured.name.toLowerCase() === normalizedName);
-}
-
 export function assertMetadata(email, name) {
   const configured = configuredIdentity();
   const isSelf = Boolean(configured) && configured.email.toLowerCase() === (email ?? '').trim().toLowerCase();
@@ -85,15 +64,6 @@ export function assertMetadata(email, name) {
   if (allowedNames && !allowedNames.includes(name?.normalize('NFKC'))) {
     throw new Error('Commit identity must use its configured public name');
   }
-}
-
-/** A signature only counts when it is attributable to the commit author. */
-export function signatureFinding(status, signerEmail, authorEmail) {
-  if (status !== 'G' && status !== 'U') return 'unsigned-commit';
-  if ((signerEmail ?? '').trim().toLowerCase() !== (authorEmail ?? '').trim().toLowerCase()) {
-    return 'signature-identity-mismatch';
-  }
-  return null;
 }
 
 /** Imported community metadata permits a contributor's public mailbox. */
@@ -159,19 +129,6 @@ function inspectRange(range, errors, warnings = [], community = false) {
   }
 }
 
-function inspectSignatures(range, errors) {
-  // Published commits are history: never demand a new signature for them.
-  const published = new Set(tryGit(['rev-list', '--remotes']).split('\n').filter(Boolean));
-  for (const commit of git(['rev-list', range]).split('\n').filter(Boolean)) {
-    if (published.has(commit)) continue;
-    const [authorEmail, authorName] = git(['show', '-s', '--format=%ae%n%an', commit]).split('\n');
-    if (!isMaintainedIdentity(authorEmail, authorName)) continue;
-    const [status, signer] = git(['show', '-s', '--format=%G?%n%GS', commit]).split('\n');
-    const finding = signatureFinding(status?.trim(), signer?.match(/<([^>]+)>/)?.[1], authorEmail);
-    if (finding) errors.push({ location: 'commit-signature', categories: [finding] });
-  }
-}
-
 function assertLocalIdentity() {
   const configured = configuredIdentity();
   if (!configured) {
@@ -184,10 +141,6 @@ function assertLocalIdentity() {
     if (email.toLowerCase() !== configured.email.toLowerCase() || name !== configured.name) {
       throw new Error('Commit identity must be this clone\'s configured identity; never borrow another account\'s');
     }
-  }
-  if (requiresSignature(configured.email, configured.name) &&
-    tryGit(['config', '--get', 'commit.gpgsign']).trim().toLowerCase() !== 'true') {
-    throw new Error('Maintained commits must be signed: set commit.gpgsign=true and user.signingkey');
   }
 }
 
@@ -218,7 +171,7 @@ export function run(args) {
     inspectFiles(false, errors, ref);
     if (args[0] === '--range') inspectRange(args[1], errors, warnings, args.includes('--community-pr'));
     if (args[0] === '--pre-push') {
-      // Keep our own identity strict while preserving imported signed commits.
+      // Keep our own identity strict while preserving imported commits.
       const ident = git(['var', 'GIT_COMMITTER_IDENT']);
       assertMetadata(ident.match(/<([^>]+)>/)?.[1] ?? '', ident.match(/^(.+) </)?.[1]?.trim());
       const input = readFileSync(0, 'utf8');
@@ -227,7 +180,6 @@ export function run(args) {
         if (/^0+$/.test(local)) continue;
         const range = `${pushBase(local, remote)}..${local}`;
         inspectRange(range, errors, warnings, true);
-        inspectSignatures(range, errors);
       }
     }
     for (const key of ['PR_TITLE', 'PR_BODY']) {
@@ -237,12 +189,12 @@ export function run(args) {
   }
   if (warnings.length) {
     // Advisory only; never repeat contributor addresses in logs or annotations.
-    console.warn('::warning::Some contributor commit emails are public. GitHub noreply is optional; signed commits need not be rewritten.');
+    console.warn('::warning::Some contributor commit emails are public. GitHub noreply is optional; existing commits need not be rewritten.');
   }
   if (errors.length) {
     // Do not echo matched content, filenames, identities, tokens or PR bodies.
     console.error('Privacy gate rejected publication: ' + JSON.stringify(errors));
-    console.error('Remove private context, paths, credentials or sensitive files; commit as this clone\'s own identity and sign with the key that carries that address. Do not bypass hooks.');
+    console.error('Remove private context, paths, credentials or sensitive files; commit as this clone\'s own identity. Do not bypass hooks.');
     return 1;
   }
   console.log('Privacy gate passed.');

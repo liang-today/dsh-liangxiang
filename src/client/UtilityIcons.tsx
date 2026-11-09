@@ -60,3 +60,14 @@ export function BarsGlyphIcon({ size = 19 }: IconProps): ReactElement {
     </svg>
   )
 }
+
+/** A decorative miniature, not a quote or a sampled market series. */
+export function MarketMiniatureIcon(): ReactElement {
+  return <svg width="38" height="28" viewBox="0 0 40 28" aria-hidden="true" focusable="false" data-liangxiang-utility-icon="market">
+    <path d="M2 25.5h36" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity=".18" />
+    {[[6, 10, 21, 13, 6], [13, 6, 20, 9, 8], [20, 8, 23, 12, 8], [27, 4, 18, 7, 8], [34, 6, 20, 10, 6]].map(([x, top, bottom, body, height], index) => <g key={x} className="liangxiang-utility-mini-candle" opacity={index % 2 ? '.5' : '.9'}>
+      <path d={`M${x} ${top}v${bottom! - top!}`} fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+      <rect x={x! - 2} y={body} width="4" height={height} rx="1.4" fill="currentColor" />
+    </g>)}
+  </svg>
+}

@@ -23,6 +23,7 @@ import { nativeUsageSession, sample, finalMessage } from './helpers/dsh-usage.ts
 import { attachUsageObservation } from '../src/compat/dsh/usage-observer.ts'
 import type { DshSessionRef, DshSessionEventSource } from '../src/compat/dsh/host-services.ts'
 import type { DshUsageEvent } from '../src/compat/dsh/settled-usage.ts'
+import type { MarketStreamEvent } from '../src/shared/market-v1.ts'
 
 const INSTALLATION = 'inst-e2e-000001'
 const SESSION = 'session-e2e-1'
@@ -53,7 +54,7 @@ describe('final DSH usage with static model rates', () => {
     expect(s.backend.dailyState(identity.installationId).authoritative_personal_state.starter_tokens).toBe(500_000)
   })
 
-  it('preserves final usage across an offline midnight and credits it after the server confirms the new date', async () => {
+  it('carries the wallet through offline midnight and adds the new-day gift plus final usage', async () => {
     const identity = generateCommunityKeypair('d'.repeat(64))
     const s = await startStack({}, { start: Date.UTC(2026, 9, 12, 4), signedIdentity: identity })
     await s.stopNetwork()
@@ -67,7 +68,8 @@ describe('final DSH usage with static model rates', () => {
     await s.startNetwork()
     // The ordinary reconnect backoff remains in force.
     await waitFor(() => { s.host.tick(); return frame(s).authorityAvailable }, 'new-day reconnect', 3_000)
-    await waitFor(() => s.backend.dailyState(identity.installationId).authoritative_personal_state.remaining_incense === 11, 'new-day gift plus final offline usage')
+    await waitFor(() => s.backend.dailyState(identity.installationId).authoritative_personal_state.remaining_incense === 21, 'prior-day wallet plus new-day gift and final offline usage')
+    expect(s.backend.dailyState(identity.installationId).authoritative_personal_state.earned_incense).toBe(11)
     expect(frame(s).businessDate).toBe('2026-10-13')
   })
 
@@ -147,6 +149,7 @@ async function startStack(
     beforeBootstrap?: (host: BackendLiangService, clock: ReturnType<typeof createMutableClock>) => void
     backendReportedWeights?: typeof DEFAULT_INCENSE_WEIGHT_POLICY
     beforeClaimAcknowledgement?: (tokens: number) => Promise<void>
+    onCloudEvent?: (event: MarketStreamEvent) => void
   } = {},
 ): Promise<Stack> {
   const config = resolveBackendConfig(
@@ -192,6 +195,13 @@ async function startStack(
     baseUrl: `http://127.0.0.1:${address.port}`,
     signer: () => identityRef.current,
   })
+  if (hostOptions.onCloudEvent !== undefined && client.subscribeEvents !== undefined) {
+    const subscribe = client.subscribeEvents
+    client.subscribeEvents = (id, callbacks) => subscribe(id, { ...callbacks, onEvent: event => {
+      hostOptions.onCloudEvent?.(event)
+      callbacks.onEvent(event)
+    } })
+  }
   if (hostOptions.beforeClaimAcknowledgement !== undefined) {
     const submitClaim = client.submitClaim.bind(client)
     client.submitClaim = async (...args) => {
@@ -657,6 +667,57 @@ describe('online bootstrap', () => {
       await waitFor(() => claimAcknowledged(s, 50_000), 'the host acknowledgement')
       expect(wireToViewState(frame(s), 'live').personal.remainingIncense).toBe(1)
     } finally { releaseResponse() }
+  })
+
+  it('reconciles a committed claim after its HTTP response is lost without crediting a preceding SSE wallet twice', async () => {
+    let release: () => void = () => undefined
+    const held = new Promise<void>(resolve => { release = resolve })
+    const targets: number[] = []
+    let pushedCredit = false
+    const s = await startStack({}, {
+      onCloudEvent: event => { if ((event.market_state?.wallet.available_incense ?? 0) > 0) pushedCredit = true },
+      beforeClaimAcknowledgement: async target => {
+        targets.push(target)
+        if (targets.length === 1) { await held; throw new BackendClientError('response was lost') }
+      },
+    })
+    try {
+      observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+      observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+      await waitFor(() => pushedCredit, 'the earlier cloud wallet event', 3_000)
+      expect(frame(s).personal.remainingIncense).toBe(0)
+      release()
+      await waitFor(() => frame(s).personal.confirmedEffectiveTokensToday === 50_000
+        && frame(s).personal.remainingIncense === 1, 'an explicit signed ledger read to acknowledge the committed claim')
+      await s.host.refreshBootstrap()
+      await new Promise(resolve => setTimeout(resolve, 30))
+      expect(targets).toEqual([50_000])
+      expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(50_000)
+      expect(wireToViewState(frame(s), 'live').personal.tokensToNextIncense).toBe(50_000)
+    } finally { release() }
+  })
+
+  it('does not swallow finalized usage that arrives while the preceding claim response is in flight', async () => {
+    let release: () => void = () => undefined
+    const held = new Promise<void>(resolve => { release = resolve })
+    const targets: number[] = []
+    const s = await startStack({}, { beforeClaimAcknowledgement: async target => {
+      targets.push(target)
+      if (targets.length === 1) await held
+    } })
+    try {
+      observePro(s.host, SESSION, usage(0, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+      observePro(s.host, SESSION, usage(50_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+      await waitFor(() => s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens === 50_000, 'the first claim commit')
+      observePro(s.host, SESSION, usage(60_000, 0, 0, 0), { kind: 'live', firstLiveSeq: 0 })
+      expect(wireToViewState(frame(s), 'live').personal.tokensToNextIncense).toBe(40_000)
+      release()
+      await waitFor(() => frame(s).personal.confirmedEffectiveTokensToday === 60_000, 'both exact prefixes to be acknowledged')
+      expect(targets).toEqual([50_000, 60_000])
+      expect(s.backend.dailyState(INSTALLATION).authoritative_personal_state.claimed_effective_tokens).toBe(60_000)
+      expect(frame(s).personal.remainingIncense).toBe(1)
+      expect(wireToViewState(frame(s), 'live').personal.tokensToNextIncense).toBe(40_000)
+    } finally { release() }
   })
 
   it('turns observed DSH usage into an authoritative claim (input+output, all buckets)', async () => {

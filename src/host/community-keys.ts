@@ -23,6 +23,10 @@ import { communityAuthMessage } from '../shared/backend-v1.ts'
 
 /** SPKI prefix for a 32-byte Ed25519 public key (RFC 8410). */
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
+// Only parsed public keys are reusable. Every request still verifies its own
+// signature, body and timestamp; revocation/admission remain fresh DB checks.
+const verificationKeys = new Map<string, KeyObject>()
+const VERIFICATION_KEY_LIMIT = 2048
 
 export interface CommunityKeypair {
   installationId: string
@@ -64,7 +68,16 @@ export function signCommunityMessage(privateKeyPem: string, message: string): st
 
 export function verifyCommunitySignature(publicKey: string, message: string, signature: string): boolean {
   try {
-    const key = publicKeyFromRaw(publicKey)
+    let key = verificationKeys.get(publicKey)
+    if (key === undefined) {
+      key = publicKeyFromRaw(publicKey)
+      if (Buffer.from(publicKey, 'base64url').toString('base64url') === publicKey) {
+        if (verificationKeys.size >= VERIFICATION_KEY_LIMIT) {
+          verificationKeys.delete(verificationKeys.keys().next().value!)
+        }
+        verificationKeys.set(publicKey, key)
+      }
+    }
     return verify(null, Buffer.from(message, 'utf8'), key, Buffer.from(signature, 'base64url'))
   } catch {
     return false

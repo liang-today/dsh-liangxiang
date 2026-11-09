@@ -48,17 +48,19 @@ export interface LiangAvatarProps {
    * lands on the figure, never on a wrapping plate.
    */
   liangQiFill?: number
+  /** Main blue panel only: soften residual pale sticker edges, never native halos. */
+  cleanEdge?: boolean
 }
 
 /** GPU-composited bob: integer-pixel ends, no filter, figure layer only. */
 const AVATAR_MOTION_CSS = `
 [data-liangxiang-avatar],
 [data-liangci-dialog] {
-  --liangxiang-state-nan-text: #965269;
-  --liangxiang-state-gong-text: #496b82;
-  --liangxiang-state-shen-text: #5644cc;
-  --liangxiang-state-sheng-text: #745900;
-  --liangxiang-state-zu-text: #9d3328;
+  --liangxiang-state-nan-text: light-dark(#456a9e, #bed8ff);
+  --liangxiang-state-gong-text: light-dark(#496b82, #9bbbd1);
+  --liangxiang-state-shen-text: light-dark(#5644cc, #b8afff);
+  --liangxiang-state-sheng-text: light-dark(#745900, #e1c46a);
+  --liangxiang-state-zu-text: light-dark(#9d3328, #f0a093);
 }
 @keyframes liangxiang-avatar-pulse {
   0% { transform: scale3d(1, 1, 1); }
@@ -67,7 +69,7 @@ const AVATAR_MOTION_CSS = `
 }
 @keyframes liangxiang-avatar-cross {
   0% { filter: none; }
-  35% { filter: drop-shadow(0 0 18px rgba(226, 174, 84, 0.95)) drop-shadow(0 0 32px rgba(216, 135, 58, 0.55)); }
+  35% { filter: drop-shadow(0 0 18px color-mix(in srgb, var(--liangxiang-main-blue, #5879bf) 95%, transparent)) drop-shadow(0 0 32px color-mix(in srgb, var(--liangxiang-main-water, #9dc6f6) 55%, transparent)); }
   100% { filter: none; }
 }
 @keyframes liangxiang-avatar-figure-float {
@@ -80,21 +82,11 @@ const AVATAR_MOTION_CSS = `
     animation: none !important;
   }
 }
-@media (prefers-color-scheme: dark) {
-  [data-liangxiang-avatar],
-  [data-liangci-dialog] {
-    --liangxiang-state-nan-text: #e9a9bf;
-    --liangxiang-state-gong-text: #9bbbd1;
-    --liangxiang-state-shen-text: #b8afff;
-    --liangxiang-state-sheng-text: #e1c46a;
-    --liangxiang-state-zu-text: #f0a093;
-  }
-}
 `
 
 export const LIANGZI_LABEL_COLOR: Record<LiangziState, string> = {
   waiting: color.textTertiary,
-  xiao_nan_liang: 'var(--liangxiang-state-nan-text, #965269)',
+  xiao_nan_liang: 'var(--liangxiang-state-nan-text, #456a9e)',
   liang_gong: 'var(--liangxiang-state-gong-text, #496b82)',
   liang_zong: color.textPrimary,
   liang_shen: 'var(--liangxiang-state-shen-text, #5644cc)',
@@ -112,6 +104,7 @@ export function LiangAvatar({
   hideLabel = false,
   chrome = 'plate',
   liangQiFill = 1,
+  cleanEdge = false,
 }: LiangAvatarProps): ReactElement {
   const waiting = state === 'waiting'
   const rangeText = liangziRatioRangeText(state, liangziPolicyForVersion(policyVersion))
@@ -124,6 +117,7 @@ export function LiangAvatar({
     flexDirection: 'column',
     alignItems: 'center',
     width: size,
+    flexShrink: 0,
     gap: hideLabel ? 0 : '2px',
     overflow: 'visible',
     background: 'transparent',
@@ -158,6 +152,8 @@ export function LiangAvatar({
     transform: 'translateZ(0)',
     backfaceVisibility: 'hidden',
     imageRendering: 'auto',
+    filter: cleanEdge && ['liang_gong', 'liang_zong', 'liang_zu'].includes(state)
+      ? 'url(#liangxiang-main-portrait-edge)' : undefined,
   }
 
   return (
@@ -198,4 +194,20 @@ export function LiangAvatar({
       )}
     </div>
   )
+}
+
+/** Only the pale outer rim is touched. Shen/Sheng retain their complete native halos. */
+export function MainPortraitEdges(): ReactElement {
+  return <svg aria-hidden="true" width="0" height="0" style={{ position: 'absolute', overflow: 'hidden', pointerEvents: 'none' }}>
+    <defs><filter id="liangxiang-main-portrait-edge" x="-3%" y="-3%" width="106%" height="106%" colorInterpolationFilters="sRGB">
+      <feMorphology in="SourceAlpha" operator="erode" radius="0.3" result="inner" />
+      <feComposite in="SourceAlpha" in2="inner" operator="out" result="rim" />
+      <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0" result="blueMask" />
+      <feComponentTransfer in="blueMask" result="paleMask"><feFuncA type="linear" slope="6" intercept="-3.7" /></feComponentTransfer>
+      <feComposite in="rim" in2="paleMask" operator="in" result="paleRim" />
+      <feComposite in="SourceAlpha" in2="paleRim" operator="out" result="cutout" />
+      <feGaussianBlur in="cutout" stdDeviation="0.12" result="softAlpha" />
+      <feComposite in="SourceGraphic" in2="softAlpha" operator="in" />
+    </filter></defs>
+  </svg>
 }

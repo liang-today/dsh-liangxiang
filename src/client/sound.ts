@@ -150,6 +150,37 @@ export function playIncenseEarn(): void {
   window.setTimeout(() => tone(990, 990, 140, 'sine', 0.07), 90)
 }
 
+export type MarketSoundKind = 'invest' | 'withdraw' | 'settlement'
+
+const MARKET_SOUND_NOTES = {
+  invest: [[0, 660, 880, 110, 0.06], [105, 990, 1175, 140, 0.05]],
+  withdraw: [[0, 880, 660, 115, 0.06], [110, 587, 440, 155, 0.05]],
+  settlement: [[0, 523, 523, 100, 0.06], [100, 659, 659, 110, 0.055], [210, 784, 784, 190, 0.05]],
+} as const
+
+/** Short confirmation scores, softer than 凝香; an到账 cue never promises profit. */
+export function marketSoundCue(kind: MarketSoundKind): readonly NoIncenseTone[] {
+  return MARKET_SOUND_NOTES[kind].map(([delayMs, freqStart, freqEnd, durationMs, gain]) =>
+    ({ delayMs, freqStart, freqEnd, durationMs, type: 'sine', gain }))
+}
+
+function playMarketCue(kind: MarketSoundKind): void {
+  // A muted action must not leave delayed notes waiting to sound after unmute.
+  if (level === 0) return
+  for (const [delay, from, to, duration, gain] of MARKET_SOUND_NOTES[kind]) {
+    const play = (): void => tone(from, to, duration, 'sine', gain)
+    if (delay === 0) play()
+    else window.setTimeout(play, delay)
+  }
+}
+
+/** A confirmed position, including a confirmed adjustment, entered the pool. */
+export function playMarketInvest(): void { playMarketCue('invest') }
+/** A confirmed withdrawal returned the reserved incense. */
+export function playMarketWithdraw(): void { playMarketCue('withdraw') }
+/** Confirmed settlement returned incense; this is deliberately not a victory fanfare. */
+export function playMarketSettlement(): void { playMarketCue('settlement') }
+
 const LIANGZI_RANK: Record<LiangziState, number> = {
   waiting: 0,
   xiao_nan_liang: 1,

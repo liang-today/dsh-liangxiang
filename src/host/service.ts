@@ -13,6 +13,8 @@ import type { UsageObservationOrigin } from '../compat/dsh/usage-observer.ts'
 import type { LiangxiangWireState, WireVoteRequest } from '../shared/wire.ts'
 import type { V1HistoryResponse } from '../shared/history-v1.ts'
 import type { DayEndTiming } from '../shared/day-end.ts'
+import type { MarketCandlesResponse, MarketHistoryResponse, MarketPositionRequest, MarketPositionResponse, MarketState } from '../shared/market-v1.ts'
+import type { MarketCandlesQuery, MarketHistoryQuery } from './market-query.ts'
 
 export interface VoteOutcome {
   result: VoteResult
@@ -26,6 +28,13 @@ export interface LiangHostService {
   getWireState: () => LiangxiangWireState
   /** Separate cold archive channel; never embedded into the hot SSE frame. */
   history: (afterVersion?: number) => V1HistoryResponse | Promise<V1HistoryResponse>
+  /** Community-only cold market channels; offline authority never imports them. */
+  market?: () => Promise<MarketState>
+  marketPosition?: (intent: MarketPositionRequest) => Promise<MarketPositionResponse>
+  marketCandles?: (query?: MarketCandlesQuery) => Promise<MarketCandlesResponse>
+  marketHistory?: (query?: MarketHistoryQuery) => Promise<MarketHistoryResponse>
+  cachedMarketState?: () => MarketState | null
+  marketCacheScope?: () => string | null
   vote: (intent: WireVoteRequest) => VoteOutcome | Promise<VoteOutcome>
   /** Feed one cumulative DSH `tokenUsage` projection value (optional route model id). */
   observeUsage: (

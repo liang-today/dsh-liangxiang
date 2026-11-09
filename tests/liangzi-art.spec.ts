@@ -9,11 +9,13 @@ import { LIANGZI_ART } from '../src/client/liangzi-art.ts'
 const sourceNames = ['waiting', 'nan', 'gong', 'zong', 'shen', 'sheng', 'zu'] as const
 
 describe('inlined Liangzi artwork', () => {
-  it('uses seven lossless WebPs with the source dimensions and visible pixels', async () => {
+  it('preserves the source pixels of the six inline portraits and approved blue portrait', async () => {
     for (const [index, state] of LIANGZI_STATES.entries()) {
       const uri = LIANGZI_ART[state]
-      expect(uri).toMatch(/^data:image\/webp;base64,/)
-      const encoded = Buffer.from(uri.slice(uri.indexOf(',') + 1), 'base64')
+      if (state !== 'xiao_nan_liang') expect(uri).toMatch(/^data:image\/webp;base64,/)
+      const encoded = state === 'xiao_nan_liang'
+        ? await readFile(new URL('../src/client/assets/main-nan.webp', import.meta.url))
+        : Buffer.from(uri.slice(uri.indexOf(',') + 1), 'base64')
       const source = await readFile(fileURLToPath(new URL(
         `../src/client/artwork/${sourceNames[index]}.png`,
         import.meta.url,

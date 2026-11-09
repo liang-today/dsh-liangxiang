@@ -17,6 +17,8 @@ import {
   INSTALLATION_HEADER,
   LIANGZI_POLICY_HEADER,
   LIANGZI_POLICY_VERSION,
+  WALLET_CAPABILITY_HEADER,
+  WALLET_CAPABILITY_VERSION,
   PUBLIC_KEY_HEADER,
   SIGNATURE_HEADER,
   TIMESTAMP_HEADER,
@@ -41,6 +43,14 @@ import {
 } from '../shared/backend-v1.ts'
 import { signRequest, type CommunityKeypair } from './community-keys.ts'
 import { parseV1HistoryResponse, type ParsedHistoryArchive } from '../shared/history-v1.ts'
+import {
+  parseMarketCandlesResponse, parseMarketHistoryResponse, parseMarketPositionResponse,
+  parseMarketState, parseMarketStreamEvent,
+  type MarketCandlesResponse, type MarketHistoryResponse, type MarketPositionRequest,
+  type MarketPositionResponse, type MarketState, type MarketStreamEvent,
+} from '../shared/market-v1.ts'
+import { startBackendEventStream, type BackendStreamStatus } from './backend-event-stream.ts'
+import { marketQuerySuffix, type MarketCandlesQuery, type MarketHistoryQuery } from './market-query.ts'
 
 const DEFAULT_TIMEOUT_MS = 6_000
 const READ_RETRY_DELAY_MS = 300
@@ -92,6 +102,15 @@ export interface BackendClient {
   snapshot: () => Promise<V1SnapshotResponse>
   history: (afterVersion?: number) => Promise<ParsedHistoryArchive>
   vote: (installationId: string, intent: V1VoteRequest) => Promise<V1VoteResponse>
+  market?: (installationId: string) => Promise<MarketState>
+  marketPosition?: (installationId: string, intent: MarketPositionRequest) => Promise<MarketPositionResponse>
+  marketCandles?: (installationId: string, query?: MarketCandlesQuery) => Promise<MarketCandlesResponse>
+  marketHistory?: (installationId: string, query?: MarketHistoryQuery) => Promise<MarketHistoryResponse>
+  subscribeEvents?: (installationId: string, options: {
+    onEvent: (event: MarketStreamEvent) => void
+    onStatus: (status: BackendStreamStatus) => void
+    onActivity?: () => void
+  }) => () => void
   dispose: () => void
 }
 
@@ -110,6 +129,23 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
   const doFetch = options.fetchImpl ?? fetch
   const inFlight = new Set<AbortController>()
   let disposed = false
+  const eventStreams = new Set<() => void>()
+
+  const signedHeaders = (method: string, path: string, installationId?: string, rawBody = ''): Record<string, string> => {
+    const headers: Record<string, string> = { [LIANGZI_POLICY_HEADER]: LIANGZI_POLICY_VERSION,
+      [WALLET_CAPABILITY_HEADER]: WALLET_CAPABILITY_VERSION }
+    if (installationId !== undefined) headers[INSTALLATION_HEADER] = installationId
+    const identity = options.signer?.() ?? null
+    if (identity !== null && installationId !== undefined) {
+      const timestamp = Date.now()
+      headers[PUBLIC_KEY_HEADER] = identity.publicKey
+      headers[TIMESTAMP_HEADER] = String(timestamp)
+      headers[SIGNATURE_HEADER] = signRequest({ privateKeyPem: identity.privateKeyPem, method,
+        path: `${BACKEND_API_PREFIX}${path}`, timestamp, body: rawBody, installationId })
+      if (identity.deviceFingerprint !== null) headers[DEVICE_HEADER] = identity.deviceFingerprint
+    }
+    return headers
+  }
 
   const request = async (
     path: string,
@@ -122,26 +158,8 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     const timer = setTimeout(() => controller.abort(), requestTimeoutMs)
     try {
       const rawBody = init.body === undefined ? '' : JSON.stringify(init.body)
-      const headers: Record<string, string> = { [LIANGZI_POLICY_HEADER]: LIANGZI_POLICY_VERSION }
-      if (init.installationId !== undefined) headers[INSTALLATION_HEADER] = init.installationId
+      const headers = signedHeaders(init.method, path, init.installationId, rawBody)
       if (init.body !== undefined) headers['content-type'] = 'application/json'
-      const identity = options.signer?.() ?? null
-      if (identity !== null && init.installationId !== undefined) {
-        const timestamp = Date.now()
-        headers[PUBLIC_KEY_HEADER] = identity.publicKey
-        headers[TIMESTAMP_HEADER] = String(timestamp)
-        headers[SIGNATURE_HEADER] = signRequest({
-          privateKeyPem: identity.privateKeyPem,
-          method: init.method,
-          path: `${BACKEND_API_PREFIX}${path}`,
-          timestamp,
-          body: rawBody,
-          installationId: init.installationId,
-        })
-        if (identity.deviceFingerprint !== null) {
-          headers[DEVICE_HEADER] = identity.deviceFingerprint
-        }
-      }
       const request: RequestInit = { method: init.method, headers, signal: controller.signal }
       if (init.body !== undefined) request.body = rawBody
       const response = await doFetch(`${baseUrl}${BACKEND_API_PREFIX}${path}`, request)
@@ -258,8 +276,39 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
         return completeV1VoteResponse(envelope, published.global_snapshot)
       }
     },
+    async market(installationId) {
+      return parseMarketState(await read('/market', installationId))
+    },
+    async marketPosition(installationId, intent) {
+      return parseMarketPositionResponse(await request('/market/position', {
+        method: 'POST', installationId, body: intent,
+        acceptStatus: status => status === 200 || status === 409,
+      }))
+    },
+    async marketCandles(installationId, query = {}) {
+      return parseMarketCandlesResponse(await read(`/market/candles${marketQuerySuffix(query)}`, installationId))
+    },
+    async marketHistory(installationId, query = {}) {
+      return parseMarketHistoryResponse(await read(`/market/history${marketQuerySuffix(query)}`, installationId))
+    },
+    subscribeEvents(installationId, handlers) {
+      if (disposed) return () => undefined
+      const stop = startBackendEventStream({
+        url: `${baseUrl}${BACKEND_API_PREFIX}/events`,
+        headers: () => signedHeaders('GET', '/events', installationId),
+        fetchImpl: doFetch,
+        onMessage: (data) => handlers.onEvent(parseMarketStreamEvent(JSON.parse(data) as unknown)),
+        onStatus: handlers.onStatus,
+        ...(handlers.onActivity === undefined ? {} : { onActivity: handlers.onActivity }),
+      })
+      const disposeStream = (): void => { eventStreams.delete(disposeStream); stop() }
+      eventStreams.add(disposeStream)
+      return disposeStream
+    },
     dispose() {
       disposed = true
+      for (const stop of eventStreams) stop()
+      eventStreams.clear()
       for (const controller of inFlight) controller.abort()
       inFlight.clear()
     },

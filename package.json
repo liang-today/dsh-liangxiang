@@ -1,8 +1,9 @@
 {
   "name": "dsh-liangxiang",
-  "version": "1.2.2-beta.5",
-  "description": "用 DeepSeek Harness 凝聚香火，投下一炷夯或拉；众香汇成梁位，共同显出今日梁相。",
+  "version": "2.0.0",
+  "description": "梁股开盘了！梁相是DeepSeek Harness插件：对话攒香火，夯拉定梁位；早午晚三盘做多做空，午夜揭晓，在线香火与收益跨日保留。",
   "homepage": "https://liang.today/",
+  "icon": "./lib/main-nan.webp",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/liang-today/dsh-liangxiang.git"
@@ -13,8 +14,12 @@
   "keywords": [
     "deepseek",
     "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
     "plugin",
-    "liangxiang"
+    "liangxiang",
+    "梁相",
+    "梁股"
   ],
   "type": "module",
   "main": "lib/index.js",
@@ -26,9 +31,14 @@
   "files": [
     "README.md",
     "LICENSE",
+    "LICENSES/lucide.txt",
     "lib/index.js",
     "lib/client.js",
     "lib/client.js.map",
+    "lib/market-whale.webp",
+    "lib/main-nan.webp",
+    "lib/main-grass.webp",
+    "lib/main-fish.webp",
     "cordis.patch.yml"
   ],
   "dsh": {
@@ -45,8 +55,8 @@
   },
   "license": "MIT",
   "scripts": {
-    "prepare": "tsdown",
-    "build": "tsdown",
+    "prepare": "tsdown && node scripts/copy-market-assets.mjs",
+    "build": "tsdown && node scripts/copy-market-assets.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src tests",
     "test": "vitest run",

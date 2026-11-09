@@ -5,7 +5,7 @@ import { LiangxiangBackendService } from '../src/backend/service.ts'
 import { openBackendStore } from '../src/backend/store.ts'
 import { createBackendClient } from '../src/host/backend-client.ts'
 import { LEGACY_LIANGZI_POLICY_VERSION, LIANGZI_POLICY_VERSION } from '../src/domain/index.ts'
-import { INSTALLATION_HEADER, LIANGZI_POLICY_HEADER } from '../src/shared/backend-v1.ts'
+import { INSTALLATION_HEADER, LIANGZI_POLICY_HEADER, WALLET_CAPABILITY_HEADER, WALLET_CAPABILITY_VERSION } from '../src/shared/backend-v1.ts'
 import { parseV1HistoryResponse } from '../src/shared/history-v1.ts'
 
 const installation = 'install-policy-upgrade'
@@ -47,15 +47,16 @@ describe('Liangzi policy rolling upgrade', () => {
     expect(accepted.result.status).toBe('accepted')
     expect(accepted.global_snapshot.liangzi_state).toBe('xiao_nan_liang')
 
-    const oldBootstrap = await fetch(`${h.baseUrl}/v1/bootstrap`, { headers: { [INSTALLATION_HEADER]: installation } }).then(r => r.json())
+    const oldBootstrap = await fetch(`${h.baseUrl}/v1/bootstrap`, { headers: { [INSTALLATION_HEADER]: installation, [WALLET_CAPABILITY_HEADER]: WALLET_CAPABILITY_VERSION } }).then(r => r.json())
     expect(oldBootstrap.liangzi_policy).toEqual({ version: LEGACY_LIANGZI_POLICY_VERSION, boundaries: [0.5, 0.7, 0.85, 0.95] })
     expect(oldBootstrap.global_snapshot).toMatchObject({
       liangzi_state: 'liang_gong', down_votes: 1, sequence: accepted.global_snapshot.sequence,
       policy_version: LEGACY_LIANGZI_POLICY_VERSION,
     })
+    // Cosmetic Liangzi policy negotiation is independent of wallet capability.
     expect(oldBootstrap.authoritative_personal_state).toEqual(accepted.authoritative_personal_state)
     const replay = await fetch(`${h.baseUrl}/v1/votes`, {
-      method: 'POST', headers: { [INSTALLATION_HEADER]: installation, 'content-type': 'application/json' }, body: JSON.stringify(intent),
+      method: 'POST', headers: { [INSTALLATION_HEADER]: installation, [WALLET_CAPABILITY_HEADER]: WALLET_CAPABILITY_VERSION, 'content-type': 'application/json' }, body: JSON.stringify(intent),
     }).then(r => r.json())
     expect(replay.result).toMatchObject({ status: 'accepted', replayed: true, spent_incense: 0 })
     expect(replay.global_snapshot.liangzi_state).toBe('liang_gong')

@@ -22,7 +22,10 @@
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { isIP } from 'node:net'
+import { randomUUID } from 'node:crypto'
+import { MARKET_CANDLE_INTERVAL_MS, parseMarketCandleInterval, parseMarketPositionRequest, type MarketStreamEvent, type MarketState } from '../shared/market-v1.ts'
 import { legacyLiangziView, legacyLiangziHistory } from './liangzi-compat.ts'
+import { LegacyWalletUpgradeRequiredError, WALLET_MIN_CLIENT_VERSION, legacyWalletView } from './legacy-wallet.ts'
 import { LIANGZI_POLICY_VERSION } from '../domain/index.ts'
 import { formatLiangPosition } from '../domain/index.ts'
 import { PLUGIN_VERSION, SERVER_BUILD } from '../shared/index.ts'
@@ -32,6 +35,8 @@ import {
   DEVICE_HEADER,
   INSTALLATION_HEADER,
   LIANGZI_POLICY_HEADER,
+  WALLET_CAPABILITY_HEADER,
+  WALLET_CAPABILITY_VERSION,
   PUBLIC_KEY_HEADER,
   SIGNATURE_HEADER,
   TIMESTAMP_HEADER,
@@ -58,6 +63,8 @@ export interface BackendHttpOptions {
   voteRateLimitPerMinute: number
   /** Hard cap on active installation keys retained by the vote limiter. */
   voteRateLimitMaxKeys?: number
+  /** Dependency injection for private accelerated rehearsals; ordinary deployments use wall time. */
+  voteClock?: { now(): number }
   /** Accept the old unsigned installation header (localhost tests / curl smoke). */
   allowUnsigned?: boolean
   /** Server-wide first-install claims per minute; 0 disables the cap. */
@@ -194,9 +201,127 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
   const log = options.log ?? ((message: string) => console.log(message))
   const voteRateLimitMaxKeys = options.voteRateLimitMaxKeys ?? DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS
   const voteLimiter = new VoteRateLimiter(voteRateLimitPerMinute, voteRateLimitMaxKeys)
+  const marketLimiter = new VoteRateLimiter(60, voteRateLimitMaxKeys)
   const identityLimiter = new IdentityRateLimiter()
   const admissionLimiter = new AdmissionRateLimiter(options.admissionClaimRateLimitPerMinute ?? 120)
   const expectedEvents = new ExpectedEventSampler(log)
+  const epoch = randomUUID()
+  interface Stream {
+    installation: string
+    res: ServerResponse
+    revision: number
+    global: string
+    personal: string
+    heartbeat: number
+    blockedAt: number | null
+    state?: MarketState
+  }
+  const streams = new Set<Stream>()
+  let streamTimer: ReturnType<typeof setInterval> | undefined
+  let fanout: ReturnType<typeof setImmediate> | undefined
+  let pumping = false
+  let shared: ReturnType<typeof captureFrame> | undefined
+  function captureFrame() {
+    const snapshot = service.snapshotResponse()
+    const candle = service.marketCurrentCandle()
+    return { at: Date.now(), snapshot, candle,
+      global: JSON.stringify({ snapshot: { ...snapshot, server_time: 0 }, candle }),
+      marketVersion: service.marketGlobalStreamVersion(),
+      state: service.prepareMarketStreamFrame(snapshot.server_time) }
+  }
+  const closeStream = (stream: Stream, destroy = false): void => {
+    if (!streams.delete(stream)) return
+    if (destroy) stream.res.destroy()
+    else stream.res.end()
+    if (streams.size === 0) {
+      if (streamTimer !== undefined) clearInterval(streamTimer)
+      streamTimer = undefined
+      if (fanout !== undefined) clearImmediate(fanout)
+      fanout = undefined
+      pumping = false
+      shared = undefined
+    }
+  }
+  const sendStream = (stream: Stream, frame: ReturnType<typeof captureFrame>, initial?: MarketState): void => {
+    try {
+      if (!streams.has(stream)) return
+      if (!allowUnsigned && store.identityByInstallation(stream.installation) === undefined) {
+        closeStream(stream, true)
+        return
+      }
+      const now = Date.now()
+      if (stream.res.destroyed || stream.res.writableLength > 65_536
+        || (stream.blockedAt !== null && now - stream.blockedAt >= 25_000)) {
+        closeStream(stream, true)
+        return
+      }
+      // A false write buffers the frame; it is not itself a disconnect.
+      // Keep at most the written frame and coalesce subsequent state until drain.
+      if (stream.blockedAt !== null) return
+      const walletVersion = initial?.wallet.version ?? service.marketWalletVersion(stream.installation)
+      const personal = `${frame.marketVersion}:${walletVersion}`
+      const event: MarketStreamEvent = { schema_version: 1, epoch, revision: stream.revision + 1,
+        server_time: frame.snapshot.server_time }
+      if (stream.global !== frame.global) {
+        event.snapshot = frame.snapshot
+        if (frame.candle !== undefined) { event.candle = frame.candle; event.candle_interval_ms = MARKET_CANDLE_INTERVAL_MS }
+      }
+      if (stream.personal !== personal) event.market_state = initial ?? frame.state(stream.installation, stream.state)
+      if (event.snapshot !== undefined || event.market_state !== undefined) {
+        const text = `id: ${epoch}:${event.revision}\nevent: state\ndata: ${JSON.stringify(event)}\n\n`
+        if (!stream.res.write(text)) stream.blockedAt = now
+        stream.revision = event.revision
+        stream.global = frame.global
+        stream.personal = `${frame.marketVersion}:${event.market_state?.wallet.version ?? walletVersion}`
+        if (event.market_state !== undefined) stream.state = event.market_state
+        stream.heartbeat = now
+      } else if (now - stream.heartbeat >= 25_000) {
+        if (!stream.res.write(': heartbeat\n\n')) stream.blockedAt = now
+        stream.heartbeat = now
+      }
+    } catch {
+      closeStream(stream, true)
+    }
+  }
+  const pumpStreams = (): void => {
+    if (streams.size === 0 || pumping) return
+    try {
+      let frame = captureFrame()
+      shared = frame
+      const pending = [...streams][Symbol.iterator]()
+      pumping = true
+      const chunk = (): void => {
+        fanout = undefined
+        // A midnight or operator replacement may occur while we yield. Never
+        // resume a captured old-case frame against the new case's private data.
+        try {
+          const date = service.businessDate()
+          if (date !== frame.snapshot.business_date || store.activeCaseFor(date)?.id !== frame.snapshot.active_case.id) {
+            frame = captureFrame()
+            shared = frame
+          }
+        } catch {
+          pumping = false
+          for (const stream of streams) closeStream(stream, true)
+          return
+        }
+        // Yield between bounded chunks so new connections and signed actions
+        // are accepted while broadcasting. Never queue a second whole fanout.
+        for (let n = 0; n < 64; n += 1) {
+          const next = pending.next()
+          if (next.done) { pumping = false; return }
+          sendStream(next.value, frame)
+        }
+        if (streams.size === 0) { pumping = false; return }
+        fanout = setImmediate(chunk)
+        fanout.unref?.()
+      }
+      chunk()
+    } catch {
+      pumping = false
+      for (const stream of streams) closeStream(stream)
+    }
+  }
 
   const authenticate = (req: IncomingMessage, method: string, path: string, rawBody: string): string => {
     const publicKey = headerValue(req, PUBLIC_KEY_HEADER)
@@ -213,35 +338,19 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
 
     const installationId = parseInstallationId(headerValue(req, INSTALLATION_HEADER))
     const device = headerValue(req, DEVICE_HEADER) ?? null
-    authenticateCommunityRequest({
-      store,
-      method,
-      path,
-      body: rawBody,
-      installationId,
-      publicKey,
-      signature,
-      timestamp,
-      deviceFingerprint: device,
-      now: Date.now(),
-      skipFingerprintEnforcement: true,
-    })
     const known = store.identityByInstallation(installationId)
+    authenticateCommunityRequest({
+      store, method, path, body: rawBody, installationId, publicKey, signature,
+      timestamp, deviceFingerprint: device, now: Date.now(),
+      // Unknown installations still prove their signature before admission is
+      // rejected; they must never be auto-enrolled by ordinary API requests.
+      skipFingerprintEnforcement: known === undefined,
+      knownIdentity: known ?? null,
+    })
     if (known === undefined) {
       throw new CommunityAuthError(401, 'admission_required', '需要入梁券完成首次入群')
     }
-    return authenticateCommunityRequest({
-      store,
-      method,
-      path,
-      body: rawBody,
-      installationId,
-      publicKey,
-      signature,
-      timestamp,
-      deviceFingerprint: device,
-      now: Date.now(),
-    })
+    return installationId
   }
 
   /**
@@ -343,6 +452,11 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       [`${BACKEND_API_PREFIX}/votes`]: 'POST',
       [`${BACKEND_API_PREFIX}/identity/rekey`]: 'POST',
       [`${BACKEND_API_PREFIX}/identity/revoke`]: 'POST',
+      [`${BACKEND_API_PREFIX}/market`]: 'GET',
+      [`${BACKEND_API_PREFIX}/market/position`]: 'POST',
+      [`${BACKEND_API_PREFIX}/market/candles`]: 'GET',
+      [`${BACKEND_API_PREFIX}/market/history`]: 'GET',
+      [`${BACKEND_API_PREFIX}/events`]: 'GET',
     }
     const expected = routes[path]
     if (expected === undefined) {
@@ -544,7 +658,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
 
     let installationId: string
     try {
-      installationId = authenticate(req, method, path, rawBody)
+      installationId = authenticate(req, method, `${path}${url.search}`, rawBody)
     } catch (error) {
       if (error instanceof CommunityAuthError) {
         writeError(res, error.httpStatus, error.code, error.message)
@@ -566,14 +680,85 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       return
     }
 
+    if ((path === `${BACKEND_API_PREFIX}/events` || path.startsWith(`${BACKEND_API_PREFIX}/market/`)
+      || path === `${BACKEND_API_PREFIX}/market`)
+      && headerValue(req, WALLET_CAPABILITY_HEADER) !== WALLET_CAPABILITY_VERSION) {
+      writeValidationError(res, new LegacyWalletUpgradeRequiredError())
+      return
+    }
+
     if (path === `${BACKEND_API_PREFIX}/bootstrap`) {
-      const bootstrap = service.bootstrap(installationId)
-      writeJson(res, 200, headerValue(req, LIANGZI_POLICY_HEADER) === LIANGZI_POLICY_VERSION ? bootstrap : legacyLiangziView(bootstrap))
+      try {
+        const response = service.bootstrap(installationId, undefined, headerValue(req, WALLET_CAPABILITY_HEADER) === WALLET_CAPABILITY_VERSION)
+        const bootstrap = headerValue(req, WALLET_CAPABILITY_HEADER) === WALLET_CAPABILITY_VERSION ? response : legacyWalletView(response)
+        writeJson(res, 200, headerValue(req, LIANGZI_POLICY_HEADER) === LIANGZI_POLICY_VERSION ? bootstrap : legacyLiangziView(bootstrap))
+      } catch (error) { writeValidationError(res, error) }
       expectedEvents.record('bootstrap_hello', `[liangxiang-backend] hello ${who(req, installationId)}`)
       return
     }
     if (path === `${BACKEND_API_PREFIX}/me/daily-state`) {
-      writeJson(res, 200, service.dailyState(installationId))
+      try {
+        const response = service.dailyState(installationId, undefined, headerValue(req, WALLET_CAPABILITY_HEADER) === WALLET_CAPABILITY_VERSION)
+        writeJson(res, 200, headerValue(req, WALLET_CAPABILITY_HEADER) === WALLET_CAPABILITY_VERSION ? response : legacyWalletView(response))
+      } catch (error) { writeValidationError(res, error) }
+      return
+    }
+    if (path === `${BACKEND_API_PREFIX}/events`) {
+      if (url.search !== '') {
+        writeError(res, 400, 'invalid_request', 'event stream does not accept query parameters')
+        return
+      }
+      if (streams.size >= 2_000 || [...streams].filter(s => s.installation === installationId).length >= 3) {
+        writeError(res, 429, 'identity_rate_limited', 'event stream connection capacity reached')
+        return
+      }
+      // Bootstrap before sending headers so identity/storage failures stay ordinary HTTP errors.
+      const initial = service.marketState(installationId)
+      res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8',
+        'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' })
+      res.flushHeaders()
+      const stream: Stream = { installation: installationId, res, revision: 0, global: '', personal: '', heartbeat: Date.now(), blockedAt: null }
+      streams.add(stream)
+      res.once('close', () => closeStream(stream))
+      res.on('drain', () => { stream.blockedAt = null })
+      // Initial state targets only the new subscriber, not every existing one.
+      if (shared === undefined || Date.now() - shared.at >= 1_000
+        || initial.server_time - shared.snapshot.server_time >= 1_000
+        || shared.snapshot.active_case.id !== initial.market?.case_id) shared = captureFrame()
+      sendStream(stream, shared, initial)
+      if (streamTimer === undefined && streams.size > 0) {
+        streamTimer = setInterval(pumpStreams, 1_000)
+        streamTimer.unref?.()
+      }
+      return
+    }
+    if (path === `${BACKEND_API_PREFIX}/market`) {
+      if (url.search !== '') {
+        writeError(res, 400, 'invalid_request', 'market state does not accept query parameters')
+        return
+      }
+      writeJson(res, 200, service.marketState(installationId))
+      return
+    }
+    if (path === `${BACKEND_API_PREFIX}/market/history` || path === `${BACKEND_API_PREFIX}/market/candles`) {
+      try {
+        const allowed = path.endsWith('/history') ? ['cursor', 'limit'] : ['cursor', 'limit', 'business_date', 'case_id', 'interval_ms']
+        for (const key of url.searchParams.keys()) {
+          if (!allowed.includes(key) || url.searchParams.getAll(key).length !== 1) throw new WireError('query', 'unknown or repeated market query parameter')
+        }
+        const limitRaw = url.searchParams.get('limit')
+        if (limitRaw !== null && !/^\d{1,3}$/.test(limitRaw)) throw new WireError('limit', 'expected an integer page limit')
+        const cursor = url.searchParams.get('cursor') ?? undefined
+        const limit = limitRaw === null ? undefined : Number(limitRaw)
+        if (url.searchParams.has('interval_ms') && !/^(60000|300000)$/.test(url.searchParams.get('interval_ms')!)) throw new WireError('interval_ms', 'unsupported candle interval')
+        if (path.endsWith('/history')) writeJson(res, 200, service.marketHistory(installationId, cursor, limit))
+        else writeJson(res, 200, service.marketCandles({
+          ...(cursor === undefined ? {} : { cursor }), ...(limit === undefined ? {} : { limit }),
+          ...(url.searchParams.has('case_id') ? { caseId: url.searchParams.get('case_id')! } : {}),
+          ...(url.searchParams.has('business_date') ? { businessDate: url.searchParams.get('business_date')! } : {}),
+          ...(url.searchParams.has('interval_ms') ? { interval_ms: parseMarketCandleInterval(Number(url.searchParams.get('interval_ms'))) } : {}),
+        }))
+      } catch (error) { writeValidationError(res, error) }
       return
     }
 
@@ -585,6 +770,30 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       return
     }
 
+    if (path === `${BACKEND_API_PREFIX}/market/position`) {
+      let intent: ReturnType<typeof parseMarketPositionRequest>
+      try { intent = parseMarketPositionRequest(body) }
+      catch (error) {
+        writeError(res, 400, 'invalid_request', error instanceof Error ? error.message : 'invalid position intent')
+        return
+      }
+      try {
+        const stored = store.database.prepare('SELECT 1 FROM liang_market_request WHERE installation_id=? AND request_id=?')
+          .get(installationId, intent.request_id)
+        if (stored === undefined) {
+          const decision = marketLimiter.inspect(installationId, Date.now(), null)
+          if (!decision.allowed || decision.available < 1) {
+            writeError(res, 429, 'identity_rate_limited', 'too many position updates; retry later')
+            return
+          }
+          marketLimiter.consume(installationId, 1, Date.now(), null)
+        }
+        writeJson(res, 200, service.setMarketPosition(installationId, intent))
+      }
+      catch (error) { writeValidationError(res, error) }
+      return
+    }
+
     if (path === `${BACKEND_API_PREFIX}/token-claims`) {
       try {
         const claim = parseV1TokenClaimRequest(body)
@@ -592,8 +801,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         const priorEarned = prior === undefined
           ? 0
           : Math.floor(prior.claimed_effective_tokens / prior.token_per_incense)
-        const response = service.applyTokenClaim(installationId, claim)
-        writeJson(res, 200, response)
+        const response = service.applyTokenClaim(installationId, claim, undefined, headerValue(req, WALLET_CAPABILITY_HEADER) === WALLET_CAPABILITY_VERSION)
+        writeJson(res, 200, headerValue(req, WALLET_CAPABILITY_HEADER) === WALLET_CAPABILITY_VERSION ? response : legacyWalletView(response))
         const earned = response.authoritative_personal_state.earned_incense
         const have = response.authoritative_personal_state.claimed_effective_tokens
         if (response.claim_applied === true && earned > priorEarned) {
@@ -625,10 +834,12 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
 
     // POST /v1/votes — parse first so a dump's `count` is known before the bucket.
     // Business time stays on the service clock (test fixtures freeze it);
-    // the limiter uses wall time. Replays must not be 429'd by an empty bucket.
+    // the limiter defaults to wall time. Private rehearsals inject the same clock
+    // as their persisted vote timestamps. Auth always retains real wall time.
+    // Replays must not be 429'd by an empty bucket.
     try {
       const intent = parseV1VoteRequest(body)
-      const limiterNow = Date.now()
+      const limiterNow = options.voteClock?.now() ?? Date.now()
       const lastVoteAt = store.lastAcceptedVoteAt(installationId)
       // Every valid business result (accepted or rejected) has a durable
       // receipt. Replays bypass the live rate bucket and return that receipt;
@@ -650,7 +861,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         }
         available = decision.available
       }
-      const response = service.vote(installationId, intent, undefined, available)
+      const response = service.vote(installationId, intent, undefined, available,
+        headerValue(req, WALLET_CAPABILITY_HEADER) !== WALLET_CAPABILITY_VERSION)
       if (response.result.status === 'accepted' && !response.result.replayed) {
         const spent = response.result.spent_incense ?? 1
         if (spent > 0) voteLimiter.consume(installationId, spent, limiterNow, lastVoteAt)
@@ -662,7 +874,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         voteLimiter.consume(installationId, 1, limiterNow, lastVoteAt)
       }
       const status = response.result.status === 'accepted' ? 200 : statusForRejection(response.result.reason)
-      writeJson(res, status, headerValue(req, LIANGZI_POLICY_HEADER) === LIANGZI_POLICY_VERSION ? response : legacyLiangziView(response))
+      const view = headerValue(req, WALLET_CAPABILITY_HEADER) === WALLET_CAPABILITY_VERSION ? response : legacyWalletView(response)
+      writeJson(res, status, headerValue(req, LIANGZI_POLICY_HEADER) === LIANGZI_POLICY_VERSION ? view : legacyLiangziView(view))
       const direction = intent.vote_type === 'up' ? '夯' : '拉'
       const snapshot = response.global_snapshot
       const position = formatLiangPosition(snapshot.up_votes, snapshot.down_votes)
@@ -693,12 +906,22 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       else res.end()
     })
   })
+  // Keep upstream HTTP sockets reusable across ordinary user think time.
+  // An explicit header deadline still bounds slow/incomplete requests.
+  server.keepAliveTimeout = 65_000
+  const closeServer = server.close.bind(server)
+  server.close = (callback) => {
+    for (const stream of streams) closeStream(stream)
+    return closeServer(callback)
+  }
 
   return {
     handler,
     server,
     reset: () => {
+      for (const stream of streams) closeStream(stream)
       voteLimiter.reset()
+      marketLimiter.reset()
       identityLimiter.reset()
       admissionLimiter.reset()
       expectedEvents.reset()
@@ -711,6 +934,13 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
 }
 
 function writeValidationError(res: ServerResponse, error: unknown): void {
+  if (error instanceof LegacyWalletUpgradeRequiredError) {
+    // Old vote clients treat every 409 as a complete business receipt. A
+    // capability precondition uses 412 so they retain the actual error code.
+    writeJson(res, 412, { error: { code: 'wallet_upgrade_required', message: error.message,
+      min_client_version: WALLET_MIN_CLIENT_VERSION } })
+    return
+  }
   if (error instanceof WireError) {
     writeError(res, 400, 'invalid_request', error.message, error.field)
     return

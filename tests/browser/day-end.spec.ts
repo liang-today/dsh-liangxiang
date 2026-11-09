@@ -128,8 +128,6 @@ test('day-end is explicit, right-click only sets direction, and tabs share the H
   expect(votes).toHaveLength(0)
   await panel.locator('[data-liangxiang-utility-trigger]').click()
   const repair = panel.locator('[data-liangxiang-utility-action="reconcile"]')
-  await expect(repair).toBeHidden()
-  await panel.getByText('显示异常？', { exact: true }).click()
   await expect(repair).toBeVisible()
   const repairLayout = await repair.evaluate(element => {
     const drawer = element.closest('[data-liangxiang-utility-drawer]')!
@@ -155,7 +153,7 @@ test('day-end is explicit, right-click only sets direction, and tabs share the H
   expect(repairLayout.lines).toBeLessThanOrEqual(2)
   expect(repairLayout.height).toBeLessThanOrEqual(44)
   expect(repairLayout.overflow).toBe(false)
-  await panel.locator('[data-liangxiang-utility-drawer]').screenshot({ path: testInfo.outputPath('repair-expanded.png') })
+  await panel.locator('[data-liangxiang-utility-drawer]').screenshot({ path: testInfo.outputPath('repair-inline-entry.png') })
   await repair.click()
   await expect(panel.locator('[data-liangxiang-reconcile-confirm]')).toBeVisible()
   await panel.locator('[data-liangxiang-reconcile-cancel]').click()

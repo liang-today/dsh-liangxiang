@@ -1,0 +1,44 @@
+[Unit]
+Description=Liangxiang private internal testing (isolated synthetic wallet)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=liangxiang-internal-test
+Group=liangxiang-internal-test
+WorkingDirectory=/opt/liangxiang-internal-test
+EnvironmentFile=/etc/liangxiang-internal-test.env
+ExecStart=/usr/bin/node /opt/liangxiang-internal-test/lib/backend.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=localhost
+InaccessiblePaths=/var/lib/liangxiang /opt/liangxiang /opt/liangxiang-rehearsal /var/backups/liangxiang -/var/backups/liangxiang-clone /etc/liangxiang.env /etc/liangxiang-rehearsal.env
+ReadWritePaths=/var/lib/liangxiang-internal-test/data
+UMask=0077
+LimitNOFILE=16384
+MemoryHigh=512M
+MemoryMax=1024M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

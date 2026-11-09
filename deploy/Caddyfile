@@ -1,4 +1,9 @@
 {
+	servers {
+		# Host-owned setting: only the old ingress is trusted during migration.
+		trusted_proxies static {$LIANGXIANG_TRUSTED_PROXY:127.0.0.1/32}
+		trusted_proxies_strict
+	}
 	# Runtime reverse-proxy errors can otherwise echo request headers into the
 	# journal. Keep pseudonymous identity/signature material out of operations
 	# logs while retaining the method, path, status and client address.
@@ -12,6 +17,10 @@
 		}
 	}
 }
+
+# Root-owned, optional sites retained only during an internal-to-production
+# handoff. No host addresses or private certificates belong in this repository.
+import /etc/caddy/liangxiang-sites/*.caddy
 
 # hk-api is the pre-cutover verification name. Keep it as a diagnostic alias
 # after api.liang.today moves to Hong Kong. The backend remains loopback-only.
@@ -34,8 +43,13 @@ api.liang.today, hk-api.liang.today {
 
 	reverse_proxy 127.0.0.1:4180 {
 		# Caddy's reverse_proxy supplies the immediate client in
-		# X-Forwarded-For. The backend trusts it only across this loopback hop.
+		# X-Forwarded-For. The backend trusts one sanitized client only across
+		# this loopback hop, never the public caller's raw forwarding chain.
+		header_up X-Forwarded-For {client_ip}
+		flush_interval -1
 		transport http {
+			# Shorter than the backend's 65s idle timeout; reuse sockets safely.
+			keepalive 60s
 			dial_timeout 3s
 			response_header_timeout 10s
 		}

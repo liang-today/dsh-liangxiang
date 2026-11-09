@@ -29,7 +29,25 @@ import {
 import type { LiangciHistoryState } from './live-store.ts'
 import { LiangAvatar, LIANGZI_LABEL_COLOR } from './LiangAvatar.tsx'
 import { LiangciIcon } from './LiangciIcon.tsx'
-import { color, font } from './theme.ts'
+import { color as dshColor, font } from './theme.ts'
+import { MAIN_PANEL_THEME_CSS, mainColor } from './main-panel-theme.ts'
+
+/** Same blue paper and readable accents as 今日梁案, scoped to this dialog. */
+const color = {
+  ...dshColor,
+  bgLayer: mainColor.paper,
+  bgSubtle: mainColor.soft,
+  bgHover: `color-mix(in srgb, ${mainColor.blue} 10%, ${mainColor.paper})`,
+  border: mainColor.line,
+  textPrimary: mainColor.ink,
+  textSecondary: `color-mix(in srgb, ${mainColor.sub} 88%, ${mainColor.ink})`,
+  textTertiary: `color-mix(in srgb, ${mainColor.sub} 88%, ${mainColor.ink})`,
+  brand: mainColor.deep,
+  ritualGold: mainColor.blue,
+  ritualEmber: mainColor.deep,
+  ritualEmberText: mainColor.deep,
+  ritualCool: mainColor.blue,
+} as const
 
 export interface LiangciModalProps {
   businessDate: string
@@ -83,7 +101,7 @@ function stateColor(state: LiangDayArchive['liangziState']): string {
 }
 
 const MODAL_CSS = `
-[data-liangci-dialog] { --liangxiang-ember-readable: color-mix(in srgb, var(--liangxiang-ember, #c95f38) 64%, var(--dsw-alias-label-primary, #1c2130)); }
+${MAIN_PANEL_THEME_CSS}
 @keyframes liangci-enter {
   from { opacity: 0; transform: translateY(8px) scale(.988); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -122,9 +140,6 @@ const MODAL_CSS = `
 @media (prefers-reduced-motion: reduce) {
   [data-liangci-dialog] { animation: none !important; }
   [data-liangci-dialog] * { scroll-behavior: auto !important; transition: none !important; }
-}
-@media (prefers-color-scheme: dark) {
-  [data-liangci-dialog] { --liangxiang-ember-readable: #cf9a85; }
 }
 `
 
@@ -346,7 +361,6 @@ function DayCell({
         color: future ? color.textTertiary : color.textPrimary,
         fontFamily: font.family,
         cursor: 'pointer',
-        opacity: future ? 0.58 : 1,
         overflow: 'hidden',
       }}
     >
@@ -431,7 +445,6 @@ function WeekCell({
         fontFamily: font.family,
         textAlign: 'left',
         cursor: 'pointer',
-        opacity: future ? 0.52 : 1,
         overflow: 'hidden',
       }}
     >
@@ -727,7 +740,7 @@ export function LiangciModal({
         placeItems: 'center',
         padding: '16px',
         boxSizing: 'border-box',
-        background: 'rgba(8, 12, 20, 0.56)',
+        background: 'rgba(12, 24, 43, 0.54)',
         backdropFilter: 'blur(2px)',
         pointerEvents: 'auto',
       }}
@@ -754,9 +767,9 @@ export function LiangciModal({
           padding: '22px 24px 20px',
           borderRadius: '12px',
           border: `1px solid ${color.border}`,
-          background: `linear-gradient(180deg, color-mix(in srgb, ${color.ritualGold} 4%, ${color.bgLayer}), ${color.bgLayer} 96px)`,
+          background: `linear-gradient(180deg, color-mix(in srgb, ${mainColor.water} 8%, ${color.bgLayer}), ${color.bgLayer} 96px)`,
           color: color.textPrimary,
-          boxShadow: '0 24px 70px rgba(0, 0, 0, 0.34)',
+          boxShadow: '0 24px 70px light-dark(rgba(21, 43, 73, 0.28), rgba(0, 0, 0, 0.4))',
           fontFamily: font.family,
           outline: 'none',
           overflow: 'hidden',

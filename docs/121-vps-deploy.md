@@ -138,6 +138,29 @@ node lib/backend-cli.js broadcast clear
 
 ## 6. 备份与重置
 
+### 明确部署目标
+
+`scripts/deploy.sh` 和 `scripts/deploy-check.sh` 都要求显式目标；不会默认探测公共主域名。
+以下值仅放在本机 ignored `.env` 或进程环境中，真实地址和主机标识不要提交仓库：
+
+- `LIANGXIANG_DEPLOY_ROLE`：`standby` 或 `production`。
+- `LIANGXIANG_DEPLOY_SSH`：明确的 `user@host`，可另设 `LIANGXIANG_DEPLOY_SSH_PORT`。
+- `LIANGXIANG_DEPLOY_EXPECTED_HOSTNAME`：远程 `hostname` 的完整预期值；须含独立的 `standby` 或 `prod`／`production` 名称段，与角色一致。
+- `LIANGXIANG_DEPLOY_HEALTH_URL`：该目标的 `https://…/v1/health`，不含凭据、查询参数或跳转。
+
+脚本在复制前核对配置与远程主机名。备服 HTTPS hostname 必须与 SSH hostname 完全相同；
+生产使用不同 TLS 域名时，两者解析出的全部地址集合必须一致。配置空缺、角色／主机不符或
+健康地址错配会在 rsync 前拒绝，不能靠验证另一台健康服务器通过验收。
+
+备服还会核对 Caddy 的启动、重载均使用 `/etc/caddy/Caddyfile.standby`，部署前后比较其哈希；
+只验证现有配置，不安装生产域名模板，不改备服证书或代理文件。生产角色才沿用生产 Caddy 模板更新。
+验收比较精确的候选版本、服务构建号与 commit SHA，不采用 SHA 子串匹配。
+
+远程安装与构建由部署账户使用固定的 pnpm 11.28.5 执行；只用该账户的包缓存，不修改服务器全局 pnpm。
+部署仍要求干净且已提交的本地工作树。大版本迁移前另保存旧代码与一致 SQLite 的成对回滚点，
+记录停止服务、恢复代码／数据库／WAL 状态及重新启动的步骤；当前失败处理不承诺自动恢复旧 schema。
+本地提交、备服测试与 GitHub 推送是独立动作，完成备服验收不授权推送或正式发布。
+
 本节手工命令只适用于新建自托管节点或已经明确授权的恢复演练。受管社区节点的日常
 更新、迁移、备份、重启和版本戳只能通过仓库 `scripts/deploy.sh` 执行；不得把下面的
 片段当成绕过该流程的部署步骤。

@@ -5,17 +5,23 @@
  * test deliberately fails when a version bump forgets to refresh this copy.
  * This is cosmetic localStorage only and never participates in authority.
  */
-export const RELEASE_NOTES_VERSION = '1.2.2-beta.5'
-export const RELEASE_NOTES_TITLE = `梁相 v${RELEASE_NOTES_VERSION} 更新`
-export const RELEASE_NOTES_ITEMS = [
-  '修复从局域网地址打开 DSH Web 时投票报错的问题：夯与拉恢复可用，不再因浏览器限制失效。',
-  '定时上香：满 500 炷后每 10 分钟上香，23:59 再收尾；投票额度每分钟恢复 500 炷。',
-  '新增梁位走势：从案牍打开主题一致的弹窗，支持全屏、缩放与历史查看。',
-  '回复时凝香光效相伴、拍梁子原味吐槽回归；自动上香计入此身香火，更新说明不再叠加。',
+export const RELEASE_NOTES_VERSION = '2.0.0'
+export const RELEASE_NOTES_DISPLAY_VERSION = RELEASE_NOTES_VERSION.split('-')[0]!
+export const RELEASE_NOTES_TITLE = `梁相${RELEASE_NOTES_DISPLAY_VERSION}更新介绍`
+export const RELEASE_NOTES_SLOGAN = '在大A受的伤，让梁股为你抚平。'
+export const RELEASE_NOTES_HIGHLIGHTS = [
+  { icon: 'wallet', title: '在线钱包', copy: '香火收益，跨日保留。' },
+  { icon: 'market', title: '梁股三盘', copy: '做多做空，午夜揭晓。' },
+  { icon: 'waves', title: '全新水景', copy: '余香化水，游鱼相伴。' },
 ] as const
-export const RELEASE_NOTES_QQ = '梁相 QQ 群：453683905'
+export const RELEASE_NOTES_ITEMS = RELEASE_NOTES_HIGHLIGHTS.map(item => `${item.title}　${item.copy}`)
+export const RELEASE_NOTES_GROUP_NAME = '梁相上香QQ群'
+export const RELEASE_NOTES_GROUP_NUMBER = '453683905'
+export const RELEASE_NOTES_QQ = `${RELEASE_NOTES_GROUP_NAME}：${RELEASE_NOTES_GROUP_NUMBER}`
 export const RELEASE_NOTES_QQ_INVITE = '来群里一起出梁案、晒梁位、催更新，第一批梁友等你入席。'
-export const RELEASE_NOTES_THANKS = '鸣谢 @stuffed-cat、@XChen446、@Ritanlisa、@xunxiaoQ，以及每位社区贡献者。'
+export const RELEASE_NOTES_CONTRIBUTORS = ['@stuffed-cat', '@XChen446', '@xunxiaoQ', '@Ritanlisa'] as const
+export const RELEASE_NOTES_THANKS = RELEASE_NOTES_CONTRIBUTORS.join('、')
+export const RELEASE_NOTES_THANKS_SUFFIX = '以及每一位社区贡献者与香客。'
 
 const RELEASE_NOTES_KEY_PREFIX = 'liangxiang:release-notes:'
 export const RELEASE_NOTES_LATEST_SEEN_KEY = `${RELEASE_NOTES_KEY_PREFIX}latest-seen`

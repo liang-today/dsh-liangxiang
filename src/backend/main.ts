@@ -6,7 +6,7 @@
  * the authority mode out loud so nobody can mistake this process for a verified
  * production vote authority (AGENTS.md §16, docs/043).
  */
-import { resolveBackendConfig, BackendConfigError } from './config.ts'
+import { resolveBackendConfig, BackendConfigError, DEFAULT_BACKEND_LISTEN_BACKLOG } from './config.ts'
 import { createBackendHttpApi } from './http.ts'
 import { warnIfClockSkewed } from './ntp.ts'
 import { LiangxiangBackendService } from './service.ts'
@@ -15,7 +15,13 @@ import { openBackendStore } from './store.ts'
 export function startBackend(env: Record<string, string | undefined> = process.env): { close: () => void } {
   const config = resolveBackendConfig(env)
   const store = openBackendStore(config.databasePath)
-  const service = new LiangxiangBackendService({ store, config })
+  let service: LiangxiangBackendService
+  try {
+    service = new LiangxiangBackendService({ store, config })
+  } catch (error) {
+    store.close()
+    throw error
+  }
   const api = createBackendHttpApi({
     service,
     store,
@@ -26,16 +32,19 @@ export function startBackend(env: Record<string, string | undefined> = process.e
   })
 
   service.ensureActiveCase()
+  // Sampling must cross every real minute even when public snapshots are
+  // configured much slower. tick() still applies the configured publication
+  // threshold and inserts at most one shared row for each quiet minute.
   const cadence = setInterval(() => {
     try {
       service.tick()
     } catch (error) {
       console.warn(`[liangxiang-backend] snapshot cadence failed: ${error instanceof Error ? error.message : String(error)}`)
     }
-  }, config.snapshotRefreshSeconds * 1000)
+  }, Math.min(config.snapshotRefreshSeconds * 1000, 1_000))
   cadence.unref?.()
 
-  api.server.listen(config.port, config.host, () => {
+  api.server.listen(config.port, config.host, DEFAULT_BACKEND_LISTEN_BACKLOG, () => {
     console.log(
       `[liangxiang-backend] listening on http://${config.host}:${config.port}`
       + ` (authority_mode=${config.authorityMode}, tz=${config.timezone},`

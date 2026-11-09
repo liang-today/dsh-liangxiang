@@ -12,7 +12,7 @@ import {
   sha256Base64Url,
   verifyCommunitySignature,
 } from '../host/community-keys.ts'
-import { isUniqueConstraintError, type BackendStore } from './store.ts'
+import { isUniqueConstraintError, type BackendStore, type CommunityIdentityRow } from './store.ts'
 
 export const DEFAULT_SIGNATURE_SKEW_MS = 90_000
 
@@ -45,6 +45,8 @@ export interface CommunityAuthInput {
    * endpoint owns the bind/rebind atomically (delete old + insert new).
    */
   skipFingerprintEnforcement?: boolean
+  /** Fresh lookup made by this request handler, never a retained auth verdict. */
+  knownIdentity?: CommunityIdentityRow | null
 }
 
 export function authenticateCommunityRequest(input: CommunityAuthInput): string {
@@ -71,11 +73,13 @@ export function authenticateCommunityRequest(input: CommunityAuthInput): string 
     throw new CommunityAuthError(401, 'invalid_signature', 'signature did not verify')
   }
 
-  const existing = input.store.identityByInstallation(input.installationId)
+  const existing = input.knownIdentity === undefined
+    ? input.store.identityByInstallation(input.installationId) : input.knownIdentity ?? undefined
   if (existing !== undefined && existing.public_key !== input.publicKey) {
     throw new CommunityAuthError(401, 'invalid_signature', 'public key does not match registered identity')
   }
-  if (input.deviceFingerprint !== null && !input.skipFingerprintEnforcement) {
+  if (input.deviceFingerprint !== null && !input.skipFingerprintEnforcement
+    && input.deviceFingerprint !== existing?.device_fingerprint) {
     const owner = input.store.identityByFingerprint(input.deviceFingerprint)
     if (owner !== undefined && owner.installation_id !== input.installationId) {
       throw new CommunityAuthError(

@@ -1,0 +1,64 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>梁相 · 通信与账本验证报告</title><style>:root{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;background:#f5f7fa;color:#1c2631;line-height:1.7}body{max-width:1200px;margin:auto;padding:44px 28px}h1{font-size:31px;line-height:1.3}h2{margin-top:42px;font-size:22px}h3{font-size:17px}p{max-width:1000px}table{width:100%;border-collapse:collapse;background:white;font-size:13px;display:block;overflow-x:auto}th,td{padding:12px 14px;border-bottom:1px solid #e0e5eb;text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums}th{background:#eaf0f5}.lead{background:#142637;color:#eef8ff;padding:24px;border-radius:15px;margin:24px 0}.note{color:#586878;font-size:13px}pre{padding:18px;background:#eaf0f5;overflow:auto;font-size:12px}li{margin:9px 0}code{background:#eaf0f5;padding:2px 5px;border-radius:4px}a{color:#1c6098}.bad{color:#a42b36}footer{margin-top:36px;font-size:12px;color:#586878}</style>
+<h1>梁相 · 通信性能与账本稳定性</h1><p class="note">生成于 2026-11-08T02:19:18.525Z · 源码 1771a075e6e9d38b4d1de1d3e0b03a3ff57206fb · 1.3.0-alpha.8-u2</p>
+<div class="lead"><strong>账本核对通过；400用户仅短时受控测试通过，持续稳定性尚未达标；1000用户不通过。</strong><p>4096连接队列已消除本次观察到的监听队列溢出，但没有显著降低1000用户的15秒尾延迟。受控1000档有明确CPU与单进程处理压力；后续持续测试另出现HTTPS与SSH同时停顿，不能把它全部归因于CPU。账本正确性与容量表现分别验收，超时不会被算作成功。</p></div>
+<h2>1 · 测试方法与隔离</h2><ul><li>同一程序、同一1000身份合成种子、相同请求ID和操作组合；仅切换代理实际监听队列128／4096。两个不同出口各承担一半用户。</li><li>每轮400用户持续120秒、1000用户持续180秒；每档第60秒集中断线重连，另保留正常周期重连。每人约每1.7–3.1秒执行一项操作；包含额外幂等重试。</li><li>覆盖钱包、上香、500炷倾炉、做多／做空、整仓改仓、撤回、K线、历史回执、重复及冲突请求、Token声明、SSE与重连。时间推演还覆盖梁祠冷通道和增量档案。</li><li>独立测试库、固定回环端口、独立服务账号与数据目录；原后端、4195验收现场和原始备份保留。未改生产服务器、未做域名切换。</li><li>每秒持续采集整机、各进程、网络字节、TCP重传／溢出、磁盘和事件循环；监控不通过反复新建SSH轮询。CPU采样间隔10ms，两轮配置相同。</li></ul>
+<h2>2 · 同版本队列对照</h2><table><tr><th>队列</th><th>目标用户</th><th>请求</th><th>P50</th><th>P95</th><th>请求错误</th><th>首帧后尚未关闭的订阅峰值</th><th>监听溢出增量</th></tr><tr><td>128 · 对照</td><td>400</td><td>21,422</td><td>215.84ms</td><td>1,004.05ms</td><td>0.01% (3)</td><td>400</td><td>69</td></tr><tr><td>128 · 对照</td><td>1000</td><td>40,801</td><td>307.41ms</td><td>15,003.5ms</td><td>7.61% (3103)</td><td>993</td><td>934</td></tr><tr><td>4096 · 修复后</td><td>400</td><td>21,968</td><td>214.19ms</td><td>1,060.15ms</td><td>0% (0)</td><td>400</td><td>0</td></tr><tr><td>4096 · 修复后</td><td>1000</td><td>42,589</td><td>295.23ms</td><td>15,006.3ms</td><td>7.28% (3100)</td><td>995</td><td>0</td></tr></table><p class="note">P95是业务请求从发起到读完响应的端到端时延，含建连／集中重连阶段。400档对照的3次错误发生在升入1000档后的未完成请求；升压前400档本身未报错。峰值在线按两处时间相近的监控采样相加，目标1000不等于已稳定连接1000；订阅峰值只表示收到过有效首帧且未关闭，不保证后续帧持续新鲜。原先30秒400档与本次120秒且含集中重连的结果不能直接作纯因果对照。</p>
+<table><tr><th>修复后用户</th><th>Mac请求P95</th><th>Windows请求P95</th><th>有效首帧P95</th><th>集中重连已恢复用户</th><th>所有财务重试最终未确认</th></tr><tr><td>400</td><td>567.98ms</td><td>1,346.64ms</td><td>6,510.05ms</td><td>998 / 400</td><td>0</td></tr><tr><td>1000</td><td>12,675.79ms</td><td>15,242.57ms</td><td>8,920.3ms</td><td>1000 / 1000</td><td>0</td></tr></table><p class="note">首帧时延单独统计，不能与业务请求P95混称“连接时延”。Windows发生器在连接／处理高峰接近单核满载，限制了该侧实际发出速度；本机也明显退化，因此1000档问题不能只归因于发生器。</p>
+<h2>3 · 流量与资源证据</h2><table><tr><th>队列 / 用户</th><th>公网平均出／入 Mbps</th><th>出站P95／峰值 Mbps</th><th>整机CPU中位／P95</th><th>后端CPU P95</th><th>代理CPU P95</th><th>最少可用内存</th><th>磁盘忙碌P95</th></tr><tr><td>128 / 400</td><td>8.34 / 1.77</td><td>11.97 / 15.06</td><td>60 / 84.92%</td><td>88.91%</td><td>44.96%</td><td>2,747.25MB</td><td>7.81%</td></tr><tr><td>128 / 1000</td><td>17.3 / 2.71</td><td>26.96 / 29.54</td><td>82.83 / 92.39%</td><td>90.91%</td><td>64.94%</td><td>2,486.14MB</td><td>7.4%</td></tr><tr><td>4096 / 400</td><td>8.52 / 1.82</td><td>14.62 / 16.44</td><td>60.2 / 81.82%</td><td>87.92%</td><td>42.96%</td><td>2,722.61MB</td><td>7.09%</td></tr><tr><td>4096 / 1000</td><td>16.92 / 2.81</td><td>26.04 / 33.52</td><td>82.41 / 92.93%</td><td>91.9%</td><td>69.93%</td><td>2,429.01MB</td><td>8.24%</td></tr></table><p class="note">整机CPU满载=100%；单进程CPU的一颗核满载=100%。公网数值为整机实测，包含轻量监控和其他原有服务；网卡丢包计数不等于大陆端到端丢包率。TCP重传、监听溢出和应用超时分别保留在comparison.json。</p>
+<h2>4 · 明确的问题与处理</h2><table><tr><th>问题</th><th>触发／影响</th><th>处理与验证</th></tr><tr><td>失败事务污染公共读取缓存</td><td>回滚后的市场版本号被后续成功订单复用；香池可能显示7而真实仓位13，甚至将双边交易误判为作废</td><td>按回滚世代清除香池、批次及累计统计缓存；旧版故障注入复现，修复后锁盘、钱包和派彩回归通过</td></tr><tr><td>代理监听队列意外回退128</td><td>服务的进程视图隐藏了内核队列配置，运行时采用默认128，集中建连产生溢出</td><td>保留其他隔离配置，允许读取内核队列参数；实测监听4096，本轮溢出归零</td></tr><tr><td>广播与新订阅相互阻塞</td><td>新连接若重新初始化全体订阅会放大工作量；大轮广播与慢连接造成等待</td><td>仅初始化新订阅，64条分批让出执行时间；慢连接等待排空并合并状态，私人数据仍按身份读取</td></tr><tr><td>内部测试HTTPS环境标签被覆盖</td><td>全站安全头的延后写出覆盖内部路由标记；隔离启动器因此拒绝启动，未误接社区</td><td>站点环境标记改为缺省值，并将实际HTTPS标签和构建号纳入部署门禁；部署后实际验收另见交付收据</td></tr><tr><td>1000活跃用户超出当前容量</td><td>两个来源均出现长尾和超时，后端与代理共同占用CPU，内存和磁盘余量仍足</td><td class="bad">尚不达标；保留错误计数和现场证据，不能以更大队列或更快拒绝宣称1000通过</td></tr></table>
+<p>CPU采样的主要热点为每请求签名校验、SQLite事务／身份更新及查询、Socket写出和广播。它们分散在真实必要工作中；不能通过跳过签名、减少财务事务或放松幂等提高成绩。</p>
+<h2>5 · 持续测试的网络问题（未解决）</h2><p>在后续400与1000持续时间推演中，两个外部发生器的业务请求、SSE与控制SSH均出现长时间停顿。400异常窗口的118个服务器本地采样显示：后端单核CPU中位约29%、最高约51%，监听队列为0；原服务本地健康响应约1–3ms。它与受控1000档CPU接近饱和是两个不同问题。</p><p>连接跟踪3972/65536、两侧临时端口占用和文件上限未见耗尽；1472字节DF探测成功；NIC丢包计数未升高。阿里云自助诊断的8项网络检查均通过，包含实例丢包、底层链路、会话、突发带宽、带宽上限和DDoS。告警涉及历史CPU高负载以及防火墙、SELinux、非默认SSH端口、禁止root登录；后四项属于现有加固配置，未关闭保护。云端检查通过并不能证明跨境端到端链路正常。</p><p class="bad">故障发生位置尚未确定。下一步需要在故障窗口两端同步抓取TCP头部重传／窗口变化，并结合运营商或云厂商线路诊断，定位是传输路径、主机协议栈还是代理连接行为。现有证据不支持把问题写成“增加CPU、RAM或带宽即可修好”。</p><h2>6 · 功能与时间推演</h2><p>只剩1炷的真实远程账户，20个并发投票最终仅接受1个；冻结香火保持4999。8个身份的24项真实市场／回执／K线解析通过。整合源码949项回归、在线链路和隔离安装检查通过；改仓延迟、撤回延迟和未知回执重试在三种布局下9项浏览器回归通过。</p><h3>400人持续业务时间推演</h3><p>28,320次请求；66项原始语义标记；结束时未确认意图0个。</p><table><tr><th>检查点</th><th>结果</th><th>核对内容</th></tr><tr><td>第一批封盘</td><td>通过</td><td>p1_lock</td></tr><tr><td>第一批定线、第二批开盘</td><td>通过</td><td>p1_reference</td></tr><tr><td>第二批封盘</td><td>通过</td><td>p2_lock</td></tr><tr><td>第二批定线、第三批开盘</td><td>通过</td><td>p2_reference</td></tr><tr><td>带负载重启专用测试服务</td><td>通过</td><td>计划内重启，前后独立核账均通过</td></tr><tr><td>第三批封盘</td><td>通过</td><td>p3_lock</td></tr><tr><td>第三批定线</td><td>通过</td><td>p3_reference</td></tr><tr><td>周日午夜派彩、跨日及周梁封存</td><td>通过</td><td>三批结果、冻结清零、回执与周归档</td></tr><tr><td>推进至月末，保留钱包及已封存档案</td><td>通过</td><td>month_prepare</td></tr><tr><td>跨月封存与次日钱包核对</td><td>通过</td><td>跨月归档与累计钱包</td></tr></table><pre>{
+  &quot;integrity&quot;: &quot;ok&quot;,
+  &quot;users&quot;: 1000,
+  &quot;negative_wallets&quot;: 0,
+  &quot;wallet_journal_mismatches&quot;: 0,
+  &quot;position_freeze_mismatches&quot;: 0,
+  &quot;vote_receipt_mismatches&quot;: 0,
+  &quot;daily_vote_mismatches&quot;: 0,
+  &quot;global_vote_mismatches&quot;: 0,
+  &quot;token_remainder_mismatches&quot;: 0,
+  &quot;settlement_pool_mismatches&quot;: 0,
+  &quot;receipts&quot;: 325,
+  &quot;receipt_mismatches&quot;: 0,
+  &quot;payout_mismatches&quot;: 0,
+  &quot;reference_result_mismatches&quot;: 0,
+  &quot;reference_count_mismatches&quot;: 0,
+  &quot;close_count_mismatches&quot;: 0,
+  &quot;settlement_journal_mismatches&quot;: 0,
+  &quot;receipt_position_mismatches&quot;: 0,
+  &quot;day_archive_mismatches&quot;: 0,
+  &quot;archive_unique_mismatches&quot;: 0,
+  &quot;period_archive_mismatches&quot;: 0,
+  &quot;economic_conservation_delta&quot;: 0,
+  &quot;conservation_delta&quot;: 0,
+  &quot;passed&quot;: true
+}</pre><h3>1000人持续业务时间推演</h3><p>26,742次请求；0项原始语义标记；结束时未确认意图3个。</p><table><tr><th>检查点</th><th>结果</th><th>核对内容</th></tr><tr><td>第一批封盘</td><td>通过</td><td>p1_lock</td></tr><tr><td>第一批定线、第二批开盘</td><td>通过</td><td>p1_reference</td></tr><tr><td>第二批封盘</td><td>通过</td><td>p2_lock</td></tr><tr><td>第二批定线、第三批开盘</td><td>通过</td><td>p2_reference</td></tr><tr><td>带负载重启专用测试服务</td><td>通过</td><td>计划内重启，前后独立核账均通过</td></tr><tr><td>第三批封盘</td><td>通过</td><td>p3_lock</td></tr><tr><td>第三批定线</td><td>通过</td><td>p3_reference</td></tr><tr><td>周日午夜派彩、跨日及周梁封存</td><td>通过</td><td>三批结果、冻结清零、回执与周归档</td></tr><tr><td>月末累计钱包与档案</td><td>通过</td><td>month_prepare</td></tr><tr><td>跨月封存与次日钱包</td><td>通过</td><td>跨月归档与累计钱包</td></tr></table><pre>{
+  &quot;integrity&quot;: &quot;ok&quot;,
+  &quot;users&quot;: 1000,
+  &quot;negative_wallets&quot;: 0,
+  &quot;wallet_journal_mismatches&quot;: 0,
+  &quot;position_freeze_mismatches&quot;: 0,
+  &quot;vote_receipt_mismatches&quot;: 0,
+  &quot;daily_vote_mismatches&quot;: 0,
+  &quot;global_vote_mismatches&quot;: 0,
+  &quot;token_remainder_mismatches&quot;: 0,
+  &quot;settlement_pool_mismatches&quot;: 0,
+  &quot;receipts&quot;: 26,
+  &quot;receipt_mismatches&quot;: 0,
+  &quot;payout_mismatches&quot;: 0,
+  &quot;reference_result_mismatches&quot;: 0,
+  &quot;reference_count_mismatches&quot;: 0,
+  &quot;close_count_mismatches&quot;: 0,
+  &quot;settlement_journal_mismatches&quot;: 0,
+  &quot;receipt_position_mismatches&quot;: 0,
+  &quot;day_archive_mismatches&quot;: 0,
+  &quot;archive_unique_mismatches&quot;: 0,
+  &quot;period_archive_mismatches&quot;: 0,
+  &quot;economic_conservation_delta&quot;: 0,
+  &quot;conservation_delta&quot;: 0,
+  &quot;passed&quot;: true
+}</pre>
+<p>核账使用独立Python整数计算，覆盖余额与流水、冻结与仓位、票据与全局夯拉、唯一香客、Token余量、定线／收盘原始票数、按最大余数派彩、回执与结算流水、日周月聚合及已封存档案指纹。业务时间仅推进独立测试库，系统时钟不变。计划重启单列在检查点中；时间推演总错误仍包含计划重启，不能把总数当纯粹的非计划故障率。</p>
+<p>时间推演400档的66项原始语义标记均为未被旧发生器细分原因的投票409，保留原始结果，不能无证据全部消成0。1000档已补充原因记录，原始语义标记0。Windows最后3笔待确认均以原ID重试得到case_not_active；权威票据与流水前后均无这些ID，最终未确认0、重复扣款0。</p><p>两档各10个时间检查点通过，独立核账所有差异为0；400档325张结算回执、1000档26张。网络停顿使很多外部操作未到达，不等于400/1000个用户均成功完成全链路结算。1000档另使用这1000个合成身份中的2个，通过签名回环请求为三批各放入双边25炷，确保时间边界覆盖；其余业务压力仍由两个外部来源直连。重启前后金融表指纹一致，已封存日周月档案不变。</p><h2>7 · 服务器配置建议</h2><ul><li><strong>当前阶段：</strong>本轮没有重新验收200档；根据以往结果可继续以200作为阶段目标，但不能从本轮证明长期稳定。400档短时0错误，持续测试出现严重网络停顿，暂不宣告稳定400达成。暂不因本次数据增加内存／磁盘。</li><li><strong>下一步优先：</strong>4vCPU／4GB，选择持续CPU能力更稳定的实例；8GB是套餐选择或额外服务空间，并非本次内存证据的要求。</li><li><strong>1000用户：</strong>升配后仍须同法复测；单个Node主线程和SQLite串行写入仍会限制容量。后续优先考虑将签名计算与公共广播从财务写入链路分担，并继续复用公共状态，不能承诺仅加CPU便通过。</li><li><strong>带宽／存储：</strong>本次平均出站约17Mbps，远低于标称200Mbps峰值；这个数值不能排除链路质量或供应商限制；先定位运输层停顿，不能仅凭200Mbps峰值承诺性能。磁盘暂无扩容证据。原实例与4195验收服务还共享本机资源，报告保留它们的占用。</li></ul>
+<h2>8 · 白天内部测试准备</h2><p>采用独立真实业务时钟环境；实际部署验收收据与客户端包另行交付，本文不提前宣称入口已就绪。</p><p>独立人工测试服务采用真实北京时间和独立数据库，仅放行确认的家庭／办公公网出口；新测试身份每天500炷测试香火。每台电脑使用独立DSH目录和Profile，候选包禁止自动浮动到正式latest。详见测试包中的使用说明。</p>
+<p>阿里云官方说明峰值200Mbps并非保证带宽，属于共享峰值资源；本报告只引用该限制作为选型边界，并未将它判为本次停顿原因。参考：<a href="https://help.aliyun.com/zh/simple-application-server/product-overview/limits">轻量使用限制</a>、<a href="https://help.aliyun.com/zh/simple-application-server/product-overview/instance-families/">实例系列</a>。</p><p>响应头时序依据：<a href="https://caddyserver.com/docs/caddyfile/directives/header">Caddy header 官方文档</a>。</p><h2>9 · 可复核证据</h2><ul><li>comparison.json：分档延迟、错误、实际订阅、流量、CPU、内存、磁盘、TCP、原后端健康采样。</li><li>audit-*.json：逐项整数核账；*-checkpoints.jsonl：三批、重启与日周月检查点。</li><li>*.requests.jsonl：逐请求路径、时间、HTTP状态和时延；不含签名、密钥或会话正文。</li><li>source-receipt.json、CPU采样、验证日志、受保护备份指纹和部署收据。</li></ul><footer>该报告记录独立候选环境，未授权或执行生产发布。全部源码仅推送个人fork功能分支。</footer></html>

@@ -15,6 +15,8 @@ import { DEFAULT_VOTE_RATE_LIMIT_MAX_KEYS, DEFAULT_VOTE_RATE_LIMIT_PER_MINUTE } 
 
 export const DEFAULT_BACKEND_PORT = 4180
 export const DEFAULT_BACKEND_HOST = '127.0.0.1'
+/** Burst admission buffer; bounded fanout must still drain it promptly. */
+export const DEFAULT_BACKEND_LISTEN_BACKLOG = 2048
 export const DEFAULT_BACKEND_DB_PATH = '.liangxiang-backend/liangxiang.sqlite'
 /**
  * Near-real-time by default: a voter must see their own vote move the public

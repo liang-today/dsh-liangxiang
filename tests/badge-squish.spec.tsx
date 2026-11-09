@@ -31,6 +31,13 @@ describe('badge feedback geometry', () => {
   it('declines speech if the available width cannot hold it', () => {
     expect(placeBadgeSpeech({ x: 12, y: 12 }, { width: 90, height: 70 }, 160, null)).toBeNull()
   })
+  it('uses the same clamped panel footprint when the panel is closed in a narrow middle dock', () => {
+    const result = placeBadgeSpeech({ x: 80, y: 400 }, { width: 320, height: 700 }, 160, null)!
+    expect(result.x).toBe(138)
+    expect(result.width).toBe(118)
+    expect(result.x + result.width).toBe(256)
+    expect(result.capacity).toBe(3)
+  })
 })
 
 describe('speech presence', () => {

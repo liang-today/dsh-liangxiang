@@ -40,6 +40,7 @@ import {
   type VoteType,
 } from '../domain/index.ts'
 import { WireError } from './wire.ts'
+import { parseMarketWallet, type MarketWallet } from './market-v1.ts'
 
 export const BACKEND_API_PREFIX = '/v1'
 export const BACKEND_SCHEMA_VERSION = 1
@@ -71,6 +72,10 @@ export interface V1Broadcast {
 export { LIANGZI_POLICY_VERSION } from '../domain/index.ts'
 /** Presentation capability only; it never changes balances or vote weight. */
 export const LIANGZI_POLICY_HEADER = 'x-liangxiang-liangzi-policy'
+
+/** Explicit accounting capability, independent of the cosmetic Liangzi policy. */
+export const WALLET_CAPABILITY_HEADER = 'x-liangxiang-wallet'
+export const WALLET_CAPABILITY_VERSION = 'cumulative-v1'
 
 /**
  * Authority modes. `VERIFIED_PRODUCTION` requires server-verifiable identity
@@ -171,6 +176,8 @@ export interface V1Case {
 
 /** Authoritative personal daily spend state (backend-owned). */
 export interface V1PersonalState {
+  /** Cumulative server wallet. Daily usage and daily spending remain separate. */
+  wallet?: MarketWallet
   /** Internal bootstrap reconciliation only; never a separate product row. */
   starter_tokens?: number
   business_date: string
@@ -347,6 +354,7 @@ export interface V1UnbindResponse {
 
 /** Structured error codes (HTTP status is carried separately). */
 export const V1_ERROR_CODES = [
+  'wallet_upgrade_required',
   'invalid_request',
   'missing_installation',
   'invalid_signature',
@@ -357,6 +365,7 @@ export const V1_ERROR_CODES = [
   'vote_rate_limited',
   'device_conflict',
   'rekey_cooldown',
+  'wallet_has_assets',
   'identity_rate_limited',
   'unknown_route',
   'method_not_allowed',
@@ -370,7 +379,7 @@ export const V1_ERROR_CODES = [
 export type V1ErrorCode = (typeof V1_ERROR_CODES)[number]
 
 export interface V1ErrorBody {
-  error: { code: V1ErrorCode, message: string, field?: string }
+  error: { code: V1ErrorCode, message: string, field?: string, min_client_version?: string }
 }
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{8,128}$/
@@ -488,19 +497,24 @@ export function parseV1PersonalState(raw: unknown, field = 'authoritative_person
   const remaining = requireCount(record.remaining_incense, `${field}.remaining_incense`)
   const remainder = requireCount(record.token_remainder, `${field}.token_remainder`)
   const toNext = requireCount(record.tokens_to_next_incense, `${field}.tokens_to_next_incense`)
-  if (earned !== Math.floor(claimed / tokenPerIncense)) {
+  const wallet = record.wallet === undefined ? undefined : parseMarketWallet(record.wallet)
+  if (wallet === undefined && earned !== Math.floor(claimed / tokenPerIncense)) {
     throw new WireError(`${field}.earned_incense`, 'does not match floor(claimed / token_per_incense)')
   }
-  if (used > earned) throw new WireError(`${field}.used_incense`, 'used exceeds earned')
-  if (remaining !== earned - used) {
+  if (wallet === undefined && used > earned) throw new WireError(`${field}.used_incense`, 'used exceeds earned')
+  if (wallet === undefined && remaining !== earned - used) {
     throw new WireError(`${field}.remaining_incense`, 'does not match earned - used')
   }
-  if (remainder !== claimed % tokenPerIncense) {
+  if (wallet === undefined && remainder !== claimed % tokenPerIncense) {
     throw new WireError(`${field}.token_remainder`, 'does not match claimed % token_per_incense')
   }
   if (toNext !== tokenPerIncense - remainder) {
     throw new WireError(`${field}.tokens_to_next_incense`, 'does not match token_per_incense - remainder')
   }
+  if (remainder >= tokenPerIncense || (wallet !== undefined && (
+    wallet.available_incense !== remaining || wallet.token_remainder !== remainder
+    || wallet.token_per_incense !== tokenPerIncense
+  ))) throw new WireError(`${field}.wallet`, 'does not match authoritative personal balance or progress')
   if (record.claim_source !== CLAIM_SOURCE_HOST_OBSERVED) {
     throw new WireError(`${field}.claim_source`, `expected ${CLAIM_SOURCE_HOST_OBSERVED}`)
   }
@@ -509,6 +523,7 @@ export function parseV1PersonalState(raw: unknown, field = 'authoritative_person
     throw new WireError(`${field}.claim_verified`, 'must be false under DEV_STAGING_ONLY')
   }
   return {
+    ...(wallet === undefined ? {} : { wallet }),
     business_date: requireBusinessDate(record.business_date, `${field}.business_date`),
     claimed_effective_tokens: claimed,
     ...(starter === undefined ? {} : { starter_tokens: starter }),

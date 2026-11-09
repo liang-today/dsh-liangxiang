@@ -198,6 +198,10 @@ export interface InsertCaseInput {
 }
 
 export interface BackendStore {
+  /** Internal database shared by wallet/market transactions, never exposed over HTTP. */
+  readonly database: DatabaseSync
+  /** Invalidates process-local read projections after any failed transaction. */
+  readonly rollbackVersion: number
   /** Run `body` inside one `BEGIN IMMEDIATE` transaction. */
   transaction: <T>(body: () => T) => T
   activeCaseFor: (businessDate: string) => CaseRow | undefined
@@ -368,6 +372,7 @@ export function openBackendStore(databasePath: string): BackendStore {
   }
   db.exec('PRAGMA synchronous = NORMAL')
   migrate(db)
+  let rollbackVersion = 0
 
   const selectActiveCase = db.prepare(
     `SELECT * FROM daily_liang_case WHERE business_date = ? AND status = 'active'`,
@@ -694,6 +699,8 @@ export function openBackendStore(databasePath: string): BackendStore {
   const deleteBroadcast = db.prepare('DELETE FROM client_broadcast WHERE singleton = 1')
 
   return {
+    database: db,
+    get rollbackVersion() { return rollbackVersion },
     transaction<T>(body: () => T): T {
       db.exec('BEGIN IMMEDIATE')
       try {
@@ -706,6 +713,7 @@ export function openBackendStore(databasePath: string): BackendStore {
         } catch {
           // A failed rollback means the transaction was already resolved.
         }
+        rollbackVersion += 1
         throw error
       }
     },

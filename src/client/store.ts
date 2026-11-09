@@ -106,6 +106,29 @@ export function wireToViewState(wire: LiangxiangWireState, connection: Connectio
     lifetimeIncense: wire.global.lifetimeIncense,
     lifetimeVoters: wire.global.lifetimeVoters,
     ...(() => {
+      if (wire.personal.wallet) {
+        const wallet = wire.personal.wallet
+        const earned = wire.personal.earnedIncenseToday ?? Math.floor(wire.personal.effectiveTokensToday / wire.personal.tokenPerIncense)
+        // Only finalized local usage may lead the claim acknowledgment. It can
+        // animate next-incense progress but cannot create spendable wallet funds.
+        const confirmed = wire.personal.confirmedEffectiveTokensToday ?? wire.personal.effectiveTokensToday
+        const pending = Math.max(0, wire.personal.effectiveTokensToday - confirmed)
+        const observed = wallet.token_remainder + pending
+        const remainder = observed % wallet.token_per_incense
+        return {
+          personal: {
+            effectiveTokensToday: wire.personal.effectiveTokensToday,
+            tokenPerIncense: wallet.token_per_incense,
+            earnedIncenseToday: earned,
+            usedIncenseToday: wire.personal.usedIncenseToday,
+            remainingIncense: wallet.available_incense,
+            tokenRemainder: remainder,
+            tokensToNextIncense: wallet.token_per_incense - remainder,
+            liangQiFill: remainder / wallet.token_per_incense,
+          },
+          observedEarnedIncenseToday: earned + Math.floor(observed / wallet.token_per_incense),
+        }
+      }
       // Ring fill / 下一炷 keep the optimistic local effective tokens; the
       // spendable incense (今日凝香 / 可打梁 / vote button) uses the AUTHORITATIVE
       // server ledger so a stale local bucket can never show spendable incense

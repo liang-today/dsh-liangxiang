@@ -8,6 +8,121 @@
 > prompt archive and must not be loaded as a current execution plan.
 > Brand theme and release copy are centralized in `docs/140-liangxiang-brand.md`.
 
+## Cumulative wallet and market candidate
+
+The approved extension in `docs/MARKET_WALLET.md` supersedes the daily-only
+spendable-balance formulas below for online wallets. Assets and confirmed
+sub-stick usage carry across business dates; daily statistics, gifts and cases
+remain date-scoped. `remaining_incense` means wallet **available** incense,
+excluding frozen orders; today's used incense may exceed today's earned amount.
+Legacy/offline daily accounting stays isolated and never funds community trades.
+
+Approved 2026-11-08 compatibility correction: a daily-only installation does
+not accumulate funds or fractional usage across dates. Expire them using the
+backend business clock, including offline users and restart. First authenticated
+cumulative-client use enables the wallet once, preserving ONLY that day's actual
+remaining funds and fractional progress, never summing historical daily rows.
+Once enabled, old requests require client >=2.0.0 before any personal mutation;
+they never revert its wallet to daily mode or touch frozen positions/settlement.
+Schema-14 candidate wallets already held cumulative assets: preserve them during
+schema-15 migration. Released 1.2 ignores server error prose; only a client patch
+can add a specific on-screen upgrade explanation. Never claim otherwise.
+
+New v3 markets accept positions at 07:00–11:00 / 12:00–16:00 / 17:00–21:00,
+lock at 11:00/16:00/21:00, fix raw-count reference points at 12:00/17:00/22:00
+and share the old case's midnight close. Existing v1/v2 markets retain all
+stored deadlines and their original rule version through restart, settlement
+and receipts; v2's early session still opens at 09:00.
+Server transactions own freezing, idempotency, integer pool allocation and
+rollover. No client cache or chart is a ledger. Usage remains soft trust.
+
+The approved blue pond design in `docs/MAIN_PANEL_BLUE_UI.md` supersedes the
+older visual details below, without changing any accounting or market rule.
+Keep the panel 256px and four regions. Use calm pale-blue water behind the
+original figures, with height based only on available incense (0–1000).
+Below 100, whole plants grow from the bottom with water depth; do not expose
+only the tips of a clipped full plant. Two little stones per side stay at the
+roots. Above 100, an occasional small whale performs the same two puffs;
+foreground bubbles grow upward from above its head and pop at the live water
+surface, away from the portrait. Hide/static/unmount cancels all local motion.
+The left caption defaults to today's earned total. Only confirmed settlements
+briefly show gained incense and then available incense; sustained request
+activity never replaces the daily caption. Clicking the figure inspects
+available incense. One highest-order ring glyph group (ones / tens / hundreds)
+avoids crowding; large amounts use the compact caption and exact accessible
+summary. The full-width Liangwei pill matches the two vote buttons together.
+Preserve blue charge/bolt/dump choreography and the original gesture timing.
+Keep the dock rounded-square. Never trim Shen/Sheng's native halos.
+The utility drawer no longer repeats the direct market entry. Repair and mode
+confirmation occupy the same fixed-height drawer, never an expanding row.
+
+The four-region panel and original Liangzi effects remain intact. The approved
+main panel keeps its original 256 CSS pixels, matching the default DSH
+sidebar's content width, with its default outer left edge and badge at x=12.
+Clamp the panel independently at narrow viewport edges; never rewrite the
+freely dragged badge position to fit it. Region 4's compact right column has
+the direct `梁股` action above two bold icon-and-glyph controls `牍` / `祠`.
+Keep their full accessible names and custom hints. The market uses the primary
+ritual accent; tools/history use the quieter theme color. The utility drawer omits the duplicate market shortcut; the direct entry opens
+the existing chart/trading view. Keyboard closing returns focus to its actual origin;
+pointer closing blurs the entry and keeps its hint quiet until real re-entry.
+Do not add a second `梁位走势` entry or
+restore the retired window from old browser preferences. Keep official minute candles distinct from the retained Host-local observation API.
+Legacy five-minute records retain their true grain and are never subdivided. The whale stays
+in the header between the title/wallet and window controls, outside the plot.
+The same restrained gray future region in both charts starts at the actual
+business clock, with a clear current-time boundary and left-aligned `待开梁`
+caption. Thin stage strips distinguish investment windows without stacking
+full-height backgrounds; missing historical data remains a gap. The footer
+reads `24:00后一起揭晓`. One noninteractive time-window text beside the zoom controls shows the actual zoomed span.
+Wheel zoom is continuous and pointer-anchored; +/− step through 24/12/6/3/1 hours and 30 minutes; candle grain is automatic,
+never a separate interval selector, and cannot exceed the real source resolution. Record the active case all
+business day, including before trading opens; phase shading never hides prices. The normal window and order ticket stay compact. The header whale uses action-specific local motion and readable speech. It reports the selected batch's actual cutoff and pool once per minute, below operation/error priority; clicking it reports on demand.
+The stage buttons use centered groups with small daypart icons: 早盘/午盘/晚盘
+above the user's direction/amount, with the actual cutoff in quieter type
+(11点封盘; retain minutes for non-hour cutoffs). Omit 未投入; show necessary
+status when there is no position. Use 争梁位/已定梁 consistently. The footer's
+left two thirds contain 梁位/state and the selected stage's total pool/reveal
+time; the right third contains 我的回执/梁股玩法. Keep amount and 炷 together,
+inside a stable information cell; never reserve a gap between digits and unit.
+State/reveal text is bolder than its caption. Clicking either fact prompts the
+fish; pool speech uses actual side quantities and percentages, never fake 50/50
+for an empty pool. Do not restore a permanent countdown, sticky pool popup or
+duplicate position-caption row. Align 个人可用/冻结香火 labels and value starts,
+with the available amount larger. Reserve enough header height for both rows;
+the chart toolbar must stay clear. The slightly larger clock under the motion
+toggle stays within its control column and uses server business date/time only.
+Confirm and withdraw share one compact order row. The title is `梁股 · 香火市场`.
+Receipts and rules open overlays from permanent buttons; batch, status and wallet updates never resize the window.
+Its blue whale-girl artwork is a market
+decoration, never a replacement central Liangzi or a new business namespace.
+Market animation/static preference is local and respects reduced motion.
+Market surfaces inherit DSH's explicit color scheme. Verify an OS-light / DSH-dark
+combination as well as ordinary light/dark themes; static mode stops every local CSS transition and WAAPI action.
+Dragging either chart must not select its labels or adjacent readout; ordinary
+text outside the drag remains selectable. The 夯/拉 legend sits beside the
+volume band in the same centered right-axis column as the price labels, below
+the lowest tick, while 梁位 is in the footer; no independent readout row.
+Candle details follow the pointer in a
+bounded themed tooltip, retaining exact keyboard/touch access. Compact amounts
+use at most four significant digits and truncate toward zero, with exact
+accessible values and integer editing; 梁位 retains six truncated decimals.
+Keep whole-fish swimming and local
+motion in dynamic mode; solve sharpness in rendering rather than removing motion.
+First uncached loading may swim two circles then return the same fish to its
+header slot; errors, hiding, static mode and unmount cancel the flight. All
+fish speech shares one unboxed, staggered fading area beside the fish; do not
+restore a second speech card. Clicked fish may emit up to three short local
+lines sampled from current confirmed facts. They expire, never block controls,
+and never claim unconfirmed earnings. Static mode keeps the text readable.
+New Hosts negotiate `x-liangxiang-wallet: cumulative-v1`. Older Hosts retain
+the actual daily protocol and transactionally bounded daily voting, using the
+same wallet. Never invent daily Tokens or spending to fit old equations; mixed
+or downgraded installs that cannot represent their actual funds require a clear
+compatibility response. Unupgraded daily-only users must remain supported.
+Do not read another implementation until the independent implementation has
+been completed and recorded in a commit; comparisons must be documented.
+
 ---
 
 ## 1. Product Contract
@@ -110,30 +225,30 @@ Rules:
   and MUST NOT participate in in-flow width (`space-between` / unequal flex
   columns are forbidden here — 「今日凝香」 being wider than 「下一炷」 must
   never shove 梁子 sideways).
-- remaining incense on the ring is pictorial place-value on **separate orbits**
-  (炷=stick ones, 月=moon tens, 日=sun hundreds, each 0–9). Glyphs sit on
-  almost-full orbits with a bottom gap for the 梁位 pill — not 2px dots on a
-  cramped top arc. A moon never occupies a stick slot.
-  ≥1000 炷 falls back to a compact numeral on the ring. The ring fill is
-  next-incense progress; the 炷/月/日 marks are remaining incense. The two
-  flanks are small captions of those same two facts — they must not compete
-  with the ring as a second copy of the same information.
+- remaining incense uses only its highest nonzero pictorial magnitude on
+  the ring: 0–9 sticks below 10, 1–9 moons for tens below 100, or 1–9 suns
+  for hundreds below 1000. Keep clear orbit spacing and the bottom gap;
+  do not paint every lower-order remainder at once. At 1000+ the transient
+  personal caption and exact accessible ring summary carry the amount;
+  never add a second permanent balance badge. Ring fill remains confirmed
+  next-incense progress, independent of available incense and Liangzi state.
 - the panel 梁子 and the docked logo bob together. Only the figure layer
   translates; chrome / ring / page stay still. Cadence follows personal
   `liang_qi_fill` (0 = slow idle bob, approaching 1 = faster), never remaining
   incense or the global 梁位. Respect `prefers-reduced-motion`.
 - right overlay: personal `tokens_to_next_incense` in **Pro 当量** (not raw
-  Flash Token). Hover/focus on 下一炷 shows the model-weight table
-  from the same static rule data used by accounting (Pro ×1,
-  Flash / other / unknown ×0.5); never maintain a second static table.
-- Live requests may add restrained smoke/glow and `凝香中` inside the existing
-  core. Activity is not progress: never extrapolate numeric Token captions,
+  Flash Token). Keep it a passive caption without a hover/focus model-rate
+  table or competing popup. Exact values remain accessible. Accounting and
+  published rule explanations use the same static Pro ×1 / Flash, other and
+  unknown ×0.5 source; do not create an independent table.
+- Live requests may add restrained smoke/glow inside the existing core;
+  never replace the daily caption with a persistent activity label. Activity is not progress: never extrapolate numeric Token captions,
   fill a fake percentage or mint spendable incense. Only confirmed ring
   geometry may interpolate; preserve figure bob cadence. Reduced motion uses
   static activity. Do not persist activity or transmit stream content.
 - visible 下一炷 当量 uses integer compact (`33K`, never `≈ 33.4K`) so the
-  flank does not overlap 梁子. Hover title and the screen-reader summary keep
-  the exact integer. 今日凝香 / 环上 overflow 仍可用一位小数。
+  flank does not overlap 梁子. The screen-reader summary keeps the exact
+  integer without adding a hover popup. 今日凝香 / 环上 overflow 仍可用一位小数。
 - under the avatar: **exactly one** global number — 梁位 = `up_ratio`, printed with
   6 decimals (`LIANG_POSITION_DECIMALS`) — then a causal arrow to the 称呼
   (`梁位 83.021952% → 梁神`). The authoritative text label remains outside the
@@ -177,8 +292,8 @@ incense.
 ### Region 4 — Social stats
 
 ```text
-    三界香火        五行香客      梁相案牍
-     12,846          2,841       进入梁祠
+    三界香火        五行香客        梁股
+     12,846          2,841        图标牍 图标祠
 ```
 
 - 三界香火 = accepted votes for the current case (天/人/地香火汇于一炉)
@@ -186,13 +301,20 @@ incense.
   underneath: this installation's today/lifetime 夯拉 and the share of 三界香火
   (`占梁`). Local only, never a fifth region or a 梁位 percentage-point claim
 - 五行香客 = unique users with at least one accepted vote for the current case/day (取经五众)
-- the right edge is one compact ritual-control column: `梁相案牍` above
-  `进入梁祠`; both remain inside Region 4 and neither is a fifth region
+- the right edge is one compact two-row ritual-control column: direct `梁股`
+  above bold icon + `牍` / icon + `祠`. Accessible names and custom short hints
+  remain `梁股 · 香火市场`, `梁相案牍` and `进入梁祠`; all stay inside Region 4,
+  never a fifth region. Preserve the primary market accent and quieter tool
+  colors, the original statistics and core centerline. Closing a market returns
+  to the real opening control for keyboard use; pointer closing blurs it.
+  Escape never revives a stale hint or hover state. Compact statistics keep
+  their full labels and exact accessible/tooltip values; large visual counts
+  must fit their slots without shrinking the controls or overflowing
 - routine Token claims, snapshots, reconnects and archive refresh are automatic;
   never present a routine manual-sync action
 - 梁相案牍 opens a themed 2×2 utility drawer: 梁相主页、定时上香、在线模式/离线模式、
-  当前版本, plus one full-width `梁位走势` row directly beneath the four tiles
-  (see 「走势」 below). The mode action always means switching to the other mode and requires
+  当前版本. The direct main-panel market entry makes a duplicate drawer row
+  unnecessary; omit it. The mode action always means switching to the other mode and requires
   explicit confirmation; network failure, reconnect, refresh and backend restart
   must never invoke it. 当前版本 opens a compact version-information dialog; the sound
   control has no long-press version gesture. `核对香火` remains under the collapsed
@@ -296,8 +418,8 @@ incense, voting availability, or any ledger.
 `走势` draws how 梁位 moved during one business date. It is a picture of what
 this installation observed, not a community ledger and not a trading product.
 
-- The only source is the running Host sampling its own authoritative wire state
-  every second. There is no community series endpoint, so an unobserved minute
+- For this local-observation channel, the only source is the running Host sampling its own authoritative wire state
+  every second. This channel does not read the separate official market series, so an unobserved minute
   has no data and must never be interpolated, back-filled or smoothed.
 - `虚线区间` means the Host was not running long enough to sample. It says
   「未统计」 (not seen), never 「无人投票」; votes cast inside such a gap still
@@ -327,10 +449,10 @@ this installation observed, not a community ledger and not a trading product.
 - The server picture is self-contained and inert: no scripts, no external
   references, no user-authored text, every label escaped, deterministic bytes so
   a content hash can cache it. A window that includes now is never cached.
-- The drawer keeps its four tiles and gains one full-width `梁位走势` row. The
-  chart has four display states — closed-and-remembered, compact corner card,
-  floating window, full screen — and the choice is a browser-local cosmetic
-  preference, never an authority.
+- The current market candidate uses one `香火交易` drawer row and its unified
+  chart window. The legacy observation component is retained as a reference,
+  not mounted as a second window; old display preferences never reopen it.
+  Observation routes and sampling remain read-only compatibility services.
 - Retired by decision (2026-11-06): in-chart order tickets, conditional rules
   and any third-party extension surface inside the chart. Do not add them, do
   not design around them, and do not mention them in product copy.
@@ -389,7 +511,7 @@ Current thresholds (approved 2026-10-18, Issue #2): the lower half is split at 2
 The joke is “a normal person is gradually夯 into an ancestor”:
 
 - 待开梁: low-presence, unlit placeholder
-- 小难梁: dusty-pink hoodie, small bow, bashful expression; the same adult 梁子 face
+- 小难梁: pale-blue hoodie, small bow, bashful expression; the same adult 梁子 face
 - 梁工: ordinary engineer / work badge
 - 梁总: suit / executive presence
 - 梁神: halo / mild levitation / starts becoming absurd
@@ -612,7 +734,8 @@ The single static rule source is `src/domain/incense-weight.ts`: match whole
 DeepSeek route IDs by family, not model age, provider, display name or release
 date. Do not fetch an upstream model catalog or add remote earning-rate
 overrides. Stored or received rule metadata must not change these rates.
-Host sends the same rule data to Client for its tooltip. Details:
+Host exposes the same rule data to Client for consistent explanations, without
+restoring the removed main-panel hover table. Details:
 `docs/INCENSE_POLICY.md`.
 
 Streaming usage is provisional: current DSH's durable `assistant/message` or
@@ -1128,6 +1251,13 @@ For substantial work:
 7. fix failures before considering the phase complete
 8. update docs when contracts/integration seams change
 
+Maintain a concise visible checklist for ongoing multi-step work in
+`docs/WORK_TRACKER.md`. Add new requests without dropping unfinished items;
+mark each completed item with its verification evidence and show progress to
+the user. Keep pending approval distinct from implementation and testing.
+Reopen an item if a regression is found; never use checked boxes as a substitute
+for the final build/install/backend gates.
+
 ### Version (HARD RULE — 用户可见改动必须升版本)
 
 Every user-visible product change (UI, Host/Client behavior, install/upgrade
@@ -1160,6 +1290,18 @@ copy, rollback points, and every still-unapproved external action. Passing the
 gate never authorizes publication. Public `main`, production backend, npm,
 GitHub Release/Tag, and GitHub Pages actions wait for explicit user approval.
 
+Before a formal release, recheck the important DSH plugin markets, including
+previous submissions and new major discovery sources. Use
+`docs/PLUGIN_MARKET_DISTRIBUTION.md` for field origins, refresh rules and
+priority. Prioritize native Discover sources and the established dsh-market /
+awesome chain before secondary directories. Keep one release-matched set of
+main UI, Lianggu market and Liangci screenshots plus current product copy;
+verify both search cards and details, GitHub and packed npm READMEs, and any
+manually curated listing. Do not promise three images in a card that only
+supports an icon. Record pending external review/cache separately and verify
+actual public rendering after approved publication. Research/preparation never
+authorizes third-party submissions or public changes.
+
 Backend-only community server updates must not bump the npm / client number.
 Stamp `SERVER_BUILD` as `${PLUGIN_VERSION}-uN` (for example `1.0.0-u1`) and
 leave `package.json` / `PLUGIN_VERSION` alone so the plugin market stays on
@@ -1172,20 +1314,20 @@ labels, internal task identifiers, personal home paths, private contact data,
 or credentials in files, commit metadata/messages, PR descriptions or comments.
 Commit only as yourself. The author and committer of every commit you create
 must be the identity configured for this clone (`user.name` / `user.email`),
-which must be your own account and the address your signing key carries.
+which must be your own account.
 Never borrow another account's handle or email to satisfy a document, a
 template, an example or a gate: a maintainer handle quoted in docs, a
 teammate's noreply address and a PR author's identity are all the wrong author
 for your work. If a hook, script or document
 demands a different identity, fix that demand instead of changing who you claim
 to be.
-Every commit you create must carry a GPG signature attributable to that author:
-`git config commit.gpgsign true` plus your own `user.signingkey`, with the key's
-UID email equal to the commit author email. Confirm `%G?` is `G` or `U` and
-`%GS` names the author before pushing; amend an unsigned or misattributed commit
-rather than pushing it. Your key over someone else's author field is not a
-signed commit, it is a forged one. Upload the matching public key to the hosting
-account so the signature also displays as verified there.
+Git commits and tags default to unsigned (`commit.gpgsign=false`,
+`tag.gpgsign=false`). GPG/SSH signing is optional; missing signing tools, keys,
+signatures or signer-email metadata must never block a commit, push or PR.
+Keep existing signatures and original contributor attribution intact; do not
+rewrite history merely to remove signatures. PR review, tests, privacy checks
+and other branch protections remain mandatory. This Git policy does not alter
+runtime request authentication or the installation's Ed25519 keys.
 Community contributors may voluntarily publish their commit email: PR CI treats
 that metadata as advisory, without requiring signed history to be rewritten.
 This exception never covers secrets, sensitive files, source text or PR prose.
@@ -1240,7 +1382,9 @@ After every completed change in this repository, **before considering the
 task done**:
 
 1. `git commit` with a descriptive message
-2. `git push` to the tracked remote immediately
+2. `git push` to the tracked remote immediately, unless the user explicitly
+   requests local-only work. A local-only instruction stops after the commit:
+   no push, PR, release or deployment is implied.
 
 Do not wait for the user to ask. Do not leave a finished fix uncommitted.
 The original Prompt 4 / Prompt 11 line 「禁止 git push」is **overridden**.

@@ -1,6 +1,6 @@
-import type { ReactElement } from 'react'
+import type { MouseEventHandler, ReactElement } from 'react'
 import { QQ_GROUP_QR_CODE_DATA_URL } from './qq-group-qrcode.ts'
-import { RELEASE_NOTES_QQ, RELEASE_NOTES_QQ_INVITE } from './release-notes.ts'
+import { RELEASE_NOTES_GROUP_NAME, RELEASE_NOTES_GROUP_NUMBER, RELEASE_NOTES_QQ, RELEASE_NOTES_QQ_INVITE } from './release-notes.ts'
 import { color } from './theme.ts'
 
 export type QqGroupCardContext = 'welcome' | 'release-notes'
@@ -10,7 +10,15 @@ export type QqGroupCardContext = 'welcome' | 'release-notes'
  * notes. Keep image, copy and visual treatment here so the two entry points
  * cannot drift again.
  */
-export function QqGroupCard({ context }: { context: QqGroupCardContext }): ReactElement {
+export function QqGroupCard({ context, onEnlarge }: { context: QqGroupCardContext, onEnlarge?: MouseEventHandler<HTMLButtonElement> }): ReactElement {
+  if (context === 'release-notes') return (
+    <div className="u-community-row" data-liangxiang-release-notes-qq="" data-liangxiang-qq-card="" aria-label={RELEASE_NOTES_QQ}>
+      <button type="button" className="u-qr-button" aria-label="放大QQ群二维码" onClick={onEnlarge}>
+        <img data-liangxiang-release-notes-qq-qrcode="" data-liangxiang-qq-qrcode="" src={QQ_GROUP_QR_CODE_DATA_URL} alt="梁相上香QQ群453683905二维码" width={78} height={78} />
+      </button>
+      <div><b>{RELEASE_NOTES_GROUP_NAME}</b><strong>{RELEASE_NOTES_GROUP_NUMBER}</strong><p>出梁案 · 晒梁位<br />催更新 · 许个愿</p></div>
+    </div>
+  )
   const cardContextAttribute = context === 'welcome'
     ? { 'data-liangxiang-welcome-qq': '' }
     : { 'data-liangxiang-release-notes-qq': '' }
@@ -27,7 +35,7 @@ export function QqGroupCard({ context }: { context: QqGroupCardContext }): React
         alignItems: 'center',
         gap: '10px',
         width: '100%',
-        marginTop: context === 'release-notes' ? '12px' : 0,
+        marginTop: 0,
         padding: '8px 10px',
         border: `1px solid color-mix(in srgb, ${color.ritualGold} 30%, ${color.border})`,
         borderRadius: '10px',
@@ -38,7 +46,7 @@ export function QqGroupCard({ context }: { context: QqGroupCardContext }): React
       <img
         {...imageContextAttribute}
         src={QQ_GROUP_QR_CODE_DATA_URL}
-        alt="梁相 QQ 群 453683905 二维码"
+        alt="梁相上香QQ群453683905二维码"
         data-liangxiang-qq-qrcode=""
         width={72}
         height={72}

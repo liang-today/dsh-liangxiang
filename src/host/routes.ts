@@ -17,18 +17,40 @@
  */
 import { createHash } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { readFile } from 'node:fs/promises'
 import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE, VOTE_RATE_LIMITED } from '../shared/index.ts'
 import { parseWireVoteRequest, type HostAuthorityPreference } from '../shared/wire.ts'
 import { BackendClientError } from './backend-client.ts'
 import { parseDevCreditBody, resolveDevCreditTokens } from './dev-credit.ts'
 import { DAY_END_ACTION_HEADER, DAY_END_ACTION_VALUE, parseDayEndPreferences, type DayEndPreferences } from '../shared/day-end.ts'
 import type { LiangHostService } from './service.ts'
+import { parseMarketPositionRequest } from '../shared/market-v1.ts'
+import { parseMarketCandlesQuery, parseMarketHistoryQuery } from './market-query.ts'
 import { parseBarsQuery } from '../shared/bars-v1.ts'
 import type { BarsQuery } from '../shared/bars-v1.ts'
 import type { BarsRecorder } from './bars.ts'
 
 const MAX_VOTE_BODY_BYTES = 4096
 const SSE_HEARTBEAT_MS = 25_000
+
+// Only these fixed build/source URLs can be read. Request query text is never
+// resolved as a filesystem path, and the promise cache can hold at most 3 rows.
+const PANEL_ART_FILES = {
+  nan: [new URL('./main-nan.webp', import.meta.url), new URL('../client/assets/main-nan.webp', import.meta.url)],
+  grass: [new URL('./main-grass.webp', import.meta.url), new URL('../client/assets/main-grass.webp', import.meta.url)],
+  fish: [new URL('./main-fish.webp', import.meta.url), new URL('../client/assets/main-fish.webp', import.meta.url)],
+} as const
+type PanelArtAsset = keyof typeof PANEL_ART_FILES
+
+function parsePanelArtAsset(search: URLSearchParams): PanelArtAsset | null {
+  for (const key of search.keys()) {
+    if ((key !== 'asset' && key !== 'v') || search.getAll(key).length !== 1) return null
+  }
+  const version = search.get('v')
+  if (version !== null && !/^[A-Za-z0-9.+-]{1,64}$/.test(version)) return null
+  const asset = search.get('asset')
+  return asset === 'nan' || asset === 'grass' || asset === 'fish' ? asset : null
+}
 
 export interface LiangxiangApi {
   handler: (req: IncomingMessage, res: ServerResponse) => Promise<void>
@@ -37,6 +59,7 @@ export interface LiangxiangApi {
 }
 
 interface SseConnection {
+  channel: 'state' | 'market'
   res: ServerResponse
   unsubscribe: () => void
   heartbeat: ReturnType<typeof setInterval>
@@ -137,6 +160,8 @@ export function createLiangxiangApi(
   options: LiangxiangApiOptions,
 ): LiangxiangApi {
   const connections = new Set<SseConnection>()
+  let art: Promise<Buffer> | null = null
+  const panelArt = new Map<PanelArtAsset, Promise<Buffer>>()
 
   const dropConnection = (connection: SseConnection): void => {
     if (!connections.delete(connection)) return
@@ -145,6 +170,25 @@ export function createLiangxiangApi(
   }
 
   const writeFrame = (connection: SseConnection): void => {
+    if (connection.res.writableLength > 256 * 1024) {
+      dropConnection(connection)
+      connection.res.end()
+      return
+    }
+    if (connection.channel === 'market') {
+      const state = service.cachedMarketState?.()
+      if (state == null) {
+        dropConnection(connection)
+        connection.res.end()
+        return
+      }
+      const payload = { ...state, cache_scope: service.marketCacheScope?.() ?? null }
+      const serialized = JSON.stringify({ ...payload, server_time: 0 })
+      if (serialized === connection.lastContent) return
+      connection.res.write(`data: ${JSON.stringify(payload)}\n\n`)
+      connection.lastContent = serialized
+      return
+    }
     const state = service.getWireState()
     // A successful authority read can advance revision without changing any
     // delivered field. Keep cadence/recovery intact while avoiding identical
@@ -157,7 +201,7 @@ export function createLiangxiangApi(
     connection.lastContent = serialized
   }
 
-  const handleEvents = (req: IncomingMessage, res: ServerResponse): void => {
+  const handleEvents = (req: IncomingMessage, res: ServerResponse, channel: 'state' | 'market' = 'state'): void => {
     res.writeHead(200, {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-store',
@@ -165,6 +209,7 @@ export function createLiangxiangApi(
       'x-accel-buffering': 'no',
     })
     const connection: SseConnection = {
+      channel,
       res,
       lastContent: null,
       unsubscribe: service.subscribe(() => {
@@ -269,6 +314,13 @@ export function createLiangxiangApi(
       '/liangxiang/api/vote-activity': 'POST',
       '/liangxiang/api/local/cycle-case': 'POST',
       '/liangxiang/api/dev/credit': 'POST',
+      '/liangxiang/api/market': 'GET',
+      '/liangxiang/api/market/events': 'GET',
+      '/liangxiang/api/market/position': 'POST',
+      '/liangxiang/api/market/candles': 'GET',
+      '/liangxiang/api/market/history': 'GET',
+      '/liangxiang/api/market/art.webp': 'GET',
+      '/liangxiang/api/panel/art.webp': 'GET',
       '/liangxiang/api/bars': 'GET',
       '/liangxiang/api/bars.svg': 'GET',
       '/liangxiang/api/bars/meta': 'GET',
@@ -280,6 +332,43 @@ export function createLiangxiangApi(
     }
     if (req.method !== expected) {
       writeJson(res, 405, { error: `method ${String(req.method)} not allowed` })
+      return
+    }
+    if (pathname === '/liangxiang/api/market/art.webp') {
+      try {
+        art ??= readFile(new URL('./market-whale.webp', import.meta.url))
+          .catch(() => readFile(new URL('../client/assets/market-whale.webp', import.meta.url)))
+        const image = await art
+        res.writeHead(200, { 'content-type': 'image/webp', 'content-length': image.byteLength,
+          'cache-control': 'public, max-age=3600', 'x-content-type-options': 'nosniff' })
+        res.end(image)
+      } catch {
+        art = null
+        writeJson(res, 404, { error: 'market illustration is not installed' })
+      }
+      return
+    }
+    if (pathname === '/liangxiang/api/panel/art.webp') {
+      const asset = parsePanelArtAsset(url.searchParams)
+      if (asset === null) {
+        writeJson(res, 400, { error: 'invalid panel illustration request' })
+        return
+      }
+      let pending = panelArt.get(asset)
+      if (pending === undefined) {
+        const [build, source] = PANEL_ART_FILES[asset]
+        pending = readFile(build).catch(() => readFile(source))
+        panelArt.set(asset, pending)
+      }
+      try {
+        const image = await pending
+        res.writeHead(200, { 'content-type': 'image/webp', 'content-length': image.byteLength,
+          'cache-control': 'public, max-age=3600', 'x-content-type-options': 'nosniff' })
+        res.end(image)
+      } catch {
+        if (panelArt.get(asset) === pending) panelArt.delete(asset)
+        writeJson(res, 404, { error: 'panel illustration is not installed' })
+      }
       return
     }
     // The mode route is the one startup action that may intentionally arrive
@@ -301,6 +390,59 @@ export function createLiangxiangApi(
     }
     if (pathname === '/liangxiang/api/events') {
       handleEvents(req, res)
+      return
+    }
+    if (pathname === '/liangxiang/api/market' || pathname.startsWith('/liangxiang/api/market/')) {
+      if (pathname === '/liangxiang/api/market/position' && options.isAuthorityModeChanging?.() === true) {
+        writeJson(res, 503, { error: 'authority mode is changing; retry after the handoff' })
+        return
+      }
+      const scope = service.marketCacheScope?.() ?? null
+      try {
+        let payload: unknown
+        if (pathname === '/liangxiang/api/market') {
+          if (url.search !== '') throw new Error('market state does not accept query parameters')
+          if (service.market === undefined) throw new BackendClientError('community market unavailable in this mode', 404, 'market_unavailable')
+          payload = await service.market()
+        } else if (pathname === '/liangxiang/api/market/events') {
+          if (url.search !== '') throw new Error('market events do not accept query parameters')
+          if (service.market === undefined) throw new BackendClientError('community market unavailable in this mode', 404, 'market_unavailable')
+          await service.market()
+          if (scope !== (service.marketCacheScope?.() ?? null)) throw new BackendClientError('authority changed during market read', 409, 'authority_changed')
+          handleEvents(req, res, 'market')
+          return
+        } else if (pathname === '/liangxiang/api/market/candles') {
+          const query = parseMarketCandlesQuery(url.searchParams)
+          if (service.marketCandles === undefined) throw new BackendClientError('community market unavailable in this mode', 404, 'market_unavailable')
+          payload = await service.marketCandles(query)
+        } else if (pathname === '/liangxiang/api/market/history') {
+          const query = parseMarketHistoryQuery(url.searchParams)
+          if (service.marketHistory === undefined) throw new BackendClientError('community market unavailable in this mode', 404, 'market_unavailable')
+          payload = await service.marketHistory(query)
+        } else {
+          if (url.search !== '') throw new Error('position does not accept query parameters')
+          if (!req.headers['content-type']?.startsWith('application/json')) {
+            writeJson(res, 415, { error: 'market position requires application/json' })
+            return
+          }
+          const intent = parseMarketPositionRequest(JSON.parse(await readBoundedBody(req)) as unknown)
+          if (service.marketPosition === undefined) throw new BackendClientError('community market unavailable in this mode', 404, 'market_unavailable')
+          payload = await service.marketPosition(intent)
+        }
+        if (scope !== (service.marketCacheScope?.() ?? null)) {
+          throw new BackendClientError('authority changed during market operation; retry the same intent only with its original identity',
+            req.method === 'POST' ? 502 : 409, req.method === 'POST' ? 'authority_changed_uncertain' : 'authority_changed')
+        }
+        if (scope !== null) res.setHeader('x-liangxiang-cache-scope', scope)
+        writeJson(res, 200, payload)
+      } catch (error) {
+        if (error instanceof OversizedBodyError) {
+          res.setHeader('connection', 'close')
+          writeJson(res, 413, { error: 'market body is too large' })
+        } else if (error instanceof BackendClientError) {
+          writeJson(res, error.status ?? 502, { error: { code: error.code ?? 'market_unavailable', message: error.message } })
+        } else writeJson(res, 400, { error: error instanceof Error ? error.message : 'invalid market request' })
+      }
       return
     }
     if (pathname === '/liangxiang/api/history') {

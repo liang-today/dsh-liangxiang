@@ -67,6 +67,9 @@ jobs:
         run: |
           node --test scripts/ci/check-pr-base.test.mjs scripts/ci/deploy-ssh.test.mjs scripts/ci/deploy-permissions.test.mjs
           pnpm run verify
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            node scripts/ci/check-rehearsal-entry.mjs
+          fi
       - name: Summarize the required check
         if: always()
         env:
@@ -81,9 +84,13 @@ jobs:
             echo "This job is a required merge check. It does not publish or deploy."
           } >> "$GITHUB_STEP_SUMMARY"
 
-  smoke:
-    name: smoke-installed
+  smoke-projects:
+    name: smoke-installed (${{ matrix.project }})
     if: github.repository == 'liang-today/dsh-liangxiang'
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, chromium-narrow, chromium-dark]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -104,7 +111,20 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: Packed installation and desktop, narrow, dark browser checks
         timeout-minutes: 15
-        run: pnpm run smoke:browser-clean-profile
+        run: pnpm run smoke:browser-clean-profile --project=${{ matrix.project }}
       - name: Isolated backend and Host online loop
+        if: matrix.project == 'chromium-desktop'
         timeout-minutes: 10
         run: pnpm run smoke:online
+
+  smoke:
+    name: smoke-installed
+    if: ${{ always() && github.repository == 'liang-today/dsh-liangxiang' }}
+    needs: smoke-projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every isolated browser project and the online loop
+        env:
+          SMOKE_RESULT: ${{ needs.smoke-projects.result }}
+        run: test "$SMOKE_RESULT" = success
