@@ -1266,6 +1266,16 @@ the user. Keep pending approval distinct from implementation and testing.
 Reopen an item if a regression is found; never use checked boxes as a substitute
 for the final build/install/backend gates.
 
+### Client payload budget (reviewable project budget)
+
+`scripts/check-client-budget.mjs` is a Liangxiang engineering review gate,
+not a DSH size limit. When an approved feature reasonably needs more room,
+report the raw/gzip increase, its cause and expected loading impact, then ask
+the user to approve a revised budget. Do not silently raise or bypass the gate,
+and do not spend repeated rounds shaving harmless bytes or removing approved
+artwork, interactions or motion merely to preserve an old number. Keep the
+current thresholds until approval, then update the script and evidence together.
+
 ### Version (HARD RULE — 用户可见改动必须升版本)
 
 Every user-visible product change (UI, Host/Client behavior, install/upgrade
