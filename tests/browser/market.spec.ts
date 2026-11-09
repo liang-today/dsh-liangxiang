@@ -109,17 +109,18 @@ async function expectReadableMarketLayout(dialog: Locator): Promise<void> {
         top: Math.min(...rects.map(rect => rect.top)), bottom: Math.max(...rects.map(rect => rect.bottom)) }
     }
     const labels = [...element.querySelectorAll('.liangxiang-market-wallet-label')]
-    if (labels.length !== 3) failures.push('wallet pair and daily pool labels')
+    if (labels.length !== 2) failures.push('wallet has two captions')
     else {
-      const first = box(labels[0]!), second = box(labels[1]!), total = box(labels[2]!)
-      if (Math.abs(first.top - second.top) > 1 || total.top <= first.bottom || Math.abs(first.left - total.left) > 1) failures.push('wallet pair shares one row above daily pool')
+      const first = box(labels[0]!), second = box(labels[1]!)
+      if (second.top <= first.bottom || Math.abs(first.left - second.left) > 1) failures.push('wallet captions stack and align')
     }
     const available = element.querySelector('[data-liangxiang-market-available]')!, frozen = element.querySelector('[data-liangxiang-market-frozen]')!, total = element.querySelector('[data-liangxiang-market-total]')!
-    if (Math.abs(box(available).bottom - box(frozen).bottom) > 1 || Math.abs(box(available).left - box(total).left) > 1) failures.push('summary values align')
-    for (const node of [frozen, total]) if (getComputedStyle(node).fontSize !== getComputedStyle(available).fontSize || getComputedStyle(node).color !== getComputedStyle(available).color) failures.push('summary amounts share size and colour')
+    const units = [...element.querySelectorAll('.liangxiang-market-wallet > small')]
+    if (Math.abs(box(available).right - box(frozen).right) > 1 || units.length !== 2 || Math.abs(box(units[0]!).left - box(units[1]!).left) > 1) failures.push('wallet numbers and incense units align vertically')
+    if (getComputedStyle(frozen).fontSize !== getComputedStyle(available).fontSize || getComputedStyle(frozen).color !== getComputedStyle(available).color) failures.push('wallet amounts share size and colour')
     const wallet = box(element.querySelector('.liangxiang-market-wallet')!), toolbar = box(element.querySelector('.liangxiang-market-chart-toolbar')!)
     if (toolbar.top - wallet.bottom < 4) failures.push('toolbar clears both wallet rows')
-    if (Math.abs(toolbar.width - wallet.width) > 1) failures.push('toolbar matches summary width')
+    if (Math.abs(toolbar.left - wallet.left) > 1) failures.push('toolbar aligns with wallet')
     const clock = element.querySelector('[data-liangxiang-market-clock]')!, controls = box(element.querySelector('.liangxiang-market-window-controls')!)
     const clockText = textBox(clock)
     if (!clockText || clockText.left < controls.left - 1 || clockText.right > controls.right + 1) failures.push('clock fits the fish-mode column')
@@ -147,12 +148,14 @@ async function expectReadableMarketLayout(dialog: Locator): Promise<void> {
     })
     const metrics = element.querySelector('.liangxiang-market-footer-metrics')!, actions = element.querySelector('.liangxiang-market-footer-actions')!
     const metricsBox = box(metrics), actionsBox = box(actions), fraction = metricsBox.width / (metricsBox.width + actionsBox.width)
-    if (fraction < .62 || fraction > .71 || metricsBox.right > actionsBox.left) failures.push('footer reserves two thirds for facts and one third for actions')
+    if (box(element).width > 600 && (fraction < .62 || fraction > .71 || metricsBox.right > actionsBox.left)) failures.push('footer reserves two thirds for facts and one third for actions')
     const cells = [...metrics.querySelectorAll(':scope > button')]
+    if (cells.length !== 3 || !cells[1]?.contains(total)) failures.push('daily pool is between position and selected pool')
     cells.forEach((cell, index) => {
       const bounds = box(cell), ink = textBox(cell)
       if (!ink || ink.left < bounds.left - 1 || ink.right > bounds.right + 1) failures.push(`footer fact ${index + 1} text fits`)
       if (index && bounds.left - box(cells[index - 1]!).right < 4) failures.push('footer facts have a clear gutter')
+      if (index && Math.abs(box(cell.querySelector(':scope > strong')!).top - box(cells[0]!.querySelector(':scope > strong')!).top) > 1) failures.push('footer values share a baseline')
     })
     const pool = element.querySelector('[data-liangxiang-market-pool]')!, amount = pool.querySelector('strong [title]')!, unit = pool.querySelector('strong small')!
     const distance = box(unit).left - box(amount).right
@@ -300,7 +303,8 @@ test('server clock, batch cutoffs, persistent holdings and selected pool stay re
   const dialog = await openMarket(page), pool = dialog.locator('[data-liangxiang-market-pool]')
   const available = dialog.locator('[data-liangxiang-market-available]')
   await expect(dialog.locator('.liangxiang-market-wallet')).toContainText('个人可用')
-  await expect(dialog.locator('.liangxiang-market-wallet-label')).toHaveText(['个人可用', '冻结香火', '今日香池'])
+  await expect(dialog.locator('.liangxiang-market-wallet-label')).toHaveText(['个人可用', '冻结香火'])
+  await expect(dialog.locator('.liangxiang-market-footer-metrics > button .liangxiang-market-metric-label')).toHaveText([/梁位/, '今日香池', /午盘香池.*午夜揭晓/])
   const dailyPool = dialog.locator('[data-liangxiang-market-total] [title]')
   await expect(dailyPool).toHaveText('50')
   await expect(dialog.locator('[data-liangxiang-market-clock]')).toHaveText('11/06 13:00')
@@ -322,7 +326,8 @@ test('server clock, batch cutoffs, persistent holdings and selected pool stay re
     await expect(poolValue).toHaveText(amount)
   }
   await expectPool('午盘', '50')
-  await expect(pool.locator('.liangxiang-market-connection')).toHaveText('24:00后一起揭晓')
+  await expect(pool.locator('.liangxiang-market-connection')).toHaveText('午夜揭晓')
+  await expect(pool.locator('.liangxiang-market-connection')).toHaveAttribute('title', '早、午、晚三盘均在24:00后统一揭晓')
   await expectReadableMarketLayout(dialog)
   const initial = (await dialog.boundingBox())!
   await early.click()

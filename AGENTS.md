@@ -81,8 +81,8 @@ in the header between the title/wallet and window controls, outside the plot.
 The same restrained gray future region in both charts starts at the actual
 business clock, with a clear current-time boundary and left-aligned `待开梁`
 caption. Thin stage strips distinguish investment windows without stacking
-full-height backgrounds; missing historical data remains a gap. The footer
-reads `24:00后一起揭晓`. One noninteractive time-window text beside the zoom controls shows the actual zoomed span.
+full-height backgrounds; missing historical data remains a gap. The footer carries a quiet `午夜揭晓` beside the selected pool; its full
+explanation states all three pools reveal after 24:00. One noninteractive time-window text beside the zoom controls shows the actual zoomed span.
 Wheel zoom is continuous and pointer-anchored; +/− step through 24/12/6/3/1 hours and 30 minutes; candle grain is automatic,
 never a separate interval selector, and cannot exceed the real source resolution. Record the active case all
 business day, including before trading opens; phase shading never hides prices. The normal window and order ticket stay compact. The header whale uses action-specific local motion and readable speech. It reports the selected batch's actual cutoff and pool once per minute, below operation/error priority; clicking it reports on demand.
@@ -90,17 +90,17 @@ The stage buttons use centered groups with small daypart icons: 早盘/午盘/�
 above the user's direction/amount, with the actual cutoff in quieter type
 (11点封盘; retain minutes for non-hour cutoffs). Omit 未投入; show necessary
 status when there is no position. Use 争梁位/已定梁 consistently. The footer's
-left two thirds contain 梁位/state and the selected stage's total pool/reveal
-time; the right third contains 我的回执/梁股玩法. Keep amount and 炷 together,
+left two thirds contain three aligned cells: 梁位/state, 今日香池 (all three
+stages), and the selected stage's pool with the quiet reveal hint at the right; the right third contains 我的回执/梁股玩法. Keep amount and 炷 together,
 inside a stable information cell; never reserve a gap between digits and unit.
-State/reveal text is bolder than its caption. Clicking either fact prompts the
+State text is bolder than its caption; the reveal hint stays quiet and secondary. Clicking either fact prompts the
 fish; pool speech uses actual side quantities and percentages, never fake 50/50
 for an empty pool. Do not restore a permanent countdown, sticky pool popup or
-duplicate position-caption row. Place 个人可用/冻结香火 on one line and 今日香池
-on the second. The public daily pool sums all three batches' long/short pools
+duplicate position-caption row. Stack 个人可用/冻结香火 on two rows with shared label, amount and unit
+columns so 炷 aligns vertically. Put 今日香池 in the middle footer cell. The public daily pool sums all three batches' long/short pools
 with exact integers; never add personal frozen funds again or label it cumulative
-turnover. All three amounts share compact blue styling and keep exact accessible
-values. Align the chart toolbar to this summary's width; coordinate the fish
+turnover. The wallet pair shares compact blue styling; footer pool amounts
+share their own blue size and baseline. Keep exact accessible values. Align the chart toolbar to this summary's width; coordinate the fish
 without reducing its motion or increasing the normal header height.
 The slightly larger clock under the motion
 toggle stays within its control column and uses server business date/time only.

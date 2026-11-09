@@ -389,8 +389,15 @@ describe('market dialog rendering', () => {
       const session: MarketSession = { getSnapshot: () => view, subscribe: () => () => undefined, start: async () => {}, submit: async () => {}, retryPending: async () => {}, loadHistory: async () => {}, dispose: () => {} }
       const html = renderToStaticMarkup(<MarketDialog reducedMotion online onClose={() => {}} session={session} />)
       const total = html.match(/data-liangxiang-market-total="">([\s\S]*?)<\/strong>/)?.[1]
-      expect(total).toContain(`title="${exact}"`)
-      expect(total).toContain(`>${compact}<`)
+      if (amounts) {
+        expect(total).toContain(`title="${exact}"`)
+        expect(total).toContain(`>${compact}<`)
+        expect(html.indexOf('今日香池')).toBeLessThan(html.indexOf('data-liangxiang-market-pool'))
+        expect(html).toContain('午夜揭晓')
+      } else {
+        expect(total).toBeUndefined()
+        expect(html).toContain('data-liangxiang-market-available=""><span title="—"')
+      }
       expect(sample.wallet.available_incense).toBe(100)
     }
   })
