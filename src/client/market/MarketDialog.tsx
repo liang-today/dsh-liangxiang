@@ -144,6 +144,7 @@ export function MarketDialog({ reducedMotion, online, onClose, restoreFocus = tr
   }
   const animatedNow = animated && visible && !reducedMotion
   const shownBatch = market?.batches.find(batch => batch.batch === selected)
+  const dailyPool = market?.batches.reduce((total, batch) => total + poolAmount(batch), 0n)
   const currentPoint = market?.close_point ?? state?.current_point ?? null
   const currentRatio = pointRatio(currentPoint)
   const currentName = currentRatio === null ? '待开梁' : marketDepthBands(casePresentation?.policyId).find(band => currentRatio >= band.low && (currentRatio < band.high || band.high === 1))?.label
@@ -180,9 +181,12 @@ export function MarketDialog({ reducedMotion, online, onClose, restoreFocus = tr
       <header className={marketClass('header')}>
         <div className={marketClass('header-copy')}>
         <h2 id="liangxiang-market-title" aria-label={MARKET_TITLE}><span>{MARKET_BRAND}</span><i aria-hidden="true" /><small>{MARKET_TOPIC}</small></h2>
-        <div className={marketClass('wallet')} aria-label="服务器累计钱包" title="可用与已到账收益跨日保留；冻结香火不能重复投入或上香">
-          <span><span className={marketClass('wallet-label')}>个人可用</span><strong data-liangxiang-market-available=""><Incense value={state?.wallet.available_incense} /></strong>炷</span>
-          <span><span className={marketClass('wallet-label')}>冻结香火</span><strong data-liangxiang-market-frozen=""><Incense value={state?.wallet.frozen_incense} /></strong>炷</span>
+        <div className={marketClass('wallet')}>
+          <div className={marketClass('wallet-row')} aria-label="服务器累计钱包" title="可用与已到账收益跨日保留；冻结香火不能重复投入或上香">
+            <span><span className={marketClass('wallet-label')}>个人可用</span><strong data-liangxiang-market-available=""><Incense value={state?.wallet.available_incense} /></strong><small>炷</small></span>
+            <span><span className={marketClass('wallet-label')}>冻结香火</span><strong data-liangxiang-market-frozen=""><Incense value={state?.wallet.frozen_incense} /></strong><small>炷</small></span>
+          </div>
+          <span aria-label="今日早午晚三盘香池合计" title="早、午、晚三盘的多空香火合计，随投入和撤回更新"><span className={marketClass('wallet-label')}>今日香池</span><strong data-liangxiang-market-total=""><Incense value={dailyPool} /></strong><small>炷</small></span>
         </div>
         </div>
         <button type="button" className={marketClass('companion-trigger')} aria-label="大肥鱼：播报本盘香池与时间" aria-description={shownBatch && state ? batchReport(shownBatch, state, now, true) : undefined} onClick={() => { if (shownBatch && state) reactFish('report', batchReport(shownBatch, state, now)) }}>

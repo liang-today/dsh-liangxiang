@@ -376,6 +376,25 @@ describe('market transport state machine', () => {
 })
 
 describe('market dialog rendering', () => {
+  it('shows all three public side pools exactly, independently of personal funds, with an unknown loading total', () => {
+    for (const [amounts, exact, compact] of [
+      [[0, 0, 0, 0, 0, 0], '0', '0'],
+      [[10, 20, 30, 40, 50, 60], '210', '210'],
+      [Array(6).fill(Number.MAX_SAFE_INTEGER), '54,043,195,528,445,946', '5.404亿亿'],
+      [null, '—', '—'],
+    ] as const) {
+      const sample = state()
+      if (amounts) sample.market!.batches.forEach((batch, i) => { batch.long_incense = amounts[i * 2]!; batch.short_incense = amounts[i * 2 + 1]! })
+      const view: MarketView = { state: amounts ? sample : null, status: amounts ? 'live' : 'loading', candles: [], receipts: [], historyPage: 1, nextCursor: null, pending: null, sending: false, historyLoading: false, error: null, chartError: null, scope: 'identity-a' }
+      const session: MarketSession = { getSnapshot: () => view, subscribe: () => () => undefined, start: async () => {}, submit: async () => {}, retryPending: async () => {}, loadHistory: async () => {}, dispose: () => {} }
+      const html = renderToStaticMarkup(<MarketDialog reducedMotion online onClose={() => {}} session={session} />)
+      const total = html.match(/data-liangxiang-market-total="">([\s\S]*?)<\/strong>/)?.[1]
+      expect(total).toContain(`title="${exact}"`)
+      expect(total).toContain(`>${compact}<`)
+      expect(sample.wallet.available_incense).toBe(100)
+    }
+  })
+
   it('exposes frozen funds, direction controls, motion toggle and readable pool semantics', () => {
     const s = state()
     const view: MarketView = { state: s, status: 'live', candles: [], receipts: [], historyPage: 1, nextCursor: null, pending: null, sending: false, historyLoading: false, error: null, chartError: null, scope: 'identity-a' }

@@ -5,7 +5,7 @@ import { COMPANION_CSS } from './MarketFishCompanion.tsx'
 export const MARKET_DIALOG_CSS = marketCss(`
 [data-~backdrop]{background-image:radial-gradient(#a6b7cf0b .8px,transparent 1px);background-size:16px 16px}
 [data-~dialog]{
- --~control:28px;--~gap:6px;--~top:10px;
+ --~control:28px;--~gap:6px;--~top:10px;--~summary:276px;
  --~paper:light-dark(#fdfcf9,#25292f);
  --~paper-2:light-dark(#edf1f6,#2e343d);
  --~ink:light-dark(#30394b,#e6eaf1);
@@ -37,19 +37,20 @@ export const MARKET_DIALOG_CSS = marketCss(`
 [data-~dialog] button:disabled{opacity:.42;cursor:default}
 [data-~dialog] button:hover:not(:disabled){background:color-mix(in srgb,var(--~blue) 8%,var(--~paper))}
 [data-~dialog] :is(button,input,summary,svg):focus-visible{outline:2px solid var(--~blue);outline-offset:3px}
-.~header{display:grid;grid-template-columns:170px minmax(0,1fr) 64px;align-items:center;gap:8px;flex:none;height:74px;margin-bottom:var(--~gap)}
+.~header{display:grid;grid-template-columns:var(--~summary) minmax(0,1fr) 64px;align-items:center;gap:8px;flex:none;height:74px;margin-bottom:var(--~gap)}
 .~header-copy{min-width:0;align-self:start}
 .~header h2{display:flex;align-items:center;gap:8px;margin:0 0 4px;white-space:nowrap;font-size:20px;font-weight:650;line-height:1.2}
 .~header h2 i{width:4px;height:4px;border-radius:50%;background:var(--~blue);opacity:.7}
 .~header h2 small{font-size:14px;font-weight:500;color:var(--~sub)}
-.~wallet{display:grid;gap:1px;line-height:20px;white-space:nowrap;font-size:11px;color:var(--~sub)}
-.~wallet>span{display:flex;align-items:baseline;gap:4px}
+.~wallet{display:grid;gap:1px;line-height:20px;white-space:nowrap;font-size:10px;color:var(--~sub)}
+.~wallet-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.~wallet>span,.~wallet-row>span{display:flex;align-items:baseline;gap:4px;min-width:0}
 .~wallet-label{width:4em;flex:none}
-.~wallet strong{font-size:13px;font-weight:600;color:var(--~ink)}
-.~wallet [data-~available]{font-size:21px;color:var(--~blue-text)}
+.~wallet strong{font-size:17px;font-weight:600;color:var(--~blue-text)}
+.~wallet small{font-size:inherit}
 [data-~dialog] .~companion-trigger{align-self:start;display:flex;align-items:center;justify-content:center;padding:4px 0 0;min-width:0;height:100px;border:0;background:none;text-align:left;overflow:visible}
 [data-~dialog] button.~companion-trigger:hover:not(:disabled){background:transparent}
-.~companion-trigger .~companion{width:100%;flex:1;padding-left:36px}
+.~companion-trigger .~companion{width:100%;flex:1;padding-left:12px}
 .~companion-trigger .~companion-speech{padding:0;background:none;font-size:11px;line-height:1.4}
 .~window-controls{display:grid;gap:var(--~gap);align-self:start;width:64px}
 .~window-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -68,7 +69,7 @@ export const MARKET_DIALOG_CSS = marketCss(`
 .~status button{pointer-events:auto;flex:none;font-size:11px;min-height:25px;padding:3px 6px;color:var(--~blue-text)}
 .~loading,.~empty{flex:1;display:grid;place-items:center;color:var(--~sub);font-size:12px}
 .~chart{display:flex;flex-direction:column;flex:1;min-height:250px;overflow:hidden}
-.~chart-toolbar{display:flex;align-items:center;gap:9px;flex:none;height:var(--~control);white-space:nowrap}
+.~chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:4px;width:min(var(--~summary),100%);flex:none;height:var(--~control);white-space:nowrap}
 .~chart-toolbar>div{display:flex;align-items:center;gap:3px;flex:none}
 [data-~dialog] .~chart-toolbar button{min-height:27px;padding:3px 7px;font-size:11px;color:var(--~sub)}
 [data-~dialog] button[data-selected=true]{background:var(--~paper-2);color:var(--~blue-text)}
@@ -147,6 +148,7 @@ export const MARKET_DIALOG_CSS = marketCss(`
 ${MARKET_MOTION_CSS}
 ${COMPANION_CSS}
 @media(max-width:600px){
+ [data-~dialog]{--~summary:calc(100% - 72px)}
  .~header{height:162px;grid-template-columns:minmax(0,1fr) 64px;grid-template-rows:74px 88px;gap:0 8px}
  .~header h2{font-size:18px;gap:6px;margin-bottom:4px}
  .~header h2 small{font-size:12px}
@@ -157,8 +159,7 @@ ${COMPANION_CSS}
 }
 @media(max-width:520px){
  [data-~dialog]{--~top:9px;height:min(600px,calc(100dvh - 24px));padding:var(--~top) 12px 7px;border-radius:13px}
- .~wallet{font-size:10px}
- .~wallet [data-~available]{font-size:18px}
+ .~wallet strong{font-size:15px}
  .~chart{min-height:225px}
  .~chart-quotes{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
  .~chart-quote-time{display:none}
@@ -179,8 +180,10 @@ ${COMPANION_CSS}
  .~header h2{font-size:16px}
  .~header h2 small{font-size:11px}
  .~header h2 i{width:3px;height:3px}
- .~wallet [data-~available]{font-size:17px}
- .~wallet strong{font-size:11px}
+ .~wallet{font-size:9px}
+ .~wallet-row{gap:6px}
+ .~wallet>span,.~wallet-row>span{gap:2px}
+ .~wallet strong{font-size:12px}
  .~chart-toolbar{gap:4px}
  [data-~dialog] .~chart-toolbar button{padding:3px 5px}
  .~stage-tabs [data-has-position=true] em,.~stage-tabs svg{display:none}

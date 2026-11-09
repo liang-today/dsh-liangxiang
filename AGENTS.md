@@ -96,9 +96,13 @@ inside a stable information cell; never reserve a gap between digits and unit.
 State/reveal text is bolder than its caption. Clicking either fact prompts the
 fish; pool speech uses actual side quantities and percentages, never fake 50/50
 for an empty pool. Do not restore a permanent countdown, sticky pool popup or
-duplicate position-caption row. Align 个人可用/冻结香火 labels and value starts,
-with the available amount larger. Reserve enough header height for both rows;
-the chart toolbar must stay clear. The slightly larger clock under the motion
+duplicate position-caption row. Place 个人可用/冻结香火 on one line and 今日香池
+on the second. The public daily pool sums all three batches' long/short pools
+with exact integers; never add personal frozen funds again or label it cumulative
+turnover. All three amounts share compact blue styling and keep exact accessible
+values. Align the chart toolbar to this summary's width; coordinate the fish
+without reducing its motion or increasing the normal header height.
+The slightly larger clock under the motion
 toggle stays within its control column and uses server business date/time only.
 Confirm and withdraw share one compact order row. The title is `梁股 · 香火市场`.
 Receipts and rules open overlays from permanent buttons; batch, status and wallet updates never resize the window.
@@ -1275,6 +1279,8 @@ the user to approve a revised budget. Do not silently raise or bypass the gate,
 and do not spend repeated rounds shaving harmless bytes or removing approved
 artwork, interactions or motion merely to preserve an old number. Keep the
 current thresholds until approval, then update the script and evidence together.
+Use readable KB/MB in user-facing reports and the checker's output (decimal
+units: 1 KB = 1,000 bytes); exact byte counts may accompany private evidence.
 
 ### Version (HARD RULE — 用户可见改动必须升版本)
 

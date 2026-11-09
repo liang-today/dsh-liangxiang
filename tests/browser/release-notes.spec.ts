@@ -29,7 +29,7 @@ test('an upgrader sees accessible version notes once, starting from the heading'
   await expect.poll(() => scroll.evaluate(element => element.scrollTop)).toBe(0)
   expect(await dialog.evaluate(element => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))).toEqual({ width: 256, height: 384 })
   await expect(dialog.locator('.u-slogan')).toHaveText('社区起浪，行情跟上。')
-  await expect(dialog.locator('.u-benefits > li').first()).toHaveText('行情更连贯　连接恢复后，自动追上社区走势。')
+  await expect(dialog.locator('.u-benefits > li').first()).toHaveText('行情更清楚　三盘香池一起看，重连后走势自动跟上。')
   await expect(dialog.locator('nav button')).toHaveText(['梁股怎么玩', '社群', '鸣谢'])
   for (const button of await dialog.locator('nav button').all()) await expect(button).toBeInViewport()
   await dialog.screenshot({ path: test.info().outputPath('update-sheet.png') })

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1-alpha.10（香池总览候选，未发布）
+
+- 梁股头部将个人可用与冻结并排，新增今日早午晚三盘香池合计。
+- 数字统一蓝色与紧凑字号，工具栏宽度与摘要对齐；保留所有动效及原有交易规则。
+- 使用现有实时行情字段，不新增后台接口、轮询或账本写入；完整验收留至发布前。
+
 ## 2.0.1-alpha.9
 
 - Harden byte decoding, concurrent Host work, restart accounting and history resynchronization.

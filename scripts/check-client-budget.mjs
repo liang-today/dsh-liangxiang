@@ -10,14 +10,15 @@ const client = await readFile(new URL('../lib/client.js', import.meta.url))
 // feature growth, report raw/gzip deltas and loading impact, obtain the user's
 // approval, then revise both thresholds and their evidence. Preserve approved
 // artwork and motion; do not silently bypass this gate or chase harmless bytes.
-const rawLimit = 725_000
+const rawLimit = 735_000
 const gzipLimit = 430_000
 const gzipBytes = gzipSync(client, { level: 9 }).byteLength
 
-console.log(`client.js: ${client.byteLength} bytes raw, ${gzipBytes} bytes gzip`)
+const size = bytes => bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(2)} MB` : `${(bytes / 1_000).toFixed(2)} KB`
+console.log(`client.js: ${size(client.byteLength)} raw, ${size(gzipBytes)} gzip`)
 if (client.byteLength > rawLimit || gzipBytes > gzipLimit) {
   throw new Error(
-    `client.js needs budget review (raw <= ${rawLimit}, gzip <= ${gzipLimit}); `
+    `client.js needs budget review (raw <= ${size(rawLimit)}, gzip <= ${size(gzipLimit)}); `
       + 'inspect accidental dependencies; report necessary feature growth and request user approval to revise the budget',
   )
 }

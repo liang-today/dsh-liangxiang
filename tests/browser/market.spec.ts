@@ -109,16 +109,17 @@ async function expectReadableMarketLayout(dialog: Locator): Promise<void> {
         top: Math.min(...rects.map(rect => rect.top)), bottom: Math.max(...rects.map(rect => rect.bottom)) }
     }
     const labels = [...element.querySelectorAll('.liangxiang-market-wallet-label')]
-    if (labels.length !== 2) failures.push('two four-character wallet labels')
+    if (labels.length !== 3) failures.push('wallet pair and daily pool labels')
     else {
-      const first = box(labels[0]!), second = box(labels[1]!)
-      if (Math.abs(first.left - second.left) > 1 || Math.abs(first.width - second.width) > 1) failures.push('wallet labels align')
+      const first = box(labels[0]!), second = box(labels[1]!), total = box(labels[2]!)
+      if (Math.abs(first.top - second.top) > 1 || total.top <= first.bottom || Math.abs(first.left - total.left) > 1) failures.push('wallet pair shares one row above daily pool')
     }
-    const available = element.querySelector('[data-liangxiang-market-available]')!, frozen = element.querySelector('[data-liangxiang-market-frozen]')!
-    if (Math.abs(box(available).left - box(frozen).left) > 1) failures.push('wallet values align')
-    if (Number.parseFloat(getComputedStyle(available).fontSize) <= Number.parseFloat(getComputedStyle(frozen).fontSize)) failures.push('available amount has priority')
+    const available = element.querySelector('[data-liangxiang-market-available]')!, frozen = element.querySelector('[data-liangxiang-market-frozen]')!, total = element.querySelector('[data-liangxiang-market-total]')!
+    if (Math.abs(box(available).bottom - box(frozen).bottom) > 1 || Math.abs(box(available).left - box(total).left) > 1) failures.push('summary values align')
+    for (const node of [frozen, total]) if (getComputedStyle(node).fontSize !== getComputedStyle(available).fontSize || getComputedStyle(node).color !== getComputedStyle(available).color) failures.push('summary amounts share size and colour')
     const wallet = box(element.querySelector('.liangxiang-market-wallet')!), toolbar = box(element.querySelector('.liangxiang-market-chart-toolbar')!)
     if (toolbar.top - wallet.bottom < 4) failures.push('toolbar clears both wallet rows')
+    if (Math.abs(toolbar.width - wallet.width) > 1) failures.push('toolbar matches summary width')
     const clock = element.querySelector('[data-liangxiang-market-clock]')!, controls = box(element.querySelector('.liangxiang-market-window-controls')!)
     const clockText = textBox(clock)
     if (!clockText || clockText.left < controls.left - 1 || clockText.right > controls.right + 1) failures.push('clock fits the fish-mode column')
@@ -299,7 +300,9 @@ test('server clock, batch cutoffs, persistent holdings and selected pool stay re
   const dialog = await openMarket(page), pool = dialog.locator('[data-liangxiang-market-pool]')
   const available = dialog.locator('[data-liangxiang-market-available]')
   await expect(dialog.locator('.liangxiang-market-wallet')).toContainText('个人可用')
-  await expect(dialog.locator('.liangxiang-market-wallet-label')).toHaveText(['个人可用', '冻结香火'])
+  await expect(dialog.locator('.liangxiang-market-wallet-label')).toHaveText(['个人可用', '冻结香火', '今日香池'])
+  const dailyPool = dialog.locator('[data-liangxiang-market-total] [title]')
+  await expect(dailyPool).toHaveText('50')
   await expect(dialog.locator('[data-liangxiang-market-clock]')).toHaveText('11/06 13:00')
   await expect(dialog.locator('[data-liangxiang-market-clock]')).toHaveAttribute('title', /UTC.*服务器业务时间/)
   await expect(dialog.getByRole('tab')).toHaveCount(3)
@@ -324,6 +327,7 @@ test('server clock, batch cutoffs, persistent holdings and selected pool stay re
   const initial = (await dialog.boundingBox())!
   await early.click()
   await expectPool('早盘', '0')
+  await expect(dailyPool).toHaveText('50')
   await expect(noon).toContainText('多10炷')
   await expect(dialog.getByRole('spinbutton')).toBeDisabled()
   expect((await dialog.boundingBox())!.height).toBeCloseTo(initial.height, 0)
@@ -335,6 +339,8 @@ test('server clock, batch cutoffs, persistent holdings and selected pool stay re
   large.server_time += 1
   large.wallet = { ...large.wallet, available_incense: maximum - 10, frozen_incense: 10, total_incense: maximum, version: 2 }
   large.market!.batches[1] = { ...large.market!.batches[1]!, long_incense: maximum, short_incense: maximum }
+  large.market!.batches[0] = { ...large.market!.batches[0]!, long_incense: 12, short_incense: 8 }
+  large.market!.batches[2] = { ...large.market!.batches[2]!, long_incense: 14, short_incense: 16 }
   await page.evaluate(state => window.__liangxiangMarketFrame?.(state), large)
   await expect(available).toHaveText('9007万亿')
   expect(await available.locator('[title]').evaluate((element, count) => {
@@ -342,6 +348,8 @@ test('server clock, batch cutoffs, persistent holdings and selected pool stay re
     return element.getAttribute('title') === exact && element.getAttribute('aria-label') === exact
   }, maximum - 10)).toBe(true)
   await expect(poolValue).toHaveText('1.801亿亿')
+  await expect(dailyPool).toHaveText('1.801亿亿')
+  await expect(dailyPool).toHaveAttribute('title', (2n * BigInt(maximum) + 50n).toLocaleString())
   expect(await poolValue.evaluate((element, count) => {
     const exact = BigInt(count).toLocaleString()
     return element.getAttribute('title') === exact && element.getAttribute('aria-label') === exact
@@ -372,7 +380,8 @@ test('server clock, batch cutoffs, persistent holdings and selected pool stay re
         await expectReadableMarketLayout(dialog)
       }
       await early.click()
-      await expectPool('早盘', '0')
+      await expectPool('早盘', '20')
+      await expect(dailyPool).toHaveAttribute('title', (2n * BigInt(maximum) + 50n).toLocaleString())
       await expect(noon).toContainText('多10炷')
       expect((await dialog.boundingBox())!.height).toBeCloseTo(frame.height, 0)
       await noon.click()
