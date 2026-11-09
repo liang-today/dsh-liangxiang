@@ -410,3 +410,17 @@ it('marks persistent schema failures offline, retains good data and reconnects a
   expect(store.getSnapshot().connection).toBe('live')
   store.dispose()
 })
+
+
+it('does not disconnect a healthy SSE feed when a best-effort HTTP refresh fails', async () => {
+  const service = makeService(), controls = fakeTransport(service)
+  const store = createLiveLiangxiangStore(controls.transport)
+  store.start(); await settled()
+  controls.failNextFetches(1)
+  store.refresh({ force: true }); await settled()
+  expect(store.getSnapshot().connection).toBe('live')
+  expect(controls.streamsOpened).toBe(1)
+  controls.pushFrame({ ...service.getWireState(), revision: service.getWireState().revision + 1 })
+  expect(store.getSnapshot().connection).toBe('live')
+  store.dispose()
+})

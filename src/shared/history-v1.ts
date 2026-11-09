@@ -157,7 +157,7 @@ function array(raw: unknown, field: string): unknown[] {
 
 function parseArchiveFields(value: Record<string, unknown>, field: string, envelopeVersion: number) {
   const archiveVersion = positiveCount(value.archive_version, `${field}.archive_version`)
-  if (archiveVersion > envelopeVersion) throw new WireError(`${field}.archive_version`, 'cannot exceed response archive version')
+  if (archiveVersion > envelopeVersion) throw new WireError(`${field}.archive_version`, 'archive version exceeds envelope')
   const version = liangziPolicyVersion(value.liangzi_policy_version, `${field}.liangzi_policy_version`)
   return {
     archiveVersion,
@@ -194,7 +194,7 @@ function parseWeek(raw: unknown, field: string, envelopeVersion: number): LiangW
   const expected = isoWeekFor(startDate)
   const weekId = string(value.week_id, `${field}.week_id`)
   if (weekId !== expected.weekId || startDate !== expected.startDate || endDate !== expected.endDate) {
-    throw new WireError(field, 'week id/bounds do not form one ISO Monday-Sunday week')
+    throw new WireError(field, 'invalid ISO Monday-Sunday bounds')
   }
   return {
     weekId,
@@ -212,7 +212,7 @@ function parseMonth(raw: unknown, field: string, envelopeVersion: number): Liang
   const expected = monthFor(startDate)
   const monthId = string(value.month_id, `${field}.month_id`)
   if (monthId !== expected.monthId || startDate !== expected.startDate || endDate !== expected.endDate) {
-    throw new WireError(field, 'month id/bounds do not form one calendar month')
+    throw new WireError(field, 'invalid calendar month bounds')
   }
   return {
     monthId,

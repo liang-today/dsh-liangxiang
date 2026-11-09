@@ -334,10 +334,12 @@ export function createLiveLiangxiangStore(
     lastLiveRefreshAt = now
     transport.fetchJson(REFRESH_PATH, { method: 'POST' })
       .then((raw) => {
-        if (!disposed) applyWire(raw)
+        if (disposed) return
+        try { applyWire(raw) } catch { goOffline() }
       })
       .catch(() => {
-        goOffline()
+        // A failed HTTP read is not evidence that a healthy SSE feed died.
+        if (stream === null || sseErrors > 0) goOffline()
       })
       .finally(() => {
         refreshInFlight = false

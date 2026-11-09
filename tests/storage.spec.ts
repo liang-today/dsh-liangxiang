@@ -261,6 +261,8 @@ it('quarantines a broken timed job without preventing the identity domain from l
   expect(safe).toMatchObject({ authorityPreference: 'online', dayEndQuarantine: corrupt.dayEnd })
   await facility.domains.get(LIANGXIANG_DOMAIN_NAME)!.table('settings').put('day_end', safe)
   expect(handle.settings.getDayEndState()).toBeNull()
+  await expect(handle.settings.setDayEndState({ ...DEFAULT_DAY_END, enabled: true })).rejects.toThrow('定时记录待核对')
+  expect(handle.settings.getDayEndState()).toBeNull()
   expect(warnings.join(' ')).toContain('quarantined')
   expect((await handle.identity.resolve()).installationId).toBe(identity.installationId)
   await handle.close()

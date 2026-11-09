@@ -306,7 +306,8 @@ const settingsSchema: DshValueSchema = {
     }
     if (record.dayEndQuarantine !== undefined && record.dayEnd === undefined) return { authorityPreference: preference, dayEndQuarantine: record.dayEndQuarantine }
     if (record.dayEnd === undefined) return { authorityPreference: preference }
-    try { return { authorityPreference: preference, dayEnd: parseDayEndState(record.dayEnd),
+    try { const dayEnd = parseDayEndState(record.dayEnd)
+      return { authorityPreference: preference, dayEnd: record.dayEndQuarantine === undefined ? dayEnd : { ...dayEnd, enabled: false },
       ...(record.dayEndQuarantine === undefined ? {} : { dayEndQuarantine: record.dayEndQuarantine }) } }
     catch { return { authorityPreference: preference, dayEndQuarantine: record.dayEnd } }
   },
@@ -510,12 +511,15 @@ export async function openLiangxiangPersistence(
       const stored = settingsTable.get('day_end')
       if (stored === undefined) return null
       const parsed = settingsSchema.parse(stored) as { dayEnd?: DayEndState, dayEndQuarantine?: unknown }
-      if (parsed.dayEndQuarantine !== undefined && parsed.dayEnd === undefined) warn('[dsh-liangxiang] timed incense settings quarantined; automatic voting disabled')
+      if (parsed.dayEndQuarantine !== undefined) warn('[dsh-liangxiang] timed incense settings quarantined; automatic voting disabled')
       return parsed.dayEnd ?? null
     },
     async setDayEndState(dayEnd: DayEndState): Promise<void> {
       const stored = settingsTable.get('day_end')
       const parsed = stored === undefined ? {} : settingsSchema.parse(stored) as { dayEndQuarantine?: unknown }
+      if (parsed.dayEndQuarantine !== undefined && dayEnd.enabled) {
+        throw new Error('定时记录待核对，请恢复原记录后再开启；未确认意图仍保留')
+      }
       await settingsTable.put('day_end', { authorityPreference: 'online', dayEnd: parseDayEndState(dayEnd),
         ...(parsed.dayEndQuarantine === undefined ? {} : { dayEndQuarantine: parsed.dayEndQuarantine }) })
     },

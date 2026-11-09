@@ -252,3 +252,21 @@
 - [ ] Integrate the candidate into the final release; no production deployment or publication in this change.
 
 Evidence and the unpatchable released-1.2 display boundary: [validation](WALLET_ACTIVATION_VALIDATION.md).
+
+## 代码审查加固（未发布）
+
+| 状态 | 工作 | 验证 |
+|---|---|---|
+| [x] | 请求字节边界、实时坏帧与身份切换 | 字节分块、真实签名HTTP、坏帧及身份代际回归通过 |
+| [x] | 离线赠香、定时意图与观察走势持久化 | 重启、同日换案及未知批量回执回归通过 |
+| [x] | 档案版本、协议与后台资源边界 | SQLite重开、并发升级正反例、协议与部署只读门禁通过 |
+| [x] | 用量游标、活动与本地统计 | 单飞、尾数、失活清理、Web Locks及类型/回归检查通过 |
+| [x] | 梁标速率历史对比及漏测复盘 | 周期4800→1100ms、幅度7px保持；RELIABILITY_REVIEW记录矩阵缺口 |
+| [ ] | 完整验证、打包与个人fork备份 | 不部署、不发布 |
+
+后续讨论（先完成当前修复）：
+
+| 状态 | 工作 | 边界 |
+|---|---|---|
+| [ ] | 解释客户端体积门禁来源 | 区分项目预算与DSH限制 |
+| [ ] | 评估集合阶段、连续参与与收盘自动上香提议 | 只讨论，不修改交易规则 |

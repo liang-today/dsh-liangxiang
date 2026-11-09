@@ -30,6 +30,26 @@ sha256sum "$CONFIG" | cut -d ' ' -f 1
 PROXY_CHECK
 }
 
+# Read only. Do not source the operator environment or print its contents.
+deploy_signed_auth_check_script() {
+  cat <<'AUTH_CHECK'
+set -euo pipefail
+awk '
+/^[[:space:]]*LIANGXIANG_ALLOW_UNSIGNED[[:space:]]*=/ {
+  value=$0
+  sub(/^[^=]*=/, "", value)
+  gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+  if (value != "0" && value != "\"0\"" && value != "\0470\047" && value != "") bad=1
+}
+END {
+  if (bad) {
+    print "refusing deploy: unsigned authentication must be disabled" > "/dev/stderr"
+    exit 1
+  }
+}' "$1"
+AUTH_CHECK
+}
+
 deploy_target_preflight() {
   local actual
   actual="$("${DEPLOY_SSH[@]}" -o BatchMode=yes -o ConnectTimeout=10 "$REMOTE" hostname)"
@@ -45,6 +65,7 @@ if [[ "$1" == liangxiang || -e "$marker" ]]; then
   }
 fi
 ROLE_CHECK
+  deploy_signed_auth_check_script | "${DEPLOY_SSH[@]}" "$REMOTE" sudo -n bash -s -- /etc/liangxiang.env
   DEPLOY_STANDBY_PROXY_SHA="not-used"
   if [[ "$DEPLOY_ROLE" == standby ]]; then
     DEPLOY_STANDBY_PROXY_SHA="$(standby_proxy_check_script | "${DEPLOY_SSH[@]}" "$REMOTE" sudo -n bash -s)"
