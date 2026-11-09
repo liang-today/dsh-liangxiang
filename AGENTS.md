@@ -100,8 +100,11 @@ duplicate position-caption row. Stack 个人可用/冻结香火 on two rows with
 columns so 炷 aligns vertically. Put 今日香池 in the middle footer cell. The public daily pool sums all three batches' long/short pools
 with exact integers; never add personal frozen funds again or label it cumulative
 turnover. The wallet pair shares compact blue styling; footer pool amounts
-share their own blue size and baseline. Keep exact accessible values. Align the chart toolbar to this summary's width; coordinate the fish
-without reducing its motion or increasing the normal header height.
+share their own blue size and baseline. Keep exact accessible values. The wallet and chart toolbar share a compact 200px width and align both edges;
+wallet amounts expand within that grid while units keep their common column.
+Let the fish reclaim the released horizontal space for speech without reducing
+its motion or increasing normal header height. The quiet midnight hint directly
+follows its pool caption with a small gap, never automatic edge-pushing margins.
 The slightly larger clock under the motion
 toggle stays within its control column and uses server business date/time only.
 Confirm and withdraw share one compact order row. The title is `梁股 · 香火市场`.

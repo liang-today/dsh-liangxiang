@@ -1,6 +1,6 @@
 {
   "name": "dsh-liangxiang",
-  "version": "2.0.1-alpha.11",
+  "version": "2.0.1-alpha.12",
   "description": "梁股开盘了！梁相是DeepSeek Harness插件：对话攒香火，夯拉定梁位；早午晚三盘做多做空，午夜揭晓，在线香火与收益跨日保留。",
   "homepage": "https://liang.today/",
   "icon": "./lib/main-nan.webp",

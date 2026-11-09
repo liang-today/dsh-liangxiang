@@ -5,7 +5,7 @@ import { COMPANION_CSS } from './MarketFishCompanion.tsx'
 export const MARKET_DIALOG_CSS = marketCss(`
 [data-~backdrop]{background-image:radial-gradient(#a6b7cf0b .8px,transparent 1px);background-size:16px 16px}
 [data-~dialog]{
- --~control:28px;--~gap:6px;--~top:10px;--~summary:276px;
+ --~control:28px;--~gap:6px;--~top:10px;--~summary:200px;
  --~paper:light-dark(#fdfcf9,#25292f);
  --~paper-2:light-dark(#edf1f6,#2e343d);
  --~ink:light-dark(#30394b,#e6eaf1);
@@ -42,13 +42,13 @@ export const MARKET_DIALOG_CSS = marketCss(`
 .~header h2{display:flex;align-items:center;gap:8px;margin:0 0 4px;white-space:nowrap;font-size:20px;font-weight:650;line-height:1.2}
 .~header h2 i{width:4px;height:4px;border-radius:50%;background:var(--~blue);opacity:.7}
 .~header h2 small{font-size:14px;font-weight:500;color:var(--~sub)}
-.~wallet{display:grid;grid-template-columns:4em max-content 1em;align-items:baseline;gap:1px 5px;line-height:20px;white-space:nowrap;font-size:10px;color:var(--~sub)}
+.~wallet{display:grid;grid-template-columns:4em minmax(0,1fr) 1em;align-items:baseline;width:min(var(--~summary),100%);gap:1px 5px;line-height:20px;white-space:nowrap;font-size:10px;color:var(--~sub)}
 .~wallet-label{min-width:0}
 .~wallet strong{justify-self:end;font-size:17px;font-weight:600;color:var(--~blue-text)}
 .~wallet small{font-size:inherit}
 [data-~dialog] .~companion-trigger{align-self:start;display:flex;align-items:center;justify-content:center;padding:4px 0 0;min-width:0;height:100px;border:0;background:none;text-align:left;overflow:visible}
 [data-~dialog] button.~companion-trigger:hover:not(:disabled){background:transparent}
-.~companion-trigger .~companion{width:100%;flex:1;padding-left:12px}
+.~companion-trigger .~companion{width:100%;flex:1;padding-left:0}
 .~companion-trigger .~companion-speech{padding:0;background:none;font-size:11px;line-height:1.4}
 .~window-controls{display:grid;gap:var(--~gap);align-self:start;width:64px}
 .~window-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -117,7 +117,7 @@ export const MARKET_DIALOG_CSS = marketCss(`
 .~footer-metrics button>strong{display:flex;align-items:baseline;gap:4px;font-size:13px;line-height:19px;font-weight:600;color:var(--~ink)}
 .~footer-metrics button>strong>small{font-size:11px;font-weight:400;color:var(--~sub)}
 .~pool>strong{color:var(--~blue-text)!important}
-.~connection{display:inline-flex;align-items:center;gap:2px;margin-left:auto;font-size:9px;font-weight:400;white-space:nowrap}
+.~connection{display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:400;white-space:nowrap}
 .~connection svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .~footer-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding-left:10px;border-left:1px solid var(--~border);min-width:0}
 [data-~dialog] .~footer-actions>button{min-width:0;min-height:30px;padding:3px 0;font-size:11px;white-space:nowrap;color:var(--~sub)}
@@ -147,7 +147,6 @@ export const MARKET_DIALOG_CSS = marketCss(`
 ${MARKET_MOTION_CSS}
 ${COMPANION_CSS}
 @media(max-width:600px){
- [data-~dialog]{--~summary:calc(100% - 72px)}
  .~header{height:162px;grid-template-columns:minmax(0,1fr) 64px;grid-template-rows:74px 88px;gap:0 8px}
  .~header h2{font-size:18px;gap:6px;margin-bottom:4px}
  .~header h2 small{font-size:12px}

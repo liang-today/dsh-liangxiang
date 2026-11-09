@@ -120,7 +120,12 @@ async function expectReadableMarketLayout(dialog: Locator): Promise<void> {
     if (getComputedStyle(frozen).fontSize !== getComputedStyle(available).fontSize || getComputedStyle(frozen).color !== getComputedStyle(available).color) failures.push('wallet amounts share size and colour')
     const wallet = box(element.querySelector('.liangxiang-market-wallet')!), toolbar = box(element.querySelector('.liangxiang-market-chart-toolbar')!)
     if (toolbar.top - wallet.bottom < 4) failures.push('toolbar clears both wallet rows')
-    if (Math.abs(toolbar.left - wallet.left) > 1) failures.push('toolbar aligns with wallet')
+    if (Math.abs(toolbar.left - wallet.left) > 1 || Math.abs(toolbar.right - wallet.right) > 1) failures.push('toolbar and wallet share both edges')
+    if (toolbar.width > 201 || Math.abs(box(units[0]!).right - wallet.right) > 1) failures.push('compact toolbar and wallet use their shared width')
+    if (box(element).width > 600) {
+      const fish = box(element.querySelector('[data-liangxiang-market-main-whale]')!), speech = box(element.querySelector('.liangxiang-market-companion-speech')!)
+      if (fish.left - wallet.right > 9 || speech.right - speech.left < 160) failures.push('fish reclaims the old blank column for speech')
+    }
     const clock = element.querySelector('[data-liangxiang-market-clock]')!, controls = box(element.querySelector('.liangxiang-market-window-controls')!)
     const clockText = textBox(clock)
     if (!clockText || clockText.left < controls.left - 1 || clockText.right > controls.right + 1) failures.push('clock fits the fish-mode column')
@@ -158,6 +163,10 @@ async function expectReadableMarketLayout(dialog: Locator): Promise<void> {
       if (index && Math.abs(box(cell.querySelector(':scope > strong')!).top - box(cells[0]!.querySelector(':scope > strong')!).top) > 1) failures.push('footer values share a baseline')
     })
     const pool = element.querySelector('[data-liangxiang-market-pool]')!, amount = pool.querySelector('strong [title]')!, unit = pool.querySelector('strong small')!
+    const label = pool.querySelector('.liangxiang-market-metric-label')!, reveal = pool.querySelector('.liangxiang-market-connection')!
+    const caption = document.createRange(); caption.setStart(label.firstChild!, 0); caption.setEndBefore(reveal)
+    const captionBox = caption.getBoundingClientRect(), revealBox = box(reveal)
+    if (Math.abs(captionBox.top - revealBox.top) < 8 && revealBox.left - captionBox.right > 7) failures.push('midnight hint stays beside its pool caption')
     const distance = box(unit).left - box(amount).right
     if (distance < 0 || distance > 6) failures.push('pool amount and incense unit stay together')
     const frame = box(element)
