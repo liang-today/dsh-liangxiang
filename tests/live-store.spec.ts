@@ -396,3 +396,17 @@ describe('live store', () => {
     store.dispose()
   })
 })
+
+
+it('marks persistent schema failures offline, retains good data and reconnects automatically', async () => {
+  const service = makeService(), controls = fakeTransport(service)
+  const store = createLiveLiangxiangStore(controls.transport)
+  store.start(); await settled()
+  const good = store.getSnapshot().snapshot
+  for (let n = 0; n < 5; n++) controls.pushFrame({ schemaVersion: 999 } as unknown as LiangxiangWireState)
+  expect(store.getSnapshot().connection).toBe('offline')
+  expect(store.getSnapshot().snapshot).toEqual(good)
+  await new Promise(resolve => setTimeout(resolve, 1050)); await settled()
+  expect(store.getSnapshot().connection).toBe('live')
+  store.dispose()
+})

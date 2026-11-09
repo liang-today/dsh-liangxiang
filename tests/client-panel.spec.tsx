@@ -1284,3 +1284,13 @@ describe('wallet compatibility feedback', () => {
     expect(votes.every(node => node.props.disabled === true)).toBe(true)
   })
 })
+
+
+it('does not display a guessed token threshold while the first community bootstrap is pending', () => {
+  const state = onlineState()
+  const tree = renderPanel({ ...state, authorityAvailable: false, activeCase: { ...state.activeCase, id: 'connecting' } })
+  const next = findByAttr(tree, 'data-liangxiang-personal', 'next-incense')[0]
+  expect(visibleNextIncenseText(next)).toContain('--')
+  expect(visibleNextIncenseText(next)).not.toContain('50K')
+  expect(next?.props['aria-label']).toContain('等待社区连接')
+})

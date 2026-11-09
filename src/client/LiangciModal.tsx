@@ -498,8 +498,8 @@ function DetailPanel({
   days: readonly LiangDayArchive[]
   weeks: readonly LiangWeekArchive[]
   months: readonly LiangMonthArchive[]
-  openWeekUniqueVoters: number
-  openMonthUniqueVoters: number
+  openWeekUniqueVoters: number | undefined
+  openMonthUniqueVoters: number | undefined
 }): ReactElement {
   let heading = ''
   let eyebrow = ''
@@ -538,7 +538,7 @@ function DetailPanel({
       ? <p style={{ margin: 0 }}>未来周期不预设周梁。</p>
       : period === null
       ? <p style={{ margin: 0 }}>该周没有永久周梁档案。</p>
-      : <ArchiveFacts up={period.upVotes} down={period.downVotes} voters={period.uniqueVoters} covered={`${period.coveredDays}/7 日`} />
+      : <ArchiveFacts up={period.upVotes} down={period.downVotes} voters={period.uniqueVotersKnown === false ? undefined : period.uniqueVoters} covered={`${period.coveredDays}/7 日`} />
   } else {
     const permanent = months.find(month => month.monthId === selection.id)
     const isCurrent = selection.id === businessDate.slice(0, 7)
@@ -550,7 +550,7 @@ function DetailPanel({
       : permanent !== undefined ? '已封存月梁' : temporary?.status === 'waiting' ? '本月待积' : '本月暂梁'
     body = period === null
       ? <p style={{ margin: 0 }}>该月没有永久月梁档案。</p>
-      : <ArchiveFacts up={period.upVotes} down={period.downVotes} voters={period.uniqueVoters} covered={`${period.coveredDays} 日`} />
+      : <ArchiveFacts up={period.upVotes} down={period.downVotes} voters={period.uniqueVotersKnown === false ? undefined : period.uniqueVoters} covered={`${period.coveredDays} 日`} />
   }
   return (
     <section
@@ -592,7 +592,7 @@ export function ArchiveDayFactsRow({ archive }: { archive: LiangDayArchive }): R
         alignItems: 'start',
       }}
     >
-      <ArchiveFacts up={archive.upVotes} down={archive.downVotes} voters={archive.uniqueVoters} covered={`${archive.caseCount} 案`} />
+      <ArchiveFacts up={archive.upVotes} down={archive.downVotes} voters={archive.uniqueVotersKnown === false ? undefined : archive.uniqueVoters} covered={`${archive.caseCount} 案`} />
       <div style={{ minWidth: 0 }}>
         <strong style={{ display: 'block', marginBottom: '3px', fontSize: '10px', color: color.textTertiary }}>当日梁案</strong>
         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={archive.caseTitles.join('；')}>
@@ -606,13 +606,13 @@ export function ArchiveDayFactsRow({ archive }: { archive: LiangDayArchive }): R
 export function buildArchiveFacts(
   up: number,
   down: number,
-  voters: number,
+  voters: number | undefined,
   covered: string,
 ): ReadonlyArray<{ key: string, label: string, value: string }> {
   return [
     { key: 'position', label: '梁位', value: formatLiangPosition(up, down) },
     { key: 'incense', label: '香火', value: (up + down).toLocaleString('zh-CN') },
-    { key: 'voters', label: VOTER_STAT_LABEL, value: voters.toLocaleString('zh-CN') },
+    { key: 'voters', label: VOTER_STAT_LABEL, value: voters === undefined ? '--' : voters.toLocaleString('zh-CN') },
     { key: 'split', label: '夯 / 拉', value: `${up.toLocaleString('zh-CN')} / ${down.toLocaleString('zh-CN')}` },
     { key: 'covered', label: '覆盖', value: covered },
   ]
@@ -624,7 +624,7 @@ export function ArchiveFacts({
   up: number
   down: number
   covered: string
-  voters: number
+  voters: number | undefined
 }): ReactElement {
   return (
     <dl
@@ -713,8 +713,8 @@ export function LiangciModal({
   const weekRows = dates.length / 7
   const compactCells = isCompactLiangciMonth(weekRows)
   const dayByDate = useMemo(() => new Map(days.map(day => [day.businessDate, day])), [days])
-  const openWeekUniqueVoters = archive?.openWeekUniqueVoters ?? 0
-  const openMonthUniqueVoters = archive?.openMonthUniqueVoters ?? 0
+  const openWeekUniqueVoters = archive?.openWeekVotersKnown === false ? undefined : archive?.openWeekUniqueVoters
+  const openMonthUniqueVoters = archive?.openMonthVotersKnown === false ? undefined : archive?.openMonthUniqueVoters
   const currentMonthPeriod = deriveTemporaryMonth(businessDate, days, openMonthUniqueVoters)
   const monthPeriod = displayedMonth === currentMonth
     ? currentMonthPeriod

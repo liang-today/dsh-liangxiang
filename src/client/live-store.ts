@@ -273,7 +273,10 @@ export function createLiveLiangxiangStore(
           sseErrors = 0
           reconnectBackoffMs = RECONNECT_INITIAL_MS
         } catch {
-          // Drop a bad frame; the next one or the refresh path recovers.
+          // One corrupt frame can be skipped; persistent schema failure must
+          // not leave last-known-good data labelled as a healthy live feed.
+          sseErrors += 1
+          if (sseErrors >= MAX_SSE_ERRORS) goOffline()
         }
       },
       onError: (closed) => {
@@ -334,7 +337,7 @@ export function createLiveLiangxiangStore(
         if (!disposed) applyWire(raw)
       })
       .catch(() => {
-        // Refresh is best-effort; the next cadence or reconnect recovers.
+        goOffline()
       })
       .finally(() => {
         refreshInFlight = false

@@ -480,7 +480,7 @@ function SocialStatHint(props: {
             <dd>
               {STAT_TODAY_LABEL}
               {' '}
-              {formatIncenseShare(mine.today.total, props.today)}
+              {'—（本机按日累计）'}
               {' · '}
               {STAT_LIFETIME_LABEL}
               {' '}
@@ -527,6 +527,7 @@ export function Panel(props: PanelProps): ReactElement {
   // Smoothed confirmed ring geometry, exact numeric captions. The
   // authoritative remaining incense / vote availability stay on `personal`.
   const displayFill = throttle?.fill ?? personal.liangQiFill
+  const unknownTokenPolicy = state.activeCase.id === 'connecting' && !state.authorityAvailable
   const displayTokensToNext = throttle?.tokensToNext ?? personal.tokensToNextIncense
   const streamingActive = state.connection === 'live' && state.streamingActive === true
   const offline = state.connection !== 'live'
@@ -927,14 +928,14 @@ export function Panel(props: PanelProps): ReactElement {
         <div
           style={{ ...flankStyle, right: '-5px', zIndex: 5 }}
           data-liangxiang-personal="next-incense"
-          aria-label={`${NEXT_INCENSE_LABEL} ${toNextExact} ${NEXT_INCENSE_UNIT}`}
+          aria-label={unknownTokenPolicy ? '下一炷，等待社区连接后确认' : `${NEXT_INCENSE_LABEL} ${toNextExact} ${NEXT_INCENSE_UNIT}`}
         >
           <span style={flankCaptionStyle}>{NEXT_INCENSE_LABEL}</span>
           <span style={flankValueStyle}>
             <span
               data-liangxiang-compact="next-incense"
             >
-              {formatCompactCount(displayTokensToNext, 0)}
+              {unknownTokenPolicy ? '--' : formatCompactCount(displayTokensToNext, 0)}
             </span>
             <span data-liangxiang-personal-unit="" style={PERSONAL_INCENSE_UNIT_STYLE}>量</span>
           </span>

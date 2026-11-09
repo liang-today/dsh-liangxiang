@@ -80,3 +80,9 @@ describe('梁祠 month grid', () => {
     expect(textContent(day)).toContain('5,967')
   })
 })
+
+
+it('keeps unknown pilgrims distinct from an authoritative zero in the archive facts', () => {
+  expect(buildArchiveFacts(1, 1, undefined, '1 案').find(fact => fact.key === 'voters')?.value).toBe('--')
+  expect(buildArchiveFacts(1, 1, 0, '1 案').find(fact => fact.key === 'voters')?.value).toBe('0')
+})
