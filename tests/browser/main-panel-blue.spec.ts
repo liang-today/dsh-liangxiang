@@ -114,7 +114,7 @@ test('water and small plants grow from zero without moving the four-region cente
   const fixture = await installBlueFixture(page), { panel } = fixture
   const pond = panel.locator('[data-liangxiang-main-pond]')
   const heights: number[] = []
-  for (const [balance, growth] of [[0, 0], [25, .5], [100, 1], [101, 1], [1_000, 1]] as const) {
+  for (const [balance, growth] of [[0, 0], [25, .5], [100, 1], [101, 1], [499, 1], [500, 1], [1_000, 1]] as const) {
     await fixture.balance(balance)
     await expect(pond).toHaveAttribute('data-plant-growth', String(growth))
     const geometry = await pond.evaluate(element => ({
@@ -122,7 +122,7 @@ test('water and small plants grow from zero without moving the four-region cente
       grassHeight: element.querySelector('.liangxiang-main-pond-grass')!.getBoundingClientRect().height,
       stones: [...element.querySelectorAll('.liangxiang-main-pond-stones')].map(stones => stones.children.length),
     }))
-    expect(geometry.drop).toBeCloseTo(128 * (1 - Math.sqrt(Math.min(1, balance / 1_000))), 5)
+    expect(geometry.drop).toBeCloseTo(128 * (1 - Math.sqrt(Math.min(1, balance / 500))), 5)
     expect(geometry.grassHeight).toBeCloseTo(27 * growth, 1)
     expect(geometry.stones).toEqual([2, 2])
     heights.push((await panel.boundingBox())!.height)

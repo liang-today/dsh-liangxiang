@@ -39,7 +39,7 @@ rollover. No client cache or chart is a ledger. Usage remains soft trust.
 The approved blue pond design in `docs/MAIN_PANEL_BLUE_UI.md` supersedes the
 older visual details below, without changing any accounting or market rule.
 Keep the panel 256px and four regions. Use calm pale-blue water behind the
-original figures, with height based only on available incense (0–1000).
+original figures, with height based only on available incense (0–500), saturating at 500.
 Below 100, whole plants grow from the bottom with water depth; do not expose
 only the tips of a clipped full plant. Two little stones per side stay at the
 roots. Above 100, an occasional small whale performs the same two puffs;

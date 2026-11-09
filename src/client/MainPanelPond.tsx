@@ -1,7 +1,7 @@
 import { useEffect, useRef, type CSSProperties, type ReactElement, type Ref, type RefObject } from 'react'
 import { MAIN_POND_GRASS, MAIN_POND_WHALE } from './main-pond-art.ts'
 
-const WATER_CAP = 1_000
+const WATER_CAP = 500
 const FISH_MIN = 100
 const POND_HEIGHT = 128
 const VISIT_MS = 7_250

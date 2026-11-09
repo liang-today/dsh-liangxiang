@@ -26,8 +26,10 @@ describe('main panel decorative pond', () => {
 
   it('keeps water bounded, monotonic and independent from Token progress or global Liangzi', () => {
     expect(mainPondGeometry(0)).toEqual({ waterDrop: 128, waterDepth: 0, plantGrowth: 0, fishTop: 102, fishEligible: false })
-    expect(mainPondGeometry(1_000)).toEqual({ waterDrop: 0, waterDepth: 128, plantGrowth: 1, fishTop: 80, fishEligible: true })
-    expect(mainPondGeometry(Number.MAX_SAFE_INTEGER)).toEqual(mainPondGeometry(1_000))
+    expect(mainPondGeometry(500)).toEqual({ waterDrop: 0, waterDepth: 128, plantGrowth: 1, fishTop: 80, fishEligible: true })
+    expect(mainPondGeometry(499).waterDepth).toBeLessThan(128)
+    expect(mainPondGeometry(125).waterDepth).toBe(64)
+    for (const input of [501, 1_000, Number.MAX_SAFE_INTEGER]) expect(mainPondGeometry(input)).toEqual(mainPondGeometry(500))
     for (const input of [-1, NaN, Infinity, -Infinity]) expect(mainPondGeometry(input)).toEqual(mainPondGeometry(0))
     let previousDepth = 0, previousGrowth = 0
     for (let stock = 0; stock <= 1_000; stock++) {
@@ -50,7 +52,7 @@ describe('main panel decorative pond', () => {
       expect(geometry.fishTop + 8 - 4).toBeGreaterThanOrEqual(geometry.waterDrop + 15)
     }
     expect(mainPondGeometry(437).fishTop).toBe(80)
-    expect(mainPondGeometry(101).fishTop).toBeGreaterThan(99)
+    expect(mainPondGeometry(101).fishTop).toBeGreaterThan(80)
   })
 
   it('grows a whole small plant from its root below 100 instead of clipping a tall plant', () => {

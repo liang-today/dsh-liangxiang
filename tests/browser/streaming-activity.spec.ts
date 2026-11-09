@@ -113,7 +113,7 @@ test('plant bubbles fit actual shallow water, follow its surface and do not rest
     await expect(panel.locator('[data-liangxiang-stream-activity]')).toHaveCount(1)
     expect(await bubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
   }
-  for (const stock of [10, 1_000]) {
+  for (const stock of [10, 500]) {
     await emit(stock)
     await expect(rising.first()).toBeVisible({ timeout: 6_000 })
     const birth = await rising.first().evaluate(node => ({
@@ -144,9 +144,9 @@ test('plant bubbles fit actual shallow water, follow its surface and do not rest
   await expect(pond).toHaveAttribute('data-fish', 'true')
   const fish = pond.locator('.liangxiang-main-pond-fish')
   const start = await fish.evaluate(node => node.getAnimations()[0]!.startTime)
-  await emit(1_000, false)
+  await emit(500, false)
   expect(await bubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
-  await emit(1_000)
+  await emit(500)
   await expect(pond).toHaveAttribute('data-fish', 'true')
   expect(await fish.evaluate(node => node.getAnimations()[0]!.startTime)).toEqual(start)
   await pond.evaluate(node => { node.style.transform = 'translateX(200vw)' })
