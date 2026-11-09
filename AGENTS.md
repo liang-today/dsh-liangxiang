@@ -1441,6 +1441,17 @@ Detailed procedure: `docs/121-vps-deploy.md` §0.
 
 ### Staging deploy (hard rule)
 
+Before every remote mutation, report the literal target IP, freshly verified
+role, exact service and database paths, plus the protected production IP.
+Recheck after every failover; "main" or "standby" alone is not a destination.
+Keep actual deployment addresses in private operational receipts, not Git.
+
+Integrated candidate testing requires the isolated Backend, Host and Client
+to run the same candidate version and verified source/artifacts. Old-Backend
+coverage is compatibility testing, never a substitute for that baseline.
+Preserve existing test identities, balances, positions and pending intents;
+take a consistent backup and compare migration results before resuming tests.
+
 The community staging backend is deployed ONLY through `scripts/deploy.sh`, which
 stamps `<prefix>/VERSION` with the deployed `git rev-parse --short HEAD`. Never
 rsync/build/restart the backend by hand. After (or before) any server update,

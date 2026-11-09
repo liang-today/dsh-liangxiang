@@ -65,6 +65,56 @@ describe('browser market connection recovery', () => {
     expect(h.streams).toHaveLength(4)
   })
 
+  it.each([0, -60_000])('restores the connection with an unchanged wallet and a %ims clock offset without rewinding data', async offset => {
+    const h = harness()
+    await h.session.start()
+    const confirmed = { ...state(), server_time: state().server_time + 60_000 }
+    h.streams[0]!.frame(confirmed, 'recovery-client')
+    const retained = h.session.getSnapshot().state
+    h.streams[0]!.fail()
+    h.read.mockResolvedValue({ body: { ...confirmed, server_time: confirmed.server_time + offset }, scope: 'recovery-client' })
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(h.session.getSnapshot()).toMatchObject({ status: 'live', error: null })
+    expect(h.session.getSnapshot().state).toEqual(retained)
+    h.streams[1]!.frame({ ...confirmed, server_time: confirmed.server_time - 60_000 }, 'recovery-client')
+    expect(h.session.getSnapshot()).toMatchObject({ status: 'live', error: null })
+    expect(h.session.getSnapshot().state).toEqual(retained)
+    expect(h.request.mock.calls.every(([, body]) => body === undefined)).toBe(true)
+  })
+
+  it('recovers transport without rolling back a newer wallet or clearing an uncertain intent', async () => {
+    const h = harness()
+    await h.session.start()
+    const confirmed = state(4)
+    h.streams[0]!.frame(confirmed, 'recovery-client')
+    await h.session.submit({ market_id: 'recovery-market', batch: 1, side: 'short', amount: 5 })
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(h.session.getSnapshot().status).toBe('live')
+    expect(h.session.getSnapshot().state).toEqual(confirmed)
+    expect(h.session.getSnapshot().pending?.request_id).toBe('recovery-client-request')
+    expect(h.session.getSnapshot().error).toContain('未确认')
+    h.streams[1]!.frame(state(), 'recovery-client')
+    expect(h.session.getSnapshot().status).toBe('live')
+    expect(h.session.getSnapshot().state).toEqual(confirmed)
+    expect(h.session.getSnapshot().pending?.request_id).toBe('recovery-client-request')
+    expect(h.request.mock.calls.filter(([, body]) => body !== undefined)).toHaveLength(1)
+  })
+
+  it.each(['http', 'sse'] as const)('keeps a failed recovery offline after an invalid %s reply or an old-generation frame', async channel => {
+    const h = harness()
+    await h.session.start()
+    h.streams[0]!.fail()
+    if (channel === 'http') h.read.mockResolvedValue({ body: { invalid: true }, scope: 'recovery-client' })
+    await vi.advanceTimersByTimeAsync(1_000)
+    const source = h.streams.at(-1)!
+    if (channel === 'sse') source.frame({ invalid: true }, 'recovery-client')
+    source.frame(state(99), 'obsolete-identity')
+    expect(h.session.getSnapshot()).toMatchObject({ status: 'offline', scope: 'recovery-client' })
+    expect(h.session.getSnapshot().error).not.toBeNull()
+    expect(h.streams).toHaveLength(channel === 'http' ? 1 : 2)
+    expect(h.request.mock.calls.every(([, body]) => body === undefined)).toBe(true)
+  })
+
   it('coalesces concurrent starts and cancels the scheduled retry when manually reconnected', async () => {
     const h = harness()
     let resolve!: (value: MarketResponse) => void

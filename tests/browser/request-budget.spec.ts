@@ -13,7 +13,7 @@ declare global {
 
 const DAY = Date.UTC(2026, 10, 6), HOUR = 3_600_000, MINUTE = 60_000
 const SCOPE = 'native-request-budget-fixture'
-type Scenario = 'seven-second-read' | 'read-timeout' | 'order-timeout' | 'close-slow-read'
+type Scenario = 'seven-second-read' | 'read-timeout' | 'order-timeout' | 'close-slow-read' | 'older-clock-recovery'
 
 function fixture(): MarketState {
   const now = DAY + 13 * HOUR
@@ -86,6 +86,11 @@ async function setup(page: Page, scenario: Scenario) {
     if (scenario === 'read-timeout') {
       current = laterVoterFrame(current)
       await route.fulfill({ status: 200, contentType: 'text/event-stream', body: `data: ${JSON.stringify({ ...current, cache_scope: SCOPE })}\n\n` })
+    } else if (scenario === 'older-clock-recovery' && calls.events.length === 1) {
+      // The Host clock projection can run ahead of the unchanged Backend
+      // clock. The next HTTP reply must recover transport without rewinding it.
+      const projected = { ...current, server_time: current.server_time + MINUTE }
+      await route.fulfill({ status: 200, contentType: 'text/event-stream', body: `data: ${JSON.stringify({ ...projected, cache_scope: SCOPE })}\n\n` })
     } else {
       // Keep native streams pending instead of using a finite response whose
       // intentional EOF would add unrelated reconnects to the request counts.
@@ -161,6 +166,25 @@ test('native GET timeout is Chinese and recovers automatically to a new real SSE
     await expect(f.dialog.locator('[data-liangxiang-market-current-point]')).toHaveAttribute('data-ratio', String(55 / 104))
     await expect(f.dialog.locator('[data-liangxiang-market-volume]').last()).toHaveAttribute('aria-label', /本段上香 4 炷/)
     expect(f.calls.reads.length).toBeGreaterThanOrEqual(2)
+    expect(f.calls.positions).toEqual([])
+    expect(f.calls.votes).toBe(0)
+  } finally { f.release() }
+})
+
+test('native reconnect clears its outage notice when the frozen Backend clock is behind the last SSE projection', async ({ page }) => {
+  test.setTimeout(25_000)
+  const f = await setup(page, 'older-clock-recovery')
+  try {
+    await expect.poll(() => f.calls.reads.length).toBeGreaterThanOrEqual(2)
+    await expect.poll(() => f.calls.events.length).toBeGreaterThanOrEqual(2)
+    await expect(f.dialog).not.toContainText(/正在自动重连|正在重连|暂时无法连接社区|网络暂时不稳/)
+    await expect(f.dialog.locator('[data-liangxiang-market-available]')).toHaveText('90')
+    await expect(f.dialog.locator('[data-liangxiang-market-frozen]')).toHaveText('10')
+    await expect(f.dialog.locator('[data-liangxiang-market-current-point]')).toHaveAttribute('data-ratio', String(.55))
+    await f.dialog.getByRole('spinbutton', { name: '午盘总投入香火' }).fill('15')
+    await expect(f.dialog.getByRole('button', { name: '确认调整', exact: true })).toBeEnabled()
+    await page.waitForTimeout(500)
+    await expect(f.dialog).not.toContainText(/正在自动重连|正在重连|暂时无法连接社区|网络暂时不稳/)
     expect(f.calls.positions).toEqual([])
     expect(f.calls.votes).toBe(0)
   } finally { f.release() }

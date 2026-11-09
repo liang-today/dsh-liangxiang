@@ -41,7 +41,7 @@ export interface MarketSession {
 }
 
 class MarketHttpError extends Error {
-  constructor(readonly status: number) { super(status === 404 ? '当前连接尚未开放香火市场，凝香、上香与梁祠仍可使用。' : status === 409 ? '仓位状态已变化，正在重新核对。' : '暂时无法连接社区，请稍后重试。') }
+  constructor(readonly status: number) { super(status === 404 ? '当前连接尚未开放香火市场，凝香、上香与梁祠仍可使用。' : status === 409 ? '仓位状态已变化，正在重新核对。' : '暂时无法连接社区，正在自动重连。') }
 }
 
 /** Boundary failures already map to the specific user notices below. */
@@ -186,8 +186,10 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     const identityChanged = scope !== '' && view.scope !== '' && scope !== view.scope
     // Wallet versions order confirmed personal transactions; Host clock
     // projection is not a receipt revision and can run ahead of the backend.
+    // A valid current connection still recovers when its payload is older:
+    // retain the confirmed state while restoring transport status and notice.
     if (!identityChanged && view.state && (state.wallet.version < view.state.wallet.version
-      || (state.wallet.version === view.state.wallet.version && state.server_time < view.state.server_time))) return
+      || (state.wallet.version === view.state.wallet.version && state.server_time < view.state.server_time))) state = view.state
     adoptScope(scope)
     const old = view.state
     const market = state.market
