@@ -1410,6 +1410,35 @@ exact versions and tarball `file:` rows are rewritten to `latest`. Rules:
 
 Implementation: `src/host/profile-npm-float.ts` + `tests/host-profile-npm-float.spec.ts`.
 
+### Server migration: mainland availability before cutover (hard rule)
+
+Before moving the public backend to a different server, IP or ingress route,
+evaluate the candidate's real availability from mainland China. Keep formal
+traffic on the current service while using an isolated candidate endpoint and
+test database. Purchase, SSH access, healthy loopback responses, advertised
+bandwidth, a UK probe or one cloud probe never constitute cutover acceptance.
+
+Compare old and candidate endpoints with the same healthy probes and time
+windows across mainland regions and China Telecom / China Unicom / China
+Mobile, including an evening peak window. Verify DNS, TCP 443, strict TLS,
+real HTTPS business reads, authenticated SSE continuity/reconnect and market
+reads; evaluate the currently agreed concurrency target against isolated data.
+Record coverage, success/error rates, latency percentiles, stream gaps and
+server load; distinguish offline probes from endpoint failures. Never reduce
+market update frequency or information to pass the evaluation.
+
+Before changing public DNS, a production proxy/upstream, the authoritative
+writer or a distributed default backend, provide a reviewable comparison and
+an explicit go/no-go against acceptance criteria set before testing. Missing
+mainland evidence or unresolved systematic carrier/region failures block the
+cutover. An exception requires the user's explicit acceptance of the stated
+gap/risk; buying a server is not permission to skip evaluation. Obtain the
+specific cutover authorization; do not ask again if already clearly granted.
+Preserve the old service, consistent ledger backup and a single-writer rollback
+plan, then recheck mainland business access through the public domain after
+cutover. DNS propagation and local health alone never prove nationwide recovery.
+Detailed procedure: `docs/121-vps-deploy.md` §0.
+
 ### Staging deploy (hard rule)
 
 The community staging backend is deployed ONLY through `scripts/deploy.sh`, which
