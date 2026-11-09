@@ -82,11 +82,13 @@ describe('community-volume bubbles', () => {
     expect(marketBubbleLabel(bubbles[0]!, 'UTC')).toContain('本段上香 8 炷')
     expect(marketBubbleLabel(bubbles[0]!, 'UTC')).toContain('夯 3 · 拉 5')
   })
-  it('does not infer directions from first cumulative counts or across a gap', () => {
+  it('accepts a proven zero baseline but keeps partial history and gaps unknown', () => {
+    const exact = marketVolumeBubbles([candle(0, .2, 2, 8, 10), candle(STEP, .25, 3, 9, 2)])[0]!
+    expect(exact).toMatchObject({ volume: 12n, up: 3n, down: 9n })
     const first = marketVolumeBubbles([candle(STEP, .5, 1000, 1000, 4)])[0]!
     expect(first.volume).toBe(4n)
     expect(first.up).toBeNull()
-    expect(marketBubbleLabel(first, 'UTC')).toContain('方向明细未确认')
+    expect(marketBubbleLabel(first, 'UTC')).toContain('方向明细缺失')
     expect(marketBubbleLabel(first, 'UTC')).not.toContain('全网')
     const gap = marketVolumeBubbles([candle(0), candle(2 * STEP, .5, 12, 12, 4)])[0]!
     expect(gap.up).toBeNull()

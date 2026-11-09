@@ -74,7 +74,7 @@ export const MAIN_PANEL_POND_CSS = `
 .@P-bubble{position:absolute;width:10px;height:10px}
 .@P-bubble-orb{position:absolute;inset:0;display:block;box-sizing:border-box;border:1px solid color-mix(in srgb,var(@Vblue) 65%,var(@Vpaper));border-radius:50%;background:radial-gradient(circle at 30% 26%,color-mix(in srgb,var(@Vpaper) 72%,transparent) 0 12%,transparent 24%),color-mix(in srgb,var(@Vwater) 12%,transparent)}
 .@P-pop{position:absolute;left:-6px;top:3px;display:block;box-sizing:border-box;width:22px;height:4px;opacity:0;border:1px solid var(@Vblue);border-radius:50%}
-[data-liangxiang-stream-bubble] .@P-pop{left:calc(var(--bubble-size) * -.6);top:calc(var(--bubble-size) * .3);width:calc(var(--bubble-size) * 2.2);height:calc(var(--bubble-size) * .4)}
+[data-liangxiang-stream-bubble] .@P-pop{left:50%;top:50%;translate:-50% -50%;width:max(18px,calc(var(--bubble-size) * 2.2));height:max(3px,calc(var(--bubble-size) * .4))}
 [data-@P][data-streaming=false] [data-@P-activity],[data-@P][data-fish-eligible=false] :is([data-@P-actors],[data-@P-bubbles]){display:none}
 .@P-bubble[data-stage=rise] .@P-pop{display:none}
 .@P-bubble[data-stage=pop] .@P-bubble-orb{display:none}

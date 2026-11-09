@@ -92,8 +92,8 @@ export function marketVolumeBubbles(candles: readonly MarketCandle[], sourceInte
     if (candle.volume <= 0 || candle.close === null) continue
     const previous = candles[i - 1]
     let up: bigint | null = null, down: bigint | null = null
-    if (previous && previous.at + sourceIntervalMs === candle.at) {
-      const u = BigInt(candle.up_votes) - BigInt(previous.up_votes), d = BigInt(candle.down_votes) - BigInt(previous.down_votes)
+    if (!previous || previous.at + sourceIntervalMs === candle.at) {
+      const u = BigInt(candle.up_votes) - BigInt(previous?.up_votes ?? 0), d = BigInt(candle.down_votes) - BigInt(previous?.down_votes ?? 0)
       if (u >= 0n && d >= 0n && u + d === BigInt(candle.volume)) { up = u; down = d }
     }
     const at = Math.floor(candle.at / windowMs) * windowMs
@@ -110,6 +110,6 @@ export function marketVolumeBubbles(candles: readonly MarketCandle[], sourceInte
 }
 
 export function marketBubbleLabel(bubble: VolumeBubble, timezone: string): string {
-  const detail = bubble.up === null || bubble.down === null ? '方向明细未确认' : `夯 ${formatMarketIncense(bubble.up)} · 拉 ${formatMarketIncense(bubble.down)}`
+  const detail = bubble.up === null || bubble.down === null ? '方向明细缺失' : `夯 ${formatMarketIncense(bubble.up)} · 拉 ${formatMarketIncense(bubble.down)}`
   return `${marketTime(bubble.at, timezone)}—${marketTime(bubble.until, timezone)} · 本段上香 ${formatMarketIncense(bubble.volume)} 炷 · ${detail}`
 }

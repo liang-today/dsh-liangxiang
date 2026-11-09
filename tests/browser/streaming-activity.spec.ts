@@ -126,7 +126,18 @@ test('plant bubbles fit actual shallow water, follow its surface and do not rest
     expect(birth.y + birth.size / 2).toBeLessThanOrEqual(birth.bottom)
     expect(birth.size).toBeLessThanOrEqual(8)
     if (stock === 10) expect(birth.size).toBeLessThan(8)
-    await expect(pond.locator('[data-liangxiang-stream-bubble][data-stage=pop]:not([hidden])').first()).toBeVisible({ timeout: 2_000 })
+    const popping = pond.locator('[data-liangxiang-stream-bubble][data-stage=pop]:not([hidden])').first()
+    await expect(popping).toBeVisible({ timeout: 2_000 })
+    const popSizes = await popping.locator('.liangxiang-main-pond-pop').evaluateAll(nodes => nodes.map(node => ({
+      width: parseFloat(getComputedStyle(node).width), height: parseFloat(getComputedStyle(node).height),
+      translate: getComputedStyle(node).translate,
+    })))
+    expect(popSizes).toHaveLength(2)
+    for (const size of popSizes) {
+      expect(size.width).toBeGreaterThanOrEqual(18)
+      expect(size.height).toBeGreaterThanOrEqual(3)
+      expect(size.translate).toBe('-50% -50%')
+    }
   }
   await page.clock.install()
   await page.clock.fastForward(10_001)

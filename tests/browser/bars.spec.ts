@@ -391,7 +391,7 @@ test('point tooltip follows inspection inside plot edges while footer facts and 
   await expect(tip).not.toContainText('上香')
   await stable()
   await inspect(6.1)
-  await expect(tip).toContainText('方向未确认')
+  await expect(tip).toContainText('方向明细缺失')
   await expect(tip).toContainText('万')
   await expect(tip).toHaveAttribute('aria-label', /\d{1,3},\d{3},\d{3}/)
   await stable()

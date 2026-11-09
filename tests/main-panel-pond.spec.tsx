@@ -90,5 +90,7 @@ describe('main panel decorative pond', () => {
     expect(MAIN_PANEL_POND_CSS).toContain('[data-liangxiang-main-pond-activity]{position:absolute;inset:0;z-index:4')
     expect(MAIN_PANEL_POND_CSS).toContain('[data-liangxiang-main-pond][data-motion=false] *')
     expect(MAIN_PANEL_POND_CSS).toContain('@media(prefers-reduced-motion:reduce)')
+    expect(MAIN_PANEL_POND_CSS).toContain('width:max(18px,calc(var(--bubble-size) * 2.2))')
+    expect(MAIN_PANEL_POND_CSS).toContain('height:max(3px,calc(var(--bubble-size) * .4))')
   })
 })

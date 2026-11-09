@@ -52,7 +52,8 @@ that feedback, while consecutive accepted votes keep the balance readable.
 Sustained request activity never replaces the daily caption. It may grow small
 bubbles near the plants, rising and popping at the actual water surface, without
 changing water or progress. No water or an extremely thin layer uses only the
-ring-bottom glow; shallow bubbles fit the visible water. Keep these emitters
+ring-bottom glow; shallow bubbles fit the visible water, while their surface
+pop rings remain at least 18×3 CSS pixels and centered on the bubble. Keep these emitters
 separate from the whale's two original puffs and cancel all activity on hide,
 static preference or unmount. Clicking the figure inspects
 available incense. One highest-order ring glyph group (ones / tens / hundreds)
