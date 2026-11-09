@@ -25,6 +25,23 @@ import /etc/caddy/liangxiang-sites/*.caddy
 # hk-api is the pre-cutover verification name. Keep it as a diagnostic alias
 # after api.liang.today moves to Hong Kong. The backend remains loopback-only.
 api.liang.today, hk-api.liang.today {
+	# Public, anonymous snapshot only. No cookies or private/write routes.
+	@publicSnapshot {
+		path /v1/snapshot
+		method GET OPTIONS
+	}
+	header @publicSnapshot {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, OPTIONS"
+		Access-Control-Allow-Headers "x-liangxiang-liangzi-policy"
+		Access-Control-Max-Age "86400"
+	}
+	@snapshotPreflight {
+		path /v1/snapshot
+		method OPTIONS
+	}
+	respond @snapshotPreflight 204
+
 	encode zstd gzip
 
 	header {
