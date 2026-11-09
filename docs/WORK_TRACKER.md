@@ -18,7 +18,7 @@
 | ☑ | 旁观客户端与过期响应回归 | Host10项、Client8项及真实SQLite→Backend HTTP→Host SSE→Client3项先红后绿；分钟close／volume、盘池、钱包不变及边界已验 |
 | ☑ | 源码构建缺图排查与资源兜底 | 编译后四图读取先红后绿；中文／空格目录、包内优先、仅缺失回退、拒绝非法请求及失败后恢复共16项通过；未将其定性为Windows用户的已证根因 |
 | ☑ | 最终候选源码与真实安装验证 | 1071项源码、原预算及21项桌面／窄屏／暗色实包浏览器检查通过；原生503→CLOSED→新连接已验证，详见[验证记录](MARKET_RECOVERY_VALIDATION.md) |
-| 待完成 | 提交与个人fork同步 | 标识2.0.1-alpha.1，已保留最新main纯代理配置；不部署、不发布、不修改正式账本或现用Profile |
+| ☑ | 提交与个人fork同步 | 修复提交dc4cbfb已推个人fork的codex/fix-market-disconnect-assets；标识2.0.1-alpha.1，保留最新main纯代理配置；未提社区PR、部署或发布，正式账本与现用Profile不变 |
 
 ## 2.0.0最终发布候选
 
