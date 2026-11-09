@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createRequire } from 'node:module'
 import type { ReactElement } from 'react'
 import { MARKET_CACHE_MAX_BYTES, type MarketBatch, type MarketState, type MarketReceipt } from '../src/shared/market-v1.ts'
@@ -154,6 +154,66 @@ describe('market transport state machine', () => {
     session.dispose()
     expect(f.closed()).toBe(1)
     expect(f.disposed()).toBe(true)
+  })
+
+  it('repairs a failed candle read automatically without adding healthy requests or orders', async () => {
+    vi.useFakeTimers()
+    const f = fixture(), request = f.transport.request
+    let candleReads = 0
+    f.transport.request = async (path, intent) => {
+      if (path.startsWith('/candles') && ++candleReads === 1) throw new DOMException('aborted', 'AbortError')
+      return request(path, intent)
+    }
+    const session = createMarketSession(f.transport, memoryStorage())
+    try {
+      await session.start()
+      expect(session.getSnapshot().chartError).not.toBeNull()
+      await vi.advanceTimersByTimeAsync(4_999)
+      expect(candleReads).toBe(1)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(candleReads).toBe(2)
+      expect(session.getSnapshot().chartError).toBeNull()
+      f.feed({ ...f.current, server_time: f.current.server_time + 1_000 })
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(candleReads).toBe(2)
+      expect(f.ids).toEqual([])
+    } finally { session.dispose(); vi.useRealTimers() }
+  })
+
+  it.each(['identity', 'case'] as const)('does not let an old position acknowledgment replace the current %s or erase its pending intent', async change => {
+    const f = fixture(), storage = memoryStorage(), request = f.transport.request
+    const old = structuredClone(f.current)
+    let finish!: (response: MarketResponse) => void
+    f.transport.request = (path, intent) => intent ? new Promise(resolve => { finish = resolve }) : request(path)
+    const session = createMarketSession(f.transport, storage)
+    try {
+      await session.start()
+      const sending = session.submit({ market_id: old.market!.id, batch: 1, side: 'long', amount: 5 })
+      const next: MarketState = { ...old, server_time: old.server_time + 86_400_000,
+        wallet: { ...old.wallet, version: 2 },
+        ...(change === 'case' ? {
+          current_point: { ...old.current_point!, case_id: 'next-case', at: old.server_time + 86_400_000 },
+          market: { ...old.market!, id: 'next-market', case_id: 'next-case', business_date: '2026-11-07',
+            opens_at: old.market!.opens_at + 86_400_000, closes_at: old.market!.closes_at + 86_400_000,
+            batches: old.market!.batches.map(batch => ({ ...batch, opens_at: batch.opens_at + 86_400_000,
+              locks_at: batch.locks_at + 86_400_000, reference_at: batch.reference_at + 86_400_000 })) },
+        } : {}) }
+      f.feed(next, change === 'identity' ? 'identity-b' : 'identity-a')
+      finish({ scope: 'identity-a', body: { accepted: true, reason: null, request_id: 'request-1',
+        state: { ...old, wallet: { ...old.wallet, version: 9 } } } })
+      await sending
+      expect(session.getSnapshot().scope).toBe(change === 'identity' ? 'identity-b' : 'identity-a')
+      expect(session.getSnapshot().state).toEqual(next)
+      expect(readMarketCache(storage, 'identity-a').pending?.request_id).toBe('request-1')
+      if (change === 'case') {
+        f.transport.request = async (_path, intent) => ({ scope: 'identity-a', body: {
+          accepted: false, reason: 'market closed', request_id: intent!.request_id, state: next,
+        } })
+        await session.retryPending()
+        expect(session.getSnapshot().pending).toBeNull()
+        expect(session.getSnapshot().state).toEqual(next)
+      }
+    } finally { session.dispose() }
   })
   function historyFixture(storage = memoryStorage()) {
     const f = fixture(), historyCalls: string[] = []

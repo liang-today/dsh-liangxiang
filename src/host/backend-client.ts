@@ -51,9 +51,8 @@ import {
 } from '../shared/market-v1.ts'
 import { startBackendEventStream, type BackendStreamStatus } from './backend-event-stream.ts'
 import { marketQuerySuffix, type MarketCandlesQuery, type MarketHistoryQuery } from './market-query.ts'
+import { BACKEND_REQUEST_TIMEOUT_MS, BACKEND_READ_RETRY_DELAY_MS } from '../shared/request-budget.ts'
 
-const DEFAULT_TIMEOUT_MS = 6_000
-const READ_RETRY_DELAY_MS = 300
 /** First community contact must fail fast so DSH startup is not held. */
 export const STARTUP_BOOTSTRAP_TIMEOUT_MS = 3_000
 
@@ -125,7 +124,7 @@ export function normalizeBaseUrl(raw: string): string {
 
 export function createBackendClient(options: BackendClientOptions): BackendClient {
   const baseUrl = normalizeBaseUrl(options.baseUrl)
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const timeoutMs = options.timeoutMs ?? BACKEND_REQUEST_TIMEOUT_MS
   const doFetch = options.fetchImpl ?? fetch
   const inFlight = new Set<AbortController>()
   let disposed = false
@@ -201,7 +200,7 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     } catch (error) {
       if (disposed || options?.retry === false) throw error
       if (error instanceof BackendClientError && error.status !== null && error.status < 500) throw error
-      await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS))
+      await new Promise((resolve) => setTimeout(resolve, BACKEND_READ_RETRY_DELAY_MS))
       return request(path, requestInit)
     }
   }

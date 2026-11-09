@@ -92,6 +92,22 @@ describe('browser market connection recovery', () => {
     expect(h.request.mock.calls.filter(([, body]) => body !== undefined)).toHaveLength(1)
   })
 
+  it('recovers reads after a lost position acknowledgment without waiting for an SSE error or resubmitting', async () => {
+    const h = harness()
+    await h.session.start()
+    await h.session.submit({ market_id: 'recovery-market', batch: 1, side: 'short', amount: 5 })
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(h.read).toHaveBeenCalledTimes(2)
+    expect(h.session.getSnapshot().status).toBe('live')
+    expect(h.session.getSnapshot().pending?.request_id).toBe('recovery-client-request')
+    expect(h.request.mock.calls.filter(([, body]) => body !== undefined)).toHaveLength(1)
+    await h.session.retryPending()
+    expect(h.request.mock.calls.filter(([, body]) => body !== undefined).map(([, body]) => body)).toEqual([
+      { market_id: 'recovery-market', batch: 1, side: 'short', amount: 5, request_id: 'recovery-client-request' },
+      { market_id: 'recovery-market', batch: 1, side: 'short', amount: 5, request_id: 'recovery-client-request' },
+    ])
+  })
+
   it.each([404, 405, 501])('does not retry an unsupported Host response (%i)', async status => {
     const read = vi.fn(async () => new Response('', { status }))
     vi.stubGlobal('fetch', read)

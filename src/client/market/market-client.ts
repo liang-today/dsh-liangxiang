@@ -5,9 +5,9 @@ import {
 } from '../../shared/market-v1.ts'
 import { boundedMarketCache, browserMarketStorage, emptyMarketCache, readMarketCache, writeMarketCache, writeMarketPending, type MarketCache, type MarketStorage } from './market-cache.ts'
 import { randomRequestId } from '../request-id.ts'
+import { browserEvents, createBrowserRequests, HOST_API } from '../browser-request.ts'
 
-const BASE = '/liangxiang/api/market'
-const TIMEOUT_MS = 6_000
+const BASE = `${HOST_API}/market`
 export interface MarketResponse { body: unknown, scope: string }
 export interface MarketTransport {
   request(path: string, body?: MarketPositionRequest): Promise<MarketResponse>
@@ -48,34 +48,25 @@ class MarketHttpError extends Error {
 function invalidMarketData(): never { throw new Error('invalid market data') }
 
 export function browserMarketTransport(): MarketTransport {
-  const controllers = new Set<AbortController>()
-  let disposed = false
+  const requests = createBrowserRequests()
   return {
     async request(path, body) {
-      if (disposed) throw new Error('交易窗口已关闭')
-      const controller = new AbortController(), timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
-      controllers.add(controller)
-      try {
-        const response = await fetch(`${BASE}${path}`, { method: body ? 'POST' : 'GET', signal: controller.signal,
-          ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) })
+      const [payload, headers] = await requests.json(`${BASE}${path}`, body ? { method: 'POST', body: JSON.stringify(body) } : undefined, response => {
         if (!response.ok && response.status !== 409) throw new MarketHttpError(response.status)
-        return { body: await response.json() as unknown, scope: response.headers.get('x-liangxiang-cache-scope') ?? '' }
-      } finally { clearTimeout(timer); controllers.delete(controller) }
+      })
+      return { body: payload, scope: headers.get('x-liangxiang-cache-scope') ?? '' }
     },
     events(onState, onError) {
-      const source = new EventSource(`${BASE}/events`)
-      source.onmessage = event => {
+      return browserEvents(`${BASE}/events`, data => {
         try {
-          const body: unknown = JSON.parse(String(event.data))
+          const body: unknown = JSON.parse(data)
           const scope = body && typeof body === 'object' && 'cache_scope' in body && typeof body.cache_scope === 'string' ? body.cache_scope : ''
           onState(body, scope)
         } catch { onError() }
-      }
-      source.onerror = onError
-      return { close: () => source.close() }
+      }, onError)
     },
     requestId: () => randomRequestId(),
-    dispose() { disposed = true; for (const controller of controllers) controller.abort(); controllers.clear() },
+    dispose: requests.dispose,
   }
 }
 
@@ -87,6 +78,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
   let acceptedFeedback: { id: string, play(state: MarketState): void } | null = null
   let connecting: Promise<void> | null = null, generation = 0, retryDelay = 1_000
   let retryTimer: ReturnType<typeof setTimeout> | null = null
+  let chartRetry: ReturnType<typeof setTimeout> | null = null
   const listeners = new Set<() => void>()
   const update = (patch: Partial<MarketView>): void => {
     if (disposed) return
@@ -94,12 +86,14 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     for (const listener of listeners) listener()
   }
   const stopRetry = (): void => { clearTimeout(retryTimer ?? undefined); retryTimer = null }
+  const stopChartRetry = (): void => { clearTimeout(chartRetry ?? undefined); chartRetry = null }
   const disconnect = (error: unknown, expected: number): void => {
     if (expected !== generation) return
+    stopRetry()
     generation++
     source?.close(); source = null
     const unsupported = error instanceof MarketHttpError && [404, 405, 501].includes(error.status)
-    update({ status: unsupported ? 'unsupported' : 'offline', error: error instanceof Error ? error.message : '连接异常，自动重连；仓位仍由服务器保管。' })
+    update({ status: unsupported ? 'unsupported' : 'offline', error: error instanceof MarketHttpError ? error.message : '网络暂时不稳，正在自动重连；香火与仓位已保留。' })
     if (!unsupported) {
       retryTimer = setTimeout(() => { void session.start() }, retryDelay)
       retryDelay = Math.min(30_000, retryDelay * 2)
@@ -117,6 +111,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
   }
   const adoptScope = (scope: string): void => {
     if (!scope || scope === view.scope) return
+    stopChartRetry()
     acceptedFeedback = null
     cache = readMarketCache(storage, scope)
     historyCursors = [undefined]; historyIndex = 0; historyGeneration++
@@ -127,6 +122,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     const market = view.state?.market
     if (!market) return
     if (chartLoading) { chartQueued = true; return }
+    stopChartRetry()
     chartLoading = true
     const scope = view.scope
     const current = (): boolean => !disposed && view.scope === scope && view.state?.market?.id === market.id
@@ -177,7 +173,12 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
         ...(syncedThrough === undefined ? {} : { synced_through: syncedThrough }), candles }, ...cache.candles.filter(day => day.case_id !== market.case_id)]
       save()
       update({ candles, candleIntervalMs: interval, chartError: null })
-    } catch { if (current()) update({ chartError: '行情暂未更新，官方参考点仍有效。' }) }
+    } catch {
+      if (current()) {
+        update({ chartError: '行情暂未更新，官方参考点仍有效。' })
+        chartRetry = setTimeout(() => { chartRetry = null; void loadCandles() }, 5_000)
+      }
+    }
     finally { chartLoading = false; if (chartQueued && !disposed) { chartQueued = false; void loadCandles() } }
   }
   const adopt = (state: MarketState, scope: string): void => {
@@ -190,6 +191,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     adoptScope(scope)
     const old = view.state
     const market = state.market
+    if (old?.market?.id !== market?.id) stopChartRetry()
     const interval = state.candle_interval_ms ?? MARKET_LEGACY_CANDLE_INTERVAL_MS
     let candles = old?.market?.case_id !== market?.case_id || (view.candleIntervalMs ?? MARKET_LEGACY_CANDLE_INTERVAL_MS) !== interval ? [] : view.candles
     const cachedDay = market === null ? undefined : cache.candles.find(day => day.case_id === market.case_id)
@@ -221,12 +223,17 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     }
     update({ pending: intent, sending: true, error: null })
     cache.pending = intent
+    const scope = view.scope, marketId = view.state?.market?.id
+    const current = (): boolean => !disposed && view.scope === scope && view.pending?.request_id === intent.request_id
+      && view.state?.market?.id === marketId
     try {
       const response = await transport.request('/position', intent)
+      if (!current()) return
+      if (response.scope && response.scope !== scope) invalidMarketData()
       const result = parseMarketPositionResponse(response.body)
       if (result.request_id !== intent.request_id) invalidMarketData()
       adopt(result.state, response.scope)
-      cache.pending = null; writeMarketPending(storage, view.scope, null)
+      cache.pending = null; writeMarketPending(storage, scope, null)
       update({ pending: null, error: result.accepted ? null : rejectionCopy(result.reason) })
       const feedback = acceptedFeedback
       acceptedFeedback = null
@@ -234,7 +241,10 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
         try { feedback.play(result.state) } catch { /* Sound never changes a receipt. */ }
       }
     } catch (error) {
-      update({ status: 'offline', error: error instanceof MarketHttpError ? error.message : '这笔仓位尚未确认，请核对原请求；不会重新生成订单。' })
+      if (current()) {
+        disconnect(error, generation)
+        update({ error: error instanceof MarketHttpError ? error.message : '这笔仓位尚未确认，请核对原请求；不会重新生成订单。' })
+      }
     } finally { update({ sending: false }) }
   }
   const session: MarketSession = {
@@ -289,7 +299,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
       } catch { if (current()) update({ error: '历史回执暂未更新，已确认的钱包不受影响。' }) }
       finally { if (current()) update({ historyLoading: false }) }
     },
-    dispose() { save(); disposed = true; generation++; stopRetry(); acceptedFeedback = null; source?.close(); transport.dispose(); listeners.clear() },
+    dispose() { save(); disposed = true; generation++; stopRetry(); stopChartRetry(); acceptedFeedback = null; source?.close(); transport.dispose(); listeners.clear() },
   }
   return session
 }

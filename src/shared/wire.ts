@@ -29,6 +29,11 @@ import { parseMarketWallet, type MarketWallet } from './market-v1.ts'
 
 export const WIRE_SCHEMA_VERSION = 1
 
+const personalField = (field: string): string => `state.personal.${field}`
+const globalField = (field: string): string => `state.global.${field}`
+const accountingField = (field: string): string => `state.accounting.${field}`
+const broadcastField = (field: string): string => `state.broadcast.${field}`
+
 /**
  * Authority modes the host can serve, honestly named by contract:
  *
@@ -204,18 +209,18 @@ function parseBroadcast(raw: unknown): WireBroadcast | null {
   if (raw === undefined || raw === null) return null
   const record = asRecord(raw, 'state.broadcast')
   if (record.level !== 'important' && record.level !== 'emergency') {
-    throw new WireError('state.broadcast.level', 'expected important/emergency')
+    throw new WireError(broadcastField('level'), 'expected important/emergency')
   }
-  const startsAt = requireFinite(record.startsAt, 'state.broadcast.startsAt')
-  const expiresAt = requireFinite(record.expiresAt, 'state.broadcast.expiresAt')
-  if (expiresAt <= startsAt) throw new WireError('state.broadcast.expiresAt', 'must be after startsAt')
+  const startsAt = requireFinite(record.startsAt, broadcastField('startsAt'))
+  const expiresAt = requireFinite(record.expiresAt, broadcastField('expiresAt'))
+  if (expiresAt <= startsAt) throw new WireError(broadcastField('expiresAt'), 'must be after startsAt')
   return {
-    id: requireString(record.id, 'state.broadcast.id'),
+    id: requireString(record.id, broadcastField('id')),
     level: record.level,
-    message: requireString(record.message, 'state.broadcast.message'),
+    message: requireString(record.message, broadcastField('message')),
     startsAt,
     expiresAt,
-    updatedAt: requireFinite(record.updatedAt, 'state.broadcast.updatedAt'),
+    updatedAt: requireFinite(record.updatedAt, broadcastField('updatedAt')),
   }
 }
 
@@ -258,37 +263,37 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
   const globalRecord = asRecord(record.global, 'state.global')
   const personalRecord = asRecord(record.personal, 'state.personal')
   const accountingRecord = asRecord(record.accounting, 'state.accounting')
-  const uniqueVoters = requireCount(globalRecord.uniqueVoters, 'state.global.uniqueVoters')
-  const upVotes = requireCount(globalRecord.upVotes, 'state.global.upVotes')
-  const downVotes = requireCount(globalRecord.downVotes, 'state.global.downVotes')
+  const uniqueVoters = requireCount(globalRecord.uniqueVoters, globalField('uniqueVoters'))
+  const upVotes = requireCount(globalRecord.upVotes, globalField('upVotes'))
+  const downVotes = requireCount(globalRecord.downVotes, globalField('downVotes'))
   if (uniqueVoters > upVotes + downVotes) {
-    throw new WireError('state.global.uniqueVoters', 'uniqueVoters exceeds total votes')
+    throw new WireError(globalField('uniqueVoters'), 'uniqueVoters exceeds total votes')
   }
   const personal: WirePersonalCounts = {
     ...(personalRecord.wallet === undefined ? {} : { wallet: parseMarketWallet(personalRecord.wallet) }),
     ...(personalRecord.earnedIncenseToday === undefined ? {} : {
-      earnedIncenseToday: requireCount(personalRecord.earnedIncenseToday, 'state.personal.earnedIncenseToday'),
+      earnedIncenseToday: requireCount(personalRecord.earnedIncenseToday, personalField('earnedIncenseToday')),
     }),
     ...(personalRecord.confirmedEffectiveTokensToday === undefined ? {} : {
-      confirmedEffectiveTokensToday: requireCount(personalRecord.confirmedEffectiveTokensToday, 'state.personal.confirmedEffectiveTokensToday'),
+      confirmedEffectiveTokensToday: requireCount(personalRecord.confirmedEffectiveTokensToday, personalField('confirmedEffectiveTokensToday')),
     }),
-    effectiveTokensToday: requireCount(personalRecord.effectiveTokensToday, 'state.personal.effectiveTokensToday'),
-    usedIncenseToday: requireCount(personalRecord.usedIncenseToday, 'state.personal.usedIncenseToday'),
-    remainingIncense: requireCount(personalRecord.remainingIncense, 'state.personal.remainingIncense'),
-    tokenPerIncense: requireCount(personalRecord.tokenPerIncense, 'state.personal.tokenPerIncense'),
+    effectiveTokensToday: requireCount(personalRecord.effectiveTokensToday, personalField('effectiveTokensToday')),
+    usedIncenseToday: requireCount(personalRecord.usedIncenseToday, personalField('usedIncenseToday')),
+    remainingIncense: requireCount(personalRecord.remainingIncense, personalField('remainingIncense')),
+    tokenPerIncense: requireCount(personalRecord.tokenPerIncense, personalField('tokenPerIncense')),
   }
   if (personal.tokenPerIncense <= 0) {
-    throw new WireError('state.personal.tokenPerIncense', 'must be positive')
+    throw new WireError(personalField('tokenPerIncense'), 'must be positive')
   }
   if (personal.wallet === undefined && personal.usedIncenseToday > Math.floor(personal.effectiveTokensToday / personal.tokenPerIncense)) {
-    throw new WireError('state.personal.usedIncenseToday', 'used exceeds earned')
+    throw new WireError(personalField('usedIncenseToday'), 'used exceeds earned')
   }
   if (personal.wallet !== undefined && (personal.remainingIncense !== personal.wallet.available_incense
     || personal.tokenPerIncense !== personal.wallet.token_per_incense)) {
-    throw new WireError('state.personal.wallet', 'does not match available balance or token threshold')
+    throw new WireError(personalField('wallet'), 'does not match available balance or token threshold')
   }
   if (personal.confirmedEffectiveTokensToday !== undefined && personal.confirmedEffectiveTokensToday > personal.effectiveTokensToday) {
-    throw new WireError('state.personal.confirmedEffectiveTokensToday', 'acknowledged claim exceeds observed total')
+    throw new WireError(personalField('confirmedEffectiveTokensToday'), 'acknowledged claim exceeds observed total')
   }
   return {
     schemaVersion: WIRE_SCHEMA_VERSION,
@@ -320,30 +325,30 @@ export function parseWireState(raw: unknown): LiangxiangWireState {
     activeCase: parseCase(record.activeCase, 'state.activeCase'),
     global: {
       ...(globalRecord.liangziPolicyVersion === undefined ? {} : { liangziPolicyVersion: parseLiangziVersion(globalRecord.liangziPolicyVersion) }),
-      caseId: requireString(globalRecord.caseId, 'state.global.caseId'),
+      caseId: requireString(globalRecord.caseId, globalField('caseId')),
       upVotes,
       downVotes,
       uniqueVoters,
-      capturedAt: requireFinite(globalRecord.capturedAt, 'state.global.capturedAt'),
-      sequence: requireCount(globalRecord.sequence, 'state.global.sequence'),
+      capturedAt: requireFinite(globalRecord.capturedAt, globalField('capturedAt')),
+      sequence: requireCount(globalRecord.sequence, globalField('sequence')),
       lifetimeIncense: globalRecord.lifetimeIncense === undefined
         ? upVotes + downVotes
-        : requireCount(globalRecord.lifetimeIncense, 'state.global.lifetimeIncense'),
+        : requireCount(globalRecord.lifetimeIncense, globalField('lifetimeIncense')),
       lifetimeVoters: globalRecord.lifetimeVoters === undefined
         ? uniqueVoters
-        : requireCount(globalRecord.lifetimeVoters, 'state.global.lifetimeVoters'),
+        : requireCount(globalRecord.lifetimeVoters, globalField('lifetimeVoters')),
     },
     personal,
     accounting: {
-      available: requireBoolean(accountingRecord.available, 'state.accounting.available'),
-      inputTokensToday: requireCount(accountingRecord.inputTokensToday, 'state.accounting.inputTokensToday'),
-      outputTokensToday: requireCount(accountingRecord.outputTokensToday, 'state.accounting.outputTokensToday'),
+      available: requireBoolean(accountingRecord.available, accountingField('available')),
+      inputTokensToday: requireCount(accountingRecord.inputTokensToday, accountingField('inputTokensToday')),
+      outputTokensToday: requireCount(accountingRecord.outputTokensToday, accountingField('outputTokensToday')),
       observedAt: accountingRecord.observedAt === null
         ? null
-        : requireFinite(accountingRecord.observedAt, 'state.accounting.observedAt'),
+        : requireFinite(accountingRecord.observedAt, accountingField('observedAt')),
       notice: accountingRecord.notice == null
         ? null
-        : requireString(accountingRecord.notice, 'state.accounting.notice'),
+        : requireString(accountingRecord.notice, accountingField('notice')),
     },
     broadcast: parseBroadcast(record.broadcast),
   }
@@ -424,9 +429,9 @@ export function parseWireVoteResponse(raw: unknown): WireVoteResponse {
 }
 
 function parseLiangziVersion(raw: unknown): string {
-  const version = requireString(raw, 'state.global.liangziPolicyVersion')
+  const version = requireString(raw, globalField('liangziPolicyVersion'))
   try { liangziPolicyForVersion(version) }
-  catch { throw new WireError('state.global.liangziPolicyVersion', `unsupported Liangzi policy ${version}`) }
+  catch { throw new WireError(globalField('liangziPolicyVersion'), `unsupported Liangzi policy ${version}`) }
   return version
 }
 
