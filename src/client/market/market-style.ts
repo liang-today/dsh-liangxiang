@@ -48,7 +48,7 @@ export const MARKET_DIALOG_CSS = marketCss(`
 .~wallet small{font-size:inherit}
 [data-~dialog] .~companion-trigger{align-self:start;display:flex;align-items:center;justify-content:center;padding:4px 0 0;min-width:0;height:100px;border:0;background:none;text-align:left;overflow:visible}
 [data-~dialog] button.~companion-trigger:hover:not(:disabled){background:transparent}
-.~companion-trigger .~companion{width:100%;flex:1;padding-left:0}
+.~companion-trigger .~companion{width:100%;flex:1;padding-left:clamp(16px,calc(20% - 44px),48px)}
 .~companion-trigger .~companion-speech{padding:0;background:none;font-size:11px;line-height:1.4}
 .~window-controls{display:grid;gap:var(--~gap);align-self:start;width:64px}
 .~window-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}

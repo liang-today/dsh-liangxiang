@@ -4,7 +4,7 @@
 
 ## 版本与边界
 
-当前源码 `package.json` / `PLUGIN_VERSION` = `2.0.1-alpha.12`，`SERVER_BUILD=2.0.1-alpha.12-u1`。3999按用户授权原位更新本批钱包与三列香池排布，保留私有120秒模拟控件、身份、资金与仓位。原香港隔离演练已只读一致复制到本机独立环回实例，沿用alpha.4-u1／schema15与原暂停时钟，不升级或迁移；3999不再依赖待退订轻量机。正式后台未动。这仍是新客户端配旧后台的兼容手测，不替代同候选完整验收，见[`PLANT_ACTIVITY_BALANCE.md`](PLANT_ACTIVITY_BALANCE.md)。
+当前源码 `package.json` / `PLUGIN_VERSION` = `2.0.1-alpha.13`，`SERVER_BUILD=2.0.1-alpha.13-u1`。3999按用户授权原位更新本批钱包与三列香池排布，保留私有120秒模拟控件、身份、资金与仓位。原香港隔离演练已只读一致复制到本机独立环回实例，沿用alpha.4-u1／schema15与原暂停时钟，不升级或迁移；3999不再依赖待退订轻量机。正式后台未动。这仍是新客户端配旧后台的兼容手测，不替代同候选完整验收，见[`PLANT_ACTIVITY_BALANCE.md`](PLANT_ACTIVITY_BALANCE.md)。
 当前源码为 **2.0.1未发布修复候选**，保留Host断线行情恢复与源码资源兜底，并统一浏览器读取预算、中文网络提示和断读后的恢复；不改行情刷新节奏、正式账本或历史行情。请求预算与前批验证见 [`CLIENT_REQUEST_RECOVERY.md`](CLIENT_REQUEST_RECOVERY.md)；上一轮同版演练见 [`SAME_CANDIDATE_RECOVERY.md`](SAME_CANDIDATE_RECOVERY.md)，此前等待与本机测试控制见 [`CLIENT_POND_LOADING.md`](CLIENT_POND_LOADING.md)，本批水草凝香及支出余香见 [`PLANT_ACTIVITY_BALANCE.md`](PLANT_ACTIVITY_BALANCE.md)。2.0.0已于2026-11-09公开发布；正式后端仍为2.0.0-u1／schema15／`a90d0e9`，本分支不部署正式服务。此前1.3候选未正式发行。候选提交、社区合并与正式发布／部署是独立步骤，不能由源码版本推断线上已升级。
 公开快照的纯代理CORS维护单独记录`PROXY_VERSION`；社区main前移不代表后台应用已重部署，不以该差异触发应用更新。
 本批客户端、最终包、音效、当前DSH及文案待审状态见[2.0候选验收](RELEASE_2_READINESS.md)；1.2记录不作为2.0放行依据。

@@ -102,8 +102,9 @@ with exact integers; never add personal frozen funds again or label it cumulativ
 turnover. The wallet pair shares compact blue styling; footer pool amounts
 share their own blue size and baseline. Keep exact accessible values. The wallet and chart toolbar share a compact 200px width and align both edges;
 wallet amounts expand within that grid while units keep their common column.
-Let the fish reclaim the released horizontal space for speech without reducing
-its motion or increasing normal header height. The quiet midnight hint directly
+Give the fish a responsive 16–48px inset inside its header slot, balancing
+clear space from the wallet with readable speech. Stacked narrow layouts keep
+zero inset. Never reduce its motion or increase normal header height. The quiet midnight hint directly
 follows its pool caption with a small gap, never automatic edge-pushing margins.
 The slightly larger clock under the motion
 toggle stays within its control column and uses server business date/time only.

@@ -5,7 +5,7 @@
  * test deliberately fails when a version bump forgets to refresh this copy.
  * This is cosmetic localStorage only and never participates in authority.
  */
-export const RELEASE_NOTES_VERSION = '2.0.1-alpha.12'
+export const RELEASE_NOTES_VERSION = '2.0.1-alpha.13'
 export const RELEASE_NOTES_DISPLAY_VERSION = RELEASE_NOTES_VERSION.split('-')[0]!
 export const RELEASE_NOTES_TITLE = `梁相${RELEASE_NOTES_DISPLAY_VERSION}更新介绍`
 export const RELEASE_NOTES_SLOGAN = '社区起浪，行情跟上。'

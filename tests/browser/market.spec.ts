@@ -124,7 +124,8 @@ async function expectReadableMarketLayout(dialog: Locator): Promise<void> {
     if (toolbar.width > 201 || Math.abs(box(units[0]!).right - wallet.right) > 1) failures.push('compact toolbar and wallet use their shared width')
     if (box(element).width > 600) {
       const fish = box(element.querySelector('[data-liangxiang-market-main-whale]')!), speech = box(element.querySelector('.liangxiang-market-companion-speech')!)
-      if (fish.left - wallet.right > 9 || speech.right - speech.left < 160) failures.push('fish reclaims the old blank column for speech')
+      const breathingRoom = fish.left - wallet.right
+      if (breathingRoom < 24 || breathingRoom > 57 || speech.width < 160) failures.push('fish keeps breathing room from wallet without crowding speech')
     }
     const clock = element.querySelector('[data-liangxiang-market-clock]')!, controls = box(element.querySelector('.liangxiang-market-window-controls')!)
     const clockText = textBox(clock)
