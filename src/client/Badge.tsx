@@ -604,6 +604,7 @@ export function LiangxiangBadge(): ReactElement {
   const incenseCaption = usePersonalIncenseCaption({
     scopeKey: incenseScope,
     condensedIncense, settlementSequence, peekSequence: incensePeekSequence,
+    usedIncenseToday: state.personal.usedIncenseToday,
   })
   const prevEarned = useRef(state.personal.earnedIncenseToday)
   const prevEarnedScope = useRef(incenseScope)

@@ -27,6 +27,48 @@ function setup(input: Partial<PersonalIncenseCaptionInput> = {}) {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers() })
 
 describe('confirmed personal caption lifecycle', () => {
+  it('shows available incense after confirmed spending, without inferring an earning receipt', () => {
+    const run = setup({ usedIncenseToday: 40 })
+    run.observe({ usedIncenseToday: 41 })
+    expect(run.current()).toMatchObject({ view: 'balance', gain: 0 })
+    const sequence = run.current().sequence
+    run.observe({ usedIncenseToday: 41 })
+    expect(run.current().sequence).toBe(sequence)
+    vi.advanceTimersByTime(2_600)
+    expect(run.current().view).toBe('daily')
+  })
+
+  it('keeps balance readable during repeated accepted votes and expires after the last one', () => {
+    const run = setup({ usedIncenseToday: 0 })
+    run.observe({ usedIncenseToday: 1 })
+    const sequence = run.current().sequence
+    vi.advanceTimersByTime(2_000)
+    run.observe({ usedIncenseToday: 501 })
+    expect(run.current()).toMatchObject({ view: 'balance', sequence })
+    vi.advanceTimersByTime(2_599)
+    expect(run.current().view).toBe('balance')
+    vi.advanceTimersByTime(1)
+    expect(run.current().view).toBe('daily')
+  })
+
+  it('prioritizes confirmed spending while preserving an actual earning receipt for later', () => {
+    const run = setup({ usedIncenseToday: 0, settlementSequence: 0 })
+    run.observe({ condensedIncense: 2, settlementSequence: 1 })
+    run.observe({ usedIncenseToday: 1 })
+    expect(run.current()).toMatchObject({ view: 'balance', gain: 0 })
+    vi.advanceTimersByTime(2_600 + 2_000)
+    expect(run.current()).toMatchObject({ view: 'gain', gain: 2 })
+  })
+
+  it('does not announce pending, rejected, invalid or inherited spending on a new scope', () => {
+    const run = setup({ usedIncenseToday: 10 })
+    for (const usedIncenseToday of [10, 9, -1, NaN, 1.5]) run.observe({ usedIncenseToday })
+    expect(run.current().view).toBe('daily')
+    run.observe({ scopeKey: 'online:new-date:case', usedIncenseToday: 100 })
+    expect(run.current().view).toBe('daily')
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('fences an already-present receipt on mount and never schedules activity text', () => {
     const run = setup({ condensedIncense: 12, settlementSequence: 5 })
     run.observe({ condensedIncense: 12, settlementSequence: 5 })

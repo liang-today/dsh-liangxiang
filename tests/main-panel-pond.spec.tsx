@@ -4,20 +4,22 @@ import { MAIN_POND_GRASS, MAIN_POND_WHALE } from '../src/client/main-pond-art.ts
 import { findAll, findByAttr, renderDeep, styleOf } from './helpers/render.ts'
 
 describe('main panel decorative pond', () => {
-  it('places bounded activity ripples in the real tide without changing any water or actor geometry', () => {
+  it('keeps two bounded plant emitters independent from water geometry and the two whale emitters', () => {
     for (const stock of [1, 25, 100, 437, 1_000]) {
       const idle = renderDeep(<MainPanelPond remainingIncense={stock} reducedMotion={false} />)
       const active = renderDeep(<MainPanelPond remainingIncense={stock} reducedMotion={false} streamingActive />)
       expect(styleOf(findByAttr(active, 'data-liangxiang-main-pond')[0])).toEqual(styleOf(findByAttr(idle, 'data-liangxiang-main-pond')[0]))
-      const tide = findAll(active, node => node.props.className === 'liangxiang-main-pond-tide')[0]
-      expect(findByAttr(tide?.children ?? [], 'data-liangxiang-stream-ripple')).toHaveLength(2)
+      expect(findByAttr(active, 'data-liangxiang-main-pond')[0]?.props['data-streaming']).toBe(true)
+      const emitters = findByAttr(active, 'data-liangxiang-stream-bubble')
+      expect(emitters).toHaveLength(2)
+      expect(emitters.every(node => node.props.hidden)).toBe(true)
     }
     for (const props of [{ remainingIncense: 0 }, { remainingIncense: 100, active: false }]) {
       const nodes = renderDeep(<MainPanelPond {...props} reducedMotion={false} streamingActive />)
       expect(findByAttr(nodes, 'data-liangxiang-stream-ripple')).toHaveLength(0)
     }
     const reduced = renderDeep(<MainPanelPond remainingIncense={25} reducedMotion streamingActive />)
-    expect(findByAttr(reduced, 'data-liangxiang-stream-ripple')).toHaveLength(2)
+    expect(findByAttr(reduced, 'data-liangxiang-stream-bubble')).toHaveLength(2)
     expect(findByAttr(reduced, 'data-liangxiang-main-pond')[0]?.props['data-motion']).toBe(false)
     expect(MAIN_PANEL_POND_CSS).toContain('[data-liangxiang-main-pond][data-available=false]~* [data-liangxiang-stream-activity]')
   })
@@ -84,8 +86,8 @@ describe('main panel decorative pond', () => {
     expect(styleOf(root)['--liangxiang-pond-growth']).toBe(.5)
     expect(findAll(nodes, node => node.type === 'button' || node.type === 'input' || 'tabIndex' in node.props || 'aria-live' in node.props)).toHaveLength(0)
     expect(findByAttr(nodes, 'data-liangxiang-main-pond-bubbles')).toHaveLength(1)
-    expect(findAll(nodes, node => node.props.className === 'liangxiang-main-pond-bubble')).toHaveLength(2)
-    expect(MAIN_PANEL_POND_CSS).toContain('[data-liangxiang-main-pond-bubbles]{position:absolute;inset:0;z-index:4')
+    expect(findAll(findByAttr(nodes, 'data-liangxiang-main-pond-bubbles')[0]?.children ?? [], node => node.props.className === 'liangxiang-main-pond-bubble')).toHaveLength(2)
+    expect(MAIN_PANEL_POND_CSS).toContain('[data-liangxiang-main-pond-activity]{position:absolute;inset:0;z-index:4')
     expect(MAIN_PANEL_POND_CSS).toContain('[data-liangxiang-main-pond][data-motion=false] *')
     expect(MAIN_PANEL_POND_CSS).toContain('@media(prefers-reduced-motion:reduce)')
   })

@@ -4,8 +4,8 @@
 
 ## 版本与边界
 
-当前源码 `package.json` / `PLUGIN_VERSION` = `2.0.1-alpha.5`，`SERVER_BUILD=2.0.1-alpha.5-u1`。 本轮仅更新本机客户端／Host；香港隔离后台继续运行已核验的alpha.4-u1，不部署或重启。
-当前源码为 **2.0.1未发布修复候选**，保留Host断线行情恢复与源码资源兜底，并统一浏览器读取预算、中文网络提示和断读后的恢复；不改行情刷新节奏、正式账本或历史行情。请求预算与前批验证见 [`CLIENT_REQUEST_RECOVERY.md`](CLIENT_REQUEST_RECOVERY.md)；上一轮同版演练见 [`SAME_CANDIDATE_RECOVERY.md`](SAME_CANDIDATE_RECOVERY.md)，本批仅客户端水景、等待与本机测试控制见 [`CLIENT_POND_LOADING.md`](CLIENT_POND_LOADING.md)。2.0.0已于2026-11-09公开发布；正式后端仍为2.0.0-u1／schema15／`a90d0e9`，本分支不部署正式服务。此前1.3候选未正式发行。候选提交、社区合并与正式发布／部署是独立步骤，不能由源码版本推断线上已升级。
+当前源码 `package.json` / `PLUGIN_VERSION` = `2.0.1-alpha.6`，`SERVER_BUILD=2.0.1-alpha.6-u1`。 本轮仅更新本机客户端／Host；香港隔离后台继续运行已核验的alpha.4-u1，不部署或重启。
+当前源码为 **2.0.1未发布修复候选**，保留Host断线行情恢复与源码资源兜底，并统一浏览器读取预算、中文网络提示和断读后的恢复；不改行情刷新节奏、正式账本或历史行情。请求预算与前批验证见 [`CLIENT_REQUEST_RECOVERY.md`](CLIENT_REQUEST_RECOVERY.md)；上一轮同版演练见 [`SAME_CANDIDATE_RECOVERY.md`](SAME_CANDIDATE_RECOVERY.md)，此前等待与本机测试控制见 [`CLIENT_POND_LOADING.md`](CLIENT_POND_LOADING.md)，本批水草凝香及支出余香见 [`PLANT_ACTIVITY_BALANCE.md`](PLANT_ACTIVITY_BALANCE.md)。2.0.0已于2026-11-09公开发布；正式后端仍为2.0.0-u1／schema15／`a90d0e9`，本分支不部署正式服务。此前1.3候选未正式发行。候选提交、社区合并与正式发布／部署是独立步骤，不能由源码版本推断线上已升级。
 公开快照的纯代理CORS维护单独记录`PROXY_VERSION`；社区main前移不代表后台应用已重部署，不以该差异触发应用更新。
 本批客户端、最终包、音效、当前DSH及文案待审状态见[2.0候选验收](RELEASE_2_READINESS.md)；1.2记录不作为2.0放行依据。
 
@@ -43,7 +43,7 @@ DSH 最终请求用量
 - 梁位、梁子与统计来自同版权威快照。网络失败保留在线偏好、锁票并自动重连，不静默切换模式。
 - 不保存或传输提示词、回复、源码、会话正文或原始文件路径；Backend 不接收模型名。
 - 自动上香的本机夯/拉统计由 Host 按模式持久化，页面与手动记录合并展示；Backend v11 的原始成交回执用于丢回执后的准确重放，不改变投票额度。
-- 实时请求活动是独立的 Host → Client 布尔信号，只在开始/结束翻转推送；不读取块正文、不估算数字、不写账本或发送至社区。水面显示轻涟漪，环底显示柔和呼吸光，持续活动不覆盖今日凝香；确认结算才短显到账与余香，减少动态时静态呈现。
+- 实时请求活动是独立的 Host → Client 布尔信号，只在开始/结束翻转推送；不读取块正文、不估算数字、不写账本或发送至社区。水草附近的泡泡沿实际水深上升、在水面破开；无水／极薄水层只留环底呼吸光。持续活动不覆盖今日凝香；确认结算短显到账与余香，已确认上香支出也短显个人余香。详见 [`PLANT_ACTIVITY_BALANCE.md`](PLANT_ACTIVITY_BALANCE.md)。
 
 ## 当前产品行为
 

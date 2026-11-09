@@ -50,7 +50,7 @@ const FLAME = 'light-dark(#deb967, #edd49a)'
 const GLYPH_GOLD = 'light-dark(#b58a45, #d9bd82)'
 
 const ACTIVITY_CSS = `
-@keyframes liangxiang-stream-glow{50%{opacity:.32}}
+@keyframes liangxiang-stream-glow{50%{opacity:.42}}
 @media(prefers-reduced-motion:reduce){[data-liangxiang-stream-activity]{animation:none!important}}`
 
 function orbitAngle(index: number, count: number): number {
@@ -186,8 +186,8 @@ export function LiangQiRing({
         {streamingActive && <>
           <style>{ACTIVITY_CSS}</style>
           <path data-liangxiang-stream-activity="" aria-hidden="true" d="M27 103Q63 132 99 103"
-            fill="none" stroke={mainColor.water} strokeWidth="6" strokeLinecap="round"
-            style={{ opacity: .14, animation: reducedMotion ? undefined : 'liangxiang-stream-glow 3s ease-in-out infinite' }} />
+            fill="none" stroke={mainColor.blue} strokeWidth="4.5" strokeLinecap="round"
+            style={{ opacity: .18, animation: reducedMotion ? undefined : 'liangxiang-stream-glow 3s ease-in-out infinite' }} />
         </>}
         <circle
           cx={RING_SIZE / 2}

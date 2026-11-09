@@ -292,7 +292,8 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     expect(textContent(findByAttr(active, 'data-caption-copy'))).toBe('今日凝香7炷')
     expect(textContent(findByAttr(active, 'data-caption-copy'))).toBe(textContent(findByAttr(idle, 'data-caption-copy')))
     expect(findByAttr(active, 'data-liangxiang-stream-activity')).toHaveLength(1)
-    expect(findByAttr(active, 'data-liangxiang-stream-ripple')).toHaveLength(2)
+    expect(findByAttr(active, 'data-liangxiang-stream-bubble')).toHaveLength(2)
+    expect(findByAttr(active, 'data-liangxiang-main-pond')[0]?.props['data-streaming']).toBe(true)
     expect(findByAttr(active, 'data-liangxiang-stream-wisp')).toHaveLength(0)
     for (const attribute of ['data-liangxiang-compact', 'data-liangxiang-liang-position-value']) {
       expect(textContent(findByAttr(active, attribute))).toBe(textContent(findByAttr(idle, attribute)))

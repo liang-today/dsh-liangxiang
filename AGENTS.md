@@ -45,9 +45,16 @@ only the tips of a clipped full plant. Two little stones per side stay at the
 roots. Above 100, an occasional small whale performs the same two puffs;
 foreground bubbles grow upward from above its head and pop at the live water
 surface, away from the portrait. Hide/static/unmount cancels all local motion.
-The left caption defaults to today's earned total. Only confirmed settlements
-briefly show gained incense and then available incense; sustained request
-activity never replaces the daily caption. Clicking the figure inspects
+The left caption defaults to today's earned total. Confirmed settlements
+briefly show gained incense and then available incense; confirmed vote spending
+also briefly shows personal available incense. Repeated frames must not replay
+that feedback, while consecutive accepted votes keep the balance readable.
+Sustained request activity never replaces the daily caption. It may grow small
+bubbles near the plants, rising and popping at the actual water surface, without
+changing water or progress. No water or an extremely thin layer uses only the
+ring-bottom glow; shallow bubbles fit the visible water. Keep these emitters
+separate from the whale's two original puffs and cancel all activity on hide,
+static preference or unmount. Clicking the figure inspects
 available incense. One highest-order ring glyph group (ones / tens / hundreds)
 avoids crowding; large amounts use the compact caption and exact accessible
 summary. The full-width Liangwei pill matches the two vote buttons together.

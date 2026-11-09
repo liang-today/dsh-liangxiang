@@ -5,7 +5,7 @@
  * test deliberately fails when a version bump forgets to refresh this copy.
  * This is cosmetic localStorage only and never participates in authority.
  */
-export const RELEASE_NOTES_VERSION = '2.0.1-alpha.5'
+export const RELEASE_NOTES_VERSION = '2.0.1-alpha.6'
 export const RELEASE_NOTES_DISPLAY_VERSION = RELEASE_NOTES_VERSION.split('-')[0]!
 export const RELEASE_NOTES_TITLE = `梁相${RELEASE_NOTES_DISPLAY_VERSION}更新介绍`
 export const RELEASE_NOTES_SLOGAN = '社区起浪，行情跟上。'
@@ -13,6 +13,7 @@ export const RELEASE_NOTES_HIGHLIGHTS = [
   { icon: 'market', title: '行情更连贯', copy: '连接恢复后，自动追上社区走势。' },
   { icon: 'waves', title: '重连更省心', copy: '打开失败，稍后自动再试。' },
   { icon: 'waves', title: '水景更完整', copy: '源码安装，梁子和水草加载更稳。' },
+  { icon: 'waves', title: '凝香更灵动', copy: '水草冒泡，上香后余香一眼可见。' },
 ] as const
 export const RELEASE_NOTES_ITEMS = RELEASE_NOTES_HIGHLIGHTS.map(item => `${item.title}　${item.copy}`)
 export const RELEASE_NOTES_GROUP_NAME = '梁相上香QQ群'

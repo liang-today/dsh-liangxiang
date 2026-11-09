@@ -233,7 +233,7 @@ test('one real fish visit puffs identically on both sides and foreground bubbles
   const body = pond.locator('.liangxiang-main-pond-fish-body')
   const puffs: Array<unknown> = []
   for (const side of ['left', 'right'] as const) {
-    const bubble = pond.locator(`.liangxiang-main-pond-bubble[data-side="${side}"]`)
+    const bubble = pond.locator(`[data-liangxiang-main-pond-bubbles] .liangxiang-main-pond-bubble[data-side="${side}"]`)
     await expect.poll(() => body.getAttribute('data-puff'), { intervals: [20], timeout: 5_000 }).toBe('true')
     puffs.push(await body.evaluate(element => element.getAnimations().map(animation => ({
       name: animation instanceof CSSAnimation ? animation.animationName : '',

@@ -53,8 +53,10 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
   await page.evaluate(state => window.__liangxiangActivityFrame?.(state), active)
   await expect(panel.locator('[data-liangxiang-stream-status]')).toHaveCount(0)
   await expect(panel.locator('[data-caption-label]')).toHaveText('今日凝香')
-  const activity = panel.locator('[data-liangxiang-stream-activity], [data-liangxiang-stream-ripple]')
-  await expect(activity).toHaveCount(Number(remaining) > 0 ? 3 : 1)
+  const activity = panel.locator('[data-liangxiang-stream-activity]')
+  const plantBubbles = panel.locator('[data-liangxiang-stream-bubble]')
+  await expect(activity).toHaveCount(1)
+  expect(await plantBubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
   await expect(panel.locator('[data-liangxiang-stream-wisp]')).toHaveCount(0)
   expect(await activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 0))).toBe(true)
   await page.waitForTimeout(1200) // prove a running request does not predict numbers
@@ -69,6 +71,7 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await expect.poll(() => activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 1))).toBe(true)
   const glow = panel.locator('[data-liangxiang-stream-activity]')
+  if (Number(remaining) >= 10) await expect.poll(() => panel.locator('[data-liangxiang-stream-bubble]:not([hidden])').count()).toBeGreaterThan(0)
   const opacity = await glow.evaluate(node => getComputedStyle(node).opacity)
   await expect.poll(() => glow.evaluate(node => getComputedStyle(node).opacity)).not.toBe(opacity)
   expect(await figures.allTextContents()).toEqual(before)
@@ -89,7 +92,7 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
   await expect(panel.locator('[data-caption-amount]')).toHaveText('+2')
 })
 
-test('activity follows shallow and full water, pauses offscreen, and never restarts a fish visit', async ({ page }) => {
+test('plant bubbles fit actual shallow water, follow its surface and do not restart a whale visit', async ({ page }) => {
   const wire = await (await page.request.get('/liangxiang/api/state')).json() as LiangxiangWireState
   const panel = await openPanel(page), pond = panel.locator('[data-liangxiang-main-pond]')
   let revision = wire.revision + 10_000
@@ -103,19 +106,27 @@ test('activity follows shallow and full water, pauses offscreen, and never resta
     })
   }
   await page.emulateMedia({ reducedMotion: 'no-preference' })
-  const ripples = panel.locator('[data-liangxiang-stream-ripple]')
-  for (const stock of [25, 1_000]) {
+  const bubbles = pond.locator('[data-liangxiang-stream-bubble]')
+  const rising = pond.locator('[data-liangxiang-stream-bubble][data-stage=rise]:not([hidden])')
+  for (const stock of [0, 1]) {
     await emit(stock)
-    await expect(ripples).toHaveCount(2)
-    const drop = 128 * (1 - Math.sqrt(stock / 1_000))
-    // Both decorations live inside the same tide transform as the genuine
-    // water line, rather than floating at an independent fixed ring height.
-    await expect.poll(() => ripples.first().evaluate(node => {
-      const tide = node.closest('.liangxiang-main-pond-tide')!
-      const gleam = tide.querySelector('.liangxiang-main-pond-gleam')!
-      return gleam.closest('.liangxiang-main-pond-tide') === tide
-        ? new DOMMatrixReadOnly(getComputedStyle(tide).transform).f : -1
-    })).toBeCloseTo(drop, 1)
+    await expect(panel.locator('[data-liangxiang-stream-activity]')).toHaveCount(1)
+    expect(await bubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
+  }
+  for (const stock of [10, 1_000]) {
+    await emit(stock)
+    await expect(rising.first()).toBeVisible({ timeout: 6_000 })
+    const birth = await rising.first().evaluate(node => ({
+      y: Number((node as HTMLElement).dataset.birthY), water: Number((node as HTMLElement).dataset.surfaceY),
+      size: parseFloat(getComputedStyle(node).width),
+      bottom: node.closest('[data-liangxiang-main-pond]')!.querySelector('[data-liangxiang-main-pond-water]')!.getBoundingClientRect().bottom
+        - node.closest('[data-liangxiang-main-pond]')!.getBoundingClientRect().top,
+    }))
+    expect(birth.y).toBeGreaterThan(birth.water)
+    expect(birth.y + birth.size / 2).toBeLessThanOrEqual(birth.bottom)
+    expect(birth.size).toBeLessThanOrEqual(8)
+    if (stock === 10) expect(birth.size).toBeLessThan(8)
+    await expect(pond.locator('[data-liangxiang-stream-bubble][data-stage=pop]:not([hidden])').first()).toBeVisible({ timeout: 2_000 })
   }
   await page.clock.install()
   await page.clock.fastForward(10_001)
@@ -123,24 +134,38 @@ test('activity follows shallow and full water, pauses offscreen, and never resta
   const fish = pond.locator('.liangxiang-main-pond-fish')
   const start = await fish.evaluate(node => node.getAnimations()[0]!.startTime)
   await emit(1_000, false)
-  await expect(ripples).toHaveCount(0)
+  expect(await bubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
   await emit(1_000)
-  await expect(ripples).toHaveCount(2)
   await expect(pond).toHaveAttribute('data-fish', 'true')
   expect(await fish.evaluate(node => node.getAnimations()[0]!.startTime)).toEqual(start)
-
   await pond.evaluate(node => { node.style.transform = 'translateX(200vw)' })
   await expect(pond).toHaveAttribute('data-available', 'false')
-  const activity = panel.locator('[data-liangxiang-stream-activity], [data-liangxiang-stream-ripple]')
-  expect(await activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().every(animation => animation.playState === 'paused')))).toBe(true)
+  expect(await bubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
   await pond.evaluate(node => { node.style.transform = '' })
   await expect(pond).toHaveAttribute('data-available', 'true')
-  await expect.poll(() => activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().every(animation => animation.playState === 'running')))).toBe(true)
   await emit(0)
-  await expect(ripples).toHaveCount(0)
   await expect(panel.locator('[data-liangxiang-stream-activity]')).toHaveCount(1)
-  const detached = await panel.locator('[data-liangxiang-stream-activity]').elementHandle()
+  const detached = await pond.elementHandle()
   await panel.getByRole('button', { name: '关闭面板', exact: true }).click()
-  expect(await detached!.evaluate(node => ({ connected: node.isConnected, animations: node.getAnimations().length })))
+  expect(await detached!.evaluate(node => ({ connected: node.isConnected, animations: node.getAnimations({ subtree: true }).length })))
     .toEqual({ connected: false, animations: 0 })
+})
+
+test('a confirmed vote frame reveals personal balance without a transaction or an earning animation', async ({ page }) => {
+  const wire = await (await page.request.get('/liangxiang/api/state')).json() as LiangxiangWireState
+  const panel = await openPanel(page), mutations: string[] = []
+  page.on('request', request => { if (request.method() !== 'GET') mutations.push(request.url()) })
+  await expect(panel.locator('[data-caption-label]')).toHaveText('今日凝香')
+  const remaining = wire.personal.remainingIncense - 1
+  await page.evaluate(state => window.__liangxiangActivityFrame?.(state), {
+    ...wire, revision: wire.revision + 10_000,
+    personal: { ...wire.personal, usedIncenseToday: wire.personal.usedIncenseToday + 1, remainingIncense: remaining,
+      ...(wire.personal.wallet ? { wallet: { ...wire.personal.wallet, available_incense: remaining,
+        total_incense: wire.personal.wallet.total_incense - 1, version: wire.personal.wallet.version + 1 } } : {}) },
+  })
+  await expect(panel.locator('[data-caption-label]')).toHaveText('个人余香')
+  await expect(panel.locator('[data-caption-amount]')).toHaveText(String(remaining))
+  await expect(panel.locator('[data-liangxiang-ring]')).toHaveAttribute('data-remaining', String(remaining))
+  await expect(panel.locator('[data-caption-label]')).toHaveText('今日凝香', { timeout: 4_000 })
+  expect(mutations).toEqual([])
 })
