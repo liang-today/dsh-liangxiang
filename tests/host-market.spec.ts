@@ -202,8 +202,9 @@ describe('cumulative wallet Host authority', () => {
     await service.refreshBootstrap()
     const next = await service.market()
     expect(next.wallet.available_incense).toBe(10)
+    const discarded = expect(oldRead).rejects.toMatchObject({ code: 'authority_changed' })
     finishOld({ ...initial, wallet: { ...WALLET, available_incense: 99, total_incense: 104, version: 99 } })
-    await oldRead
+    await discarded
     expect(calls).toBe(2)
     expect(service.cachedMarketState()?.wallet.available_incense).toBe(10)
   })

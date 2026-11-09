@@ -35,12 +35,29 @@ const SSE_HEARTBEAT_MS = 25_000
 
 // Only these fixed build/source URLs can be read. Request query text is never
 // resolved as a filesystem path, and the promise cache can hold at most 3 rows.
+// The second URL serves source modules; the third serves compiled clone builds
+// whose lib directory has not received the artwork copy yet.
 const PANEL_ART_FILES = {
-  nan: [new URL('./main-nan.webp', import.meta.url), new URL('../client/assets/main-nan.webp', import.meta.url)],
-  grass: [new URL('./main-grass.webp', import.meta.url), new URL('../client/assets/main-grass.webp', import.meta.url)],
-  fish: [new URL('./main-fish.webp', import.meta.url), new URL('../client/assets/main-fish.webp', import.meta.url)],
+  nan: [new URL('./main-nan.webp', import.meta.url), new URL('../client/assets/main-nan.webp', import.meta.url), new URL('../src/client/assets/main-nan.webp', import.meta.url)],
+  grass: [new URL('./main-grass.webp', import.meta.url), new URL('../client/assets/main-grass.webp', import.meta.url), new URL('../src/client/assets/main-grass.webp', import.meta.url)],
+  fish: [new URL('./main-fish.webp', import.meta.url), new URL('../client/assets/main-fish.webp', import.meta.url), new URL('../src/client/assets/main-fish.webp', import.meta.url)],
 } as const
+const MARKET_ART_FILES = [
+  new URL('./market-whale.webp', import.meta.url),
+  new URL('../client/assets/market-whale.webp', import.meta.url),
+  new URL('../src/client/assets/market-whale.webp', import.meta.url),
+] as const
 type PanelArtAsset = keyof typeof PANEL_ART_FILES
+
+async function readArtFiles(files: readonly URL[]): Promise<Buffer> {
+  for (const file of files) {
+    try { return await readFile(file) } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code !== 'ENOENT' && code !== 'ENOTDIR') throw error
+    }
+  }
+  throw new Error('illustration is not installed')
+}
 
 function parsePanelArtAsset(search: URLSearchParams): PanelArtAsset | null {
   for (const key of search.keys()) {
@@ -336,8 +353,7 @@ export function createLiangxiangApi(
     }
     if (pathname === '/liangxiang/api/market/art.webp') {
       try {
-        art ??= readFile(new URL('./market-whale.webp', import.meta.url))
-          .catch(() => readFile(new URL('../client/assets/market-whale.webp', import.meta.url)))
+        art ??= readArtFiles(MARKET_ART_FILES)
         const image = await art
         res.writeHead(200, { 'content-type': 'image/webp', 'content-length': image.byteLength,
           'cache-control': 'public, max-age=3600', 'x-content-type-options': 'nosniff' })
@@ -356,8 +372,7 @@ export function createLiangxiangApi(
       }
       let pending = panelArt.get(asset)
       if (pending === undefined) {
-        const [build, source] = PANEL_ART_FILES[asset]
-        pending = readFile(build).catch(() => readFile(source))
+        pending = readArtFiles(PANEL_ART_FILES[asset])
         panelArt.set(asset, pending)
       }
       try {

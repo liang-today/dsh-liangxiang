@@ -44,6 +44,9 @@ class MarketHttpError extends Error {
   constructor(readonly status: number) { super(status === 404 ? '当前连接尚未开放香火市场，凝香、上香与梁祠仍可使用。' : status === 409 ? '仓位状态已变化，正在重新核对。' : '暂时无法连接社区，请稍后重试。') }
 }
 
+/** Boundary failures already map to the specific user notices below. */
+function invalidMarketData(): never { throw new Error('invalid market data') }
+
 export function browserMarketTransport(): MarketTransport {
   const controllers = new Set<AbortController>()
   let disposed = false
@@ -82,11 +85,25 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
   let disposed = false, source: { close(): void } | null = null, chartKey = '', chartLoading = false, chartQueued = false, lastCacheSave = 0
   let historyCursors: Array<string | undefined> = [undefined], historyIndex = 0, historyGeneration = 0
   let acceptedFeedback: { id: string, play(state: MarketState): void } | null = null
+  let connecting: Promise<void> | null = null, generation = 0, retryDelay = 1_000
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
   const listeners = new Set<() => void>()
   const update = (patch: Partial<MarketView>): void => {
     if (disposed) return
     view = { ...view, ...patch }
     for (const listener of listeners) listener()
+  }
+  const stopRetry = (): void => { clearTimeout(retryTimer ?? undefined); retryTimer = null }
+  const disconnect = (error: unknown, expected: number): void => {
+    if (expected !== generation) return
+    generation++
+    source?.close(); source = null
+    const unsupported = error instanceof MarketHttpError && [404, 405, 501].includes(error.status)
+    update({ status: unsupported ? 'unsupported' : 'offline', error: error instanceof Error ? error.message : '连接异常，自动重连；仓位仍由服务器保管。' })
+    if (!unsupported) {
+      retryTimer = setTimeout(() => { void session.start() }, retryDelay)
+      retryDelay = Math.min(30_000, retryDelay * 2)
+    }
   }
   const save = (immediate = true): void => {
     if (!immediate && Date.now() - lastCacheSave < 15_000) return
@@ -130,21 +147,21 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
         const response = await transport.request(`/candles?${query}`)
         const data = parseMarketCandlesResponse(response.body)
         if (!current()) return
-        if (response.scope && response.scope !== scope) throw new Error('candle identity changed')
-        if (data.case_id !== market.case_id || data.business_date !== market.business_date) throw new Error('candle case changed')
+        if (response.scope && response.scope !== scope) invalidMarketData()
+        if (data.case_id !== market.case_id || data.business_date !== market.business_date) invalidMarketData()
         if (base.length > 0 && data.interval_ms !== oldInterval) {
           base = []; rows = []; cursor = undefined; seen.clear(); continue
         }
-        if (rows.length > 0 && interval !== data.interval_ms) throw new Error('candle grain changed during pagination')
+        if (rows.length > 0 && interval !== data.interval_ms) invalidMarketData()
         interval = data.interval_ms
-        if (rows.length > 0 && data.candles.length > 0 && data.candles[0]!.at <= rows.at(-1)!.at) throw new Error('overlapping candle pages')
+        if (rows.length > 0 && data.candles.length > 0 && data.candles[0]!.at <= rows.at(-1)!.at) invalidMarketData()
         rows.push(...data.candles)
-        if (rows.length > MARKET_CANDLES_DAY_MAX) throw new Error('candle day exceeds bound')
+        if (rows.length > MARKET_CANDLES_DAY_MAX) invalidMarketData()
         if (data.next_cursor === null) { completed = true; break }
-        if (seen.has(data.next_cursor) || data.candles.length === 0) throw new Error('repeated candle cursor')
+        if (seen.has(data.next_cursor) || data.candles.length === 0) invalidMarketData()
         seen.add(data.next_cursor); cursor = data.next_cursor
       }
-      if (!completed || !current()) throw new Error('incomplete candle history')
+      if (!completed || !current()) invalidMarketData()
       const merged = new Map(base.map(c => [c.at, c]))
       const merge = (candle: MarketCandle): void => {
         const old = merged.get(candle.at)
@@ -207,7 +224,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
     try {
       const response = await transport.request('/position', intent)
       const result = parseMarketPositionResponse(response.body)
-      if (result.request_id !== intent.request_id) throw new Error('request receipt mismatch')
+      if (result.request_id !== intent.request_id) invalidMarketData()
       adopt(result.state, response.scope)
       cache.pending = null; writeMarketPending(storage, view.scope, null)
       update({ pending: null, error: result.accepted ? null : rejectionCopy(result.reason) })
@@ -223,19 +240,24 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
   const session: MarketSession = {
     getSnapshot: () => view,
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) },
-    async start() {
+    start() {
+      if (disposed || connecting) return connecting ?? Promise.resolve()
+      stopRetry()
       source?.close(); source = null
-      try {
-        const response = await transport.request('')
-        adopt(parseMarketState(response.body), response.scope)
-        if (disposed) return
-        source = transport.events((body, scope) => {
-          try { adopt(parseMarketState(body), scope) } catch { update({ status: 'offline', error: '社区状态未通过核对，正在等待重新连接。' }) }
-        }, () => update({ status: 'offline', error: '连接暂时中断，正在自动重连；仓位仍由服务器保管。' }))
-        await session.loadHistory()
-      } catch (error) {
-        update({ status: error instanceof MarketHttpError && error.status === 404 ? 'unsupported' : 'offline', error: error instanceof Error ? error.message : '社区暂不可用' })
-      }
+      const expected = ++generation, current = (): boolean => expected === generation
+      const failed = (): void => disconnect(null, expected)
+      return connecting = transport.request('').then(response => {
+          if (!current()) return
+          adopt(parseMarketState(response.body), response.scope)
+          const next = transport.events((body, scope) => {
+            if (!current()) return
+            try { adopt(parseMarketState(body), scope); retryDelay = 1_000 }
+            catch { failed() }
+          }, failed)
+          if (current()) source = next; else next.close()
+        }).catch(error => disconnect(error, expected))
+        .finally(() => { connecting = null })
+        .then(() => { if (current()) return session.loadHistory() })
     },
     async submit(intent, onAccepted) {
       if (view.pending || view.sending) throw new Error('请先核对上一笔未确认的仓位')
@@ -257,9 +279,9 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
         if (cursor !== undefined) query.set('cursor', cursor)
         const response = await transport.request(`/history?${query}`)
         if (!current()) return
-        if (response.scope && response.scope !== scope) throw new Error('history identity changed')
+        if (response.scope && response.scope !== scope) invalidMarketData()
         const page = parseMarketHistoryResponse(response.body)
-        if (page.next_cursor !== null && (page.receipts.length === 0 || page.next_cursor === cursor)) throw new Error('repeated history cursor')
+        if (page.next_cursor !== null && (page.receipts.length === 0 || page.next_cursor === cursor)) invalidMarketData()
         // Retain only this page; the cursor trail lets older history stay on the server.
         historyCursors[index] = cursor; historyCursors.length = index + 1; historyIndex = index
         cache.receipts = [...page.receipts, ...cache.receipts]; save()
@@ -267,7 +289,7 @@ export function createMarketSession(transport: MarketTransport = browserMarketTr
       } catch { if (current()) update({ error: '历史回执暂未更新，已确认的钱包不受影响。' }) }
       finally { if (current()) update({ historyLoading: false }) }
     },
-    dispose() { save(); disposed = true; acceptedFeedback = null; source?.close(); transport.dispose(); listeners.clear() },
+    dispose() { save(); disposed = true; generation++; stopRetry(); acceptedFeedback = null; source?.close(); transport.dispose(); listeners.clear() },
   }
   return session
 }
