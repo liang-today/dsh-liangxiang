@@ -159,7 +159,7 @@ export class DayEndService extends AuthoritySlot {
     }
     const job = this.state.jobs[mode]?.businessDate === timing.businessDate ? this.state.jobs[mode] : undefined
     const closing = timing.now >= timing.endsAt - START_BEFORE_END_MS
-    const done = job?.done && job.kind !== 'periodic'
+    const done = job?.done && job.caseId === wire.activeCase.id && job.kind !== 'periodic'
     let delay = Math.max(0, timing.endsAt - START_BEFORE_END_MS - timing.now)
     if (!closing && (job === undefined || job.kind === 'periodic')) {
       if (job?.kind === 'periodic' && !job.done) delay = 0
@@ -209,7 +209,7 @@ export class DayEndService extends AuthoritySlot {
         if (timing == null) return
         const closing = timing.now >= timing.endsAt - START_BEFORE_END_MS
         const today = job?.businessDate === wire.businessDate
-        if (today && job?.done && job.kind !== 'periodic') return
+        if (today && job?.done && job.caseId === wire.activeCase.id && job.kind !== 'periodic') return
         const pending = today && job && !job.done
         if (!pending) {
           if (!closing && (this.periodicReadyAt === 0 || this.clock.now() < this.periodicReadyAt || wire.personal.remainingIncense < VOTE_COUNT_MAX)) {
@@ -232,7 +232,7 @@ export class DayEndService extends AuthoritySlot {
         if (outcome.result.status === 'accepted' || outcome.result.status === 'rejected') {
           const completed: DayEndJob = { ...job, done: true }
           const accepted = outcome.result.status === 'accepted'
-            ? outcome.result.acceptedIncense ?? outcome.result.spentIncense ?? 1 : 0
+            ? outcome.result.acceptedIncense ?? outcome.result.spentIncense ?? (job.count === 1 ? 1 : 0) : 0
           if (!Number.isSafeInteger(accepted) || accepted < 0 || accepted > job.count) throw new Error('invalid accepted incense count')
           await this.save(s => {
             if (s.jobs[mode]?.requestId !== completed.requestId || s.jobs[mode]?.done) return s

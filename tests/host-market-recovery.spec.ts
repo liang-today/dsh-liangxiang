@@ -252,3 +252,17 @@ describe('market recovery without a healthy cloud stream', () => {
     expect(h.service.cachedMarketState()).toBeNull()
   })
 })
+
+
+it('accepts a newer market point with a lower revision from its own counter domain', async () => {
+  const h = await recoveryHarness()
+  h.fixture.clock.advance(1000)
+  const real = h.fixture.service.snapshotResponse.bind(h.fixture.service)
+  h.fixture.service.snapshotResponse = () => { const frame = real(); return { ...frame, global_snapshot: { ...frame.global_snapshot, sequence: 100 } } }
+  await h.service.refreshSnapshot()
+  h.fixture.service.vote(OTHER, { case_id: h.initial.market!.case_id, vote_type: 'up', count: 2, request_id: 'separate-market-counter' })
+  h.fixture.clock.advance(1000)
+  await h.service.market()
+  expect(h.service.cachedMarketState()?.current_point?.up_votes).toBe(2)
+  expect(h.service.cachedMarketState()?.current_point?.sequence).toBeLessThan(100)
+})

@@ -1,3 +1,4 @@
+import { ModeUnavailableError } from './mode-error.ts'
 /**
  * Host half: real DSH token observation plus the voting loop, in one of two
  * honestly-labelled authority modes.
@@ -111,6 +112,9 @@ export function apply(ctx: DshHostContext): void {
   let coreHandle: LiangxiangPersistenceHandle | null = null
   let localHandle: LiangxiangLocalPersistenceHandle | null = null
   let ensureLocalPersistence: (() => Promise<LiangxiangLocalPersistenceHandle>) | null = null
+  let disposed = false
+  const initializingServices = new Set<BackendLiangService>()
+  const assertActive = (): void => { if (disposed) throw new ModeUnavailableError('梁相已关闭') }
   let modeInitialized = false
   let storageReadyForModeConfig = false
   let resolveModeStorageReady: (() => void) | null = null
@@ -142,7 +146,11 @@ export function apply(ctx: DshHostContext): void {
   const flushPendingObservations = (): void => {
     const pending = pendingObservations.splice(0)
     for (const observation of pending) {
-      service.observeUsage(observation.sessionId, observation.value, observation.origin, observation.modelId)
+      try {
+        service.observeUsage(observation.sessionId, observation.value, observation.origin, observation.modelId)
+      } catch {
+        warn('[dsh-liangxiang] invalid queued usage observation skipped')
+      }
     }
   }
 
@@ -160,7 +168,7 @@ export function apply(ctx: DshHostContext): void {
         await Promise.race([
           modeStorageReady,
           new Promise<never>((_resolve, reject) => {
-            timeout = setTimeout(() => reject(new Error('模式配置尚未加载完成，请稍后重试')), READINESS_FALLBACK_MS)
+            timeout = setTimeout(() => reject(new ModeUnavailableError('模式配置尚未加载完成，请稍后重试')), READINESS_FALLBACK_MS)
           }),
         ])
       } finally {
@@ -168,7 +176,7 @@ export function apply(ctx: DshHostContext): void {
       }
     }
     if (!storageReadyForModeConfig || coreHandle === null) {
-      throw new Error('模式配置尚未加载完成，请稍后重试')
+      throw new ModeUnavailableError('模式配置尚未加载完成，请稍后重试')
     }
     return coreHandle
   }
@@ -179,6 +187,7 @@ export function apply(ctx: DshHostContext): void {
     // the request for the same bounded startup window instead of making the
     // user's first explicit click fail with a transient 503.
     const core = await waitForModeStorage()
+    assertActive()
     if (preference === selectedPreference && (
       (preference === 'local' && slot.current === local)
       || (preference === 'online' && online !== null && slot.current === online)
@@ -197,9 +206,11 @@ export function apply(ctx: DshHostContext): void {
 
       if (preference === 'local') {
         const openLocal = ensureLocalPersistence
-        if (openLocal === null) throw new Error('离线存储尚未加载完成，请稍后重试')
+        if (openLocal === null) throw new ModeUnavailableError('离线存储尚未加载完成，请稍后重试')
         const localPersistence = await openLocal()
+        assertActive()
         await local.attachPersistence(localPersistence.port)
+        assertActive()
         await core.settings.setAuthorityPreference('local')
         const previousOnline = online
         online = null
@@ -211,22 +222,31 @@ export function apply(ctx: DshHostContext): void {
       }
 
       const candidate = createOnlineService()
-      await hydrateOnline(candidate, core)
-      await candidate.refreshBootstrap()
-      if (!candidate.hasCommunityAuthority) {
-        candidate.dispose()
-        throw new Error('无法连接天庭，在线模式尚未启用；当前仍保持离线模式')
+      initializingServices.add(candidate)
+      try {
+        await hydrateOnline(candidate, core)
+        assertActive()
+        await candidate.refreshBootstrap()
+        if (!candidate.hasCommunityAuthority) {
+          candidate.dispose()
+          throw new ModeUnavailableError('无法连接天庭，在线模式尚未启用；当前仍保持离线模式')
+        }
+        assertActive()
+        await core.settings.setAuthorityPreference('online')
+        assertActive()
+        const previousOnline = online
+        online = candidate
+        selectedPreference = 'online'
+        slot.use(candidate, false)
+        if (previousOnline !== null && previousOnline !== candidate) previousOnline.dispose()
+        warn(`[${PLUGIN_PACKAGE_NAME}] user selected online mode — community authority active`)
+      } finally {
+        initializingServices.delete(candidate)
+        if (online !== candidate) candidate.dispose()
       }
-      await core.settings.setAuthorityPreference('online')
-      const previousOnline = online
-      online = candidate
-      selectedPreference = 'online'
-      slot.use(candidate, false)
-      if (previousOnline !== null && previousOnline !== candidate) previousOnline.dispose()
-      warn(`[${PLUGIN_PACKAGE_NAME}] user selected online mode — community authority active`)
     } finally {
       modeTransitioning = false
-      flushPendingObservations()
+      if (!disposed) flushPendingObservations()
     }
   }
 
@@ -237,6 +257,9 @@ export function apply(ctx: DshHostContext): void {
   }
 
   ctx.effect(() => () => {
+    disposed = true
+    for (const candidate of initializingServices) candidate.dispose()
+    initializingServices.clear()
     const active = slot.current
     service.dispose?.()
     if (online !== null && online !== active) online.dispose()
@@ -359,7 +382,9 @@ export function apply(ctx: DshHostContext): void {
             void candidate.refreshBootstrap({ startup: true })
           } else {
             const localPersistence = await openLocal()
-            await local.attachPersistence(localPersistence.port)
+            assertActive()
+        await local.attachPersistence(localPersistence.port)
+        assertActive()
             const previousOnline = online
             online = null
             slot.use(local, false)

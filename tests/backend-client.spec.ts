@@ -268,3 +268,13 @@ describe('createBackendClient read retry boundary', () => {
     client.dispose()
   })
 })
+
+
+it('preserves unknown legacy acceptance quantity for the caller to interpret with its original intent', () => {
+  const body = completeVoteBody()
+  if (body.result.status !== 'accepted') throw new Error('expected accepted fixture')
+  delete body.result.spent_incense
+  const result = parseV1VoteEnvelope(body).result
+  expect(result.status).toBe('accepted')
+  if (result.status === 'accepted') expect(result.spent_incense).toBeUndefined()
+})

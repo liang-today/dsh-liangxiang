@@ -89,7 +89,7 @@ export function rollLocalIncenseDay(ledger: LocalIncenseLedger): LocalIncenseLed
 export function formatIncenseShare(mine: number, world: number): string {
   const safeMine = Number.isFinite(mine) ? Math.max(0, Math.floor(mine)) : 0
   const safeWorld = Number.isFinite(world) ? Math.max(0, Math.floor(world)) : 0
-  if (safeWorld <= 0) return WAITING_PERCENT_TEXT
+  if (safeWorld <= 0 || safeMine > safeWorld) return WAITING_PERCENT_TEXT
   const ratio = safeMine / safeWorld
   if (ratio <= 0) return '0%'
   if (ratio < 0.0001) return '<0.01%'

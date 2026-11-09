@@ -21,6 +21,7 @@ export function attachStreamingActivity(ctx: DshHostContext, onActive: (active: 
   if (typeof events.on !== 'function') return () => undefined
   const active = new Map<object, string>()
   const revisions = new WeakMap<object, number>()
+  const lastActivity = new Map<object, number>()
   let published = false
   const publish = (): void => {
     const next = active.size > 0
@@ -28,12 +29,18 @@ export function attachStreamingActivity(ctx: DshHostContext, onActive: (active: 
     published = next
     onActive(next)
   }
-  const clear = (agent: object): void => { active.delete(agent); publish() }
+  const clear = (agent: object): void => { active.delete(agent); lastActivity.delete(agent); publish() }
+  // A lost end event can affect motion only; this timeout never settles usage.
+  const expiry = setInterval(() => {
+    for (const [agent, at] of lastActivity) if (Date.now() - at >= 90_000) clear(agent)
+  }, 30_000)
+  expiry.unref?.()
   const disposers = [
     events.on('agent/assistant-stream', ({ agent, frame }) => {
       if (!Number.isSafeInteger(frame.revision) || frame.revision <= (revisions.get(agent) ?? 0)
         || typeof frame.attemptId !== 'string' || frame.attemptId === '') return
       revisions.set(agent, frame.revision)
+      lastActivity.set(agent, Date.now())
       if (frame.type === 'start' || frame.type === 'chunk') active.set(agent, frame.attemptId)
       else if (frame.type === 'end' && active.get(agent) === frame.attemptId) active.delete(agent)
       publish()
@@ -42,6 +49,8 @@ export function attachStreamingActivity(ctx: DshHostContext, onActive: (active: 
     events.on('agent/disposed', ({ agent }) => clear(agent)),
   ]
   return () => {
+    clearInterval(expiry)
+    lastActivity.clear()
     for (const dispose of disposers) dispose()
     active.clear()
     publish()

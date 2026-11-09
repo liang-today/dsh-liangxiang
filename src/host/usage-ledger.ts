@@ -167,7 +167,8 @@ export function creditSettledUsageBatch(
   businessDate: string,
   dateOf: (instant: number) => string,
 ): { watermark: SessionUsageWatermark, record: DailyUsageRecord } {
-  const formatChanged = previous !== undefined && (previous.sessionFormat ?? 0) !== (batch.sessionFormat ?? 0)
+  const sessionFormat = batch.sessionFormat ?? previous?.sessionFormat
+  const formatChanged = previous !== undefined && batch.sessionFormat !== undefined && (previous.sessionFormat ?? 0) !== batch.sessionFormat
   const baselineOffset = formatChanged ? batch.throughOffset : previous?.baselineOffset ?? (
     previous !== undefined || origin.kind === 'catchup' ? batch.throughOffset : origin.firstLiveSeq
   )
@@ -177,7 +178,7 @@ export function creditSettledUsageBatch(
     outputHwm: previous?.outputHwm ?? 0,
     baselineOffset,
     settledOffset: Math.max(settledOffset, batch.throughOffset),
-    ...(batch.sessionFormat === undefined ? {} : { sessionFormat: batch.sessionFormat }),
+    ...(sessionFormat === undefined ? {} : { sessionFormat }),
   }
   let updated = record
   for (const request of batch.requests) {
@@ -192,4 +193,10 @@ export function creditSettledUsageBatch(
     )
   }
   return { watermark, record: updated }
+}
+
+/** Select an internally consistent cumulative record, never splice its carry. */
+export function mergeDailyUsage(left: DailyUsageRecord, right: DailyUsageRecord): DailyUsageRecord {
+  const units = (row: DailyUsageRecord): bigint => (BigInt(row.inputTokens) + BigInt(row.outputTokens)) * 10000n + BigInt(row.weightCarry)
+  return { ...(units(left) >= units(right) ? left : right) }
 }

@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'
 import { Context } from '@deepseek-ai/cordis'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { attachStreamingActivity } from '../src/compat/dsh/streaming-activity.ts'
 import { DayEndService } from '../src/host/day-end-service.ts'
 import { FakeAuthoritativeLiangService } from '../src/host/fake-service.ts'
@@ -124,4 +124,17 @@ describe('activity is not an authority', () => {
     unsubscribe()
     host.dispose()
   })
+})
+
+
+it('expires motion after a missing end event without inventing a settlement', async () => {
+  vi.useFakeTimers()
+  const f = fixture()
+  try {
+    f.frame(f.a, 'start', 1)
+    await vi.advanceTimersByTimeAsync(90_000)
+    expect(f.updates).toEqual([true, false])
+    f.frame(f.a, 'chunk', 2)
+    expect(f.updates).toEqual([true, false, true])
+  } finally { f.dispose(); vi.useRealTimers() }
 })

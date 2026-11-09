@@ -264,6 +264,7 @@ export interface BackendStore {
   /** Drop all but the newest `keep` snapshots of one case; returns rows deleted. */
   pruneSnapshots: (caseId: string, keep: number) => number
   /** Monotonic cursor shared by immutable day/week/month archive rows. */
+  archiveResetVersion: () => number
   archiveVersion: () => number
   /** Increment and return the archive cursor. Caller must own a transaction. */
   bumpArchiveVersion: () => number
@@ -565,7 +566,7 @@ export function openBackendStore(databasePath: string): BackendStore {
   const deleteWeekArchives = db.prepare('DELETE FROM liang_week_archive')
   const deleteMonthArchives = db.prepare('DELETE FROM liang_month_archive')
   const resetArchiveVersion = db.prepare(
-    'UPDATE liang_archive_meta SET archive_version = 0 WHERE singleton = 1',
+    'UPDATE liang_archive_meta SET archive_version = archive_version + 1, reset_version = archive_version + 1 WHERE singleton = 1',
   )
   const deleteVotesForDate = db.prepare(
     'DELETE FROM liang_vote WHERE business_date = ?',
@@ -826,6 +827,9 @@ export function openBackendStore(databasePath: string): BackendStore {
       )
     },
     pruneSnapshots: (caseId, keep) => changed(pruneSnapshotsStmt.run(caseId, keep, caseId)),
+    archiveResetVersion() {
+      return (db.prepare('SELECT reset_version FROM liang_archive_meta WHERE singleton = 1').get() as { reset_version: number }).reset_version
+    },
     archiveVersion() {
       const row = selectArchiveVersion.get() as { archive_version: number | bigint } | undefined
       return Number(row?.archive_version ?? 0)

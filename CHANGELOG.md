@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1-alpha.9
+
+- Harden byte decoding, concurrent Host work, restart accounting and history resynchronization.
+- Preserve market refresh cadence, wallet authority and existing motion.
+- Add isolated boundary regressions; no release or remote deployment.
+
 ## 2.0.1-alpha.8（水位峰值候选，未发布）
 
 - 满水视觉峰值调整为500炷，继续使用有界平方根映射；游鱼仍在余香大于100炷时偶尔出现。

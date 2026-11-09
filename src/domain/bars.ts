@@ -310,8 +310,10 @@ export function aggregateBars(buckets: readonly BarsCandle[], sourceMs: number, 
       last.caseId = bucket.caseId
       last.gap = last.gap && bucket.gap
     }
-    last.upVotes = bucket.upVotes
-    last.downVotes = bucket.downVotes
+    if (bucket.samples > 0) {
+      last.upVotes = bucket.upVotes
+      last.downVotes = bucket.downVotes
+    }
   }
   return out
 }

@@ -6,8 +6,8 @@
  *   miss — no public key (and no fingerprint) hit; treated as a probe
  *          → same IP, once per 30 minutes
  *
- * Timestamps are recorded on every attempt (allowed or denied) so a hammer
- * cannot reset the window by failing. The map is bounded and process-local;
+ * Denied attempts do not extend the fixed window, preventing a shared-exit
+ * probe from indefinitely blocking other users. The map is bounded and process-local;
  * multi-process SQLite share multiplies the budget (docs/102).
  */
 export const IDENTITY_HIT_WINDOW_MS = 10 * 60 * 1000
@@ -20,6 +20,7 @@ export interface IdentityRateDecision {
   allowed: boolean
   kind: IdentityRateKind
   retryAfterMs: number
+  reason?: 'capacity'
 }
 
 export class IdentityRateLimiter {
@@ -37,13 +38,12 @@ export class IdentityRateLimiter {
     if (previous === undefined && this.last.size >= IDENTITY_RATE_LIMIT_MAX_KEYS) {
       this.evict(now)
       if (this.last.size >= IDENTITY_RATE_LIMIT_MAX_KEYS) {
-        return { allowed: false, kind, retryAfterMs: windowMs }
+        return { allowed: false, kind, retryAfterMs: windowMs, reason: 'capacity' }
       }
     }
     if (previous !== undefined) {
       const elapsed = now - previous
       if (elapsed < windowMs) {
-        if (kind === 'miss') this.last.set(key, now)
         return { allowed: false, kind, retryAfterMs: windowMs - elapsed }
       }
     }

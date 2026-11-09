@@ -2,7 +2,7 @@
  * Host-side file log. DSH terminals stay quiet after start; operators pull
  * `$DSH_HOME/logs/liangxiang.log` only when diagnosing a problem.
  */
-import { appendFileSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, readFileSync, realpathSync, writeFileSync, statSync, openSync, readSync, closeSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -111,19 +111,19 @@ export function appendCappedLine(path: string, payload: string, maxBytes: number
     writeFileSync(path, incoming.subarray(incoming.length - maxBytes))
     return
   }
-  let existing = Buffer.alloc(0)
-  try {
-    existing = readFileSync(path)
-  } catch (error) {
+  let size = 0
+  try { size = statSync(path).size } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
-  if (existing.length + incoming.length > maxBytes) {
-    const keep = maxBytes - incoming.length
-    existing = existing.subarray(existing.length - keep)
+  if (size + incoming.length > maxBytes) {
+    // Retain at most half the cap so rotation is amortized, not every line.
+    const keep = Math.min(size, Math.floor((maxBytes - incoming.length) / 2))
+    let existing = Buffer.alloc(keep)
+    const fd = openSync(path, 'r')
+    try { existing = existing.subarray(0, readSync(fd, existing, 0, keep, size - keep)) }
+    finally { closeSync(fd) }
     const newline = existing.indexOf(0x0a)
-    if (newline !== -1 && newline + 1 < existing.length) {
-      existing = existing.subarray(newline + 1)
-    }
+    if (newline !== -1) existing = existing.subarray(newline + 1)
     writeFileSync(path, Buffer.concat([existing, incoming]))
     return
   }

@@ -107,8 +107,8 @@ export function runOperatorCli(
     return 0
   }
   const store = openBackendStore(config.databasePath)
-  const service = new LiangxiangBackendService({ store, config })
   try {
+    const service = new LiangxiangBackendService({ store, config })
     if (topic === 'status') {
       const snapshot = service.snapshotResponse()
       const queue = service.listQueue()
@@ -117,6 +117,7 @@ export function runOperatorCli(
         package_version: PLUGIN_VERSION,
         server_build: SERVER_BUILD,
         schema_user_version: BACKEND_SCHEMA_USER_VERSION,
+        retained_records: service.retentionFootprint(),
         business_date: snapshot.business_date,
         business_timezone: config.timezone,
         active_case: snapshot.active_case,

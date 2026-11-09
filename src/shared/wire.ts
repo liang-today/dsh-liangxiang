@@ -180,7 +180,7 @@ function asRecord(raw: unknown, field: string): Record<string, unknown> {
 }
 
 function requireString(value: unknown, field: string): string {
-  if (typeof value !== 'string' || value.length === 0) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4096) {
     throw new WireError(field, 'expected a non-empty string')
   }
   return value

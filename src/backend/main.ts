@@ -12,26 +12,26 @@ import { warnIfClockSkewed } from './ntp.ts'
 import { LiangxiangBackendService } from './service.ts'
 import { openBackendStore } from './store.ts'
 
-export function startBackend(env: Record<string, string | undefined> = process.env): { close: () => void } {
+export function startBackend(env: Record<string, string | undefined> = process.env): { close: () => Promise<void> } {
   const config = resolveBackendConfig(env)
   const store = openBackendStore(config.databasePath)
   let service: LiangxiangBackendService
   try {
     service = new LiangxiangBackendService({ store, config })
+    service.ensureActiveCase()
   } catch (error) {
     store.close()
     throw error
   }
-  const api = createBackendHttpApi({
+  let api: ReturnType<typeof createBackendHttpApi>
+  try { api = createBackendHttpApi({
     service,
     store,
     voteRateLimitPerMinute: config.voteRateLimitPerMinute,
     voteRateLimitMaxKeys: config.voteRateLimitMaxKeys,
     allowUnsigned: config.allowUnsigned,
     admissionClaimRateLimitPerMinute: config.admissionClaimRateLimitPerMinute,
-  })
-
-  service.ensureActiveCase()
+  }) } catch (error) { store.close(); throw error }
   // Sampling must cross every real minute even when public snapshots are
   // configured much slower. tick() still applies the configured publication
   // threshold and inserts at most one shared row for each quiet minute.
@@ -59,14 +59,16 @@ export function startBackend(env: Record<string, string | undefined> = process.e
     void warnIfClockSkewed()
   })
 
-  let closed = false
-  const close = (): void => {
-    if (closed) return
-    closed = true
-    clearInterval(cadence)
-    api.reset()
-    api.server.close()
-    store.close()
+  let closing: Promise<void> | null = null
+  const close = (): Promise<void> => {
+    closing ??= new Promise(resolve => {
+      clearInterval(cadence)
+      api.reset()
+      const deadline = setTimeout(() => api.server.closeAllConnections(), 5_000)
+      deadline.unref()
+      api.server.close(() => { clearTimeout(deadline); store.close(); resolve() })
+    })
+    return closing
   }
   return { close }
 }
@@ -80,7 +82,7 @@ if (invokedDirectly) {
     for (const signal of ['SIGINT', 'SIGTERM'] as const) {
       process.once(signal, () => {
         console.log(`[liangxiang-backend] ${signal}: shutting down`)
-        handle.close()
+        void handle.close()
       })
     }
   } catch (error) {

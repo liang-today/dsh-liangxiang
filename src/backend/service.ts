@@ -120,6 +120,12 @@ export class LiangxiangBackendService {
     this.marketLedger.initializeWallets(this.businessDate(), this.clock.now())
   }
 
+  retentionFootprint(): Record<string, number> {
+    const tables = ['daily_incense_state', 'liang_vote_request', 'starter_incense_grant', 'case_queue']
+    return Object.fromEntries(tables.map(table => [table,
+      Number((this.store.database.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n)]))
+  }
+
   get authorityMode(): BackendConfig['authorityMode'] {
     return this.config.authorityMode
   }
@@ -335,10 +341,12 @@ export class LiangxiangBackendService {
     if (publishOn !== null && !isBusinessDate(publishOn)) {
       throw new WireError('publish_on', 'expected a real YYYY-MM-DD calendar date')
     }
-    if (publishOn !== null && this.store.pendingQueue().some(row => row.publish_on === publishOn)) {
-      throw new WireError('publish_on', `a pending case already exists for ${publishOn}`)
-    }
-    return this.store.enqueueCase(normalized, publishOn, now)
+    return this.store.transaction(() => {
+      if (publishOn !== null && this.store.pendingQueue().some(row => row.publish_on === publishOn)) {
+        throw new WireError('publish_on', `a pending case already exists for ${publishOn}`)
+      }
+      return this.store.enqueueCase(normalized, publishOn, now)
+    })
   }
 
   listQueue(): QueueRow[] {
@@ -372,7 +380,6 @@ export class LiangxiangBackendService {
 
   /** Public first-install inventory. Secrets are short-lived and claim-limited. */
   admissionTickets(now = this.clock.now()): V1AdmissionTicketsResponse {
-    this.store.expireAdmissionTickets(now)
     const inventory = this.store.admissionInventory(now)
     return {
       schema_version: BACKEND_SCHEMA_VERSION,
@@ -455,7 +462,6 @@ export class LiangxiangBackendService {
   }
 
   admissionInventory(now = this.clock.now()): AdmissionInventory {
-    this.store.expireAdmissionTickets(now)
     return this.store.admissionInventory(now)
   }
 
@@ -463,7 +469,6 @@ export class LiangxiangBackendService {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
       throw new WireError('limit', 'expected an integer in [1,1000]')
     }
-    this.store.expireAdmissionTickets(now)
     return this.store.availableAdmissionTickets(now, limit)
   }
 
@@ -840,8 +845,8 @@ export class LiangxiangBackendService {
     ttlHours: number,
     now: number,
   ): AdmissionTicketRow[] {
-    if (!Number.isSafeInteger(count) || count < 1 || count > 100_000) {
-      throw new WireError('count', 'expected an integer in [1,100000]')
+    if (!Number.isSafeInteger(count) || count < 1 || count > 1_000) {
+      throw new WireError('count', 'expected an integer in [1,1000]')
     }
     if (!Number.isSafeInteger(maxClaims) || maxClaims < 1 || maxClaims > 10_000) {
       throw new WireError('max_claims', 'expected an integer in [1,10000]')
@@ -900,22 +905,26 @@ export class LiangxiangBackendService {
     if (afterVersion !== undefined && (!Number.isSafeInteger(afterVersion) || afterVersion < 0)) {
       throw new WireError('after_version', 'expected a non-negative safe integer')
     }
-    const full = afterVersion === undefined
-    const cursor = afterVersion ?? -1
+    const full = afterVersion === undefined || afterVersion < this.store.archiveResetVersion()
+      || afterVersion > this.store.archiveVersion()
+    const cursor = full ? -1 : afterVersion
+    let titleMetadataStale = false
     const days = this.store.dayArchives(cursor).map(row => {
       let titles: unknown
       try {
         titles = JSON.parse(row.case_titles_json)
       } catch {
-        throw new Error(`invalid archived case title JSON for ${row.business_date}`)
+        titles = null
       }
-      if (!Array.isArray(titles) || !titles.every(title => typeof title === 'string')) {
-        throw new Error(`invalid archived case title list for ${row.business_date}`)
+      if (!Array.isArray(titles) || titles.length !== row.case_count || !titles.every(title => typeof title === 'string' && title.length > 0)) {
+        titleMetadataStale = true
+        if (!Number.isSafeInteger(row.case_count) || row.case_count < 1 || row.case_count > 1000) throw new Error('invalid archived case count')
+        titles = Array.from({ length: row.case_count }, () => '档案标题损坏，待修复')
       }
       return {
         businessDate: row.business_date,
         caseCount: row.case_count,
-        caseTitles: titles,
+        caseTitles: titles as string[],
         finalizedAt: row.finalized_at,
         archiveVersion: row.archive_version,
         aggregationPolicyVersion: row.aggregation_policy_version,
@@ -929,7 +938,7 @@ export class LiangxiangBackendService {
       archiveVersion: this.store.archiveVersion(),
       businessDate: activeCase.business_date,
       businessTimezone: this.dates.timezone,
-      stale: false,
+      stale: titleMetadataStale,
       days,
       weeks,
       months,
@@ -1034,21 +1043,10 @@ export class LiangxiangBackendService {
           )
         }
       }
-      this.store.deleteIdentity(previous.installation_id)
-      this.store.upsertIdentity({
-        installation_id: installationId,
-        public_key: publicKey,
-        device_fingerprint: deviceFingerprint,
-        created_at: now,
-        last_seen_at: now,
-      })
-      return {
-        schema_version: BACKEND_SCHEMA_VERSION,
-        rekeyed: true,
-        installation_id: installationId,
-        previous_installation_id: previous.installation_id,
-        server_time: now,
-      }
+      // A fingerprint is self-reported, not proof of the previous key.
+      // Never revoke somebody else's identity based on knowing that string.
+      throw new CommunityAuthError(409, 'rekey_proof_required',
+        '设备指纹不能证明旧身份归属。请恢复原身份文件；确认空钱包后，可联系管理员解绑设备。')
     })
     if (response.rekeyed) {
       this.warn(`[liangxiang-backend] rekey: device ${deviceFingerprint.slice(0, 8)}… `
@@ -1303,7 +1301,7 @@ export class LiangxiangBackendService {
     // operator case reset) there may be no current row yet; that means 0/0,
     // never yesterday's stored counters.
     const used = row?.used_incense ?? 0
-    const remaining = row === undefined ? 0 : this.marketLedger.wallet(installationId).available_incense
+    const remaining = this.marketLedger.wallet(installationId).available_incense
     return {
       status: 'accepted',
       request_id: intent.request_id,

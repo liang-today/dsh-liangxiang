@@ -446,3 +446,33 @@ describe('business clock and durable preference boundary', () => {
     expect(() => parseDayEndState({ enabled: true, voteType: 'up', jobs: { online: { count: 501 } } })).toThrow()
   })
 })
+
+
+it('confirms an old-case intent without consuming the replacement case closing dump', async () => {
+  const s = setup(true, 10)
+  const wire = s.inner.getWireState()
+  await s.persistence.setDayEndState({ ...s.state(), jobs: { local: { businessDate: wire.businessDate,
+    caseId: wire.activeCase.id, voteType: 'up', count: 3, requestId: 'old-case-closing-intent', done: false, kind: 'closing' } } })
+  s.service.dispose()
+  s.inner.cycleLocalCase()
+  const restarted = s.wrap()
+  await vi.advanceTimersByTimeAsync(20000)
+  expect(s.state().jobs.local?.caseId).toBe(s.inner.getWireState().activeCase.id)
+  expect(s.state().jobs.local?.done).toBe(true)
+  expect(restarted.getWireState().personal.remainingIncense).toBe(0)
+})
+
+
+it('does not invent an accepted count for an ambiguous legacy bulk receipt', async () => {
+  const s = setup(true, 800), original = s.inner.vote.bind(s.inner)
+  vi.spyOn(s.inner, 'vote').mockImplementation(intent => {
+    const outcome = original(intent), result = outcome.result
+    if (result.status !== 'accepted') return outcome
+    return { state: outcome.state, result: { status: result.status, requestId: result.requestId,
+      voteType: result.voteType, usedIncenseToday: result.usedIncenseToday, remainingIncense: result.remainingIncense } }
+  })
+  await vi.advanceTimersByTimeAsync(1000)
+  expect(s.inner.getWireState().personal.remainingIncense).toBe(300)
+  expect(s.service.getWireState().timedIncense?.todayUp).toBe(0)
+  expect(s.state().jobs.local?.done).toBe(true)
+})

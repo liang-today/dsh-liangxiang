@@ -435,7 +435,7 @@ describe('online bootstrap', () => {
     expect(frame(s).authorityReason).toBeNull()
   })
 
-  it('automatically re-keys a reinstalled device without consuming a public ticket', async () => {
+  it('keeps the previous key intact and explains lost-key recovery without consuming a ticket', async () => {
     const oldIdentity = generateCommunityKeypair('host-reinstall-device')
     const newIdentity = generateCommunityKeypair('host-reinstall-device')
     const s = await startStack(
@@ -444,8 +444,8 @@ describe('online bootstrap', () => {
     )
     expect(s.host.isReady).toBe(true)
     expect(s.backend.admissionInventory().remainingClaims).toBe(1)
-    expect(frame(s).authorityAvailable).toBe(true)
-    expect(frame(s).authorityReason).toBeNull()
+    expect(frame(s).authorityAvailable).toBe(false)
+    expect(frame(s).authorityReason).toContain('恢复原身份文件')
   })
 
   it('serves a DEV_STAGING_ONLY frame with the backend case and a waiting snapshot', async () => {

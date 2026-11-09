@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { deriveTemporaryMonth, deriveTemporaryWeek } from '../src/domain/index.ts'
 import { parseV1HistoryResponse } from '../src/shared/index.ts'
@@ -150,7 +153,8 @@ describe('梁祠 backend archive', () => {
       expect(empty.days).toEqual([])
       expect(empty.weeks).toEqual([])
       expect(empty.months).toEqual([])
-      expect(empty.archiveVersion).toBe(0)
+      expect(empty.archiveVersion).toBeGreaterThan(1)
+      expect(f.service.historyResponse(1).full).toBe(true)
       expect(f.service.ensureActiveCase().id).toBe(today.id)
       expect(f.store.voteRequestByRequestId(installation, 'history-wipe-0001')).toBeUndefined()
 
@@ -232,4 +236,42 @@ describe('梁祠 backend archive', () => {
       f.close()
     }
   })
+})
+
+
+it('persists the history reset boundary across SQLite reopen without changing wallet funds', () => {
+  const root = mkdtempSync(join(tmpdir(), 'liangxiang-history-reset-'))
+  const env = { LIANGXIANG_BACKEND_DB: join(root, 'ledger.sqlite') }
+  let f = createBackendFixture(env)
+  try {
+    f.grantIncense('history-reset-reader', 5)
+    vote(f, 'history-reset-reader', 'up', 'history-reset-persisted')
+    f.clock.advance(DAY_MS)
+    const prior = parseV1HistoryResponse(f.service.historyResponse())
+    const balance = f.service.dailyState('history-reset-reader').authoritative_personal_state.remaining_incense
+    f.service.clearHistoryArchives()
+    const now = f.clock.now()
+    f.close(); f = createBackendFixture(env, now)
+    const refresh = parseV1HistoryResponse(f.service.historyResponse(prior.archiveVersion))
+    expect(refresh.full).toBe(true)
+    expect(refresh.days).toHaveLength(0)
+    expect(refresh.archiveVersion).toBeGreaterThan(prior.archiveVersion)
+    expect(f.service.dailyState('history-reset-reader').authoritative_personal_state.remaining_incense).toBe(balance)
+  } finally { f.close(); rmSync(root, { recursive: true, force: true }) }
+})
+
+
+it('isolates corrupt title metadata without deleting archive votes or poisoning today', () => {
+  const f = createBackendFixture()
+  try {
+    f.grantIncense('corrupt-title-reader', 2)
+    vote(f, 'corrupt-title-reader', 'up', 'archive-title-fault')
+    f.clock.advance(DAY_MS); f.service.ensureActiveCase()
+    f.store.database.exec("UPDATE liang_day_archive SET case_titles_json='not-json'")
+    const history = parseV1HistoryResponse(f.service.historyResponse())
+    expect(history.stale).toBe(true)
+    expect(history.days[0]).toMatchObject({ upVotes: 1, downVotes: 0, caseTitles: ['档案标题损坏，待修复'] })
+    expect(f.store.dayArchives()[0]?.case_titles_json).toBe('not-json')
+    expect(f.service.snapshotResponse().business_date).toBe(history.businessDate)
+  } finally { f.close() }
 })

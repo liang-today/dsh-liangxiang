@@ -4,12 +4,12 @@
 
 ## 版本与边界
 
-当前源码 `package.json` / `PLUGIN_VERSION` = `2.0.1-alpha.8`，`SERVER_BUILD=2.0.1-alpha.8-u1`。 本轮仅更新本机客户端／Host；香港隔离后台继续运行已核验的alpha.4-u1，不部署或重启。
+当前源码 `package.json` / `PLUGIN_VERSION` = `2.0.1-alpha.9`，`SERVER_BUILD=2.0.1-alpha.9-u1`。 本轮仅更新本机客户端／Host；香港隔离后台继续运行已核验的alpha.4-u1，不部署或重启。
 当前源码为 **2.0.1未发布修复候选**，保留Host断线行情恢复与源码资源兜底，并统一浏览器读取预算、中文网络提示和断读后的恢复；不改行情刷新节奏、正式账本或历史行情。请求预算与前批验证见 [`CLIENT_REQUEST_RECOVERY.md`](CLIENT_REQUEST_RECOVERY.md)；上一轮同版演练见 [`SAME_CANDIDATE_RECOVERY.md`](SAME_CANDIDATE_RECOVERY.md)，此前等待与本机测试控制见 [`CLIENT_POND_LOADING.md`](CLIENT_POND_LOADING.md)，本批水草凝香及支出余香见 [`PLANT_ACTIVITY_BALANCE.md`](PLANT_ACTIVITY_BALANCE.md)。2.0.0已于2026-11-09公开发布；正式后端仍为2.0.0-u1／schema15／`a90d0e9`，本分支不部署正式服务。此前1.3候选未正式发行。候选提交、社区合并与正式发布／部署是独立步骤，不能由源码版本推断线上已升级。
 公开快照的纯代理CORS维护单独记录`PROXY_VERSION`；社区main前移不代表后台应用已重部署，不以该差异触发应用更新。
 本批客户端、最终包、音效、当前DSH及文案待审状态见[2.0候选验收](RELEASE_2_READINESS.md)；1.2记录不作为2.0放行依据。
 
-累计钱包、三批分池、延迟定梁与缓存限制的契约见 [`MARKET_WALLET.md`](MARKET_WALLET.md)，SQLite schema 为 **15**，本轮不变。独立实现与验证证据见 [`MARKET_VALIDATION.md`](MARKET_VALIDATION.md)。下述11月3日维护版是历史记录，不代表当前正式部署。
+累计钱包、三批分池、延迟定梁与缓存限制的契约见 [`MARKET_WALLET.md`](MARKET_WALLET.md)，候选SQLite schema 为 **16**，只给档案元数据新增重置游标，迁移不改钱包、仓位、用量或成交回执；正式后台仍为schema15，本轮不部署。独立实现与验证证据见 [`MARKET_VALIDATION.md`](MARKET_VALIDATION.md)。下述11月3日维护版是历史记录，不代表当前正式部署。
 
 2026-11-03 后台维护：公开客户端/npm/官网仍为 1.2.0；服务为 **1.2.0-u2 / 2f2d6e3**，
 源自正式 1.2.0，只调整社区额度并修复部署权限，不带入候选 schema 11。
@@ -25,6 +25,8 @@
 DSH 固定为 **0.2.1-rc.2** / `687f282e86`；原兼容性基线为 Node **22.23.1**、pnpm **11.28.5**，2.0候选另在受支持的 Node **22.19.0** 与同版pnpm验证。
 公开使用的兼容要求与精确触点见 [`COMPATIBILITY.md`](COMPATIBILITY.md)。
 2026-11-08另用Node24.9.0／当前默认DSH0.2.2-rc.1完成独立真实安装及6项界面／适配短冒烟；未进行真实provider用量请求，不替代固定基线完整凝香回归。最终音效及窄屏提示差异已在三主题实包6项验收，准确产物与边界见2.0候选验收。
+
+本批审查加固与漏测复盘见 [`RELIABILITY_REVIEW.md`](RELIABILITY_REVIEW.md)。候选收紧跨钥匙恢复：设备指纹不是旧钥匙证明，丢失身份文件后需恢复原凭据，或由管理员核实空钱包后解绑；不再自动废除另一把钥匙。
 
 ## 权威数据流
 

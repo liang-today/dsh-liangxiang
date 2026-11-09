@@ -1,3 +1,6 @@
+import { apiErrorDetail } from '../shared/api-error.ts'
+import { ModeUnavailableError } from './mode-error.ts'
+import { OversizedBodyError, readBoundedBody } from '../shared/node-http-body.ts'
 /**
  * `/liangxiang/api/*` handlers over the DSH web server seam (docs/044):
  *
@@ -19,7 +22,7 @@ import { createHash } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE, VOTE_RATE_LIMITED } from '../shared/index.ts'
-import { parseWireVoteRequest, type HostAuthorityPreference } from '../shared/wire.ts'
+import { WireError, parseWireVoteRequest, type HostAuthorityPreference } from '../shared/wire.ts'
 import { BackendClientError } from './backend-client.ts'
 import { parseDevCreditBody, resolveDevCreditTokens } from './dev-credit.ts'
 import { DAY_END_ACTION_HEADER, DAY_END_ACTION_VALUE, parseDayEndPreferences, type DayEndPreferences } from '../shared/day-end.ts'
@@ -84,7 +87,8 @@ interface SseConnection {
 }
 
 function writeJson(res: ServerResponse, status: number, payload: unknown): void {
-  const body = JSON.stringify(payload)
+  const detail = apiErrorDetail(payload, status)
+  const body = JSON.stringify(detail === null ? payload : { ...(payload as object), error_detail: detail })
   res.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
@@ -129,36 +133,7 @@ function parseBarsSvgQuery(search: URLSearchParams): { query: BarsQuery; width: 
   }
 }
 
-/** Distinguishes "caller sent too much" from a validation failure. */
-class OversizedBodyError extends Error {}
 
-function readBoundedBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let body = ''
-    let done = false
-    const fail = (error: Error): void => {
-      if (done) return
-      done = true
-      reject(error)
-    }
-    req.on('data', (chunk: Buffer | string) => {
-      body += typeof chunk === 'string' ? chunk : chunk.toString('utf8')
-      if (body.length > MAX_VOTE_BODY_BYTES) {
-        // Stop reading without destroying the socket: a killed connection is
-        // indistinguishable from a network fault, and the caller must be able
-        // to tell "rejected" from "outcome unknown" before retrying a vote.
-        req.pause()
-        fail(new OversizedBodyError('request body too large'))
-      }
-    })
-    req.on('end', () => {
-      if (done) return
-      done = true
-      resolve(body)
-    })
-    req.on('error', fail)
-  })
-}
 
 export interface LiangxiangApiOptions {
   /** Manual configuration only; network failure never calls this path. */
@@ -235,10 +210,14 @@ export function createLiangxiangApi(
         } catch (error) {
           warn(`[dsh-liangxiang] SSE write failed: ${error instanceof Error ? error.message : String(error)}`)
           dropConnection(connection)
+          res.end()
         }
       }),
       heartbeat: setInterval(() => {
-        res.write(': ping\n\n')
+        if (res.destroyed || res.writableLength > 256 * 1024) {
+          dropConnection(connection); res.end(); return
+        }
+        try { res.write(': ping\n\n') } catch { dropConnection(connection); res.end() }
       }, SSE_HEARTBEAT_MS),
     }
     connections.add(connection)
@@ -249,7 +228,7 @@ export function createLiangxiangApi(
   const handleVote = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     let intent
     try {
-      const body = await readBoundedBody(req)
+      const body = await readBoundedBody(req, MAX_VOTE_BODY_BYTES)
       intent = parseWireVoteRequest(JSON.parse(body) as unknown)
     } catch (error) {
       if (error instanceof OversizedBodyError) {
@@ -294,7 +273,7 @@ export function createLiangxiangApi(
     }
     let intent
     try {
-      const body = await readBoundedBody(req)
+      const body = await readBoundedBody(req, MAX_VOTE_BODY_BYTES)
       intent = parseDevCreditBody(JSON.parse(body) as unknown)
     } catch (error) {
       if (error instanceof OversizedBodyError) {
@@ -440,7 +419,7 @@ export function createLiangxiangApi(
             writeJson(res, 415, { error: 'market position requires application/json' })
             return
           }
-          const intent = parseMarketPositionRequest(JSON.parse(await readBoundedBody(req)) as unknown)
+          const intent = parseMarketPositionRequest(JSON.parse(await readBoundedBody(req, MAX_VOTE_BODY_BYTES)) as unknown)
           if (service.marketPosition === undefined) throw new BackendClientError('community market unavailable in this mode', 404, 'market_unavailable')
           payload = await service.marketPosition(intent)
         }
@@ -463,19 +442,19 @@ export function createLiangxiangApi(
     if (pathname === '/liangxiang/api/history') {
       try {
         const unknown = [...url.searchParams.keys()].filter(key => key !== 'after_version')
-        if (unknown.length > 0) throw new Error(`unknown query parameter ${unknown[0]}`)
+        if (unknown.length > 0) throw new WireError('query', `unknown query parameter ${unknown[0]}`)
         const values = url.searchParams.getAll('after_version')
-        if (values.length > 1) throw new Error('after_version must appear at most once')
+        if (values.length > 1) throw new WireError('after_version', 'after_version must appear at most once')
         let afterVersion: number | undefined
         if (values.length === 1) {
           const raw = values[0] as string
-          if (!/^\d+$/.test(raw)) throw new Error('after_version must be a non-negative integer')
+          if (!/^\d+$/.test(raw)) throw new WireError('after_version', 'after_version must be a non-negative integer')
           afterVersion = Number(raw)
-          if (!Number.isSafeInteger(afterVersion)) throw new Error('after_version exceeds safe integer range')
+          if (!Number.isSafeInteger(afterVersion)) throw new WireError('after_version', 'after_version exceeds safe integer range')
         }
         writeJson(res, 200, await service.history(afterVersion))
       } catch (error) {
-        writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
+        writeJson(res, error instanceof WireError ? 400 : 503, { error: error instanceof Error ? error.message : '档案暂时无法更新' })
       }
       return
     }
@@ -506,7 +485,7 @@ export function createLiangxiangApi(
       }
       if (options.setDayEndPreferences === undefined) { writeJson(res, 503, { error: 'day-end settings unavailable' }); return }
       try {
-        const raw: unknown = JSON.parse(await readBoundedBody(req))
+        const raw: unknown = JSON.parse(await readBoundedBody(req, MAX_VOTE_BODY_BYTES))
         const preferences = parseDayEndPreferences(raw)
         if (Object.keys(raw as object).some(k => k !== 'enabled' && k !== 'voteType')) throw new Error('unknown day-end setting')
         await options.setDayEndPreferences(preferences)
@@ -525,7 +504,7 @@ export function createLiangxiangApi(
         return
       }
       try {
-        const raw = await readBoundedBody(req)
+        const raw = await readBoundedBody(req, MAX_VOTE_BODY_BYTES)
         const body = JSON.parse(raw) as unknown
         if (typeof body !== 'object' || body === null || Array.isArray(body)) {
           throw new Error('expected an object')
@@ -542,14 +521,14 @@ export function createLiangxiangApi(
           return
         }
         const message = error instanceof Error ? error.message : String(error)
-        const status = message.includes('无法连接天庭') || message.includes('尚未加载') ? 503 : 400
+        const status = error instanceof ModeUnavailableError ? 503 : 400
         writeJson(res, status, { error: `authority-mode request failed: ${message}` })
         return
       }
       writeJson(res, 200, service.getWireState())
       return
     }
-    if (options.isAuthorityModeChanging?.() === true) {
+    if (options.isAuthorityModeChanging?.() === true && !isBarsRoute) {
       writeJson(res, 503, { error: 'authority mode is changing; retry after the handoff' })
       return
     }
@@ -634,7 +613,13 @@ export function createLiangxiangApi(
   }
 
   return {
-    handler,
+    handler: async (req, res) => {
+      try { await handler(req, res) } catch {
+        warn('[dsh-liangxiang] local API request failed')
+        if (!res.headersSent) writeJson(res, 503, { error: '梁相暂时无法完成请求，请稍后重试' })
+        else res.end()
+      }
+    },
     closeAllConnections: (): void => {
       // Deleting the current entry during Set iteration is spec-safe.
       for (const connection of connections) {

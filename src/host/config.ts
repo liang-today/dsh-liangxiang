@@ -60,6 +60,8 @@ export function resolveHostConfig(
   const timezone = timezoneRaw?.trim() !== undefined && timezoneRaw.trim() !== ''
     ? timezoneRaw.trim()
     : DEFAULT_BUSINESS_TIMEZONE
+  try { new Intl.DateTimeFormat('en', { timeZone: timezone }).format(0) }
+  catch { throw new Error('LIANGXIANG_BUSINESS_TZ must be a valid IANA timezone') }
   const refresh = parsePositiveInt(
     readLiangxiangEnv(env, 'SNAPSHOT_SECONDS'),
     DEFAULT_SNAPSHOT_REFRESH_SECONDS,

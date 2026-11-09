@@ -1,5 +1,5 @@
 /**
- * SQLite schema (v15) for the Liangxiang backend.
+ * SQLite schema (v16) for the Liangxiang backend.
  *
  * Design notes that matter for the frozen invariants:
  *
@@ -30,7 +30,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { VOTE_COUNT_MAX } from '../domain/index.ts'
 
-export const BACKEND_SCHEMA_USER_VERSION = 15
+export const BACKEND_SCHEMA_USER_VERSION = 16
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS daily_liang_case (
@@ -368,15 +368,15 @@ function tableColumns(db: DatabaseSync, table: string): string[] {
 /** Apply the schema and record its user_version (idempotent). */
 export function migrate(db: DatabaseSync): void {
   db.exec('PRAGMA foreign_keys = ON')
-  const row = db.prepare('PRAGMA user_version').get() as { user_version?: number } | undefined
-  const current = typeof row?.user_version === 'number' ? row.user_version : 0
-  if (current > BACKEND_SCHEMA_USER_VERSION) {
-    throw new Error(
-      `liangxiang backend database is at schema version ${current}, newer than this build (${BACKEND_SCHEMA_USER_VERSION})`,
-    )
-  }
   db.exec('BEGIN IMMEDIATE')
   try {
+    // Read only after acquiring the writer lock: a concurrent upgrader may
+    // have completed while this connection waited for BEGIN IMMEDIATE.
+    const row = db.prepare('PRAGMA user_version').get() as { user_version?: number } | undefined
+    const current = typeof row?.user_version === 'number' ? row.user_version : 0
+    if (current > BACKEND_SCHEMA_USER_VERSION) {
+      throw new Error(`liangxiang backend database is at schema version ${current}, newer than this build (${BACKEND_SCHEMA_USER_VERSION})`)
+    }
     db.exec(DDL)
     if (current < 2) db.exec(DDL_V2)
     if (current < 3) db.exec(DDL_V3)
@@ -460,6 +460,10 @@ export function migrate(db: DatabaseSync): void {
       // database has no wallet rows here; its users opt in individually later.
     }
     if (current !== BACKEND_SCHEMA_USER_VERSION) {
+      if (current < 16) db.exec(DDL_V4)
+      if (current < 16 && !tableColumns(db, 'liang_archive_meta').includes('reset_version')) {
+        db.exec('ALTER TABLE liang_archive_meta ADD COLUMN reset_version INTEGER NOT NULL DEFAULT 0 CHECK (reset_version >= 0)')
+      }
       db.exec(`PRAGMA user_version = ${BACKEND_SCHEMA_USER_VERSION}`)
     }
     db.exec('COMMIT')

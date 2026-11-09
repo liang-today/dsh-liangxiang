@@ -17,6 +17,7 @@ export interface LiangArchiveResult {
   upVotes: number
   downVotes: number
   uniqueVoters: number
+  uniqueVotersKnown?: boolean
   totalIncense: number
   upRatio: number | null
   downRatio: number | null
@@ -69,7 +70,9 @@ export interface LiangHistoryArchive {
    * older caches; the client then falls back to summing daily uniqueVoters.
    */
   openWeekUniqueVoters: number
+  openWeekVotersKnown?: boolean
   openMonthUniqueVoters: number
+  openMonthVotersKnown?: boolean
 }
 
 export interface TemporaryLiangPeriod extends LiangArchiveResult {
@@ -220,7 +223,8 @@ function temporaryPeriod(
     .sort((left, right) => left.businessDate.localeCompare(right.businessDate))
   const summed = sumDayArchives(included)
   const liangziPolicyVersion = archiveLiangziPolicyVersion(included)
-  const result = deriveArchiveResult(summed.upVotes, summed.downVotes, uniqueVoters ?? summed.uniqueVoters, liangziPolicyForVersion(liangziPolicyVersion))
+  const result = { ...deriveArchiveResult(summed.upVotes, summed.downVotes, uniqueVoters ?? summed.uniqueVoters, liangziPolicyForVersion(liangziPolicyVersion)),
+    ...(uniqueVoters === undefined ? { uniqueVotersKnown: false } : {}) }
   return {
     kind,
     liangziPolicyVersion,

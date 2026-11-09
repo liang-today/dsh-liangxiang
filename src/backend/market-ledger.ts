@@ -329,8 +329,24 @@ export class MarketLedger {
     this.pageLimit(limit, MARKET_CANDLES_PAGE_MAX)
     const after = cursor === undefined ? -1 : this.cursorNumber(cursor)
     const table = interval === MARKET_LEGACY_CANDLE_INTERVAL_MS ? 'liang_market_candle' : 'liang_market_minute_candle'
-    const rows = this.prepare(`SELECT at,open,high,low,close,up_votes,down_votes,volume FROM ${table}
+    let rows = this.prepare(`SELECT at,open,high,low,close,up_votes,down_votes,volume FROM ${table}
       WHERE case_id=? AND at>? ORDER BY at LIMIT ?`).all(caseRow.id, after, limit + 1) as unknown as MarketCandlesResponse['candles']
+    if (interval === MARKET_LEGACY_CANDLE_INTERVAL_MS) {
+      const minuteRows = this.prepare(`SELECT at,open,high,low,close,up_votes,down_votes,volume FROM liang_market_minute_candle
+        WHERE case_id=? AND at>=? ORDER BY at`).all(caseRow.id, Math.max(0, after + 1)) as unknown as MarketCandlesResponse['candles']
+      const groups = new Map<number, MarketCandlesResponse['candles'][number]>()
+      for (const row of minuteRows) {
+        const at = Math.floor(row.at / interval) * interval
+        if (at <= after) continue
+        const prior = groups.get(at)
+        if (prior === undefined) groups.set(at, { ...row, at })
+        else groups.set(at, { ...prior, open: prior.open ?? row.open, high: prior.high === null ? row.high : row.high === null ? prior.high : Math.max(prior.high, row.high),
+          low: prior.low === null ? row.low : row.low === null ? prior.low : Math.min(prior.low, row.low),
+          close: row.close, up_votes: row.up_votes, down_votes: row.down_votes, volume: prior.volume + row.volume })
+      }
+      for (const row of rows) groups.set(row.at, row)
+      rows = [...groups.values()].sort((left, right) => left.at - right.at)
+    }
     const page = rows.slice(0, limit)
     return { schema_version: 1, case_id: caseRow.id, business_date: caseRow.business_date,
       interval_ms: interval, candles: page, next_cursor: rows.length > limit ? String(page.at(-1)!.at) : null }

@@ -1,3 +1,4 @@
+import { mergeDailyUsage } from './usage-ledger.ts'
 /**
  * Local request-settlement ledger. Real DSH feeds finalized per-attempt
  * provider usage; the cumulative entry remains for isolated legacy/dev tests.
@@ -43,6 +44,10 @@ export class UsageProjection {
   private daily = new Map<string, DailyUsageRecord>()
   private sink: UsageProjectionSink | null = null
 
+  retentionFootprint(): { sessionCursors: number, dailyRows: number } {
+    return { sessionCursors: this.watermarks.size, dailyRows: this.daily.size }
+  }
+
   constructor(deps: UsageProjectionDeps) {
     this.dates = deps.dates
     this.clock = deps.clock
@@ -73,17 +78,13 @@ export class UsageProjection {
       const current = this.daily.get(date)
       this.daily.set(date, current === undefined
         ? { ...persisted }
-        : {
-          ...persisted,
-          ...(current.weightPolicy === undefined ? {} : { weightPolicy: current.weightPolicy }),
-          inputTokens: Math.max(current.inputTokens, persisted.inputTokens),
-          outputTokens: Math.max(current.outputTokens, persisted.outputTokens),
-          weightCarry: Math.max(current.weightCarry, persisted.weightCarry),
-          observedAt: Math.max(current.observedAt, persisted.observedAt),
-        })
+        : mergeDailyUsage(current, persisted)
+      )
     }
     for (const [sessionId, watermark] of this.watermarks) sink.putWatermark(sessionId, watermark)
     for (const [date, record] of this.daily) sink.putDailyUsage(date, record)
+    const retained = this.retentionFootprint()
+    if (retained.sessionCursors >= 10_000) this.warn(`[dsh-liangxiang] retained usage cursors=${retained.sessionCursors} daily_rows=${retained.dailyRows}; preserve replay fences`)
   }
 
   /**
