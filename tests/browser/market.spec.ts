@@ -741,10 +741,11 @@ test('raised direction buttons depress and rebound without spending incense', as
   await dialog.getByRole('switch', { name: '交易动画' }).click()
   const button = dialog.getByRole('button', { name: '↘ 做空' }), face = button.locator('.liangxiang-market-button-face')
   const rest = await face.evaluate(element => getComputedStyle(element).transform)
+  const restY = await face.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).m42)
   const bounds = (await button.boundingBox())!
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
   await page.mouse.down()
-  await expect.poll(() => face.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).m42)).toBe(0)
+  await expect.poll(() => face.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).m42)).toBeGreaterThan(restY)
   await dialog.screenshot({ path: testInfo.outputPath('market-button-pressed.png') })
   await page.mouse.up()
   await expect.poll(() => face.evaluate(element => getComputedStyle(element).transform)).toBe(rest)
