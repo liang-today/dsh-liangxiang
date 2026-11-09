@@ -56,6 +56,8 @@ test('three jump arrows follow content order and keep header/footer fixed', asyn
   const dialog = page.getByRole('dialog', { name: RELEASE_NOTES_TITLE })
   const head = (await dialog.locator('header').boundingBox())!
   const foot = (await dialog.locator('footer').boundingBox())!
+  const shortcuts = (await dialog.locator('nav').boundingBox())!
+  expect(await dialog.locator('nav').evaluate(element => element.closest('.u-scroll'))).toBeNull()
   expect(await dialog.locator('[data-update-section]').evaluateAll(elements => elements.map(e => e.getAttribute('data-update-section')))).toEqual(['rules', 'community', 'thanks'])
   for (const [name, section] of [['梁股怎么玩', 'rules'], ['社群', 'community'], ['鸣谢', 'thanks']] as const) {
     await dialog.locator('nav').getByRole('button', { name, exact: true }).click()
@@ -63,6 +65,8 @@ test('three jump arrows follow content order and keep header/footer fixed', asyn
     await expect(target.locator('h3')).toBeInViewport()
     expect((await dialog.locator('header').boundingBox())!.y).toBe(head.y)
     expect((await dialog.locator('footer').boundingBox())!.y).toBe(foot.y)
+    expect((await dialog.locator('nav').boundingBox())!.y).toBe(shortcuts.y)
+    for (const button of await dialog.locator('nav button').all()) await expect(button).toBeInViewport()
     await dialog.locator('[data-liangxiang-release-notes-scroll]').evaluate(element => { element.scrollTop = 0 })
   }
 })
