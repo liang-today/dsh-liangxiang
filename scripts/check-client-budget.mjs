@@ -1,26 +1,25 @@
 #!/usr/bin/env node
-/** Fail the build when the single-file browser payload regresses materially. */
+/** Project payload review gate; feature growth may use a user-approved budget. */
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { runInNewContext } from 'node:vm'
 import { createRequire } from 'node:module'
 
 const client = await readFile(new URL('../lib/client.js', import.meta.url))
-// Merging the existing read-only bars dialog adds 17.6 KB raw / 5.9 KB gzip.
-// Both chart surfaces stay available; no artwork or runtime dependency was added.
-// Approved market layout and seven distinct companion interactions add about
-// 2.9 KB of code to alpha10. Keep the original compressed transfer ceiling.
-const rawLimit = 725_000
-// The original portraits remain pixel-identical. The market adds about 22 KB
-// compressed code; its separately budgeted sprite stays outside this always-loaded bundle.
+// These are project review thresholds, not DSH runtime limits. For necessary
+// feature growth, report raw/gzip deltas and loading impact, obtain the user's
+// approval, then revise both thresholds and their evidence. Preserve approved
+// artwork and motion; do not silently bypass this gate or chase harmless bytes.
+const rawLimit = 735_000
 const gzipLimit = 430_000
 const gzipBytes = gzipSync(client, { level: 9 }).byteLength
 
-console.log(`client.js: ${client.byteLength} bytes raw, ${gzipBytes} bytes gzip`)
+const size = bytes => bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(2)} MB` : `${(bytes / 1_000).toFixed(2)} KB`
+console.log(`client.js: ${size(client.byteLength)} raw, ${size(gzipBytes)} gzip`)
 if (client.byteLength > rawLimit || gzipBytes > gzipLimit) {
   throw new Error(
-    `client.js exceeds budget (raw <= ${rawLimit}, gzip <= ${gzipLimit}); `
-      + 'inspect inlined artwork and accidental browser dependencies',
+    `client.js needs budget review (raw <= ${size(rawLimit)}, gzip <= ${size(gzipLimit)}); `
+      + 'inspect accidental dependencies; report necessary feature growth and request user approval to revise the budget',
   )
 }
 

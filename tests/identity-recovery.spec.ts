@@ -53,19 +53,15 @@ afterEach(() => {
 })
 
 describe('re-key (self-serve recovery)', () => {
-  it('rebinds the fingerprint after the cooldown and forfeits the old identity', () => {
+  it('retains the old key after cooldown and requires operator review for lost-key recovery', () => {
     const f = boot()
     bind(f, OLD, PK_OLD, FINGERPRINT)
     f.clock.advance(3_600_000)
-
-    const response = f.service.rekeyIdentity(NEW, PK_NEW, FINGERPRINT, f.clock.now())
-
-    expect(response.rekeyed).toBe(true)
-    expect(response.previous_installation_id).toBe(OLD)
-    expect(f.store.identityByFingerprint(FINGERPRINT)?.installation_id).toBe(NEW)
-    // The old identity is gone — its key can no longer authenticate, so its
-    // balance is forfeited (never transferred).
-    expect(f.store.identityByInstallation(OLD)).toBeUndefined()
+    expect(() => f.service.rekeyIdentity(NEW, PK_NEW, FINGERPRINT)).toThrow(expect.objectContaining({ code: 'rekey_proof_required' }))
+    expect(f.store.identityByInstallation(OLD)?.public_key).toBe(PK_OLD)
+    expect(f.store.identityByInstallation(NEW)).toBeUndefined()
+    expect(f.service.unbindIdentity(OLD).unbound).toBe(true)
+    expect(f.service.rekeyIdentity(NEW, PK_NEW, FINGERPRINT).rekeyed).toBe(false)
     expect(f.store.identityByInstallation(NEW)?.public_key).toBe(PK_NEW)
   })
 
@@ -106,14 +102,11 @@ describe('re-key (self-serve recovery)', () => {
     expect(f.store.identityByFingerprint(FINGERPRINT)?.installation_id).toBe(OLD)
   })
 
-  it('re-keys immediately when the cooldown is disabled (tests/operator config)', () => {
+  it('does not turn a disabled cooldown into proof of the old key', () => {
     const f = boot({ LIANGXIANG_REKEY_COOLDOWN_MS: '0' })
     bind(f, OLD, PK_OLD, FINGERPRINT)
-
-    const response = f.service.rekeyIdentity(NEW, PK_NEW, FINGERPRINT, f.clock.now())
-
-    expect(response.rekeyed).toBe(true)
-    expect(f.store.identityByFingerprint(FINGERPRINT)?.installation_id).toBe(NEW)
+    expect(() => f.service.rekeyIdentity(NEW, PK_NEW, FINGERPRINT)).toThrow(expect.objectContaining({ code: 'rekey_proof_required' }))
+    expect(f.store.identityByInstallation(OLD)?.public_key).toBe(PK_OLD)
   })
 
   it('requires a non-empty device fingerprint', () => {
@@ -215,8 +208,13 @@ describe('asset-preserving recovery', () => {
         }
         return originalDelete(id)
       })
-      if (operation === 'rekey') expect(service.rekeyIdentity(NEW, PK_NEW, FINGERPRINT).rekeyed).toBe(true)
-      else expect(service.unbindIdentity(OLD).unbound).toBe(true)
+      if (operation === 'rekey') {
+        expect(() => service.rekeyIdentity(NEW, PK_NEW, FINGERPRINT)).toThrow(expect.objectContaining({ code: 'rekey_proof_required' }))
+        expect(deletion).not.toHaveBeenCalled()
+        expect(store.identityByInstallation(OLD)).toBeDefined()
+        return
+      }
+      expect(service.unbindIdentity(OLD).unbound).toBe(true)
       expect(deletion).toHaveBeenCalledOnce()
       expect(writerBlocked).toBe(true)
       expect(store.database.prepare('SELECT available FROM incense_wallet WHERE installation_id=?').get(OLD))

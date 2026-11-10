@@ -668,3 +668,16 @@ it.each([[0, LIANGZI_POLICY_VERSION], [2, LEGACY_LIANGZI_POLICY_VERSION]] as con
     up_votes: 0, down_votes: 3, liangzi_policy_version: expected,
   })
 })
+
+
+it('keeps spent starter incense across an offline restart and receipt replay', async () => {
+  const state = memoryState(), port = memoryPort(state), clock = fakeClock(NOON_SHANGHAI)
+  const first = new FakeAuthoritativeLiangService({ ...BASE_CONFIG, starterIncense: 10 }, clock, () => undefined)
+  await first.attachPersistence(port)
+  const intent = { caseId: first.getWireState().activeCase.id, voteType: 'up' as const, requestId: 'starter-restart-vote', count: 3 }
+  first.vote(intent)
+  const second = new FakeAuthoritativeLiangService({ ...BASE_CONFIG, starterIncense: 10 }, clock, () => undefined)
+  await second.attachPersistence(port)
+  expect(second.getWireState().personal).toMatchObject({ usedIncenseToday: 3, remainingIncense: 7 })
+  expect(second.vote(intent).result).toMatchObject({ status: 'accepted', spentIncense: 0, remainingIncense: 7 })
+})

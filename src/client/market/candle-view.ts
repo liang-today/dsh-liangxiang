@@ -36,16 +36,17 @@ const priced = (c: MarketCandle): boolean => c.open !== null && c.high !== null 
 /**
  * Coarsen only adjacent official samples. A missing/null sample is a real break,
  * including when it falls inside one display bucket. Direction is reported only
- * when an adjacent cumulative-count delta exactly matches the official volume.
+ * when adjacent deltas, or a proven zero baseline, match the official volume.
  */
 export function marketDisplayCandles(candles: readonly MarketCandle[], intervalMs: number, origin: number, sourceIntervalMs: number = MARKET_CANDLE_INTERVAL_MS): MarketDisplayCandle[] {
   const result: MarketDisplayCandle[] = []
   let previous: MarketCandle | undefined
   const interval = Math.max(sourceIntervalMs, intervalMs)
   for (const c of candles) {
-    const deltaUp = previous ? c.up_votes - previous.up_votes : -1
-    const deltaDown = previous ? c.down_votes - previous.down_votes : -1
-    const known = previous !== undefined && previous.at + sourceIntervalMs === c.at && deltaUp >= 0 && deltaDown >= 0 && deltaUp + deltaDown === c.volume
+    const deltaUp = c.up_votes - (previous?.up_votes ?? 0)
+    const deltaDown = c.down_votes - (previous?.down_votes ?? 0)
+    // A first sample is exact only if its entire cumulative count is this volume.
+    const known = (!previous || previous.at + sourceIntervalMs === c.at) && deltaUp >= 0 && deltaDown >= 0 && deltaUp + deltaDown === c.volume
     const up = known ? deltaUp : 0, down = known ? deltaDown : 0, unknown = known ? 0 : c.volume
     const bucket = Math.floor((c.at - origin) / interval)
     const last = result[result.length - 1]

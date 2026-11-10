@@ -235,3 +235,35 @@ describe('versioned local Liangzi storage', () => {
     await shared.close()
   })
 })
+
+
+it('shares one durable key creation across concurrent resolves', async () => {
+  const facility = new MemoryFacility()
+  const handle = await openLiangxiangPersistence(facility, () => undefined)
+  const table = facility.domains.get(LIANGXIANG_DOMAIN_NAME)!.table('identity')
+  const put = table.put.bind(table)
+  let writes = 0
+  table.put = async (key, value) => { writes++; await new Promise(resolve => setTimeout(resolve, 5)); await put(key, value) }
+  const keys = await Promise.all(Array.from({ length: 12 }, () => handle.identity.resolve()))
+  expect(new Set(keys.map(key => key.installationId)).size).toBe(1)
+  expect(writes).toBe(1)
+  await handle.close()
+})
+
+
+it('quarantines a broken timed job without preventing the identity domain from loading', async () => {
+  const facility = new MemoryFacility(), warnings: string[] = []
+  const handle = await openLiangxiangPersistence(facility, warning => warnings.push(warning))
+  const identity = await handle.identity.resolve()
+  const schema = facility.specs.get(LIANGXIANG_DOMAIN_NAME)!.tables.settings!.valueSchema
+  const corrupt = { authorityPreference: 'online', dayEnd: { enabled: true, voteType: 'up', jobs: { online: { requestId: 'uncertain-intent' } } } }
+  const safe = schema.parse(corrupt)
+  expect(safe).toMatchObject({ authorityPreference: 'online', dayEndQuarantine: corrupt.dayEnd })
+  await facility.domains.get(LIANGXIANG_DOMAIN_NAME)!.table('settings').put('day_end', safe)
+  expect(handle.settings.getDayEndState()).toBeNull()
+  await expect(handle.settings.setDayEndState({ ...DEFAULT_DAY_END, enabled: true })).rejects.toThrow('定时记录待核对')
+  expect(handle.settings.getDayEndState()).toBeNull()
+  expect(warnings.join(' ')).toContain('quarantined')
+  expect((await handle.identity.resolve()).installationId).toBe(identity.installationId)
+  await handle.close()
+})

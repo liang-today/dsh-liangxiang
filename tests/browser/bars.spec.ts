@@ -131,6 +131,13 @@ test('unified K line has numeric axes, separate OHLC, keyboard reading and rever
     const { x, y, width, height } = node.getBoundingClientRect()
     return { x, y, width, height }
   }))
+  const chartFit = await chart.evaluate(element => {
+    const bounds = element.getBoundingClientRect()
+    return [...element.children].map(child => ({ name: child.className, overflow: child.getBoundingClientRect().bottom - bounds.bottom,
+      parentHeight: bounds.height, top: child.getBoundingClientRect().top - bounds.top, height: child.getBoundingClientRect().height,
+    }))
+  })
+  for (const child of chartFit) expect(child.overflow, JSON.stringify(chartFit)).toBeLessThanOrEqual(1)
   const expectStableControls = async (): Promise<void> => {
     const next = await controls.evaluateAll(nodes => nodes.map(node => {
       const { x, y, width, height } = node.getBoundingClientRect()
@@ -138,7 +145,7 @@ test('unified K line has numeric axes, separate OHLC, keyboard reading and rever
     }))
     expect(next).toHaveLength(controlBounds.length)
     for (let i = 0; i < next.length; i++) for (const key of ['x', 'y', 'width', 'height'] as const) {
-      expect(Math.abs(next[i]![key] - controlBounds[i]![key])).toBeLessThanOrEqual(1)
+      expect(Math.abs(next[i]![key] - controlBounds[i]![key]), JSON.stringify({ control: i, key, before: controlBounds[i], after: next[i], scrollTop: await dialog.evaluate(element => element.scrollTop) })).toBeLessThanOrEqual(1)
     }
   }
   const range = toolbar.locator('.liangxiang-market-chart-window')
@@ -344,9 +351,12 @@ test('point tooltip follows inspection inside plot edges while footer facts and 
   const svg = chart.locator('svg[data-liangxiang-market-from]')
   const readout = dialog.locator('.liangxiang-market-footer-metrics')
   const slots = readout.locator(':scope > button')
-  await expect(slots).toHaveCount(2)
+  await expect(slots).toHaveCount(3)
   await expect(slots.nth(0)).toHaveClass(/market-position/)
   await expect(slots.nth(1)).toHaveClass(/market-pool/)
+  await expect(slots.nth(1)).toContainText('今日香池')
+  await expect(slots.nth(2)).toHaveClass(/market-pool/)
+  await expect(slots.nth(2)).toContainText('早盘香池')
   await expect(chart.locator('[data-liangxiang-market-direction-legend]')).toBeVisible()
   await expectAlignedPriceColumn(chart)
   await expect(readout).not.toContainText('上香')
@@ -360,6 +370,7 @@ test('point tooltip follows inspection inside plot edges while footer facts and 
   expect(original.every(slot => slot.align === 'left')).toBe(true)
   expect(original[0]!.x).toBeCloseTo((await readout.boundingBox())!.x)
   expect(original[1]!.x).toBeGreaterThan(original[0]!.x + original[0]!.width)
+  expect(original[2]!.x).toBeGreaterThan(original[1]!.x + original[1]!.width)
   const inspect = async (hour: number, y = 40): Promise<void> => {
     const location = await svg.evaluate((element, hour) => {
       const svg = element as SVGSVGElement, bounds = svg.getBoundingClientRect(), width = svg.viewBox.baseVal.width
@@ -391,7 +402,7 @@ test('point tooltip follows inspection inside plot edges while footer facts and 
   await expect(tip).not.toContainText('上香')
   await stable()
   await inspect(6.1)
-  await expect(tip).toContainText('方向未确认')
+  await expect(tip).toContainText('方向明细缺失')
   await expect(tip).toContainText('万')
   await expect(tip).toHaveAttribute('aria-label', /\d{1,3},\d{3},\d{3}/)
   await stable()

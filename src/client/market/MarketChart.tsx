@@ -155,7 +155,7 @@ export const MarketChart = memo(function MarketChart({ state, candles, animated,
   const selected = visible.find(c => c.at === selectedAt) ?? visible[visible.length - 1]
   const maxVolume = Math.max(1, ...visible.map(c => c.volume))
   const selectedTime = selected ? `${marketTime(selected.at, timezone)}—${marketTime(Math.min(selected.until, observedUntil), timezone)}` : ''
-  const fullSelectedCopy = selected ? `${selectedTime} · 本段上香 ${selected.volume.toLocaleString('zh-CN')} 炷 · 夯 ${selected.confirmed_up.toLocaleString('zh-CN')} · 拉 ${selected.confirmed_down.toLocaleString('zh-CN')}${selected.unknown_volume ? ` · 其中 ${selected.unknown_volume.toLocaleString('zh-CN')} 炷方向未确认` : ''}` : '暂时没有官方行情'
+  const fullSelectedCopy = selected ? `${selectedTime} · 本段上香 ${selected.volume.toLocaleString('zh-CN')} 炷 · 夯 ${selected.confirmed_up.toLocaleString('zh-CN')} · 拉 ${selected.confirmed_down.toLocaleString('zh-CN')}${selected.unknown_volume ? ` · 其中 ${selected.unknown_volume.toLocaleString('zh-CN')} 炷方向明细缺失` : ''}` : '暂时没有官方行情'
   const readout = special ?? fullSelectedCopy
   const clampWindow = (start: number, span: number): { from: number, until: number } => {
     const width = Math.min(day.until - day.from, Math.max(1_800_000, span))
@@ -316,7 +316,7 @@ export const MarketChart = memo(function MarketChart({ state, candles, animated,
           const cx = x(midpoint(c, observedUntil, candlesIntervalMs)), h = c.volume / maxVolume * volumeHeight
           const width = candleWidth(c.until - c.at)
           const upH = h * c.confirmed_up / c.volume, downH = h * c.confirmed_down / c.volume
-          return <g key={c.at} className={marketClass('volume-band')} data-liangxiang-market-volume="" role="img" aria-label={`${marketTime(c.at, timezone)} · 本段上香 ${c.volume.toLocaleString('zh-CN')} 炷 · 夯 ${c.confirmed_up} · 拉 ${c.confirmed_down}${c.unknown_volume ? ` · 方向未确认 ${c.unknown_volume}` : ''}`}>
+          return <g key={c.at} className={marketClass('volume-band')} data-liangxiang-market-volume="" role="img" aria-label={`${marketTime(c.at, timezone)} · 本段上香 ${c.volume.toLocaleString('zh-CN')} 炷 · 夯 ${c.confirmed_up} · 拉 ${c.confirmed_down}${c.unknown_volume ? ` · 方向明细缺失 ${c.unknown_volume}` : ''}`}>
             {upH > 0 && <rect data-direction="up" x={cx - width / 2} y={volumeY + volumeHeight - h} width={width} height={upH} rx=".7" fill={VERMILION} />}
             {downH > 0 && <rect data-direction="down" x={cx - width / 2} y={volumeY + volumeHeight - h + upH} width={width} height={downH} rx=".7" fill={SLATE} />}
             {c.unknown_volume > 0 && <rect data-direction="unknown" x={cx - width / 2} y={volumeY + volumeHeight - h + upH + downH} width={width} height={Math.max(0, h - upH - downH)} rx=".7" fill={LIGHT_INK} opacity=".5" />}
@@ -329,7 +329,7 @@ export const MarketChart = memo(function MarketChart({ state, candles, animated,
         {ticks.filter((_tick, index) => size.width >= 500 || index === 0 || index === ticks.length - 1 || index % 2 === 0).map((tick, index, shown) => <g key={tick.at} className={marketClass('time-tick')}><text x={x(tick.at)} y={size.height - 5} textAnchor={index === 0 ? 'start' : index === shown.length - 1 ? 'end' : 'middle'} fill={LIGHT_INK} fontSize="11">{tick.label}</text></g>)}
       </svg>
       {tip && <div className={marketClass('chart-tip')} data-liangxiang-market-point-detail="" role="tooltip" aria-label={readout} style={marketTooltipPosition(tip)}>
-        {special || !selected ? readout : <><b>{selectedTime}</b><span>本段上香{formatMarketIncense(selected.volume)}炷</span><span>夯{formatMarketIncense(selected.confirmed_up)} · 拉{formatMarketIncense(selected.confirmed_down)}</span>{selected.unknown_volume > 0 && <span>方向未确认{formatMarketIncense(selected.unknown_volume)}炷</span>}</>}
+        {special || !selected ? readout : <><b>{selectedTime}</b><span>本段上香{formatMarketIncense(selected.volume)}炷</span><span>夯{formatMarketIncense(selected.confirmed_up)} · 拉{formatMarketIncense(selected.confirmed_down)}</span>{selected.unknown_volume > 0 && <span>方向明细缺失{formatMarketIncense(selected.unknown_volume)}炷</span>}</>}
       </div>}
     </div>
     <span className={marketClass('a11y')} aria-live={tip?.keyboard ? 'polite' : 'off'}>{readout}</span>

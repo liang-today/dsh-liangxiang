@@ -28,6 +28,7 @@ export interface V1HistoryDay {
   up_votes: number
   down_votes: number
   unique_voters: number
+  unique_voters_known?: boolean
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -42,6 +43,7 @@ export interface V1HistoryWeek {
   up_votes: number
   down_votes: number
   unique_voters: number
+  unique_voters_known?: boolean
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -56,6 +58,7 @@ export interface V1HistoryMonth {
   up_votes: number
   down_votes: number
   unique_voters: number
+  unique_voters_known?: boolean
   finalized_at: number
   archive_version: number
   aggregation_policy_version: string
@@ -77,8 +80,10 @@ export interface V1HistoryResponse {
   months: V1HistoryMonth[]
   /** Distinct installations in the still-open week, excluding today. */
   open_week_unique_voters: number
+  open_week_voters_known?: boolean
   /** Distinct installations in the still-open month, excluding today. */
   open_month_unique_voters: number
+  open_month_voters_known?: boolean
 }
 
 export interface ParsedHistoryArchive extends LiangHistoryArchive {
@@ -93,7 +98,7 @@ function record(raw: unknown, field: string): Record<string, unknown> {
 }
 
 function string(raw: unknown, field: string): string {
-  if (typeof raw !== 'string' || raw.length === 0) throw new WireError(field, 'expected a non-empty string')
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > 4096) throw new WireError(field, 'expected a non-empty string')
   return raw
 }
 
@@ -150,6 +155,21 @@ function array(raw: unknown, field: string): unknown[] {
   return raw
 }
 
+function parseArchiveFields(value: Record<string, unknown>, field: string, envelopeVersion: number) {
+  const archiveVersion = positiveCount(value.archive_version, `${field}.archive_version`)
+  if (archiveVersion > envelopeVersion) throw new WireError(`${field}.archive_version`, 'archive version exceeds envelope')
+  const version = liangziPolicyVersion(value.liangzi_policy_version, `${field}.liangzi_policy_version`)
+  return {
+    archiveVersion,
+    finalizedAt: finite(value.finalized_at, `${field}.finalized_at`),
+    aggregationPolicyVersion: policy(value.aggregation_policy_version, `${field}.aggregation_policy_version`, LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION),
+    liangziPolicyVersion: version,
+    ...((value.unique_voters === undefined || value.unique_voters_known === false) ? { uniqueVotersKnown: false } : {}),
+    ...deriveArchiveResult(count(value.up_votes, `${field}.up_votes`), count(value.down_votes, `${field}.down_votes`),
+      optionalCount(value.unique_voters, `${field}.unique_voters`), liangziPolicyForVersion(version)),
+  }
+}
+
 function parseDay(raw: unknown, field: string, envelopeVersion: number): LiangDayArchive {
   const value = record(raw, field)
   const businessDate = date(value.business_date, `${field}.business_date`)
@@ -159,28 +179,11 @@ function parseDay(raw: unknown, field: string, envelopeVersion: number): LiangDa
   if (titles.length !== caseCount) {
     throw new WireError(`${field}.case_titles`, 'length must match case_count')
   }
-  const archiveVersion = positiveCount(value.archive_version, `${field}.archive_version`)
-  if (archiveVersion > envelopeVersion) {
-    throw new WireError(`${field}.archive_version`, 'cannot exceed the response archive_version')
-  }
   return {
     businessDate,
     caseCount,
     caseTitles: titles,
-    finalizedAt: finite(value.finalized_at, `${field}.finalized_at`),
-    archiveVersion,
-    aggregationPolicyVersion: policy(
-      value.aggregation_policy_version,
-      `${field}.aggregation_policy_version`,
-      LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
-    ),
-    liangziPolicyVersion: liangziPolicyVersion(value.liangzi_policy_version, `${field}.liangzi_policy_version`),
-    ...deriveArchiveResult(
-      count(value.up_votes, `${field}.up_votes`),
-      count(value.down_votes, `${field}.down_votes`),
-      optionalCount(value.unique_voters, `${field}.unique_voters`),
-      liangziPolicyForVersion(liangziPolicyVersion(value.liangzi_policy_version, `${field}.liangzi_policy_version`)),
-    ),
+    ...parseArchiveFields(value, field, envelopeVersion),
   }
 }
 
@@ -191,29 +194,14 @@ function parseWeek(raw: unknown, field: string, envelopeVersion: number): LiangW
   const expected = isoWeekFor(startDate)
   const weekId = string(value.week_id, `${field}.week_id`)
   if (weekId !== expected.weekId || startDate !== expected.startDate || endDate !== expected.endDate) {
-    throw new WireError(field, 'week id/bounds do not form one ISO Monday-Sunday week')
+    throw new WireError(field, 'invalid ISO Monday-Sunday bounds')
   }
-  const archiveVersion = positiveCount(value.archive_version, `${field}.archive_version`)
-  if (archiveVersion > envelopeVersion) throw new WireError(`${field}.archive_version`, 'exceeds response version')
   return {
     weekId,
     startDate,
     endDate,
     coveredDays: positiveCount(value.covered_days, `${field}.covered_days`),
-    finalizedAt: finite(value.finalized_at, `${field}.finalized_at`),
-    archiveVersion,
-    aggregationPolicyVersion: policy(
-      value.aggregation_policy_version,
-      `${field}.aggregation_policy_version`,
-      LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
-    ),
-    liangziPolicyVersion: liangziPolicyVersion(value.liangzi_policy_version, `${field}.liangzi_policy_version`),
-    ...deriveArchiveResult(
-      count(value.up_votes, `${field}.up_votes`),
-      count(value.down_votes, `${field}.down_votes`),
-      optionalCount(value.unique_voters, `${field}.unique_voters`),
-      liangziPolicyForVersion(liangziPolicyVersion(value.liangzi_policy_version, `${field}.liangzi_policy_version`)),
-    ),
+    ...parseArchiveFields(value, field, envelopeVersion),
   }
 }
 
@@ -224,29 +212,14 @@ function parseMonth(raw: unknown, field: string, envelopeVersion: number): Liang
   const expected = monthFor(startDate)
   const monthId = string(value.month_id, `${field}.month_id`)
   if (monthId !== expected.monthId || startDate !== expected.startDate || endDate !== expected.endDate) {
-    throw new WireError(field, 'month id/bounds do not form one calendar month')
+    throw new WireError(field, 'invalid calendar month bounds')
   }
-  const archiveVersion = positiveCount(value.archive_version, `${field}.archive_version`)
-  if (archiveVersion > envelopeVersion) throw new WireError(`${field}.archive_version`, 'exceeds response version')
   return {
     monthId,
     startDate,
     endDate,
     coveredDays: positiveCount(value.covered_days, `${field}.covered_days`),
-    finalizedAt: finite(value.finalized_at, `${field}.finalized_at`),
-    archiveVersion,
-    aggregationPolicyVersion: policy(
-      value.aggregation_policy_version,
-      `${field}.aggregation_policy_version`,
-      LIANG_ARCHIVE_AGGREGATION_POLICY_VERSION,
-    ),
-    liangziPolicyVersion: liangziPolicyVersion(value.liangzi_policy_version, `${field}.liangzi_policy_version`),
-    ...deriveArchiveResult(
-      count(value.up_votes, `${field}.up_votes`),
-      count(value.down_votes, `${field}.down_votes`),
-      optionalCount(value.unique_voters, `${field}.unique_voters`),
-      liangziPolicyForVersion(liangziPolicyVersion(value.liangzi_policy_version, `${field}.liangzi_policy_version`)),
-    ),
+    ...parseArchiveFields(value, field, envelopeVersion),
   }
 }
 
@@ -290,14 +263,19 @@ export function parseV1HistoryResponse(raw: unknown): ParsedHistoryArchive {
     weeks,
     months,
     openWeekUniqueVoters: optionalCount(value.open_week_unique_voters, 'historyResponse.open_week_unique_voters'),
+    ...((value.open_week_unique_voters === undefined || value.open_week_voters_known === false) ? { openWeekVotersKnown: false } : {}),
     openMonthUniqueVoters: optionalCount(value.open_month_unique_voters, 'historyResponse.open_month_unique_voters'),
+    ...((value.open_month_unique_voters === undefined || value.open_month_voters_known === false) ? { openMonthVotersKnown: false } : {}),
   }
 }
 
-function replaceByKey<T>(current: readonly T[], incoming: readonly T[], key: (item: T) => string): T[] {
+function replaceByKey<T extends { archiveVersion: number }> (current: readonly T[], incoming: readonly T[], key: (item: T) => string): T[] {
   const values = new Map(current.map(item => [key(item), item]))
-  for (const item of incoming) values.set(key(item), item)
-  return [...values.values()]
+  for (const item of incoming) {
+    const previous = values.get(key(item))
+    if (previous === undefined || item.archiveVersion >= previous.archiveVersion) values.set(key(item), item)
+  }
+  return [...values.values()].sort((left, right) => key(left).localeCompare(key(right)))
 }
 
 /** Merge one immutable version delta into a Host/client last-known-good cache. */
@@ -314,15 +292,21 @@ export function mergeHistoryArchive(
     businessDate: incoming.businessDate,
     businessTimezone: incoming.businessTimezone,
     stale: incoming.stale,
-    days: replaceByKey(current.days, incoming.days, item => item.businessDate)
-      .sort((left, right) => left.businessDate.localeCompare(right.businessDate)),
-    weeks: replaceByKey(current.weeks, incoming.weeks, item => item.weekId)
-      .sort((left, right) => left.startDate.localeCompare(right.startDate)),
-    months: replaceByKey(current.months, incoming.months, item => item.monthId)
-      .sort((left, right) => left.startDate.localeCompare(right.startDate)),
+    days: replaceByKey(current.days, incoming.days, item => item.businessDate),
+    weeks: replaceByKey(current.weeks, incoming.weeks, item => item.weekId),
+    months: replaceByKey(current.months, incoming.months, item => item.monthId),
     openWeekUniqueVoters: incoming.openWeekUniqueVoters,
+    ...(incoming.openWeekVotersKnown === undefined ? {} : { openWeekVotersKnown: incoming.openWeekVotersKnown }),
     openMonthUniqueVoters: incoming.openMonthUniqueVoters,
+    ...(incoming.openMonthVotersKnown === undefined ? {} : { openMonthVotersKnown: incoming.openMonthVotersKnown }),
   }
+}
+
+function archiveFieldsToV1(row: LiangDayArchive | LiangWeekArchive | LiangMonthArchive) {
+  return { up_votes: row.upVotes, down_votes: row.downVotes, unique_voters: row.uniqueVoters,
+    ...(row.uniqueVotersKnown === false ? { unique_voters_known: false } : {}),
+    finalized_at: row.finalizedAt, archive_version: row.archiveVersion,
+    aggregation_policy_version: row.aggregationPolicyVersion, liangzi_policy_version: row.liangziPolicyVersion }
 }
 
 export function historyArchiveToV1(
@@ -338,44 +322,28 @@ export function historyArchiveToV1(
     full,
     stale: history.stale,
     open_week_unique_voters: history.openWeekUniqueVoters ?? 0,
+    ...(history.openWeekVotersKnown === false ? { open_week_voters_known: false } : {}),
     open_month_unique_voters: history.openMonthUniqueVoters ?? 0,
+    ...(history.openMonthVotersKnown === false ? { open_month_voters_known: false } : {}),
     days: history.days.map(day => ({
       business_date: day.businessDate,
       case_count: day.caseCount,
       case_titles: [...day.caseTitles],
-      up_votes: day.upVotes,
-      down_votes: day.downVotes,
-      unique_voters: day.uniqueVoters,
-      finalized_at: day.finalizedAt,
-      archive_version: day.archiveVersion,
-      aggregation_policy_version: day.aggregationPolicyVersion,
-      liangzi_policy_version: day.liangziPolicyVersion,
+      ...archiveFieldsToV1(day),
     })),
     weeks: history.weeks.map(week => ({
       week_id: week.weekId,
       start_date: week.startDate,
       end_date: week.endDate,
       covered_days: week.coveredDays,
-      up_votes: week.upVotes,
-      down_votes: week.downVotes,
-      unique_voters: week.uniqueVoters,
-      finalized_at: week.finalizedAt,
-      archive_version: week.archiveVersion,
-      aggregation_policy_version: week.aggregationPolicyVersion,
-      liangzi_policy_version: week.liangziPolicyVersion,
+      ...archiveFieldsToV1(week),
     })),
     months: history.months.map(month => ({
       month_id: month.monthId,
       start_date: month.startDate,
       end_date: month.endDate,
       covered_days: month.coveredDays,
-      up_votes: month.upVotes,
-      down_votes: month.downVotes,
-      unique_voters: month.uniqueVoters,
-      finalized_at: month.finalizedAt,
-      archive_version: month.archiveVersion,
-      aggregation_policy_version: month.aggregationPolicyVersion,
-      liangzi_policy_version: month.liangziPolicyVersion,
+      ...archiveFieldsToV1(month),
     })),
   }
 }

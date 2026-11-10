@@ -39,15 +39,23 @@ rollover. No client cache or chart is a ledger. Usage remains soft trust.
 The approved blue pond design in `docs/MAIN_PANEL_BLUE_UI.md` supersedes the
 older visual details below, without changing any accounting or market rule.
 Keep the panel 256px and four regions. Use calm pale-blue water behind the
-original figures, with height based only on available incense (0–1000).
+original figures, with height based only on available incense (0–500), saturating at 500.
 Below 100, whole plants grow from the bottom with water depth; do not expose
 only the tips of a clipped full plant. Two little stones per side stay at the
 roots. Above 100, an occasional small whale performs the same two puffs;
 foreground bubbles grow upward from above its head and pop at the live water
 surface, away from the portrait. Hide/static/unmount cancels all local motion.
-The left caption defaults to today's earned total. Only confirmed settlements
-briefly show gained incense and then available incense; sustained request
-activity never replaces the daily caption. Clicking the figure inspects
+The left caption defaults to today's earned total. Confirmed settlements
+briefly show gained incense and then available incense; confirmed vote spending
+also briefly shows personal available incense. Repeated frames must not replay
+that feedback, while consecutive accepted votes keep the balance readable.
+Sustained request activity never replaces the daily caption. It may grow small
+bubbles near the plants, rising and popping at the actual water surface, without
+changing water or progress. No water or an extremely thin layer uses only the
+ring-bottom glow; shallow bubbles fit the visible water, while their surface
+pop rings remain at least 18×3 CSS pixels and centered on the bubble. Keep these emitters
+separate from the whale's two original puffs and cancel all activity on hide,
+static preference or unmount. Clicking the figure inspects
 available incense. One highest-order ring glyph group (ones / tens / hundreds)
 avoids crowding; large amounts use the compact caption and exact accessible
 summary. The full-width Liangwei pill matches the two vote buttons together.
@@ -73,8 +81,8 @@ in the header between the title/wallet and window controls, outside the plot.
 The same restrained gray future region in both charts starts at the actual
 business clock, with a clear current-time boundary and left-aligned `待开梁`
 caption. Thin stage strips distinguish investment windows without stacking
-full-height backgrounds; missing historical data remains a gap. The footer
-reads `24:00后一起揭晓`. One noninteractive time-window text beside the zoom controls shows the actual zoomed span.
+full-height backgrounds; missing historical data remains a gap. The footer carries a quiet `午夜揭晓` beside the selected pool; its full
+explanation states all three pools reveal after 24:00. One noninteractive time-window text beside the zoom controls shows the actual zoomed span.
 Wheel zoom is continuous and pointer-anchored; +/− step through 24/12/6/3/1 hours and 30 minutes; candle grain is automatic,
 never a separate interval selector, and cannot exceed the real source resolution. Record the active case all
 business day, including before trading opens; phase shading never hides prices. The normal window and order ticket stay compact. The header whale uses action-specific local motion and readable speech. It reports the selected batch's actual cutoff and pool once per minute, below operation/error priority; clicking it reports on demand.
@@ -82,15 +90,23 @@ The stage buttons use centered groups with small daypart icons: 早盘/午盘/�
 above the user's direction/amount, with the actual cutoff in quieter type
 (11点封盘; retain minutes for non-hour cutoffs). Omit 未投入; show necessary
 status when there is no position. Use 争梁位/已定梁 consistently. The footer's
-left two thirds contain 梁位/state and the selected stage's total pool/reveal
-time; the right third contains 我的回执/梁股玩法. Keep amount and 炷 together,
+left two thirds contain three aligned cells: 梁位/state, 今日香池 (all three
+stages), and the selected stage's pool with the quiet reveal hint at the right; the right third contains 我的回执/梁股玩法. Keep amount and 炷 together,
 inside a stable information cell; never reserve a gap between digits and unit.
-State/reveal text is bolder than its caption. Clicking either fact prompts the
+State text is bolder than its caption; the reveal hint stays quiet and secondary. Clicking either fact prompts the
 fish; pool speech uses actual side quantities and percentages, never fake 50/50
 for an empty pool. Do not restore a permanent countdown, sticky pool popup or
-duplicate position-caption row. Align 个人可用/冻结香火 labels and value starts,
-with the available amount larger. Reserve enough header height for both rows;
-the chart toolbar must stay clear. The slightly larger clock under the motion
+duplicate position-caption row. Stack 个人可用/冻结香火 on two rows with shared label, amount and unit
+columns so 炷 aligns vertically. Put 今日香池 in the middle footer cell. The public daily pool sums all three batches' long/short pools
+with exact integers; never add personal frozen funds again or label it cumulative
+turnover. The wallet pair shares compact blue styling; footer pool amounts
+share their own blue size and baseline. Keep exact accessible values. The wallet and chart toolbar share a compact 200px width and align both edges;
+wallet amounts expand within that grid while units keep their common column.
+Give the fish a responsive 16–48px inset inside its header slot, balancing
+clear space from the wallet with readable speech. Stacked narrow layouts keep
+zero inset. Never reduce its motion or increase normal header height. The quiet midnight hint directly
+follows its pool caption with a small gap, never automatic edge-pushing margins.
+The slightly larger clock under the motion
 toggle stays within its control column and uses server business date/time only.
 Confirm and withdraw share one compact order row. The title is `梁股 · 香火市场`.
 Receipts and rules open overlays from permanent buttons; batch, status and wallet updates never resize the window.
@@ -1258,6 +1274,18 @@ the user. Keep pending approval distinct from implementation and testing.
 Reopen an item if a regression is found; never use checked boxes as a substitute
 for the final build/install/backend gates.
 
+### Client payload budget (reviewable project budget)
+
+`scripts/check-client-budget.mjs` is a Liangxiang engineering review gate,
+not a DSH size limit. When an approved feature reasonably needs more room,
+report the raw/gzip increase, its cause and expected loading impact, then ask
+the user to approve a revised budget. Do not silently raise or bypass the gate,
+and do not spend repeated rounds shaving harmless bytes or removing approved
+artwork, interactions or motion merely to preserve an old number. Keep the
+current thresholds until approval, then update the script and evidence together.
+Use readable KB/MB in user-facing reports and the checker's output (decimal
+units: 1 KB = 1,000 bytes); exact byte counts may accompany private evidence.
+
 ### Version (HARD RULE — 用户可见改动必须升版本)
 
 Every user-visible product change (UI, Host/Client behavior, install/upgrade
@@ -1410,7 +1438,47 @@ exact versions and tarball `file:` rows are rewritten to `latest`. Rules:
 
 Implementation: `src/host/profile-npm-float.ts` + `tests/host-profile-npm-float.spec.ts`.
 
+### Server migration: mainland availability before cutover (hard rule)
+
+Before moving the public backend to a different server, IP or ingress route,
+evaluate the candidate's real availability from mainland China. Keep formal
+traffic on the current service while using an isolated candidate endpoint and
+test database. Purchase, SSH access, healthy loopback responses, advertised
+bandwidth, a UK probe or one cloud probe never constitute cutover acceptance.
+
+Compare old and candidate endpoints with the same healthy probes and time
+windows across mainland regions and China Telecom / China Unicom / China
+Mobile, including an evening peak window. Verify DNS, TCP 443, strict TLS,
+real HTTPS business reads, authenticated SSE continuity/reconnect and market
+reads; evaluate the currently agreed concurrency target against isolated data.
+Record coverage, success/error rates, latency percentiles, stream gaps and
+server load; distinguish offline probes from endpoint failures. Never reduce
+market update frequency or information to pass the evaluation.
+
+Before changing public DNS, a production proxy/upstream, the authoritative
+writer or a distributed default backend, provide a reviewable comparison and
+an explicit go/no-go against acceptance criteria set before testing. Missing
+mainland evidence or unresolved systematic carrier/region failures block the
+cutover. An exception requires the user's explicit acceptance of the stated
+gap/risk; buying a server is not permission to skip evaluation. Obtain the
+specific cutover authorization; do not ask again if already clearly granted.
+Preserve the old service, consistent ledger backup and a single-writer rollback
+plan, then recheck mainland business access through the public domain after
+cutover. DNS propagation and local health alone never prove nationwide recovery.
+Detailed procedure: `docs/121-vps-deploy.md` §0.
+
 ### Staging deploy (hard rule)
+
+Before every remote mutation, report the literal target IP, freshly verified
+role, exact service and database paths, plus the protected production IP.
+Recheck after every failover; "main" or "standby" alone is not a destination.
+Keep actual deployment addresses in private operational receipts, not Git.
+
+Integrated candidate testing requires the isolated Backend, Host and Client
+to run the same candidate version and verified source/artifacts. Old-Backend
+coverage is compatibility testing, never a substitute for that baseline.
+Preserve existing test identities, balances, positions and pending intents;
+take a consistent backup and compare migration results before resuming tests.
 
 The community staging backend is deployed ONLY through `scripts/deploy.sh`, which
 stamps `<prefix>/VERSION` with the deployed `git rev-parse --short HEAD`. Never

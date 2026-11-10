@@ -86,7 +86,8 @@ export function spendOneIncense(state: PersonalLiangQiState): PersonalLiangQiSta
  */
 export function spendIncense(state: PersonalLiangQiState, count: number): PersonalLiangQiState {
   assertCount(count, 'invalid_incense_count', 'spendCount')
-  if (count < 1 || count > state.remainingIncense) {
+  if (count < 1) throw new DomainError('invalid_incense_count', 'spendCount must be positive')
+  if (count > state.remainingIncense) {
     throw new DomainError('insufficient_incense', 'no remaining incense to spend')
   }
   return derivePersonalLiangQiState({

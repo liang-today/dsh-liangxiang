@@ -23,6 +23,7 @@ function ntpToUnixMs(msg: Buffer): number {
 }
 
 function queryOne(host: string): Promise<number> {
+  const sentAt = Date.now()
   return new Promise((resolve, reject) => {
     const packet = Buffer.alloc(48)
     packet[0] = 0x1b
@@ -43,7 +44,7 @@ function queryOne(host: string): Promise<number> {
         reject(new Error(`ntp short packet from ${host}`))
         return
       }
-      resolve(ntpToUnixMs(msg))
+      resolve(ntpToUnixMs(msg) - (sentAt + Date.now()) / 2)
     })
     socket.send(packet, NTP_PORT, host, (error) => {
       if (error !== null) {
@@ -56,11 +57,10 @@ function queryOne(host: string): Promise<number> {
 }
 
 /** Query hardcoded NTP servers; resolve with offset (ntp - local), or null. */
-export async function measureNtpOffsetMs(now = Date.now()): Promise<number | null> {
+export async function measureNtpOffsetMs(): Promise<number | null> {
   for (const host of NTP_SERVERS) {
     try {
-      const ntp = await queryOne(host)
-      return ntp - now
+      return await queryOne(host)
     } catch {
       // try the next hardcoded host
     }

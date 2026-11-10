@@ -69,7 +69,7 @@ describe('readable official market chart, independent of the header illustration
   })
   it('compacts BigInt bubble volume without inventing unknown directional counts', () => {
     const bubble = { at: DAY, until: DAY + HOUR, last_sample_at: DAY, ratio: .5, radius: 4, volume: 123_456_789n, up: null, down: null }
-    expect(marketBubbleLabel(bubble, 'UTC')).toBe('00:00—01:00 · 本段上香 1.234亿 炷 · 方向明细未确认')
+    expect(marketBubbleLabel(bubble, 'UTC')).toBe('00:00—01:00 · 本段上香 1.234亿 炷 · 方向明细缺失')
     expect(marketBubbleLabel({ ...bubble, up: 123_450_000n, down: 6_789n }, 'UTC')).toContain('夯 1.234亿 · 拉 6,789')
   })
   it('keeps a forming candle at or before the observation boundary', () => {
@@ -301,6 +301,14 @@ describe('readable official market chart, independent of the header illustration
 describe('official candle display aggregation', () => {
   const STEP = 300_000
   const c = (at: number, open = .4, close = .5, up = 10, down = 10, volume = 0) => ({ at, open, close, high: Math.max(open, close) + .01, low: Math.min(open, close) - .01, up_votes: up, down_votes: down, volume })
+  it('recovers the first candle directions only when its cumulative counts prove a zero baseline', () => {
+    const first = marketDisplayCandles([c(0, .2, .2, 2, 8, 10), c(STEP, .2, .25, 3, 9, 2)], STEP * 3, 0, STEP)
+    expect(first[0]).toMatchObject({ volume: 12, confirmed_up: 3, confirmed_down: 9, unknown_volume: 0 })
+    const partial = marketDisplayCandles([c(0, .2, .2, 20, 80, 10)], STEP, 0, STEP)
+    expect(partial[0]).toMatchObject({ confirmed_up: 0, confirmed_down: 0, unknown_volume: 10 })
+    const gap = marketDisplayCandles([c(0, .2, .2, 2, 8, 10), c(STEP * 2, .2, .25, 3, 9, 2)], STEP * 3, 0, STEP)
+    expect(gap[1]).toMatchObject({ volume: 2, unknown_volume: 2 })
+  })
   it('uses the first open, extrema and last close, retaining unknown volume instead of faking directions', () => {
     const grouped = marketDisplayCandles([c(0, .4, .5, 10, 10, 2), c(STEP, .5, .7, 13, 11, 4), c(STEP * 2, .7, .6, 14, 14, 4)], STEP * 3, 0, STEP)
     expect(grouped).toHaveLength(1)

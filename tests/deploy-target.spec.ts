@@ -71,3 +71,25 @@ it.skipIf(process.platform === 'win32')('the actual remote installer accepts SSH
     expect(result.stdout).toBe(pin)
   }
 })
+
+
+it.skipIf(process.platform === 'win32')('rejects unsigned operator configuration before staging without exposing environment values', () => {
+  const source = readFileSync('scripts/load-deploy-target.sh', 'utf8')
+  const script = source.split("<<'AUTH_CHECK'\n")[1]!.split('\nAUTH_CHECK')[0]!
+  const root = mkdtempSync(join(tmpdir(), 'liangxiang-signed-deploy-'))
+  try {
+    const env = join(root, 'backend.env')
+    for (const value of ['0', '"0"', "'0'", '']) {
+      writeFileSync(env, `LIANGXIANG_ALLOW_UNSIGNED=${value}\nPRIVATE_VALUE=never-print-this\n`)
+      expect(spawnSync('/bin/bash', ['-s', '--', env], { input: script, encoding: 'utf8' }).status).toBe(0)
+    }
+    for (const value of ['1', '"1"', "'1'", 'unexpected']) {
+      writeFileSync(env, `LIANGXIANG_ALLOW_UNSIGNED=${value}\nPRIVATE_VALUE=never-print-this\n`)
+      const result = spawnSync('/bin/bash', ['-s', '--', env], { input: script, encoding: 'utf8' })
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain('unsigned authentication must be disabled')
+      expect(result.stdout + result.stderr).not.toContain('never-print-this')
+    }
+    expect(source.indexOf('deploy_signed_auth_check_script |')).toBeGreaterThan(source.indexOf('ROLE_CHECK\n'))
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})

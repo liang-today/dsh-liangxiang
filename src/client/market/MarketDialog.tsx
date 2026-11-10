@@ -144,6 +144,7 @@ export function MarketDialog({ reducedMotion, online, onClose, restoreFocus = tr
   }
   const animatedNow = animated && visible && !reducedMotion
   const shownBatch = market?.batches.find(batch => batch.batch === selected)
+  const dailyPool = market?.batches.reduce((total, batch) => total + poolAmount(batch), 0n)
   const currentPoint = market?.close_point ?? state?.current_point ?? null
   const currentRatio = pointRatio(currentPoint)
   const currentName = currentRatio === null ? '待开梁' : marketDepthBands(casePresentation?.policyId).find(band => currentRatio >= band.low && (currentRatio < band.high || band.high === 1))?.label
@@ -181,8 +182,8 @@ export function MarketDialog({ reducedMotion, online, onClose, restoreFocus = tr
         <div className={marketClass('header-copy')}>
         <h2 id="liangxiang-market-title" aria-label={MARKET_TITLE}><span>{MARKET_BRAND}</span><i aria-hidden="true" /><small>{MARKET_TOPIC}</small></h2>
         <div className={marketClass('wallet')} aria-label="服务器累计钱包" title="可用与已到账收益跨日保留；冻结香火不能重复投入或上香">
-          <span><span className={marketClass('wallet-label')}>个人可用</span><strong data-liangxiang-market-available=""><Incense value={state?.wallet.available_incense} /></strong>炷</span>
-          <span><span className={marketClass('wallet-label')}>冻结香火</span><strong data-liangxiang-market-frozen=""><Incense value={state?.wallet.frozen_incense} /></strong>炷</span>
+          <span className={marketClass('wallet-label')}>个人可用</span><strong data-liangxiang-market-available=""><Incense value={state?.wallet.available_incense} /></strong><small>炷</small>
+          <span className={marketClass('wallet-label')}>冻结香火</span><strong data-liangxiang-market-frozen=""><Incense value={state?.wallet.frozen_incense} /></strong><small>炷</small>
         </div>
         </div>
         <button type="button" className={marketClass('companion-trigger')} aria-label="大肥鱼：播报本盘香池与时间" aria-description={shownBatch && state ? batchReport(shownBatch, state, now, true) : undefined} onClick={() => { if (shownBatch && state) reactFish('report', batchReport(shownBatch, state, now)) }}>
@@ -201,10 +202,10 @@ export function MarketDialog({ reducedMotion, online, onClose, restoreFocus = tr
       </header>
       <span className={marketClass('a11y')} aria-live="polite">{fishReaction && ['confirmed', 'pool', 'position'].includes(fishReaction.action) ? fishReaction.text : ''}</span>
       <div className={marketClass('status')} role="status" aria-live="polite">
-        {!online ? '社区交易仅在线模式可用，离线香火与社区钱包分别保存。' : view.error ?? view.chartError ?? ''}
+        {!online ? '社区交易仅在线模式可用，离线香火与社区钱包分别保存。' : view.error ?? view.chartError ?? view.historyError ?? ''}
         {online && view.error && (view.pending ? <button type="button" data-fish-action="retry" disabled={view.sending} onClick={() => { void session.retryPending() }}>{view.sending ? '核对中…' : '核对上一笔'}</button> : view.status === 'offline' && !view.state && <button type="button" data-fish-action="retry" onClick={() => { void session.start() }}>重新连接</button>)}
       </div>
-      {fetching && <p className={marketClass('loading')} role="status" aria-live="polite"><span className={marketClass('a11y')}>{initialLoading ? '大肥鱼捕捞中' : '正在读取行情'}</span></p>}
+      {fetching && <p className={marketClass('loading')} role="status" aria-live="polite">正在读取行情</p>}
       {state && online && <>
         <MarketChart state={state} candles={view.candles} candlesIntervalMs={view.candleIntervalMs ?? 300_000} animated={animatedNow} selectedBatch={selected} onInteraction={(action, gesture, range) => reactFish(action ?? 'inspect', range ? `镜头${action === 'pan' ? '平移' : action === 'zoom-in' ? '拉近' : '拉远'}啦，${range}。` : undefined, !gesture)} {...(casePresentation === undefined ? {} : { liangziPolicyId: casePresentation.policyId })} />
         {!market && <p className={marketClass('empty')}>今日交易尚未开场，正常上香不受影响。</p>}
@@ -243,8 +244,12 @@ export function MarketDialog({ reducedMotion, online, onClose, restoreFocus = tr
             <button type="button" className={marketClass('position')} aria-label={`${currentLabel}，点击听大肥鱼播报`} onClick={() => reactFish('position', `${currentLabel}\n夯${formatMarketIncense(currentPoint?.up_votes ?? 0)} / 拉${formatMarketIncense(currentPoint?.down_votes ?? 0)}，一起看浪～`, true)}>
               <span className={marketClass('metric-label')}>梁位 {currentName && <b>· {currentName}</b>}</span><strong>{marketRatioLabel(currentRatio)}</strong>
             </button>
+            <button type="button" className={marketClass('pool')} disabled={!market} aria-label={`今日早午晚三盘香池合计${dailyPool?.toLocaleString() ?? '—'}炷，点击听大肥鱼播报`} title="早、午、晚三盘的多空香火合计，随投入和撤回更新" onClick={() => { if (market) reactFish('pool', `今日三盘共${formatMarketIncense(dailyPool!)}炷\n${market.batches.map(batch => `${marketBatchName(batch.batch)}${formatMarketIncense(poolAmount(batch))}炷`).join(' · ')}`, true) }}>
+              <span className={marketClass('metric-label')}>今日香池</span>
+              <strong data-liangxiang-market-total=""><Incense value={dailyPool} /><small>炷</small></strong>
+            </button>
             <button type="button" className={marketClass('pool')} data-liangxiang-market-pool="" disabled={!shownBatch} aria-describedby="liangxiang-market-reveal" aria-label={shownBatch ? `${marketBatchName(shownBatch.batch)}香池，多${shownBatch.long_incense.toLocaleString()}炷，空${shownBatch.short_incense.toLocaleString()}炷，点击听多空比例` : '尚无香池'} onClick={() => { if (shownBatch) reactFish('pool', marketPoolReport(shownBatch), true) }}>
-              <span className={marketClass('metric-label')}>{shownBatch ? marketBatchName(shownBatch.batch) : ''}香池 <b id="liangxiang-market-reveal" className={marketClass('connection')} data-reveal={view.status === 'live' && market?.status === 'open'}>{view.status === 'live' ? market?.status === 'open' ? '24:00后一起揭晓' : market?.status === 'cancelled' ? '已取消' : '已收盘' : '正在重连'}</b></span>
+              <span className={marketClass('metric-label')}>{shownBatch ? marketBatchName(shownBatch.batch) : ''}香池 <span id="liangxiang-market-reveal" className={marketClass('connection')} data-reveal={view.status === 'live' && market?.status === 'open'} title="早、午、晚三盘均在24:00后统一揭晓">{view.status === 'live' ? market?.status === 'open' ? <><StageIcon batch={3} />午夜揭晓</> : market?.status === 'cancelled' ? '已取消' : '已收盘' : '正在重连'}</span></span>
               <strong><Incense value={shownBatch ? poolAmount(shownBatch) : undefined} /><small>炷</small></strong>
             </button>
           </div>

@@ -365,6 +365,7 @@ export const V1_ERROR_CODES = [
   'vote_rate_limited',
   'device_conflict',
   'rekey_cooldown',
+  'rekey_proof_required',
   'wallet_has_assets',
   'identity_rate_limited',
   'unknown_route',
@@ -392,7 +393,7 @@ function asRecord(raw: unknown, field: string): Record<string, unknown> {
 }
 
 function requireString(value: unknown, field: string): string {
-  if (typeof value !== 'string' || value.length === 0) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4096) {
     throw new WireError(field, 'expected a non-empty string')
   }
   return value
@@ -660,6 +661,19 @@ function parseLiangziPolicy(raw: unknown, field: string): V1LiangziPolicy {
 }
 
 /** Validate a bootstrap payload (host boundary). */
+function assertCurrentFrame(record: Record<string, unknown>, field: string): void {
+  const date = requireBusinessDate(record.business_date, `${field}.business_date`)
+  const active = parseCase(record.active_case, `${field}.active_case`)
+  const snapshot = parseV1Snapshot(record.global_snapshot, `${field}.global_snapshot`)
+  if (active.business_date !== date || snapshot.business_date !== date || snapshot.case_id !== active.id) {
+    throw new WireError(field, 'current case, business date and snapshot must agree')
+  }
+  if (record.authoritative_personal_state !== undefined) {
+    const personal = parseV1PersonalState(record.authoritative_personal_state, `${field}.authoritative_personal_state`)
+    if (personal.business_date !== date) throw new WireError(field, 'personal business date must agree')
+  }
+}
+
 export function parseV1Bootstrap(raw: unknown): V1Bootstrap {
   const record = asRecord(raw, 'bootstrap')
   if (record.schema_version !== BACKEND_SCHEMA_VERSION) {
@@ -676,6 +690,7 @@ export function parseV1Bootstrap(raw: unknown): V1Bootstrap {
   )
   const refresh = requireCount(record.snapshot_refresh_seconds, 'bootstrap.snapshot_refresh_seconds')
   if (refresh <= 0) throw new WireError('bootstrap.snapshot_refresh_seconds', 'must be positive')
+  assertCurrentFrame(record, 'bootstrap')
   return {
     schema_version: BACKEND_SCHEMA_VERSION,
     authority_mode: authorityMode,
@@ -722,9 +737,7 @@ function parseVoteResult(raw: unknown, field: string): V1VoteResult {
       vote_type: record.vote_type,
       used_incense: requireCount(record.used_incense, `${field}.used_incense`),
       remaining_incense: requireCount(record.remaining_incense, `${field}.remaining_incense`),
-      spent_incense: record.spent_incense === undefined
-        ? 1
-        : requireCount(record.spent_incense, `${field}.spent_incense`),
+      ...(record.spent_incense === undefined ? {} : { spent_incense: requireCount(record.spent_incense, `${field}.spent_incense`) }),
       ...(record.accepted_incense === undefined ? {} : { accepted_incense: requireCount(record.accepted_incense, `${field}.accepted_incense`) }),
       replayed: record.replayed,
     }
@@ -761,7 +774,8 @@ export interface V1VoteEnvelope {
 /** True when a vote parse failed only because the snapshot fields are absent. */
 export function isMissingVoteSnapshotError(error: unknown): boolean {
   if (!(error instanceof WireError)) return false
-  return error.field === 'voteResponse.global_snapshot' || error.field === 'voteResponse.snapshot_version'
+  return (error.field === 'voteResponse.global_snapshot' || error.field === 'voteResponse.snapshot_version')
+    && error.message.endsWith('expected an object')
 }
 
 /** Parse result + personal state; snapshot fields are optional. */
@@ -839,6 +853,7 @@ export function parseV1SnapshotResponse(raw: unknown): V1SnapshotResponse {
   if (record.schema_version !== BACKEND_SCHEMA_VERSION) {
     throw new WireError('snapshotResponse.schema_version', `unsupported schema version ${String(record.schema_version)}`)
   }
+  assertCurrentFrame(record, 'snapshotResponse')
   return {
     schema_version: BACKEND_SCHEMA_VERSION,
     server_time: requireFinite(record.server_time, 'snapshotResponse.server_time'),
@@ -908,6 +923,9 @@ export function parseV1VoteRequest(raw: unknown): V1VoteRequest {
     if (forbidden in record) {
       throw new WireError(`vote.${forbidden}`, 'client-declared authority is not accepted')
     }
+  }
+  for (const key of Object.keys(record)) {
+    if (!['case_id', 'vote_type', 'request_id', 'count'].includes(key)) throw new WireError(`vote.${key}`, 'unknown vote field')
   }
   let count: number | undefined
   if (record.count !== undefined) {
@@ -1039,6 +1057,7 @@ export function parseV1PublishCaseResponse(raw: unknown): V1PublishCaseResponse 
     throw new WireError('publishResponse.schema_version', `unsupported schema version ${String(record.schema_version)}`)
   }
   const archived = record.archived_case
+  assertCurrentFrame(record, 'publishResponse')
   return {
     schema_version: BACKEND_SCHEMA_VERSION,
     business_date: requireBusinessDate(record.business_date, 'publishResponse.business_date'),

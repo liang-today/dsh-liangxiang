@@ -70,8 +70,8 @@ describe('real minute candles and preserved legacy history', () => {
     f.store.database.prepare('INSERT INTO liang_market_candle VALUES (?,?,?,?,?,?,?,?,?,?)').run(active.id, active.business_date, at(8), .4, .7, .3, .5, 50, 50, 100)
     f.store.database.exec('DROP TABLE liang_market_minute_candle; PRAGMA user_version=13')
     migrate(f.store.database); migrate(f.store.database)
-    expect(BACKEND_SCHEMA_USER_VERSION).toBe(15)
-    expect(f.store.database.prepare('PRAGMA user_version').get()).toMatchObject({ user_version: 15 })
+    expect(BACKEND_SCHEMA_USER_VERSION).toBe(16)
+    expect(f.store.database.prepare('PRAGMA user_version').get()).toMatchObject({ user_version: 16 })
     expect(f.service.marketCandles().candles).toEqual([])
     const old = f.service.marketCandles({ interval_ms: MARKET_LEGACY_CANDLE_INTERVAL_MS })
     expect(old.interval_ms).toBe(300_000)
@@ -250,4 +250,20 @@ describe('minute history cold channel and cache', () => {
     expect(readMarketCache(cached, scope).candles[0]?.candles[0]?.volume).toBe(7)
     session.dispose()
   })
+})
+
+
+it('aggregates genuine minute data for older readers without adding cumulative counts twice', () => {
+  const f = boot(8)
+  const active = f.service.ensureActiveCase()
+  f.grantIncense('minute-reader-legacy', 10)
+  for (let minute = 0; minute < 5; minute++) {
+    f.clock.set(at(8, minute))
+    f.service.vote('minute-reader-legacy', { case_id: active.id, vote_type: minute % 2 === 0 ? 'up' : 'down', request_id: `minute-legacy-${minute}` })
+  }
+  const fine = f.service.marketCandles().candles
+  const coarse = f.service.marketCandles({ interval_ms: MARKET_LEGACY_CANDLE_INTERVAL_MS }).candles
+  expect(coarse).toHaveLength(1)
+  expect(coarse[0]).toMatchObject({ up_votes: 3, down_votes: 2, volume: 5, close: fine.at(-1)!.close })
+  expect(fine).toHaveLength(5)
 })

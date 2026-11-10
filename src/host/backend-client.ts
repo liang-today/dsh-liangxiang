@@ -51,9 +51,8 @@ import {
 } from '../shared/market-v1.ts'
 import { startBackendEventStream, type BackendStreamStatus } from './backend-event-stream.ts'
 import { marketQuerySuffix, type MarketCandlesQuery, type MarketHistoryQuery } from './market-query.ts'
+import { BACKEND_REQUEST_TIMEOUT_MS, BACKEND_READ_RETRY_DELAY_MS } from '../shared/request-budget.ts'
 
-const DEFAULT_TIMEOUT_MS = 6_000
-const READ_RETRY_DELAY_MS = 300
 /** First community contact must fail fast so DSH startup is not held. */
 export const STARTUP_BOOTSTRAP_TIMEOUT_MS = 3_000
 
@@ -125,7 +124,7 @@ export function normalizeBaseUrl(raw: string): string {
 
 export function createBackendClient(options: BackendClientOptions): BackendClient {
   const baseUrl = normalizeBaseUrl(options.baseUrl)
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const timeoutMs = options.timeoutMs ?? BACKEND_REQUEST_TIMEOUT_MS
   const doFetch = options.fetchImpl ?? fetch
   const inFlight = new Set<AbortController>()
   let disposed = false
@@ -155,7 +154,8 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     const requestTimeoutMs = init.timeoutMs ?? timeoutMs
     const controller = new AbortController()
     inFlight.add(controller)
-    const timer = setTimeout(() => controller.abort(), requestTimeoutMs)
+    let timedOut = false
+    const timer = setTimeout(() => { timedOut = true; controller.abort() }, requestTimeoutMs)
     try {
       const rawBody = init.body === undefined ? '' : JSON.stringify(init.body)
       const headers = signedHeaders(init.method, path, init.installationId, rawBody)
@@ -176,7 +176,8 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
       return payload
     } catch (error) {
       if (error instanceof BackendClientError) throw error
-      if (isAbortError(error)) {
+      if (disposed) throw new BackendClientError('backend client disposed', undefined, 'client_disposed')
+      if (timedOut) {
         throw new BackendClientError(`backend ${init.method} ${path} timed out after ${requestTimeoutMs}ms`)
       }
       const message = error instanceof Error ? error.message : String(error)
@@ -201,7 +202,7 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     } catch (error) {
       if (disposed || options?.retry === false) throw error
       if (error instanceof BackendClientError && error.status !== null && error.status < 500) throw error
-      await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS))
+      await new Promise((resolve) => setTimeout(resolve, BACKEND_READ_RETRY_DELAY_MS))
       return request(path, requestInit)
     }
   }
@@ -293,11 +294,15 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
     },
     subscribeEvents(installationId, handlers) {
       if (disposed) return () => undefined
+      let badFrames = 0
       const stop = startBackendEventStream({
         url: `${baseUrl}${BACKEND_API_PREFIX}/events`,
         headers: () => signedHeaders('GET', '/events', installationId),
         fetchImpl: doFetch,
-        onMessage: (data) => handlers.onEvent(parseMarketStreamEvent(JSON.parse(data) as unknown)),
+        onMessage: (data) => {
+          try { handlers.onEvent(parseMarketStreamEvent(JSON.parse(data) as unknown)); badFrames = 0 }
+          catch (error) { if (++badFrames >= 3) throw error }
+        },
         onStatus: handlers.onStatus,
         ...(handlers.onActivity === undefined ? {} : { onActivity: handlers.onActivity }),
       })
@@ -313,14 +318,6 @@ export function createBackendClient(options: BackendClientOptions): BackendClien
       inFlight.clear()
     },
   }
-}
-
-function isAbortError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return false
-  const name = (error as { name?: unknown }).name
-  if (name === 'AbortError' || name === 'TimeoutError') return true
-  const message = error instanceof Error ? error.message : String(error)
-  return message.includes('aborted') || message.includes('AbortError')
 }
 
 function extractErrorCode(payload: unknown): string | null {

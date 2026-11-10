@@ -51,9 +51,9 @@ export const DEFAULT_ADMISSION_INVENTORY_TARGET = 1000
 
 /**
  * How long a device fingerprint must sit unused before its binding can be
- * re-keyed to a new installation (the "cost" of recovery). The old identity's
- * balance/votes are forfeited on re-key. 0 disables the cooldown (re-key
- * becomes free — only appropriate for tests).
+ * considered for recovery. Fingerprints are not ownership proof: even after
+ * this cooldown, cross-key replacement requires reviewed operator recovery.
+ * Zero only disables the cooldown, never the ownership requirement.
  */
 export const DEFAULT_REKEY_COOLDOWN_MS = 30 * 60 * 1000
 
@@ -237,7 +237,7 @@ export function resolveBackendConfig(
       DEFAULT_ADMISSION_INVENTORY_TARGET,
       'LIANGXIANG_ADMISSION_INVENTORY_TARGET',
       warn,
-      { min: 0, max: 100_000 },
+      { min: 0, max: 1_000 },
     ),
     starterIncenseCount: parseInt_(
       readLiangxiangEnv(env, 'STARTER_INCENSE'),

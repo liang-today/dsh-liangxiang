@@ -202,8 +202,9 @@ describe('cumulative wallet Host authority', () => {
     await service.refreshBootstrap()
     const next = await service.market()
     expect(next.wallet.available_incense).toBe(10)
+    const discarded = expect(oldRead).rejects.toMatchObject({ code: 'authority_changed' })
     finishOld({ ...initial, wallet: { ...WALLET, available_incense: 99, total_incense: 104, version: 99 } })
-    await oldRead
+    await discarded
     expect(calls).toBe(2)
     expect(service.cachedMarketState()?.wallet.available_incense).toBe(10)
   })
@@ -272,4 +273,39 @@ describe('market Host route boundary', () => {
     expect((await reader.read()).done).toBe(true)
     reader.releaseLock()
   })
+})
+
+
+it('rejects a late position result after identity replacement without adopting it', async () => {
+  const h = await hostHarness()
+  let finish!: (result: Awaited<ReturnType<NonNullable<BackendClient['marketPosition']>>>) => void
+  let sent = false
+  h.client.marketPosition = async () => { sent = true; return new Promise(resolve => { finish = resolve }) }
+  const operation = h.service.marketPosition(POSITION)
+  await pause()
+  expect(sent).toBe(true)
+  h.service.attachIdentity('another-market-identity')
+  finish({ accepted: true, reason: null, request_id: POSITION.request_id, state: h.initial })
+  await expect(operation).rejects.toMatchObject({ code: 'authority_changed_uncertain' })
+  expect(h.service.cachedMarketState()).toBeNull()
+})
+
+it('serializes claim waiters before concurrent position writes', async () => {
+  const h = await hostHarness()
+  let requests = 0
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  h.client.submitClaim = async (id, tokens, date) => {
+    requests++
+    await gate
+    return h.fixture.service.applyTokenClaim(id, { claimed_effective_tokens: tokens, claim_business_date: date })
+  }
+  h.client.marketPosition = async () => ({ accepted: true, reason: null, request_id: POSITION.request_id, state: h.initial })
+  h.service.observeUsage('claim-waiters', { uncachedInputTokens: 600000, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 0 }, { kind: 'live', firstLiveSeq: 0 }, 'deepseek-v4-pro')
+  const pending = [h.service.marketPosition(POSITION), h.service.marketPosition({ ...POSITION, request_id: 'other-position-intent' })]
+  await pause()
+  expect(requests).toBe(1)
+  release()
+  await Promise.all(pending)
+  expect(requests).toBe(1)
 })

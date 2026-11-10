@@ -50,14 +50,8 @@ const FLAME = 'light-dark(#deb967, #edd49a)'
 const GLYPH_GOLD = 'light-dark(#b58a45, #d9bd82)'
 
 const ACTIVITY_CSS = `
-@keyframes liangxiang-stream-wisp {
-  0% { transform: translateY(5px); opacity: 0.15; }
-  50% { opacity: 0.65; }
-  100% { transform: translateY(-7px); opacity: 0.15; }
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-liangxiang-stream-wisp] { animation: none !important; }
-}`
+@keyframes liangxiang-stream-glow{50%{opacity:.42}}
+@media(prefers-reduced-motion:reduce){[data-liangxiang-stream-activity]{animation:none!important}}`
 
 function orbitAngle(index: number, count: number): number {
   const span = 2 * Math.PI - BOTTOM_GAP
@@ -181,19 +175,6 @@ export function LiangQiRing({
 
   return (
     <div style={wrapStyle} data-liangxiang-ring="" data-remaining={personal.remainingIncense} data-fill={fill.toFixed(4)}>
-      {streamingActive && (
-        <svg data-liangxiang-stream-activity="" aria-hidden="true" width={RING_SIZE} height={RING_SIZE}
-          viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-          style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}>
-          <style>{ACTIVITY_CSS}</style>
-          {[22, 104].map((x, index) => (
-            <path key={x} data-liangxiang-stream-wisp=""
-              d={`M ${x} 57 C ${x - 6} 48 ${x + 6} 44 ${x} 35`}
-              fill="none" stroke={mainColor.blue} strokeWidth="2" strokeLinecap="round"
-              style={{ opacity: 0.55, animation: reducedMotion ? undefined : `liangxiang-stream-wisp 2.4s ${index * -1.2}s ease-in-out infinite` }} />
-          ))}
-        </svg>
-      )}
       <svg
         width={RING_SIZE}
         height={RING_SIZE}
@@ -202,6 +183,12 @@ export function LiangQiRing({
         aria-label={ringLabel}
         style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
       >
+        {streamingActive && <>
+          <style>{ACTIVITY_CSS}</style>
+          <path data-liangxiang-stream-activity="" aria-hidden="true" d="M27 103Q63 132 99 103"
+            fill="none" stroke={mainColor.blue} strokeWidth="4.5" strokeLinecap="round"
+            style={{ opacity: .18, animation: reducedMotion ? undefined : 'liangxiang-stream-glow 3s ease-in-out infinite' }} />
+        </>}
         <circle
           cx={RING_SIZE / 2}
           cy={RING_SIZE / 2}

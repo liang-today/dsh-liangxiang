@@ -23,6 +23,7 @@ import { AUTHORITY_MODE_ACTION_HEADER, AUTHORITY_MODE_ACTION_VALUE } from '../sh
 import { DAY_END_ACTION_HEADER, DAY_END_ACTION_VALUE, type DayEndPreferences } from '../shared/day-end.ts'
 import { snapshotRefreshMs } from '../shared/snapshot-cadence.ts'
 import { randomRequestId } from './request-id.ts'
+import { browserEvents, createBrowserRequests, HOST_API } from './browser-request.ts'
 import {
   createOfflineViewState,
   wireToViewState,
@@ -30,15 +31,14 @@ import {
   type LiangxiangViewState,
 } from './store.ts'
 
-const STATE_PATH = '/liangxiang/api/state'
-const EVENTS_PATH = '/liangxiang/api/events'
-const VOTE_PATH = '/liangxiang/api/vote'
-const REFRESH_PATH = '/liangxiang/api/refresh'
-const RECONCILE_PATH = '/liangxiang/api/reconcile'
-const MODE_PATH = '/liangxiang/api/mode'
-const CYCLE_CASE_PATH = '/liangxiang/api/local/cycle-case'
-const HISTORY_PATH = '/liangxiang/api/history'
-const FETCH_TIMEOUT_MS = 6_000
+const STATE_PATH = `${HOST_API}/state`
+const EVENTS_PATH = `${HOST_API}/events`
+const VOTE_PATH = `${HOST_API}/vote`
+const REFRESH_PATH = `${HOST_API}/refresh`
+const RECONCILE_PATH = `${HOST_API}/reconcile`
+const MODE_PATH = `${HOST_API}/mode`
+const CYCLE_CASE_PATH = `${HOST_API}/local/cycle-case`
+const HISTORY_PATH = `${HOST_API}/history`
 const VOTE_RETRY_DELAY_MS = 400
 const MAX_SSE_ERRORS = 5
 const RECONNECT_INITIAL_MS = 1_000
@@ -49,7 +49,7 @@ const MIN_LIVE_REFRESH_MS = 2_000
 /** Injectable transport (real fetch/EventSource in the browser, fakes in tests). */
 export interface LiveStoreTransport {
   fetchJson(path: string, init?: { method?: string, body?: string, headers?: Record<string, string> }): Promise<unknown>
-  openEvents(path: string, handlers: { onFrame(data: string): void, onError(): void }): { close(): void }
+  openEvents(path: string, handlers: { onFrame(data: string): void, onError(closed?: boolean): void }): { close(): void }
   randomRequestId(): string
   /** Abort browser fetches owned by this transport. */
   dispose?(): void
@@ -64,43 +64,20 @@ export class LiveTransportError extends Error {
 
 /** Real browser transport; exported so the non-secure-context path stays testable. */
 export function createBrowserTransport(): LiveStoreTransport {
-  const controllers = new Set<AbortController>()
-  let disposed = false
+  const requests = createBrowserRequests()
   return {
     async fetchJson(path, init) {
-      if (disposed) throw new Error('梁相连接已关闭')
-      const controller = new AbortController()
-      controllers.add(controller)
-      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-      try {
-        const headers: Record<string, string> = { ...init?.headers }
-        const request: RequestInit = { method: init?.method ?? 'GET', headers, signal: controller.signal }
-        if (init?.body !== undefined) {
-          headers['content-type'] = 'application/json'
-          request.body = init.body
-        }
-        const response = await fetch(path, request)
+      return (await requests.json(path, init, response => {
         if (!response.ok) {
           throw new LiveTransportError(response.status, path)
         }
-        return (await response.json()) as unknown
-      } finally {
-        clearTimeout(timeout)
-        controllers.delete(controller)
-      }
+      }))[0]
     },
     openEvents(path, handlers) {
-      const source = new EventSource(path)
-      source.onmessage = (event) => handlers.onFrame(String(event.data))
-      source.onerror = () => handlers.onError()
-      return { close: () => source.close() }
+      return browserEvents(path, handlers.onFrame, handlers.onError)
     },
     randomRequestId: () => randomRequestId(),
-    dispose() {
-      disposed = true
-      for (const controller of controllers) controller.abort()
-      controllers.clear()
-    },
+    dispose: requests.dispose,
   }
 }
 
@@ -143,6 +120,7 @@ export function createLiveLiangxiangStore(
   let lastHostEpoch = -1
   let lastWire: LiangxiangViewState | null = null
   let stream: { close(): void } | null = null
+  let streamGeneration = 0
   let sseErrors = 0
   let disposed = false
   let starting = false
@@ -271,6 +249,8 @@ export function createLiveLiangxiangStore(
   }
 
   const goOffline = (): void => {
+    if (disposed) return
+    streamGeneration++
     if (stream !== null) {
       stream.close()
       stream = null
@@ -284,20 +264,29 @@ export function createLiveLiangxiangStore(
   const openStream = (): void => {
     if (disposed || stream !== null) return
     sseErrors = 0
-    stream = transport.openEvents(EVENTS_PATH, {
+    const generation = ++streamGeneration
+    const next = transport.openEvents(EVENTS_PATH, {
       onFrame: (data) => {
+        if (disposed || generation !== streamGeneration) return
         try {
           applyWire(JSON.parse(data) as unknown)
           sseErrors = 0
+          reconnectBackoffMs = RECONNECT_INITIAL_MS
         } catch {
-          // Drop a bad frame; the next one or the refresh path recovers.
+          // One corrupt frame can be skipped; persistent schema failure must
+          // not leave last-known-good data labelled as a healthy live feed.
+          sseErrors += 1
+          if (sseErrors >= MAX_SSE_ERRORS) goOffline()
         }
       },
-      onError: () => {
+      onError: (closed) => {
+        if (disposed || generation !== streamGeneration) return
         sseErrors += 1
-        if (sseErrors >= MAX_SSE_ERRORS) goOffline()
+        if (closed || sseErrors >= MAX_SSE_ERRORS) goOffline()
       },
     })
+    if (disposed || generation !== streamGeneration) next.close()
+    else stream = next
   }
 
   const bootstrap = (): void => {
@@ -308,7 +297,6 @@ export function createLiveLiangxiangStore(
         starting = false
         if (disposed) return
         clearReconnect()
-        reconnectBackoffMs = RECONNECT_INITIAL_MS
         applyWire(raw)
         openStream()
         // One full archive per Host connection; subsequent updates are deltas.
@@ -346,10 +334,12 @@ export function createLiveLiangxiangStore(
     lastLiveRefreshAt = now
     transport.fetchJson(REFRESH_PATH, { method: 'POST' })
       .then((raw) => {
-        if (!disposed) applyWire(raw)
+        if (disposed) return
+        try { applyWire(raw) } catch { goOffline() }
       })
       .catch(() => {
-        // Refresh is best-effort; the next cadence or reconnect recovers.
+        // A failed HTTP read is not evidence that a healthy SSE feed died.
+        if (stream === null || sseErrors > 0) goOffline()
       })
       .finally(() => {
         refreshInFlight = false
@@ -422,13 +412,13 @@ export function createLiveLiangxiangStore(
     selectAuthorityMode,
     noteVoteActivity: () => {
       if (disposed || !state.dayEnd?.enabled) return
-      void transport.fetchJson('/liangxiang/api/vote-activity', {
+      void transport.fetchJson(`${HOST_API}/vote-activity`, {
         method: 'POST', headers: { [DAY_END_ACTION_HEADER]: DAY_END_ACTION_VALUE },
       }).catch(() => undefined)
     },
     setDayEndPreferences: async (preferences) => {
       if (disposed) throw new Error('梁相连接已关闭')
-      const raw = await transport.fetchJson('/liangxiang/api/day-end', {
+      const raw = await transport.fetchJson(`${HOST_API}/day-end`, {
         method: 'POST', body: JSON.stringify(preferences),
         headers: { [DAY_END_ACTION_HEADER]: DAY_END_ACTION_VALUE },
       })
@@ -452,6 +442,7 @@ export function createLiveLiangxiangStore(
     dispose: () => {
       if (disposed) return
       disposed = true
+      streamGeneration++
       clearReconnect()
       for (const pending of retryWaits) {
         clearTimeout(pending.timer)

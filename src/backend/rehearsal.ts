@@ -17,9 +17,11 @@ export function startRehearsal(env: Record<string, string | undefined> = process
   let service: LiangxiangBackendService
   try { service = new LiangxiangBackendService({ store, config, clock }); service.ensureActiveCase() }
   catch (error) { store.close(); throw error }
-  const api = createBackendHttpApi({ service, store, allowUnsigned: false,
+  let api: ReturnType<typeof createBackendHttpApi>
+  try { api = createBackendHttpApi({ service, store, allowUnsigned: false,
     voteRateLimitPerMinute: config.voteRateLimitPerMinute, voteRateLimitMaxKeys: config.voteRateLimitMaxKeys, voteClock: clock,
-    admissionClaimRateLimitPerMinute: config.admissionClaimRateLimitPerMinute })
+    admissionClaimRateLimitPerMinute: config.admissionClaimRateLimitPerMinute }) }
+  catch (error) { store.close(); throw error }
   // Business deadlines and vote refill share the persisted vote clock. HTTP
   // signatures, market admission and socket lifetimes retain real wall time.
   // No clock-control HTTP route exists.

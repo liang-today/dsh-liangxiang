@@ -1,11 +1,36 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
+import { Server } from 'node:http'
+import { once } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRehearsalClock, parseRehearsalClock, rehearsalTickMs, startRehearsal, validateRehearsalEnvironment } from '../src/backend/rehearsal.ts'
 
 const paths: string[] = []
+function startTestRehearsal(env: Record<string, string>) {
+  const listen = Server.prototype.listen
+  let server: Server | undefined
+  // Keep the executable's guarded loopback/4195 contract, but give this test's
+  // real HTTP listener its own kernel-assigned port. Never probe a developer's
+  // running rehearsal when the ordinary port is already occupied.
+  const binding = vi.spyOn(Server.prototype, 'listen').mockImplementation(function (this: Server, ...args: unknown[]) {
+    expect(args.slice(0, 2)).toEqual([4195, '127.0.0.1'])
+    server = this
+    return Reflect.apply(listen, this, [0, ...args.slice(1)]) as Server
+  })
+  try {
+    const runtime = startRehearsal(env)
+    if (!server) throw new Error('Rehearsal did not create its listener')
+    const listener = server
+    const ready = once(listener, 'listening').then(() => {
+      const address = listener.address()
+      if (!address || typeof address === 'string') throw new Error('Rehearsal listener has no TCP address')
+      return `http://127.0.0.1:${address.port}`
+    })
+    return { ...runtime, ready }
+  } finally { binding.mockRestore() }
+}
 function fixture() {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'liangxiang-rehearsal-'))
   paths.push(root)
@@ -38,8 +63,9 @@ describe('private rehearsal boundaries', () => {
     vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
     vi.setSystemTime(1_000)
     writeFileSync(f.clockFile, JSON.stringify({ epoch_ms: f.epoch, anchor_wall_ms: 1_000, rate: 720 }))
-    const runtime = startRehearsal({ ...f.env, LIANGXIANG_REHEARSAL_TICK_MS: String(interval) })
+    const runtime = startTestRehearsal({ ...f.env, LIANGXIANG_REHEARSAL_TICK_MS: String(interval) })
     try {
+      await runtime.ready
       await vi.advanceTimersByTimeAsync(480)
       const db = new DatabaseSync(f.env.LIANGXIANG_BACKEND_DB, { readOnly: true })
       try {
@@ -74,13 +100,14 @@ describe('private rehearsal boundaries', () => {
     expect(() => validateRehearsalEnvironment(f.env)).toThrow()
   })
   it('runs real signed-only HTTP with a separate date and no clock-control route', async () => {
-    const f = fixture(), runtime = startRehearsal(f.env)
+    const f = fixture(), runtime = startTestRehearsal(f.env)
     try {
-      const response = await fetch('http://127.0.0.1:4195/v1/snapshot')
+      const origin = await runtime.ready
+      const response = await fetch(`${origin}/v1/snapshot`)
       expect(response.status).toBe(200)
       expect((await response.json()).server_time).toBe(f.epoch)
-      expect((await fetch('http://127.0.0.1:4195/v1/bootstrap', { headers: { 'x-liangxiang-installation': 'fake' } })).status).toBe(401)
-      expect((await fetch('http://127.0.0.1:4195/v1/rehearsal/clock', { method: 'POST', body: '{}' })).status).toBe(404)
+      expect((await fetch(`${origin}/v1/bootstrap`, { headers: { 'x-liangxiang-installation': 'fake' } })).status).toBe(401)
+      expect((await fetch(`${origin}/v1/rehearsal/clock`, { method: 'POST', body: '{}' })).status).toBe(404)
     } finally {
       const first = runtime.close(), second = runtime.close()
       expect(first).toBe(second)

@@ -53,9 +53,12 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
   await page.evaluate(state => window.__liangxiangActivityFrame?.(state), active)
   await expect(panel.locator('[data-liangxiang-stream-status]')).toHaveCount(0)
   await expect(panel.locator('[data-caption-label]')).toHaveText('今日凝香')
-  const wisps = panel.locator('[data-liangxiang-stream-wisp]')
-  await expect(wisps).toHaveCount(2)
-  expect(await wisps.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 0))).toBe(true)
+  const activity = panel.locator('[data-liangxiang-stream-activity]')
+  const plantBubbles = panel.locator('[data-liangxiang-stream-bubble]')
+  await expect(activity).toHaveCount(1)
+  expect(await plantBubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
+  await expect(panel.locator('[data-liangxiang-stream-wisp]')).toHaveCount(0)
+  expect(await activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 0))).toBe(true)
   await page.waitForTimeout(1200) // prove a running request does not predict numbers
   expect(await figures.allTextContents()).toEqual(before)
   await expect(panel.locator('[data-liangxiang-ring]')).toHaveAttribute('data-remaining', remaining!)
@@ -66,10 +69,11 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
   expect(axe.violations).toEqual([])
 
   await page.emulateMedia({ reducedMotion: 'no-preference' })
-  await expect.poll(() => wisps.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 1))).toBe(true)
-  const wisp = wisps.first()
-  const transform = await wisp.evaluate(node => getComputedStyle(node).transform)
-  await expect.poll(() => wisp.evaluate(node => getComputedStyle(node).transform)).not.toBe(transform)
+  await expect.poll(() => activity.evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 1))).toBe(true)
+  const glow = panel.locator('[data-liangxiang-stream-activity]')
+  if (Number(remaining) >= 10) await expect.poll(() => panel.locator('[data-liangxiang-stream-bubble]:not([hidden])').count()).toBeGreaterThan(0)
+  const opacity = await glow.evaluate(node => getComputedStyle(node).opacity)
+  await expect.poll(() => glow.evaluate(node => getComputedStyle(node).opacity)).not.toBe(opacity)
   expect(await figures.allTextContents()).toEqual(before)
   await panel.screenshot({ path: testInfo.outputPath('streaming-active.png') })
 
@@ -81,8 +85,98 @@ test('live activity stays non-numeric, reduced motion stays static, and final se
       remainingIncense: wire.personal.remainingIncense + 2 },
   })
   await expect(panel.locator('[data-liangxiang-stream-activity]')).toHaveCount(0)
+  await expect(panel.locator('[data-liangxiang-stream-ripple]')).toHaveCount(0)
   await expect(panel.locator('[data-liangxiang-stream-status]')).toHaveCount(0)
   await expect(panel.locator('[data-liangxiang-ring]')).toHaveAttribute('data-remaining', String(wire.personal.remainingIncense + 2))
   await expect(panel.locator('[data-caption-label]')).toHaveText('凝香到账')
   await expect(panel.locator('[data-caption-amount]')).toHaveText('+2')
+})
+
+test('plant bubbles fit actual shallow water, follow its surface and do not restart a whale visit', async ({ page }) => {
+  const wire = await (await page.request.get('/liangxiang/api/state')).json() as LiangxiangWireState
+  const panel = await openPanel(page), pond = panel.locator('[data-liangxiang-main-pond]')
+  let revision = wire.revision + 10_000
+  const emit = async (stock: number, streamingActive = true) => {
+    await page.evaluate(state => window.__liangxiangActivityFrame?.(state), {
+      ...wire, revision: ++revision, streamingActive,
+      personal: { ...wire.personal, remainingIncense: stock,
+        wallet: { available_incense: stock, frozen_incense: 0, total_incense: stock,
+          token_remainder: wire.personal.effectiveTokensToday % wire.personal.tokenPerIncense,
+          token_per_incense: wire.personal.tokenPerIncense, version: revision } },
+    })
+  }
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  const bubbles = pond.locator('[data-liangxiang-stream-bubble]')
+  const rising = pond.locator('[data-liangxiang-stream-bubble][data-stage=rise]:not([hidden])')
+  for (const stock of [0, 1]) {
+    await emit(stock)
+    await expect(panel.locator('[data-liangxiang-stream-activity]')).toHaveCount(1)
+    expect(await bubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
+  }
+  for (const stock of [10, 500]) {
+    await emit(stock)
+    await expect(rising.first()).toBeVisible({ timeout: 6_000 })
+    const birth = await rising.first().evaluate(node => ({
+      y: Number((node as HTMLElement).dataset.birthY), water: Number((node as HTMLElement).dataset.surfaceY),
+      size: parseFloat(getComputedStyle(node).width),
+      bottom: node.closest('[data-liangxiang-main-pond]')!.querySelector('[data-liangxiang-main-pond-water]')!.getBoundingClientRect().bottom
+        - node.closest('[data-liangxiang-main-pond]')!.getBoundingClientRect().top,
+    }))
+    expect(birth.y).toBeGreaterThan(birth.water)
+    expect(birth.y + birth.size / 2).toBeLessThanOrEqual(birth.bottom)
+    expect(birth.size).toBeLessThanOrEqual(8)
+    if (stock === 10) expect(birth.size).toBeLessThan(8)
+    const popping = pond.locator('[data-liangxiang-stream-bubble][data-stage=pop]:not([hidden])').first()
+    await expect(popping).toBeVisible({ timeout: 2_000 })
+    const popSizes = await popping.locator('.liangxiang-main-pond-pop').evaluateAll(nodes => nodes.map(node => ({
+      width: parseFloat(getComputedStyle(node).width), height: parseFloat(getComputedStyle(node).height),
+      translate: getComputedStyle(node).translate,
+    })))
+    expect(popSizes).toHaveLength(2)
+    for (const size of popSizes) {
+      expect(size.width).toBeGreaterThanOrEqual(18)
+      expect(size.height).toBeGreaterThanOrEqual(3)
+      expect(size.translate).toBe('-50% -50%')
+    }
+  }
+  await page.clock.install()
+  await page.clock.fastForward(10_001)
+  await expect(pond).toHaveAttribute('data-fish', 'true')
+  const fish = pond.locator('.liangxiang-main-pond-fish')
+  const start = await fish.evaluate(node => node.getAnimations()[0]!.startTime)
+  await emit(500, false)
+  expect(await bubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
+  await emit(500)
+  await expect(pond).toHaveAttribute('data-fish', 'true')
+  expect(await fish.evaluate(node => node.getAnimations()[0]!.startTime)).toEqual(start)
+  await pond.evaluate(node => { node.style.transform = 'translateX(200vw)' })
+  await expect(pond).toHaveAttribute('data-available', 'false')
+  expect(await bubbles.evaluateAll(nodes => nodes.every(node => (node as HTMLElement).hidden))).toBe(true)
+  await pond.evaluate(node => { node.style.transform = '' })
+  await expect(pond).toHaveAttribute('data-available', 'true')
+  await emit(0)
+  await expect(panel.locator('[data-liangxiang-stream-activity]')).toHaveCount(1)
+  const detached = await pond.elementHandle()
+  await panel.getByRole('button', { name: '关闭面板', exact: true }).click()
+  expect(await detached!.evaluate(node => ({ connected: node.isConnected, animations: node.getAnimations({ subtree: true }).length })))
+    .toEqual({ connected: false, animations: 0 })
+})
+
+test('a confirmed vote frame reveals personal balance without a transaction or an earning animation', async ({ page }) => {
+  const wire = await (await page.request.get('/liangxiang/api/state')).json() as LiangxiangWireState
+  const panel = await openPanel(page), mutations: string[] = []
+  page.on('request', request => { if (request.method() !== 'GET') mutations.push(request.url()) })
+  await expect(panel.locator('[data-caption-label]')).toHaveText('今日凝香')
+  const remaining = wire.personal.remainingIncense - 1
+  await page.evaluate(state => window.__liangxiangActivityFrame?.(state), {
+    ...wire, revision: wire.revision + 10_000,
+    personal: { ...wire.personal, usedIncenseToday: wire.personal.usedIncenseToday + 1, remainingIncense: remaining,
+      ...(wire.personal.wallet ? { wallet: { ...wire.personal.wallet, available_incense: remaining,
+        total_incense: wire.personal.wallet.total_incense - 1, version: wire.personal.wallet.version + 1 } } : {}) },
+  })
+  await expect(panel.locator('[data-caption-label]')).toHaveText('个人余香')
+  await expect(panel.locator('[data-caption-amount]')).toHaveText(String(remaining))
+  await expect(panel.locator('[data-liangxiang-ring]')).toHaveAttribute('data-remaining', String(remaining))
+  await expect(panel.locator('[data-caption-label]')).toHaveText('今日凝香', { timeout: 4_000 })
+  expect(mutations).toEqual([])
 })

@@ -25,6 +25,8 @@ export interface PersonalIncenseCaptionInput {
   settlementSequence?: number
   /** Increment for an explicit request to briefly inspect available incense. */
   peekSequence?: number
+  /** Authoritative accepted spending; never a pending vote or a balance estimate. */
+  usedIncenseToday?: number
 }
 
 const GAIN_MS = 1_500
@@ -62,7 +64,7 @@ export function createPersonalIncenseCaptionController(
   }
   const balance = (): void => {
     cancelTimer()
-    publish('balance')
+    if (caption.view !== 'balance') publish('balance')
     timer = setTimeout(daily, BALANCE_MS)
   }
   const gain = (count: number): void => {
@@ -93,7 +95,11 @@ export function createPersonalIncenseCaptionController(
           pending += input.condensedIncense
         } else gain(input.condensedIncense)
       }
-      if ((input.peekSequence ?? 0) !== (prior.peekSequence ?? 0) && caption.view !== 'gain') balance()
+      if (Number.isSafeInteger(input.usedIncenseToday) && Number.isSafeInteger(prior.usedIncenseToday)
+        && prior.usedIncenseToday! >= 0 && input.usedIncenseToday! > prior.usedIncenseToday!) {
+        if (caption.view === 'gain') pending += caption.gain
+        balance()
+      } else if ((input.peekSequence ?? 0) !== (prior.peekSequence ?? 0) && caption.view !== 'gain') balance()
     },
     dispose() {
       cancelTimer(); pending = 0; previous = null; dailyResting = false; caption = IDLE
@@ -108,27 +114,27 @@ export function usePersonalIncenseCaption(input: PersonalIncenseCaptionInput): P
   if (controller.current === null) controller.current = createPersonalIncenseCaptionController(setCaption)
   useEffect(() => {
     controller.current!.observe(input)
-  }, [input.scopeKey, input.condensedIncense, input.settlementSequence, input.peekSequence])
+  }, [input.scopeKey, input.condensedIncense, input.settlementSequence, input.peekSequence, input.usedIncenseToday])
   useEffect(() => () => controller.current?.dispose(), [])
   return caption
 }
 
 export const PERSONAL_INCENSE_CAPTION_CSS = `
-[data-liangxiang-personal-caption] { width:52px; color:${color.textSecondary}; text-align:center; font-variant-numeric:tabular-nums; }
-[data-liangxiang-personal-caption] [data-caption-copy] { display:flex; flex-direction:column; align-items:center; gap:2px; width:52px; }
-[data-liangxiang-personal-caption] [data-caption-label] { font-size:10px; line-height:14px; white-space:nowrap; }
-[data-liangxiang-personal-caption] [data-caption-value] { display:flex; align-items:baseline; justify-content:center; gap:1px; width:52px; height:20px; line-height:20px; color:var(--liangxiang-main-deep, ${color.textPrimary}); }
-[data-liangxiang-personal-caption] [data-caption-unit] { flex:none; }
-[data-liangxiang-personal-caption] [data-caption-amount] { font-weight:700; white-space:nowrap; }
-[data-liangxiang-personal-caption][data-view=gain] [data-caption-copy] { animation:liangxiang-personal-gain 1.5s ease both; }
-[data-liangxiang-personal-caption][data-view=balance] [data-caption-copy] { animation:liangxiang-personal-balance 2.6s ease both; }
-[data-liangxiang-personal-caption][data-view=daily] [data-caption-copy] { animation:liangxiang-personal-return .16s ease both; }
-[data-liangxiang-personal-caption][data-reduced-motion=true] [data-caption-copy] { animation:none; }
-@keyframes liangxiang-personal-gain { 0%,100%{opacity:0}12%,86%{opacity:1} }
-@keyframes liangxiang-personal-balance { 0%,100%{opacity:0}8%,90%{opacity:1} }
-@keyframes liangxiang-personal-return { from{opacity:0}to{opacity:1} }
-@media(prefers-reduced-motion:reduce) { [data-liangxiang-personal-caption] [data-caption-copy] { animation:none!important; } }
-`
+[data-@Ccaption] { width:52px; color:${color.textSecondary}; text-align:center; font-variant-numeric:tabular-nums; }
+[data-@Ccaption] [data-caption-copy] { display:flex; flex-direction:column; align-items:center; gap:2px; width:52px; }
+[data-@Ccaption] [data-caption-label] { font-size:10px; line-height:14px; white-space:nowrap; }
+[data-@Ccaption] [data-caption-value] { display:flex; align-items:baseline; justify-content:center; gap:1px; width:52px; height:20px; line-height:20px; color:var(--liangxiang-main-deep, ${color.textPrimary}); }
+[data-@Ccaption] [data-caption-unit] { flex:none; }
+[data-@Ccaption] [data-caption-amount] { font-weight:700; white-space:nowrap; }
+[data-@Ccaption][data-view=gain] [data-caption-copy] { animation:@Cgain 1.5s ease both; }
+[data-@Ccaption][data-view=balance] [data-caption-copy] { animation:@Cbalance 2.6s ease both; }
+[data-@Ccaption][data-view=daily] [data-caption-copy] { animation:@Creturn .16s ease both; }
+[data-@Ccaption][data-reduced-motion=true] [data-caption-copy] { animation:none; }
+@keyframes @Cgain { 0%,100%{opacity:0}12%,86%{opacity:1} }
+@keyframes @Cbalance { 0%{opacity:0}8%,100%{opacity:1} }
+@keyframes @Creturn { from{opacity:0}to{opacity:1} }
+@media(prefers-reduced-motion:reduce) { [data-@Ccaption] [data-caption-copy] { animation:none!important; } }
+`.replaceAll("@C","liangxiang-personal-")
 
 export interface PersonalIncenseCaptionProps {
   earnedIncenseToday: number

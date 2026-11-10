@@ -93,3 +93,13 @@ describe('history v1 boundary', () => {
     expect(merged.days.map(day => day.businessDate)).toEqual(['2026-08-16', '2026-08-17'])
   })
 })
+
+
+it('keeps missing voter counts distinct from confirmed zero through a Host round trip', () => {
+  const raw = structuredClone(base) as unknown as { days: Array<Record<string, unknown>>, open_week_unique_voters?: number }
+  delete raw.days[0]!.unique_voters
+  delete raw.open_week_unique_voters
+  const parsed = parseV1HistoryResponse(raw)
+  expect(parsed.days[0]?.uniqueVotersKnown).toBe(false)
+  expect(parsed.openWeekVotersKnown).toBe(false)
+})

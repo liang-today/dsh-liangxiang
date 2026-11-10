@@ -242,7 +242,7 @@ const weekArchiveSchema: DshValueSchema = {
     const expected = isoWeekFor(startDate)
     const weekId = requireStringField(record, 'weekId')
     const endDate = requireDateField(record, 'endDate')
-    if (weekId !== expected.weekId || endDate !== expected.endDate) {
+    if (startDate !== expected.startDate || weekId !== expected.weekId || endDate !== expected.endDate) {
       throw new RecordShapeError('week archive id/bounds are inconsistent')
     }
     return {
@@ -270,7 +270,7 @@ const monthArchiveSchema: DshValueSchema = {
     const expected = monthFor(startDate)
     const monthId = requireStringField(record, 'monthId')
     const endDate = requireDateField(record, 'endDate')
-    if (monthId !== expected.monthId || endDate !== expected.endDate) {
+    if (startDate !== expected.startDate || monthId !== expected.monthId || endDate !== expected.endDate) {
       throw new RecordShapeError('month archive id/bounds are inconsistent')
     }
     return {
@@ -292,7 +292,7 @@ const monthArchiveSchema: DshValueSchema = {
 }
 
 const settingsSchema: DshValueSchema = {
-  parse(raw: unknown): { authorityPreference: HostAuthorityPreference, weightPolicies?: IncenseWeightPolicy[], dayEnd?: DayEndState } {
+  parse(raw: unknown): { authorityPreference: HostAuthorityPreference, weightPolicies?: IncenseWeightPolicy[], dayEnd?: DayEndState, dayEndQuarantine?: unknown } {
     const record = asStoredRecord(raw)
     if (Array.isArray(record.weightPolicies) && record.weightPolicies.length <= 32) {
       return {
@@ -304,7 +304,12 @@ const settingsSchema: DshValueSchema = {
     if (preference !== 'online' && preference !== 'local') {
       throw new RecordShapeError('authorityPreference must be online/local')
     }
-    return { authorityPreference: preference, ...(record.dayEnd === undefined ? {} : { dayEnd: parseDayEndState(record.dayEnd) }) }
+    if (record.dayEndQuarantine !== undefined && record.dayEnd === undefined) return { authorityPreference: preference, dayEndQuarantine: record.dayEndQuarantine }
+    if (record.dayEnd === undefined) return { authorityPreference: preference }
+    try { const dayEnd = parseDayEndState(record.dayEnd)
+      return { authorityPreference: preference, dayEnd: record.dayEndQuarantine === undefined ? dayEnd : { ...dayEnd, enabled: false },
+      ...(record.dayEndQuarantine === undefined ? {} : { dayEndQuarantine: record.dayEndQuarantine }) } }
+    catch { return { authorityPreference: preference, dayEndQuarantine: record.dayEnd } }
   },
 }
 
@@ -479,8 +484,11 @@ export async function openLiangxiangPersistence(
     },
   }
 
+  let identityInFlight: Promise<CommunityKeypair> | null = null
   const identity: LiangxiangIdentityPort = {
-    async resolve(): Promise<CommunityKeypair> {
+    resolve(): Promise<CommunityKeypair> {
+      if (identityInFlight !== null) return identityInFlight
+      const run = (async (): Promise<CommunityKeypair> => {
       const stored = identityTable.get(IDENTITY_KEY)
       if (stored !== undefined) {
         const parsed = identitySchema.parse(stored) as CommunityKeypair | { installationId: string }
@@ -491,6 +499,10 @@ export async function openLiangxiangPersistence(
       const minted = generateCommunityKeypair()
       await identityTable.put(IDENTITY_KEY, minted)
       return minted
+      })()
+      identityInFlight = run
+      void run.finally(() => { if (identityInFlight === run) identityInFlight = null }).catch(() => undefined)
+      return run
     },
   }
 
@@ -498,10 +510,18 @@ export async function openLiangxiangPersistence(
     getDayEndState(): DayEndState | null {
       const stored = settingsTable.get('day_end')
       if (stored === undefined) return null
-      return (settingsSchema.parse(stored) as { dayEnd?: DayEndState }).dayEnd ?? null
+      const parsed = settingsSchema.parse(stored) as { dayEnd?: DayEndState, dayEndQuarantine?: unknown }
+      if (parsed.dayEndQuarantine !== undefined) warn('[dsh-liangxiang] timed incense settings quarantined; automatic voting disabled')
+      return parsed.dayEnd ?? null
     },
     async setDayEndState(dayEnd: DayEndState): Promise<void> {
-      await settingsTable.put('day_end', { authorityPreference: 'online', dayEnd: parseDayEndState(dayEnd) })
+      const stored = settingsTable.get('day_end')
+      const parsed = stored === undefined ? {} : settingsSchema.parse(stored) as { dayEndQuarantine?: unknown }
+      if (parsed.dayEndQuarantine !== undefined && dayEnd.enabled) {
+        throw new Error('定时记录待核对，请恢复原记录后再开启；未确认意图仍保留')
+      }
+      await settingsTable.put('day_end', { authorityPreference: 'online', dayEnd: parseDayEndState(dayEnd),
+        ...(parsed.dayEndQuarantine === undefined ? {} : { dayEndQuarantine: parsed.dayEndQuarantine }) })
     },
     getAuthorityPreference(): HostAuthorityPreference | null {
       const stored = settingsTable.get(SETTINGS_KEY)

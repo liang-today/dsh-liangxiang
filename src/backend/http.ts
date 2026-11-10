@@ -1,3 +1,4 @@
+import { OversizedBodyError, readBoundedBody } from '../shared/node-http-body.ts'
 /**
  * `/v1` HTTP surface over node:http.
  *
@@ -94,36 +95,7 @@ function writeError(res: ServerResponse, status: number, code: V1ErrorCode, mess
   writeJson(res, status, body)
 }
 
-/** Distinguishes "caller sent too much" from a validation failure. */
-class OversizedBodyError extends Error {}
 
-function readBoundedBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let body = ''
-    let settled = false
-    const fail = (error: Error): void => {
-      if (settled) return
-      settled = true
-      reject(error)
-    }
-    req.on('data', (chunk: Buffer | string) => {
-      body += typeof chunk === 'string' ? chunk : chunk.toString('utf8')
-      if (body.length > MAX_BODY_BYTES) {
-        // Stop reading but do NOT destroy the socket: a truncated connection
-        // reads as a network fault, and a client that cannot tell "rejected"
-        // from "unknown" may retry a vote it should not. Answer 413 instead.
-        req.pause()
-        fail(new OversizedBodyError('request body too large'))
-      }
-    })
-    req.on('end', () => {
-      if (settled) return
-      settled = true
-      resolve(body)
-    })
-    req.on('error', fail)
-  })
-}
 
 /** HTTP status for a rejected-but-valid vote outcome. */
 function statusForRejection(reason: string): number {
@@ -203,6 +175,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
   const voteLimiter = new VoteRateLimiter(voteRateLimitPerMinute, voteRateLimitMaxKeys)
   const marketLimiter = new VoteRateLimiter(60, voteRateLimitMaxKeys)
   const identityLimiter = new IdentityRateLimiter()
+  const publicReadLimiter = new VoteRateLimiter(120, 4096)
   const admissionLimiter = new AdmissionRateLimiter(options.admissionClaimRateLimitPerMinute ?? 120)
   const expectedEvents = new ExpectedEventSampler(log)
   const epoch = randomUUID()
@@ -426,7 +399,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         res,
         429,
         'identity_rate_limited',
-        kind === 'miss'
+        decision.reason === 'capacity' ? 'identity recovery is at active-key capacity; retry later' : kind === 'miss'
           ? `unrecognized key; wait ${seconds}s before retrying`
           : `identity update already used; wait ${seconds}s`,
       )
@@ -476,6 +449,8 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
         business_date: service.businessDate(),
         version: PLUGIN_VERSION,
         server_build: SERVER_BUILD,
+        limits: { active_vote_keys: voteLimiter.activeKeys, max_vote_keys: voteRateLimitMaxKeys,
+          active_identity_keys: identityLimiter.activeKeys, active_public_read_keys: publicReadLimiter.activeKeys },
       })
       return
     }
@@ -483,6 +458,14 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       // Public read: no installation identity involved.
       writeJson(res, 200, headerValue(req, LIANGZI_POLICY_HEADER) === LIANGZI_POLICY_VERSION ? service.snapshotResponse() : legacyLiangziView(service.snapshotResponse()))
       return
+    }
+    if (path === `${BACKEND_API_PREFIX}/admission/tickets` || path === `${BACKEND_API_PREFIX}/history`) {
+      const decision = publicReadLimiter.consume(peerAddress(req), 1, Date.now())
+      if (!decision.allowed) {
+        res.setHeader('retry-after', String(Math.max(1, Math.ceil(decision.retryAfterMs / 1000))))
+        writeError(res, 429, 'invalid_request', 'public read budget exhausted; retry later')
+        return
+      }
     }
     if (path === `${BACKEND_API_PREFIX}/admission/tickets`) {
       // Public ticket list is the one-tap 入梁券 design: the secret is meant
@@ -516,7 +499,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
     let rawBody = ''
     if (method === 'POST') {
       try {
-        rawBody = await readBoundedBody(req)
+        rawBody = await readBoundedBody(req, MAX_BODY_BYTES)
       } catch (error) {
         if (error instanceof OversizedBodyError) {
           res.setHeader('connection', 'close')
@@ -923,6 +906,7 @@ export function createBackendHttpApi(options: BackendHttpOptions): BackendHttpAp
       voteLimiter.reset()
       marketLimiter.reset()
       identityLimiter.reset()
+      publicReadLimiter.reset()
       admissionLimiter.reset()
       expectedEvents.reset()
     },

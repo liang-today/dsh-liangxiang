@@ -87,10 +87,11 @@ export class VoteRateLimiter {
 
   /** Spend `count` incense from the bucket. `check(id, now)` is consume(1). */
   consume(installationId: string, count: number, now: number, lastVoteAt?: number | null): VoteRateDecision {
+    if (!Number.isSafeInteger(count) || count < 1) throw new Error('vote work count must be a positive safe integer')
     if (this.workUnitsPerMinute <= 0) {
       return { allowed: true, reason: null, retryAfterMs: 0, available: Number.POSITIVE_INFINITY }
     }
-    const want = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0
+    const want = count
     if (want < 1) {
       return { allowed: true, reason: null, retryAfterMs: 0, available: this.peek(installationId, now) }
     }

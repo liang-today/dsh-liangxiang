@@ -158,7 +158,7 @@ describe('read-only panel illustrations', () => {
     ]) {
       const response = await fetch(harness.baseUrl + '/liangxiang/api/panel/art.webp' + query)
       expect(response.status, query).toBe(400)
-      expect(await response.json()).toEqual({ error: 'invalid panel illustration request' })
+      expect(await response.json()).toMatchObject({ error: 'invalid panel illustration request', error_detail: { code: 'invalid_request' } })
     }
   })
 

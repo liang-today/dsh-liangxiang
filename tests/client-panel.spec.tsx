@@ -287,20 +287,29 @@ describe('region 2: 香火 | 梁子 + 梁位 | 下一炷', () => {
     const state = demoState()
     const idle = renderPanel(state)
     const active = renderPanel({ ...state, streamingActive: true })
-    // Activity retains smoke, but cannot permanently replace today's settled number.
+    // Activity decorates the real water and ring, never today's settled number.
     expect(findByAttr(active, 'data-liangxiang-stream-status')).toHaveLength(0)
     expect(textContent(findByAttr(active, 'data-caption-copy'))).toBe('今日凝香7炷')
     expect(textContent(findByAttr(active, 'data-caption-copy'))).toBe(textContent(findByAttr(idle, 'data-caption-copy')))
     expect(findByAttr(active, 'data-liangxiang-stream-activity')).toHaveLength(1)
+    expect(findByAttr(active, 'data-liangxiang-stream-bubble')).toHaveLength(2)
+    expect(findByAttr(active, 'data-liangxiang-main-pond')[0]?.props['data-streaming']).toBe(true)
+    expect(findByAttr(active, 'data-liangxiang-stream-wisp')).toHaveLength(0)
     for (const attribute of ['data-liangxiang-compact', 'data-liangxiang-liang-position-value']) {
       expect(textContent(findByAttr(active, attribute))).toBe(textContent(findByAttr(idle, attribute)))
     }
     expect(findByAttr(active, 'data-liangxiang-ring')[0]?.props['data-fill']).toBe(findByAttr(idle, 'data-liangxiang-ring')[0]?.props['data-fill'])
     expect(findByAttr(active, 'data-liangxiang-condensed')).toHaveLength(0)
     const reduced = renderPanel({ ...state, streamingActive: true }, '', { reducedMotion: true })
-    for (const wisp of findByAttr(reduced, 'data-liangxiang-stream-wisp')) expect(styleOf(wisp).animation).toBeUndefined()
+    expect(styleOf(findByAttr(reduced, 'data-liangxiang-stream-activity')[0]).animation).toBeUndefined()
     const disconnected = renderPanel({ ...state, streamingActive: true, connection: 'offline' })
     expect(findByAttr(disconnected, 'data-liangxiang-stream-activity')).toHaveLength(0)
+    expect(findByAttr(disconnected, 'data-liangxiang-stream-ripple')).toHaveLength(0)
+    for (const extra of [{ utilityOpen: true }, { welcomeVisible: true }, { releaseNotesVisible: true }]) {
+      const covered = renderPanel({ ...state, streamingActive: true }, '', extra)
+      expect(findByAttr(covered, 'data-liangxiang-stream-activity')).toHaveLength(0)
+      expect(findByAttr(covered, 'data-liangxiang-stream-ripple')).toHaveLength(0)
+    }
   })
   it('shows the actual incense gain when one update crosses multiple sticks', () => {
     const state = demoState()
@@ -1274,4 +1283,14 @@ describe('wallet compatibility feedback', () => {
     expect(votes.length).toBe(2)
     expect(votes.every(node => node.props.disabled === true)).toBe(true)
   })
+})
+
+
+it('does not display a guessed token threshold while the first community bootstrap is pending', () => {
+  const state = onlineState()
+  const tree = renderPanel({ ...state, authorityAvailable: false, activeCase: { ...state.activeCase, id: 'connecting' } })
+  const next = findByAttr(tree, 'data-liangxiang-personal', 'next-incense')[0]
+  expect(visibleNextIncenseText(next)).toContain('--')
+  expect(visibleNextIncenseText(next)).not.toContain('50K')
+  expect(next?.props['aria-label']).toContain('等待社区连接')
 })

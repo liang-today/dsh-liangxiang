@@ -226,6 +226,8 @@ describe('starter incense grant', () => {
     // not make its device/date grant claimable again under a fresh key.
     f.service.vote(INSTALLATION, { case_id: f.service.ensureActiveCase().id,
       vote_type: 'up', count: STARTER_INCENSE_COUNT, request_id: 'starter-before-empty-rekey' })
+    expect(() => f.service.rekeyIdentity(NEXT, `pk-${NEXT}`, FINGERPRINT)).toThrow(expect.objectContaining({ code: 'rekey_proof_required' }))
+    f.service.unbindIdentity(INSTALLATION)
     f.service.rekeyIdentity(NEXT, `pk-${NEXT}`, FINGERPRINT)
     const rebound = f.service.dailyState(NEXT).authoritative_personal_state
     expect(rebound.remaining_incense).toBe(0)

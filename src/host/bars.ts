@@ -1,3 +1,5 @@
+import { statSync } from 'node:fs'
+import { barsDayPath } from './bars-store.ts'
 /**
  * 走势 recorder: samples the Host's own view of the world, persists it, serves it.
  *
@@ -65,6 +67,9 @@ export class BarsRecorder {
   private accumulator: BarsAccumulator | null = null
   private timer: ReturnType<typeof setInterval> | null = null
   private lastFlushAt = 0
+  private lastFlushWarningAt = Number.NEGATIVE_INFINITY
+  private readonly closedCache = new Map<string, { stamp: string, day: BarsDay }>()
+  private readonly pendingWrites = new Map<string, BarsDay>()
   private disposed = false
   private observationUnavailable = false
 
@@ -165,15 +170,21 @@ export class BarsRecorder {
   /** Persist today's series. Safe to call at any time; idempotent. */
   flush(): void {
     const accumulator = this.accumulator
-    if (accumulator === null) return
-    try {
+    if (accumulator !== null) {
       const day = this.currentDay(accumulator)
-      if (day.buckets.length === 0) return
-      writeBarsDay(this.root, day)
-      this.lastFlushAt = this.now()
-    } catch (error) {
-      this.warn(`bars flush failed: ${error instanceof Error ? error.message : String(error)}`)
+      if (day.buckets.length > 0) this.pendingWrites.set(day.businessDate, day)
     }
+    this.lastFlushAt = this.now()
+    for (const [date, day] of this.pendingWrites) {
+      try { writeBarsDay(this.root, day); this.pendingWrites.delete(date) } catch {
+        if (this.now() - this.lastFlushWarningAt >= 30_000) {
+          this.warn('bars persistence unavailable; retaining observed days for retry')
+          this.lastFlushWarningAt = this.now()
+        }
+      }
+    }
+    // Derived history is bounded independently of all authoritative ledgers.
+    while (this.pendingWrites.size > BARS_MAX_WINDOW_DAYS) this.pendingWrites.delete(this.pendingWrites.keys().next().value!)
   }
 
   /** Show an ongoing outage without advancing the last genuine observation. */
@@ -192,8 +203,8 @@ export class BarsRecorder {
   }
 
   /** What this installation can answer for. */
-  meta(): BarsMeta {
-    const dates = listBarsDayDates(this.root)
+  meta(listed = listBarsDayDates(this.root)): BarsMeta {
+    const dates = [...new Set([...listed, ...this.pendingWrites.keys()])]
     const today = this.accumulator
     if (today !== null && today.buckets.length > 0 && !dates.includes(today.businessDate)) {
       dates.push(today.businessDate)
@@ -218,10 +229,11 @@ export class BarsRecorder {
   read(query: BarsQuery): BarsPayload {
     const interval: BarsInterval = query.interval
     const intervalMs = BARS_INTERVAL_MS[interval]
-    const loaded = this.loadDays(query)
+    const listed = listBarsDayDates(this.root)
+    const loaded = this.loadDays(query, listed)
     const days: BarsDay[] = loaded.map(day => {
       const buckets = aggregateBars(day.buckets, BARS_BUCKET_MS, intervalMs)
-        .filter(bucket => bucket.t >= (query.from ?? Number.NEGATIVE_INFINITY) && bucket.t < (query.to ?? Number.POSITIVE_INFINITY))
+        .filter(bucket => bucket.t + intervalMs > (query.from ?? Number.NEGATIVE_INFINITY) && bucket.t < (query.to ?? Number.POSITIVE_INFINITY))
       return { ...day, intervalMs, buckets }
     })
     const allBuckets = days.flatMap(day => day.buckets)
@@ -238,7 +250,7 @@ export class BarsRecorder {
       from,
       to,
       days,
-      meta: this.meta(),
+      meta: this.meta(listed),
     }
   }
 
@@ -279,10 +291,10 @@ export class BarsRecorder {
     return new Intl.DateTimeFormat('en-CA', options).format(new Date(t))
   }
 
-  private loadDays(query: BarsQuery): BarsDay[] {
+  private loadDays(query: BarsQuery, listed: string[]): BarsDay[] {
     const today = this.accumulator
     const wanted: string[] = []
-    wanted.push(...listBarsDayDates(this.root).filter(date => this.inWindow(date, query)))
+    wanted.push(...new Set([...listed, ...this.pendingWrites.keys()].filter(date => this.inWindow(date, query))))
     if (today !== null && this.inWindow(today.businessDate, query) && !wanted.includes(today.businessDate)) {
       wanted.push(today.businessDate)
     }
@@ -292,7 +304,12 @@ export class BarsRecorder {
         loaded.push(this.currentDay(today))
         continue
       }
-      const day = readBarsDay(this.root, date, this.warn)
+      let stamp = ''
+      try { const file = statSync(barsDayPath(this.root, date)); stamp = `${file.mtimeMs}:${file.ctimeMs}:${file.size}` } catch { /* read reports missing/corrupt files */ }
+      const cached = this.closedCache.get(date)
+      const day = this.pendingWrites.get(date) ?? (stamp !== '' && cached?.stamp === stamp ? cached.day : readBarsDay(this.root, date, this.warn))
+      if (day !== null && stamp !== '') this.closedCache.set(date, { stamp, day })
+      while (this.closedCache.size > BARS_MAX_WINDOW_DAYS) this.closedCache.delete(this.closedCache.keys().next().value!)
       if (day !== null) loaded.push(day)
     }
     return loaded.toSorted((a, b) => a.businessDate.localeCompare(b.businessDate))

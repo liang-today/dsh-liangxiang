@@ -5,7 +5,7 @@ import { COMPANION_CSS } from './MarketFishCompanion.tsx'
 export const MARKET_DIALOG_CSS = marketCss(`
 [data-~backdrop]{background-image:radial-gradient(#a6b7cf0b .8px,transparent 1px);background-size:16px 16px}
 [data-~dialog]{
- --~control:28px;--~gap:6px;--~top:10px;
+ --~control:28px;--~gap:6px;--~top:10px;--~summary:200px;
  --~paper:light-dark(#fdfcf9,#25292f);
  --~paper-2:light-dark(#edf1f6,#2e343d);
  --~ink:light-dark(#30394b,#e6eaf1);
@@ -37,19 +37,18 @@ export const MARKET_DIALOG_CSS = marketCss(`
 [data-~dialog] button:disabled{opacity:.42;cursor:default}
 [data-~dialog] button:hover:not(:disabled){background:color-mix(in srgb,var(--~blue) 8%,var(--~paper))}
 [data-~dialog] :is(button,input,summary,svg):focus-visible{outline:2px solid var(--~blue);outline-offset:3px}
-.~header{display:grid;grid-template-columns:170px minmax(0,1fr) 64px;align-items:center;gap:8px;flex:none;height:74px;margin-bottom:var(--~gap)}
+.~header{display:grid;grid-template-columns:var(--~summary) minmax(0,1fr) 64px;align-items:center;gap:8px;flex:none;height:74px;margin-bottom:var(--~gap)}
 .~header-copy{min-width:0;align-self:start}
 .~header h2{display:flex;align-items:center;gap:8px;margin:0 0 4px;white-space:nowrap;font-size:20px;font-weight:650;line-height:1.2}
 .~header h2 i{width:4px;height:4px;border-radius:50%;background:var(--~blue);opacity:.7}
 .~header h2 small{font-size:14px;font-weight:500;color:var(--~sub)}
-.~wallet{display:grid;gap:1px;line-height:20px;white-space:nowrap;font-size:11px;color:var(--~sub)}
-.~wallet>span{display:flex;align-items:baseline;gap:4px}
-.~wallet-label{width:4em;flex:none}
-.~wallet strong{font-size:13px;font-weight:600;color:var(--~ink)}
-.~wallet [data-~available]{font-size:21px;color:var(--~blue-text)}
+.~wallet{display:grid;grid-template-columns:4em minmax(0,1fr) 1em;align-items:baseline;width:min(var(--~summary),100%);gap:1px 5px;line-height:20px;white-space:nowrap;font-size:10px;color:var(--~sub)}
+.~wallet-label{min-width:0}
+.~wallet strong{justify-self:end;font-size:17px;font-weight:600;color:var(--~blue-text)}
+.~wallet small{font-size:inherit}
 [data-~dialog] .~companion-trigger{align-self:start;display:flex;align-items:center;justify-content:center;padding:4px 0 0;min-width:0;height:100px;border:0;background:none;text-align:left;overflow:visible}
 [data-~dialog] button.~companion-trigger:hover:not(:disabled){background:transparent}
-.~companion-trigger .~companion{width:100%;flex:1;padding-left:36px}
+.~companion-trigger .~companion{width:100%;flex:1;padding-left:clamp(16px,calc(20% - 44px),48px)}
 .~companion-trigger .~companion-speech{padding:0;background:none;font-size:11px;line-height:1.4}
 .~window-controls{display:grid;gap:var(--~gap);align-self:start;width:64px}
 .~window-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -67,13 +66,14 @@ export const MARKET_DIALOG_CSS = marketCss(`
 .~status:empty{display:none}
 .~status button{pointer-events:auto;flex:none;font-size:11px;min-height:25px;padding:3px 6px;color:var(--~blue-text)}
 .~loading,.~empty{flex:1;display:grid;place-items:center;color:var(--~sub);font-size:12px}
-.~chart{display:flex;flex-direction:column;flex:1;min-height:250px;overflow:hidden}
-.~chart-toolbar{display:flex;align-items:center;gap:9px;flex:none;height:var(--~control);white-space:nowrap}
+.~chart{display:flex;flex-direction:column;flex:1;min-height:250px;overflow:clip}
+.~chart-toolbar{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);align-items:center;gap:6px;width:min(var(--~summary),100%);flex:none;height:var(--~control);white-space:nowrap}
 .~chart-toolbar>div{display:flex;align-items:center;gap:3px;flex:none}
+.~chart-toolbar>div:last-child{min-width:0;justify-content:flex-end}
 [data-~dialog] .~chart-toolbar button{min-height:27px;padding:3px 7px;font-size:11px;color:var(--~sub)}
 [data-~dialog] button[data-selected=true]{background:var(--~paper-2);color:var(--~blue-text)}
 [data-~dialog] .~chart-window{color:var(--~sub);font-size:11px;cursor:default}
-.~chart-quotes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 1.1fr;gap:12px;flex:none;min-height:42px;padding:4px 0 7px;border-bottom:1px solid var(--~border);text-align:center}
+.~chart-quotes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 1.1fr;gap:12px;flex:none;min-height:42px;padding:4px 0 7px;border-bottom:1px solid var(--~border);text-align:center;line-height:14px}
 .~chart-quotes span{display:block;margin-bottom:2px;font-size:11px;color:var(--~sub)}
 .~chart-quotes b{font-size:12px;font-weight:600;white-space:nowrap}
 .~chart-scroll{position:relative;flex:1;min-height:140px;overflow:hidden}
@@ -111,14 +111,15 @@ export const MARKET_DIALOG_CSS = marketCss(`
 [data-~dialog] button:active:not(:disabled)>.~button-face{transform:translateY(1px) scale(.98)}
 [data-animated=true] .~button-face{transition:transform 180ms cubic-bezier(.2,.8,.3,1.3),background 120ms ease}
 .~footer{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:center;gap:12px;position:sticky;bottom:-7px;z-index:5;flex:none;height:46px;margin:0;padding-top:5px;background:var(--~paper);border-top:1px solid var(--~border);font-size:11px;color:var(--~sub)}
-.~footer-metrics{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}
-[data-~dialog] .~footer-metrics>button{display:grid;align-content:center;min-width:0;min-height:37px;padding:0;text-align:left;white-space:nowrap}
-.~metric-label{font-size:10px;font-weight:400;line-height:15px;color:var(--~sub)}
+.~footer-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-width:0}
+[data-~dialog] .~footer-metrics>button{display:grid;grid-template-rows:minmax(15px,1fr) 19px;min-width:0;min-height:37px;padding:0;text-align:left;white-space:nowrap}
+.~metric-label{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:400;line-height:15px;color:var(--~sub)}
 .~metric-label b{font-weight:600;color:var(--~ink)}
 .~footer-metrics button>strong{display:flex;align-items:baseline;gap:4px;font-size:13px;line-height:19px;font-weight:600;color:var(--~ink)}
 .~footer-metrics button>strong>small{font-size:11px;font-weight:400;color:var(--~sub)}
 .~pool>strong{color:var(--~blue-text)!important}
-.~connection{margin-left:4px;white-space:nowrap}
+.~connection{display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:400;white-space:nowrap}
+.~connection svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .~footer-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding-left:10px;border-left:1px solid var(--~border);min-width:0}
 [data-~dialog] .~footer-actions>button{min-width:0;min-height:30px;padding:3px 0;font-size:11px;white-space:nowrap;color:var(--~sub)}
 .~popover{position:absolute;z-index:8;right:0;bottom:52px;width:min(430px,100%);max-height:min(370px,calc(100dvh - 160px));padding:13px 15px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--~border);border-radius:13px;background:var(--~paper);color:var(--~ink);box-shadow:0 7px 24px #081d4630}
@@ -147,29 +148,32 @@ export const MARKET_DIALOG_CSS = marketCss(`
 ${MARKET_MOTION_CSS}
 ${COMPANION_CSS}
 @media(max-width:600px){
- .~header{height:162px;grid-template-columns:minmax(0,1fr) 64px;grid-template-rows:74px 88px;gap:0 8px}
+ [data-~dialog]{height:min(600px,calc(100dvh - 24px))}
+ .~header{height:155px;grid-template-columns:minmax(0,1fr) 64px;grid-template-rows:67px 88px;gap:0 8px}
  .~header h2{font-size:18px;gap:6px;margin-bottom:4px}
  .~header h2 small{font-size:12px}
  [data-~dialog] .~companion-trigger{grid-column:1/-1;grid-row:2;height:88px}
  .~companion-trigger .~companion{padding-left:0;height:88px;grid-template-columns:84px minmax(0,1fr)}
  .~companion-trigger .~companion>svg{width:84px;height:88px}
  .~window-controls{grid-column:2;grid-row:1}
+ .~chart{min-height:212px}
+ .~footer{height:auto;min-height:46px;grid-template-columns:1fr;gap:2px;padding-top:4px}
+ .~footer-actions{border-left:0;padding-left:0;grid-template-columns:max-content max-content;justify-content:end;gap:16px}
+ [data-~dialog] .~footer-actions>button{min-height:24px;padding:2px 0}
 }
 @media(max-width:520px){
  [data-~dialog]{--~top:9px;height:min(600px,calc(100dvh - 24px));padding:var(--~top) 12px 7px;border-radius:13px}
- .~wallet{font-size:10px}
- .~wallet [data-~available]{font-size:18px}
- .~chart{min-height:225px}
+ .~wallet strong{font-size:15px}
  .~chart-quotes{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
  .~chart-quote-time{display:none}
  .~chart-quotes b{font-size:11px}
  .~stage-tabs .~button-face{padding:0 4px}
  .~stage,.~batch{height:91px}
+ .~batch{padding-top:6px}
  .~order{grid-template-columns:1fr 1fr;grid-template-rows:36px 35px;gap:6px 8px;height:77px}
  .~direction{max-width:none}
  .~order-actions{grid-column:1/-1;grid-template-columns:1fr 85px}
  .~status{left:12px;right:12px}
- .~footer{gap:7px}
  .~footer-metrics{gap:8px}
  .~footer-actions{padding-left:5px;gap:3px}
  [data-~dialog] .~footer-actions>button{font-size:10px}
@@ -179,8 +183,8 @@ ${COMPANION_CSS}
  .~header h2{font-size:16px}
  .~header h2 small{font-size:11px}
  .~header h2 i{width:3px;height:3px}
- .~wallet [data-~available]{font-size:17px}
- .~wallet strong{font-size:11px}
+ .~wallet{font-size:9px}
+ .~wallet strong{font-size:12px}
  .~chart-toolbar{gap:4px}
  [data-~dialog] .~chart-toolbar button{padding:3px 5px}
  .~stage-tabs [data-has-position=true] em,.~stage-tabs svg{display:none}
@@ -190,10 +194,11 @@ ${COMPANION_CSS}
  .~footer{gap:4px;font-size:10px}
  .~footer-metrics button>strong{font-size:11px}
  .~metric-label{font-size:9px}
- .~footer-actions{grid-template-columns:1fr;gap:0}
- [data-~dialog] .~footer-actions>button{min-height:19px;padding:0}
- .~connection[data-reveal=true]{font-size:0}
- .~connection[data-reveal=true]::after{content:'24点后';font-size:9px}
+ .~footer-metrics{gap:6px}
+ .~metric-label{gap:2px}
+ .~footer-metrics .~pool:last-child .~metric-label{flex-wrap:wrap;gap:0 2px}
+ .~connection{font-size:9px}
+ [data-~dialog] .~footer-actions>button{min-height:22px;padding:0}
 }
 @media(prefers-reduced-motion:reduce){[data-~dialog] *,[data-~dialog] *::before,[data-~dialog] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 `)

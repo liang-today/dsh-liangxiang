@@ -15,6 +15,7 @@
  */
 import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync, openSync, fsyncSync, closeSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { isBusinessDate } from '../domain/index.ts'
 import type { BarsDay } from '../shared/bars-v1.ts'
 import { BARS_SCHEMA_VERSION } from '../shared/bars-v1.ts'
 
@@ -36,6 +37,7 @@ export function resolveBarsRoot(env: NodeJS.ProcessEnv, home: string): string {
 }
 
 export function barsDayPath(root: string, businessDate: string): string {
+  if (!isBusinessDate(businessDate)) throw new Error('invalid bars business date')
   return join(root, 'days', `${businessDate}.json`)
 }
 

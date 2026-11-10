@@ -1,3 +1,4 @@
+import { mergeDailyUsage } from './usage-ledger.ts'
 /**
  * FakeAuthoritativeLiangService — the LOCAL DEV/TEST stand-in for the future
  * Liangxiang backend (Decision Gate A = A3, docs/043: production trusted
@@ -185,6 +186,7 @@ export class FakeAuthoritativeLiangService {
   private ledgers = new Map<string, { usedIncense: number }>()
   private aggregates = new Map<string, GlobalVoteAggregate>()
   private votes = new Map<string, PersistedVoteRecord>()
+  private acceptedCases = new Set<string>()
   private caseIndexes = new Map<string, { caseIndex: number }>()
   private dayArchives = new Map<string, LiangDayArchive>()
   private weekArchives = new Map<string, LiangWeekArchive>()
@@ -238,19 +240,14 @@ export class FakeAuthoritativeLiangService {
       const current = this.dailyUsage.get(date)
       this.dailyUsage.set(date, current === undefined
         ? { ...persistedDay }
-        : {
-          ...persistedDay,
-          ...(current.weightPolicy === undefined ? {} : { weightPolicy: current.weightPolicy }),
-          inputTokens: Math.max(current.inputTokens, persistedDay.inputTokens),
-          outputTokens: Math.max(current.outputTokens, persistedDay.outputTokens),
-          weightCarry: Math.max(current.weightCarry, persistedDay.weightCarry),
-          observedAt: Math.max(current.observedAt, persistedDay.observedAt),
-        })
+        : mergeDailyUsage(current, persistedDay)
+      )
     }
     if (!this.ready) {
       this.ledgers = persisted.ledgers
       this.aggregates = persisted.aggregates
       this.votes = persisted.votes
+      this.acceptedCases = new Set([...this.votes.values()].filter(row => row.status === 'accepted').map(row => row.caseId))
       this.caseIndexes = persisted.caseIndexes
       this.dayArchives = persisted.dayArchives
       this.weekArchives = persisted.weekArchives
@@ -355,6 +352,9 @@ export class FakeAuthoritativeLiangService {
    */
   vote(intent: WireVoteRequest): { result: VoteResult, state: LiangxiangWireState } {
     this.rotateToCurrentDate()
+    if (intent.count !== undefined && (!Number.isSafeInteger(intent.count) || intent.count < 1)) {
+      throw new BackendClientError('vote count must be a positive safe integer', 400, 'invalid_request')
+    }
     const respond = (result: VoteResult): { result: VoteResult, state: LiangxiangWireState } =>
       ({ result, state: this.getWireState() })
 
@@ -440,8 +440,8 @@ export class FakeAuthoritativeLiangService {
     }
 
     // Commit (no awaits between the check above and the writes below).
-    const firstAcceptedVote = ![...this.votes.values()].some(record =>
-      record.status === 'accepted' && record.caseId === this.activeCase.id)
+    const firstAcceptedVote = !this.acceptedCases.has(this.activeCase.id)
+    this.acceptedCases.add(this.activeCase.id)
     this.usedIncenseToday += spent
     this.aggregate = applyAcceptedVotes(this.aggregate, intent.voteType, spent, firstAcceptedVote)
     this.aggregates.set(this.activeCase.id, this.aggregate)
@@ -660,7 +660,7 @@ export class FakeAuthoritativeLiangService {
     // Hydration guard: a ledger without its usage record would violate
     // used <= earned. Clamp loudly rather than dying or inventing tokens.
     const usage = this.dailyUsage.get(date) ?? EMPTY_DAILY_USAGE
-    const earned = Math.floor((usage.inputTokens + usage.outputTokens) / this.config.tokenPerIncense)
+    const earned = Math.floor((usage.inputTokens + usage.outputTokens) / this.config.tokenPerIncense) + (this.config.starterIncense ?? 0)
     if (this.usedIncenseToday > earned) {
       this.warn(`[dsh-liangxiang] persisted used incense (${this.usedIncenseToday}) exceeds earned (${earned}); clamping`)
       this.usedIncenseToday = earned

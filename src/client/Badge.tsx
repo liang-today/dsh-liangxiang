@@ -1,3 +1,4 @@
+import { updateLocalStats } from './local-stat-lock.ts'
 /**
  * 梁相 entry + panel container.
  *
@@ -604,6 +605,7 @@ export function LiangxiangBadge(): ReactElement {
   const incenseCaption = usePersonalIncenseCaption({
     scopeKey: incenseScope,
     condensedIncense, settlementSequence, peekSequence: incensePeekSequence,
+    usedIncenseToday: state.personal.usedIncenseToday,
   })
   const prevEarned = useRef(state.personal.earnedIncenseToday)
   const prevEarnedScope = useRef(incenseScope)
@@ -725,7 +727,11 @@ export function LiangxiangBadge(): ReactElement {
   const [localIncense, setLocalIncense] = useState(() => deriveLocalIncenseStats(EMPTY_LOCAL_INCENSE))
   useEffect(() => {
     if (state.connection !== 'live') return
-    setLocalIncense(readLocalIncenseStats(state.businessDate))
+    const refresh = (): void => { setLocalIncense(readLocalIncenseStats(state.businessDate)) }
+    refresh()
+    const changed = (event: StorageEvent): void => { if (event.key?.startsWith('liangxiang:local-')) refresh() }
+    window.addEventListener('storage', changed)
+    return () => window.removeEventListener('storage', changed)
   }, [state.businessDate, state.connection])
   const visibleIncense = combineLocalIncenseStats(localIncense, state.timedIncense)
   const localEpithet = deriveLocalEpithet({ up: visibleIncense.today.up, down: visibleIncense.today.down })
@@ -795,8 +801,11 @@ export function LiangxiangBadge(): ReactElement {
           else playVoteDown()
           if (spent > 0) {
             const date = store.getSnapshot().businessDate
-            rememberLocalEpithetVote(voteType, spent, date)
-            setLocalIncense(rememberLocalIncenseVote(voteType, spent, date))
+            void updateLocalStats(() => {
+              rememberLocalEpithetVote(voteType, spent, date)
+              const latest = rememberLocalIncenseVote(voteType, spent, date)
+              if (store.getSnapshot().businessDate === date) setLocalIncense(latest)
+            }).catch(() => undefined)
           }
           setVoteFeedback(formatAcceptedVoteFeedback(
             voteType === 'up' ? VOTE_UP_NAME : VOTE_DOWN_NAME,
