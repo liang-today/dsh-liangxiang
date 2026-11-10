@@ -300,6 +300,10 @@ test('social slots fit zero, four-digit and extreme counts while retaining exact
   for (const [count, caption] of [[0, '0'], [9999, '9.99K'], [99999, '9.99万'], [Number.MAX_SAFE_INTEGER, '9007万亿']] as const) {
     value = count; sequence++
     await page.reload()
+    // A reload can finish before DSH remounts its plugin root. Observe the
+    // seeded closed state before sending the keyboard toggle to this mount.
+    await expect(page.locator('[data-liangxiang-root]')).toBeVisible()
+    await expect(page.locator(badgeSelector)).toHaveAttribute('aria-expanded', 'false')
     const panel = await openPanel(page)
     for (const kind of ['incense', 'voters']) {
       const slot = panel.locator(`[data-liangxiang-stat="${kind}"]`)

@@ -636,6 +636,7 @@ test('compact order keeps withdrawal in the order bar, clamps excessive input an
   const chart = dialog.locator('[data-liangxiang-market-chart-mode]')
   const initialChartBounds = (await chart.boundingBox())!
   const expectStableFrame = async (): Promise<void> => {
+    expect(await dialog.evaluate(element => element.scrollHeight <= element.clientHeight + 1)).toBe(true)
     const bounds = (await dialog.boundingBox())!, chartBounds = (await chart.boundingBox())!
     expect(Math.abs(bounds.height - initialBounds.height)).toBeLessThanOrEqual(1)
     expect(Math.abs(bounds.y - initialBounds.y)).toBeLessThanOrEqual(1)

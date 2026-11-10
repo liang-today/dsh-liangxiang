@@ -66,13 +66,14 @@ export const MARKET_DIALOG_CSS = marketCss(`
 .~status:empty{display:none}
 .~status button{pointer-events:auto;flex:none;font-size:11px;min-height:25px;padding:3px 6px;color:var(--~blue-text)}
 .~loading,.~empty{flex:1;display:grid;place-items:center;color:var(--~sub);font-size:12px}
-.~chart{display:flex;flex-direction:column;flex:1;min-height:250px;overflow:hidden}
-.~chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:4px;width:min(var(--~summary),100%);flex:none;height:var(--~control);white-space:nowrap}
+.~chart{display:flex;flex-direction:column;flex:1;min-height:250px;overflow:clip}
+.~chart-toolbar{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);align-items:center;gap:6px;width:min(var(--~summary),100%);flex:none;height:var(--~control);white-space:nowrap}
 .~chart-toolbar>div{display:flex;align-items:center;gap:3px;flex:none}
+.~chart-toolbar>div:last-child{min-width:0;justify-content:flex-end}
 [data-~dialog] .~chart-toolbar button{min-height:27px;padding:3px 7px;font-size:11px;color:var(--~sub)}
 [data-~dialog] button[data-selected=true]{background:var(--~paper-2);color:var(--~blue-text)}
 [data-~dialog] .~chart-window{color:var(--~sub);font-size:11px;cursor:default}
-.~chart-quotes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 1.1fr;gap:12px;flex:none;min-height:42px;padding:4px 0 7px;border-bottom:1px solid var(--~border);text-align:center}
+.~chart-quotes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 1.1fr;gap:12px;flex:none;min-height:42px;padding:4px 0 7px;border-bottom:1px solid var(--~border);text-align:center;line-height:14px}
 .~chart-quotes span{display:block;margin-bottom:2px;font-size:11px;color:var(--~sub)}
 .~chart-quotes b{font-size:12px;font-weight:600;white-space:nowrap}
 .~chart-scroll{position:relative;flex:1;min-height:140px;overflow:hidden}
@@ -147,30 +148,32 @@ export const MARKET_DIALOG_CSS = marketCss(`
 ${MARKET_MOTION_CSS}
 ${COMPANION_CSS}
 @media(max-width:600px){
- .~header{height:162px;grid-template-columns:minmax(0,1fr) 64px;grid-template-rows:74px 88px;gap:0 8px}
+ [data-~dialog]{height:min(600px,calc(100dvh - 24px))}
+ .~header{height:155px;grid-template-columns:minmax(0,1fr) 64px;grid-template-rows:67px 88px;gap:0 8px}
  .~header h2{font-size:18px;gap:6px;margin-bottom:4px}
  .~header h2 small{font-size:12px}
  [data-~dialog] .~companion-trigger{grid-column:1/-1;grid-row:2;height:88px}
  .~companion-trigger .~companion{padding-left:0;height:88px;grid-template-columns:84px minmax(0,1fr)}
  .~companion-trigger .~companion>svg{width:84px;height:88px}
  .~window-controls{grid-column:2;grid-row:1}
- .~footer{height:auto;min-height:46px;grid-template-columns:1fr;gap:3px}
+ .~chart{min-height:212px}
+ .~footer{height:auto;min-height:46px;grid-template-columns:1fr;gap:2px;padding-top:4px}
  .~footer-actions{border-left:0;padding-left:0;grid-template-columns:max-content max-content;justify-content:end;gap:16px}
+ [data-~dialog] .~footer-actions>button{min-height:24px;padding:2px 0}
 }
 @media(max-width:520px){
  [data-~dialog]{--~top:9px;height:min(600px,calc(100dvh - 24px));padding:var(--~top) 12px 7px;border-radius:13px}
  .~wallet strong{font-size:15px}
- .~chart{min-height:225px}
  .~chart-quotes{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
  .~chart-quote-time{display:none}
  .~chart-quotes b{font-size:11px}
  .~stage-tabs .~button-face{padding:0 4px}
  .~stage,.~batch{height:91px}
+ .~batch{padding-top:6px}
  .~order{grid-template-columns:1fr 1fr;grid-template-rows:36px 35px;gap:6px 8px;height:77px}
  .~direction{max-width:none}
  .~order-actions{grid-column:1/-1;grid-template-columns:1fr 85px}
  .~status{left:12px;right:12px}
- .~footer{gap:7px}
  .~footer-metrics{gap:8px}
  .~footer-actions{padding-left:5px;gap:3px}
  [data-~dialog] .~footer-actions>button{font-size:10px}
